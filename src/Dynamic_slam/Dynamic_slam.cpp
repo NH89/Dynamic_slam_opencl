@@ -5,7 +5,7 @@
 using namespace cv;
 using namespace std;
 
-Dynamic_slam::~Dynamic_slam(){ };
+Dynamic_slam::~Dynamic_slam(){ runcl.~RunCL(); };
 
 Dynamic_slam::Dynamic_slam( Json::Value obj_, int_map verbosity_mp_  ):   runcl( obj_ ,  verbosity_mp_ ) {   //    //     //// conf_params j_params
 	obj = obj_;																																// NB save obj_ to class member obj, so that it persists within this Dynamic_slam object.
@@ -279,7 +279,7 @@ void Dynamic_slam::getFrameData(){  // can load use separate CPU thread(s) ?
 	generate_invK();
 	inv_K_GT = inv_K; 																														// TODO change this when we autocalibrate K.
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_chk 0.4"<<flush; // K2K
-	K2K_GT 					= old_K_GT * old_pose_GT * inv_pose_GT * inv_K_GT;;
+	K2K_GT 					= old_K_GT * old_pose_GT * inv_pose_GT * inv_K_GT;
 	//   wrong way around :   old_K_GT * old_pose_GT * inv_pose_GT * inv_K_GT;																// TODO  Issue, not valid for first frame, pose  should be identty, Also what would estimate SE3 do ?
 
 	pose2pose_GT 			= old_pose_GT * inv_pose_GT;

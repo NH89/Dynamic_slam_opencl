@@ -121,7 +121,7 @@
 	"RunCL::DownloadAndSave_HSV_grad": 1,
 	"RunCL::SaveMat": 1,
 	"RunCL::SaveMat_1chan": 1,
-	"RunCL::DownloadAndSaveVolume": -2,
+	"RunCL::DownloadAndSaveVolume": 2,
 
 	////////////////////////////////////// RunCL_load_image.cpp
 	"RunCL::loadFrame": 1,
@@ -140,7 +140,7 @@
 	"RunCL::update_tracking_depthmap":-2,
 	"RunCL::se3_rho_sq": 1,
 
-	"RunCL::estimateSE3_LK": 2,
+	"RunCL::estimateSE3_LK": -2,
 	"RunCL::read_Rho_sq": -1,
 	"RunCL::read_se3_weights": 1,
 	"RunCL::read_se3_incr": 1,

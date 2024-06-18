@@ -17,6 +17,8 @@ void Dynamic_slam::report_GT_pose_error(){ 																									// TODO this
 																																				//
 																																				PRINT_MATX44F(keyframe_pose2pose_GT,);
 																																				PRINT_MATX44F(keyframe_pose2pose,);
+																																				keyframe_pose2pose_GT_algebra 	= PToLie(keyframe_pose2pose_GT);
+																																				keyframe_pose2pose_algebra		= PToLie(keyframe_pose2pose);
 																																				PRINT_MATX16F(keyframe_pose2pose_GT_algebra,);
 																																				PRINT_MATX16F(keyframe_pose2pose_algebra,);
 																																				PRINT_MATX16F(keyframe_pose2pose_error_algebra,);
@@ -306,7 +308,7 @@ void Dynamic_slam::estimateSE3(){																											// new version with 
 	if (obj["sample_se3_incr"]==true){
 		initialize_resultsMat();
 	}
-																																			if(verbosity>local_verbosity_threshold){ cout << "\n ###  Dynamic_slam::estimateSE3_LK()_chk 0 : \t SE_factor = "<<SE_factor<<
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n ###  Dynamic_slam::estimateSE3()_chk 0 : \t SE_factor = "<<SE_factor<<
 																																				",\t obj[\"SE_factor\"].asFloat() = "<<obj["SE_factor"].asFloat() <<
 																																				",\t SE_iter = " << SE_iter <<
 																																				flush;}
@@ -320,13 +322,13 @@ void Dynamic_slam::estimateSE3(){																											// new version with 
 	uint channel  						= 2;
 
 																																				if(verbosity>local_verbosity_threshold) {
-																																				cout <<  "\n### Dynamic_slam::estimateSE3_LK(): (Rho_sq_result < SE3_Rho_sq_threshold[layer][channel])=("<<Rho_sq_result<<
+																																				cout <<  "\n### Dynamic_slam::estimateSE3(): (Rho_sq_result < SE3_Rho_sq_threshold[layer][channel])=("<<Rho_sq_result<<
 																																				" < "<<SE3_Rho_sq_threshold[layer][channel]<<")  ";
 																																				for(int i=0;i<5;i++){cout<<" ( "; for(int j=0;j<3;j++) {cout<<", ["<<i<<"]["<<j<<"]"<<SE3_Rho_sq_threshold[i][j];}	cout << " ) "; }
 																																				cout << ",\t layer = "<<layer<< ",\t factor = "<<factor << endl << flush;
 																																			}
 	for (int iter = 0; iter<SE_iter; iter++){ 																								// TODO step down layers if fits well enough, and out if fits before iteration limit. Set iteration limit param in config.json file.
-																																			if(verbosity>local_verbosity_threshold) {cout << "\n###  Dynamic_slam::estimateSE3_LK_LK()_chk 1.0" << "\t  iter = " << iter <<
+																																			if(verbosity>local_verbosity_threshold) {cout << "\n###  Dynamic_slam::estimateSE3()_chk 1.0" << "\t  iter = " << iter <<
 																																				",\t layer = "<<layer<< ",\t factor = "<<factor<<flush;
 																																			}
 		//////////////////////////////////////
@@ -337,10 +339,10 @@ void Dynamic_slam::estimateSE3(){																											// new version with 
 		float Rho_sq_results[8][tracking_num_colour_channels] = {{0}};
 
 		runcl.estimateSE3_LK(SE3_results, SE3_weights, Rho_sq_results, iter, layer, layer+1);//runcl.mm_start, runcl.mm_stop);
-																																			if(verbosity>local_verbosity_threshold) {cout 	<< "\n###  Dynamic_slam::estimateSE3_LK()_chk 1.6.0:" << flush;
+																																			if(verbosity>local_verbosity_threshold) {cout 	<< "\n###  Dynamic_slam::estimateSE3_chk 1.6.0:" << flush;
 																																				cout << endl;
 																																				for (int i=runcl.mm_start; i<=runcl.mm_stop; i++){ 							// SE3_results / (num_valid_px * img_variance)
-																																					cout 									<< "\n\n###  Dynamic_slam::estimateSE3_LK()_chk 1.6.1:"<<
+																																					cout 									<< "\n\n###  Dynamic_slam::estimateSE3_chk 1.6.1:"<<
 																																					", Layer "<<i<<" SE3_results = (";   //   /SE3_weights
 																																					for (int k=0; k<6; k++){
 																																						cout << "\n(";
@@ -351,7 +353,7 @@ void Dynamic_slam::estimateSE3(){																											// new version with 
 																																					for (int l=0; l<3; l++) cout << " ,\t " << runcl.img_stats[IMG_VAR+l] ;
 																																					cout << endl << flush;
 																																				}
-																																				cout 										<< "\n###  Dynamic_slam::estimateSE3_LK()_chk 1.6.2"<<
+																																				cout 										<< "\n###  Dynamic_slam::estimateSE3_chk 1.6.2"<<
 																																				"  \titer="<<iter<<
 																																				", \tlayer="<<layer<<
 																																				", \tnext_layer_Rho_sq_result="<< next_layer_Rho_sq_result <<
@@ -412,7 +414,7 @@ void Dynamic_slam::estimateSE3(){																											// new version with 
 
 		old_update 				= update;
 		old_Rho_sq_result 		= Rho_sq_result;
-																																			if(verbosity>local_verbosity_threshold) {cout << "\n\n###  Dynamic_slam::estimateSE3_LK()_chk 6.1" << flush;
+																																			if(verbosity>local_verbosity_threshold) {cout << "\n\n###  Dynamic_slam::estimateSE3_chk 6.1" << flush;
 																																				stringstream ss;
 																																				ss << "\tRho_sq_result = " << Rho_sq_result << "\nSE3_results[layer][se3][chan=2 'value'] :";
 																																				for (int se3 = 0; se3<6; se3++) { ss<< "\nse3 dof = "<< se3 << " : ";
@@ -427,7 +429,7 @@ void Dynamic_slam::estimateSE3(){																											// new version with 
 		// # Pass prediction to lower layers. Does it fit better ?
 		// # Repeat SE3 fitting n-times. ? Damping factor adjustment ?
 	}
-																																			if(obj["sample_se3_incr"].asBool()==true) { cout << "\n###  Dynamic_slam::estimateSE3_LK()_chk 6.3, display and save ResultsMat\n" << flush;
+																																			if(obj["sample_se3_incr"].asBool()==true) { cout << "\n###  Dynamic_slam::estimateSE3_chk 6.3, display and save ResultsMat\n" << flush;
 																																				if(obj["sample_se3_incr::display"].asBool()==true){
 																																					cv::namedWindow( "Dynamic_slam::estimateSE3_LK()_chk 6: writeToResultsMat" , 0 );														// show runcl.resultsMat
 																																					cv::imshow("Dynamic_slam::estimateSE3_LK()_chk 6: writeToResultsMat" , runcl.resultsMat);
@@ -438,14 +440,14 @@ void Dynamic_slam::estimateSE3(){																											// new version with 
 																																				ss <<  runcl.paths.at("SE3_rho_map_mem").string() << "resultsMat_"<<runcl.dataset_frame_num<<".png";
 																																				cv::imwrite( ss.str(), runcl.resultsMat );
 																																			}
-																																			if(verbosity>local_verbosity_threshold) { cout << "\n###  Dynamic_slam::estimateSE3_LK()_chk 7\n" << flush;
+																																			if(verbosity>local_verbosity_threshold) { cout << "\n###  Dynamic_slam::estimateSE3_chk 7\n" << flush;
 																																				cout << "\nruncl.frame_num = "<<runcl.dataset_frame_num;
 																																				PRINT_MATX44F(pose2pose_accumulated,);
 																																				PRINT_MATX44F(pose2pose,);
 																																				PRINT_MATX44F(keyframe_pose2pose,);
 																																			}
 	if (runcl.dataset_frame_num > 0 ) pose2pose_accumulated = pose2pose_accumulated * pose2pose; // TODO wrong formula.
-																																			if(verbosity>local_verbosity_threshold){ cout << "\n###  Dynamic_slam::estimateSE3_LK()_chk 8  Finished ####################################\n" << flush;}
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n###  Dynamic_slam::estimateSE3_chk 8  Finished ####################################\n" << flush;}
 }
 
 
@@ -459,7 +461,7 @@ void Dynamic_slam::estimateSE3_LK(){
 	if (obj["sample_se3_incr"]==true){
 		initialize_resultsMat();
 	}
-																																			if(verbosity>local_verbosity_threshold){ cout << "\n ###  Dynamic_slam::estimateSE3_LK()_chk 0 : \t SE_factor = "<<SE_factor<<
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n ###  Dynamic_slam::estimateSE3_LK_chk 0 : \t SE_factor = "<<SE_factor<<
 																																				",\t obj[\"SE_factor\"].asFloat() = "<<obj["SE_factor"].asFloat() <<
 																																				",\t SE_iter = " << SE_iter <<
 																																				flush;}
@@ -480,7 +482,7 @@ void Dynamic_slam::estimateSE3_LK(){
 	//if( runcl.costvol_frame_num  >0 ) runcl.update_tracking_depthmap(); // TODO later put this at the end of updateDepthCostVol(); OR just use amem for tracking, and therefore update amem in RunCL::transform_depthmap(..).
 
 	for (int iter = 0; iter<SE_iter; iter++){ 																								// TODO step down layers if fits well enough, and out if fits before iteration limit. Set iteration limit param in config.json file.
-																																			if(verbosity>local_verbosity_threshold) {cout << "\n###  Dynamic_slam::estimateSE3_LK_LK()_chk 1.0" << "\t  iter = " << iter <<
+																																			if(verbosity>local_verbosity_threshold) {cout << "\n###  Dynamic_slam::estimateSE3_LK()_chk 1.0" << "\t  iter = " << iter <<
 																																				",\t layer = "<<layer<< ",\t factor = "<<factor<<flush;
 																																			}
 		//////////////////////////////////////
@@ -540,7 +542,7 @@ void Dynamic_slam::estimateSE3_LK(){
 			if ( isfinite( update.operator()(SE3) ) ) continue;
 			else {
 				cout << "\n\nTracking failed,  isfinite( update.operator()("<<SE3<<") ) = " <<  isfinite( update.operator()(SE3) ) << endl<<endl<<flush;
-				exit(1);
+				runcl.exit_(1);
 			}
 		}
 		update_k2k( update );																												if(verbosity>local_verbosity_threshold) {cout << "\n\n###  Dynamic_slam::estimateSE3_LK()_chk 6: (iter>0 && Rho_sq_result > old_Rho_sq_result)" << flush;}

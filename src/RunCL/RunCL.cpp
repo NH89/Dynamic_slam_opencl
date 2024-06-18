@@ -1,5 +1,7 @@
 #include "RunCL.hpp"
 
+
+
 RunCL::RunCL( Json::Value obj_ , int_map verbosity_mp_ ){
 	obj 		 	= obj_;																													// NB save obj_ to class member obj, so that it persists within this RunCL object.
 	verbosity_mp 	= verbosity_mp_;
