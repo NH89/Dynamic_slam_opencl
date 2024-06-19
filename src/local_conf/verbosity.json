@@ -157,7 +157,7 @@
 	"RunCL::updateDepthCostVol::cdatabuf_8chan": 1,	// bool
 
 	"RunCL::updateQD": -1,
-	"RunCL::updateG": -1,
+	"RunCL::updateG": -2,
 	"RunCL::updateA": -2,
 	"RunCL::updateA::dbg_databuf":-1,				// debug volume
 	"RunCL::computeSigmas": -1,

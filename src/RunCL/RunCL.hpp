@@ -213,7 +213,7 @@ public:
 	
 	/////////////////////////////////////// RunCL_tracking.cpp
 	void update_tracking_depthmap();
-	void se3_rho_sq(float Rho_sq_results[8][4], const float count[4], uint start, uint stop, float k2k_3_16_[3][16]  );					// Tracking
+	void se3_rho_sq(float Rho_sq_results[3][8][4], const float count[4], uint start, uint stop, float k2k_3_16_[3][16]  );				// Tracking
 	void estimateSE3_LK(float SE3_results[8][6][tracking_num_colour_channels], float SE3_weights_results[8][6][tracking_num_colour_channels], float Rho_sq_results[8][4], int count, uint start, uint stop);
 
 	void read_Rho_sq(float Rho_sq_results[8][4]);
@@ -230,9 +230,9 @@ public:
 	/////////////////////////////////////// RunCL_mapping.cpp
 	void swap_costvol_pointers();
 	void transform_depthmap(cv::Matx44f K2K_ , cl_mem depthmap_);																		// Cost volume
-	void transform_costvolume(cv::Matx44f K2K_ );//, cl_mem old_cdata_mem =cdatabuf,  cl_mem new_cdata_mem =new_cdatabuf, cl_mem old_hdata_mem =hdatabuf,  cl_mem new_hdata_mem =new_hdatabuf      );
+	void transform_costvolume(cv::Matx44f K2K_ );						//, cl_mem old_cdata_mem =cdatabuf,  cl_mem new_cdata_mem =new_cdatabuf, cl_mem old_hdata_mem =hdatabuf,  cl_mem new_hdata_mem =new_hdatabuf );
 	
-	void initializeDepthCostVol(cl_mem key_frame_depth_map_src);	// Depth costvol functions
+	void initializeDepthCostVol(cl_mem key_frame_depth_map_src);		// Depth costvol functions
 	void updateDepthCostVol(cv::Matx44f K2K_, int count, uint start, uint stop);
 	void updateQD(float epsilon, float theta, float sigma_q, float sigma_d, uint start, uint stop);
 	void updateG(int count, uint start, uint stop);

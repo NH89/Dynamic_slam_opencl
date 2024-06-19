@@ -140,9 +140,9 @@ __kernel void se3_Rho_sq(
 			rho 											= img_cur[read_index] - new_px;
 			rho[3] 											= alpha;
 
-			Rho_[read_index] 								= rho;										// save pixelwise photometric error map to buffer. NB Outside if(){}, to zero non-overlapping pixels.
+			Rho_[read_index + sample * mm_pixels ] 			= rho;										// save pixelwise photometric error map to buffer. NB Outside if(){}, to zero non-overlapping pixels.
 			float4 rho_sq 									= {rho.x*rho.x,  rho.y*rho.y,  rho.z*rho.z, rho.w};
-			local_sum_rho_sq[lid] 							= rho_sq;									// Also compute global Rho^2.
+			local_sum_rho_sq[lid + sample * local_size] 	= rho_sq;									// Also compute global Rho^2.
 // TODO  [sample] index on local mem and final buffer.
 			//if (layer==5) printf(",(%u,%f)", global_id_u ,inv_depth);									// debug chk on value of inv_depth
 		}
@@ -154,29 +154,34 @@ __kernel void se3_Rho_sq(
 		group_size   			/= 2;
 		barrier(CLK_LOCAL_MEM_FENCE);																// No 'if->return' before fence between write & read local mem
 		if (lid<group_size){
-			local_sum_rho_sq[lid] += local_sum_rho_sq[lid + group_size];							// Also compute global Rho^2.
+			for (int sample=0; sample<3; sample++){
+				local_sum_rho_sq[ lid + sample * local_size ] += local_sum_rho_sq[ lid + group_size + sample * local_size ];	// Also compute global Rho^2.
+			}
 		}
 	}
 	barrier(CLK_LOCAL_MEM_FENCE);
 	if (lid==0) {
 		uint group_id 									= get_group_id(0);
-		uint rho_global_sum_offset 						= read_offset_ / local_size ;				// Compute offset for this layer
+
 		uint num_groups 								= get_num_groups(0);
 		//printf("\nse3_Rho_sq(..): layer=%i, u=%i, v=%i, group_id=%i,  rho_global_sum_offset=%i,  (float)read_offset_/local_size=%f,  local_size=%u, read_offset_=%u,  local_sum_rho_sq[lid]=(%f,%f,%f,%f), local_sum_rho_sq[lid][3]=%f ",
 		//	   layer, u, v, group_id, rho_global_sum_offset, ((float)read_offset_)/((float)local_size),  local_size, read_offset_, local_sum_rho_sq[lid].x, local_sum_rho_sq[lid].y, local_sum_rho_sq[lid].z, local_sum_rho_sq[lid].w, local_sum_rho_sq[lid][3] );
 
 
 		float4 layer_data 								= {num_groups, reduction, 0.0f, 0.0f };		// Write layer data to first entry
-		if (global_id_u == 0) {
-			global_sum_rho_sq[rho_global_sum_offset] 	= layer_data;
-		}
-		rho_global_sum_offset 							+= 1 + group_id;
+		for (int sample=0; sample<3; sample++){
+			uint rho_global_sum_offset 						= (read_offset_ / local_size) +  sample * local_size ;				// Compute offset for this layer, and sample
+			if (global_id_u == 0) {
+				global_sum_rho_sq[rho_global_sum_offset ] 	= layer_data;
+			}
+			rho_global_sum_offset 							+= 1 + group_id;
 
-		if (local_sum_rho_sq[lid][3] >0){															// Using last channel rho[3], to count valid pixels being summed.
-			global_sum_rho_sq[rho_global_sum_offset] 	= local_sum_rho_sq[lid];
-			//printf("\nkernel se3_Rho_sq(..)_2: layer=%i,  group_id=%i,   local_sum_rho_sq[lid]=(%f,%f,%f,%f )", layer, group_id,  local_sum_rho_sq[lid].x, local_sum_rho_sq[lid].y, local_sum_rho_sq[lid].z, local_sum_rho_sq[lid].w );
-		}else {																						// If no matching pixels in this group, set values to zero.
-			global_sum_rho_sq[rho_global_sum_offset] 	= 0;
+			if (local_sum_rho_sq[lid][3] >0){															// Using last channel rho[3], to count valid pixels being summed.
+				global_sum_rho_sq[rho_global_sum_offset] 	= local_sum_rho_sq[lid];
+				//printf("\nkernel se3_Rho_sq(..)_2: layer=%i,  group_id=%i,   local_sum_rho_sq[lid]=(%f,%f,%f,%f )", layer, group_id,  local_sum_rho_sq[lid].x, local_sum_rho_sq[lid].y, local_sum_rho_sq[lid].z, local_sum_rho_sq[lid].w );
+			}else {																						// If no matching pixels in this group, set values to zero.
+				global_sum_rho_sq[rho_global_sum_offset] 	= 0;
+			}
 		}
 	}
 }
