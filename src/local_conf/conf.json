@@ -22,7 +22,7 @@
     // gaussian_size 3                                                  // Box blurr size. Actually using 5x5 box in the code.
 
     "imagesPerCV":3,//5, //########## //10,//20,//4,//30//4//7    ######################################################################################      imagesPerCV
-    "max_frame_count":27,//30,       //4,//30,//4,//140,//30,                // how many frames to run for. NB -1 -> run indefinitely.                       max_frame_count
+    "max_frame_count":6,//27,//30,       //4,//30,//4,//140,//30,                // how many frames to run for. NB -1 -> run indefinitely.                       max_frame_count
     "max_opt_count":2,          //5,//60,
     "max_inner_opt_count":10,   //10,
     "cameraMatrix":[481.20,   0.0,  319.5, 	0.0,  480.0,  239.5, 	0.0,    0.0,    1.0],

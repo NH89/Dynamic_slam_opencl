@@ -71,6 +71,10 @@
     "Dynamic_slam::generate_invK_": 1,
     "Dynamic_slam::generate_SE3_k2k": 1,
     "Dynamic_slam::update_k2k": -2,
+
+    "Dynamic_slam::update_k2k_3": -2,
+    "Dynamic_slam::compute_tracking_increment": -2,
+    "Dynamic_slam::estimateSE3": -2,
     "Dynamic_slam::estimateSE3_LK": -2,
 
 	// RunCL/ ##############################################
@@ -138,7 +142,7 @@
 	/////////////////////////////////////// RunCL_tracking.cpp
 	"RunCL::precom_param_maps": 2,
 	"RunCL::update_tracking_depthmap":-2,
-	"RunCL::se3_rho_sq": 1,
+	"RunCL::se3_rho_sq": -2,
 
 	"RunCL::estimateSE3_LK": -2,
 	"RunCL::read_Rho_sq": -1,

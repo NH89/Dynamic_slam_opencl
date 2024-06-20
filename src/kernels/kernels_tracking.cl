@@ -64,6 +64,9 @@ __kernel void se3_Rho_sq(
 	__global	float16*k2k,					//4		// keyframe2K[3]
 	__global 	float4*	img_cur,				//5		// keyframe
 	__global 	float4*	img_new,				//6
+
+	__global	float8* g1p						//19	keyframe_g1mem
+
 	__global	float* 	depth_map,				//7		// NB keyframe GT_depth, now stored as inv_depth
 	// outputs
 	__global	float4* Rho_,					//8
@@ -137,7 +140,8 @@ __kernel void se3_Rho_sq(
 		if (  intersection  ) {																			// if (not cleanly within new frame) skip  Problem u2&v2 are wrong.
 			int idx 										= 0;										// float4 bilinear_flt4(__global float4* img, float u_flt, float v_flt, int cols, int read_offset_, uint reduction);
 			new_px 											= bilinear_flt4(img_new, u2_flt/reduction, v2_flt/reduction, mm_cols, read_offset_);
-			rho 											= img_cur[read_index] - new_px;
+			//rho 											= img_cur[read_index] - new_px;
+			rho 											= (img_cur[read_index] - new_px)*(1.0f - g1p[read_index].s3);						// g1.s3 = Value channel. Weight rho by edges.
 			rho[3] 											= alpha;
 
 			Rho_[read_index + sample * mm_pixels ] 			= rho;										// save pixelwise photometric error map to buffer. NB Outside if(){}, to zero non-overlapping pixels.

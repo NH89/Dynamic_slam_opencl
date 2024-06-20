@@ -114,7 +114,9 @@ int Dynamic_slam::nextFrame() {
 	if(obj["use_GT_pose"].asBool() == true )		{	use_GT_pose();	}			auto step_3 = high_resolution_clock::now();
 	getFrame();																		auto step_4 = high_resolution_clock::now();
 	if(obj["Artif_pose_err_bool"].asBool() == true ){ 	artificial_pose_error();}	auto step_5 = high_resolution_clock::now();
-	estimateSE3_LK(); 																auto step_6 = high_resolution_clock::now();			// own thread ? num iter ?
+	estimateSE3();
+	//estimateSE3_LK();
+																					auto step_6 = high_resolution_clock::now();			// own thread ? num iter ?
 	//estimateCalibration(); 																												// own thread, one iter.
 	if(verbosity>local_verbosity_threshold){
 		report_GT_pose_error();

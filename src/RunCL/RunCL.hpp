@@ -34,6 +34,9 @@ using namespace std::chrono;
 #include "../kernels/kernels_macros.h"
 
 const uint tracking_num_colour_channels = 4;
+const uint tracking_num_samples 		= 3;
+const uint max_mipmap_layers 			= 8;
+const uint num_SE3_DoF					= 6;
 
 using namespace std;
 class RunCL
