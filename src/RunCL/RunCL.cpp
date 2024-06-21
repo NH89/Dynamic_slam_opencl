@@ -595,7 +595,7 @@ void RunCL::allocatemem(){
 
 	img_sum_buf 		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, 2 * mm_vol_size_bytes,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 24= "<<checkerror(res)<<"\n"<<flush;exit_(res);}	// float debug buffer.
 	fp32_param_buf		= clCreateBuffer(m_context, CL_MEM_READ_ONLY  						, 16 * sizeof(float),  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 25= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	k2kbuf				= clCreateBuffer(m_context, CL_MEM_READ_ONLY  						, 3*16 * sizeof(float),  	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 26= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	k2kbuf				= clCreateBuffer(m_context, CL_MEM_READ_ONLY  	, tracking_num_samples*16 * sizeof(float),  	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 26= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	invk2kbuf			= clCreateBuffer(m_context, CL_MEM_READ_ONLY  						, 16 * sizeof(float),  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 26= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 	SO3_k2kbuf			= clCreateBuffer(m_context, CL_MEM_READ_ONLY  						, 9*sizeof(float),  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 27= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // NB used in place of k2kbuf for RunCL::estimateSO3(..)
@@ -609,8 +609,8 @@ void RunCL::allocatemem(){
 
 	se3_weight_sum_mem	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, se3_sum_size_bytes,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 32= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
-	SE3_rho_map_mem		= clCreateBuffer(m_context, CL_MEM_READ_ONLY  						, 3*2*mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 34= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	se3_sum_rho_sq_mem	= clCreateBuffer(m_context, CL_MEM_READ_ONLY  						, 3*pix_sum_size_bytes,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 35= "<<checkerror(res)<<"\n"<<flush;exit_(res);}  // TODO what size should this be ?
+	SE3_rho_map_mem		= clCreateBuffer(m_context, CL_MEM_READ_ONLY  	, tracking_num_samples*2*mm_size_bytes_C4,  	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 34= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	se3_sum_rho_sq_mem	= clCreateBuffer(m_context, CL_MEM_READ_ONLY  	, tracking_num_samples*pix_sum_size_bytes,  	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 35= "<<checkerror(res)<<"\n"<<flush;exit_(res);}  // TODO what size should this be ?
 
 	img_stats_buf		= clCreateBuffer(m_context, CL_MEM_READ_ONLY  						, img_stats_size_bytes,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 36= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	pix_sum_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, pix_sum_size_bytes,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 37= "<<checkerror(res)<<"\n"<<flush;exit_(res);}

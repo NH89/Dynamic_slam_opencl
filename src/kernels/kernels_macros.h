@@ -36,4 +36,10 @@
 #define IMG_MEAN			0	// for img_stats
 #define IMG_VAR 			1	//
 
+
+#define TRACKING_NUM_COLOR_CHANNELS  4
+#define TRACKING_NUM_SAMPLES         2                          // Just 2 _additional_ Rho samples
+
+
+
 #endif /*KERNEL_MACROS_H*/

@@ -255,8 +255,6 @@ void RunCL::Save_vtk(cv::Mat mat, cv::Mat keyframe, boost::filesystem::path fold
 
 
 
-
-
 void RunCL::DownloadAndSave(cl_mem buffer, std::string count, boost::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range ){
 	int local_verbosity_threshold = verbosity_mp["RunCL::DownloadAndSave"];// 1;
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave chk0"<<flush;
@@ -352,12 +350,13 @@ void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, bo
 		string type_string = checkCVtype(type_mat);
 		stringstream ss_u, ss_v;
 		stringstream png_ss_u, png_ss_v;
+		std::string  date_time_str = date_time_string();
 
 		ss_u << "/" << folder_tiff.filename().string() << "layer_"<<layer<<"_U_" << count <<"_sum"<<sum_u<<"_type_"<<type_string<<"min"<<minVal_u<<"_max"<<maxVal_u<<"_maxRange"<<max_range;
 		ss_v << "/" << folder_tiff.filename().string() << "layer_"<<layer<<"_V_" << count <<"_sum"<<sum_v<<"_type_"<<type_string<<"min"<<minVal_v<<"_max"<<maxVal_u<<"_maxRange"<<max_range;
 
-		png_ss_u << "/" << folder_tiff.filename().string() << "layer_"<<layer<<"_U_" << count;
-		png_ss_v << "/" << folder_tiff.filename().string() << "layer_"<<layer<<"_V_" << count;
+		png_ss_u << "/" << folder_tiff.filename().string() << "layer_"<<layer<<"_U_" << count << date_time_str;
+		png_ss_v << "/" << folder_tiff.filename().string() << "layer_"<<layer<<"_V_" << count << date_time_str;
 
 		boost::filesystem::path folder_png_u = folder_tiff, folder_png_v = folder_tiff;
 		folder_tiff += "/tiff/";
@@ -445,8 +444,10 @@ void RunCL::DownloadAndSave_3Channel(cl_mem buffer, std::string count, boost::fi
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave_3Channel_Chk_2, "<<flush;
 		stringstream ss;
 		stringstream png_ss;
+		std::string  date_time_str = date_time_string();
+
 		ss<<"/"<<folder_tiff.filename().string()<<"_"<<count<<"_sum"<<sum<<"type_"<<type_string<<"min("<<minVal[0]<<","<<minVal[1]<<","<<minVal[2]<<")_max("<<maxVal[0]<<","<<maxVal[1]<<","<<maxVal[2]<<")";
-		png_ss<< "/" << folder_tiff.filename().string() << "_" << count;
+		png_ss<< "/" << folder_tiff.filename().string() << "_" << count << date_time_str;
 		if(show){
 			cv::Mat temp;
 			temp_mat.convertTo(temp, CV_8U, 256);																								// NB need CV_U8 for imshow(..)

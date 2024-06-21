@@ -21,8 +21,8 @@
     "num_reductions":5,         //4                                     // Layers-1 of image pyramid in MipMap
     // gaussian_size 3                                                  // Box blurr size. Actually using 5x5 box in the code.
 
-    "imagesPerCV":3,//5, //########## //10,//20,//4,//30//4//7    ######################################################################################      imagesPerCV
-    "max_frame_count":6,//27,//30,       //4,//30,//4,//140,//30,                // how many frames to run for. NB -1 -> run indefinitely.                       max_frame_count
+    "imagesPerCV":2,//5, //########## //10,//20,//4,//30//4//7    ######################################################################################      imagesPerCV
+    "max_frame_count":2,//27,//30,       //4,//30,//4,//140,//30,                // how many frames to run for. NB -1 -> run indefinitely.                       max_frame_count
     "max_opt_count":2,          //5,//60,
     "max_inner_opt_count":10,   //10,
     "cameraMatrix":[481.20,   0.0,  319.5, 	0.0,  480.0,  239.5, 	0.0,    0.0,    1.0],
@@ -68,7 +68,7 @@
     "SE_factor_layer_multiplier":0.75,
 
     "SE3_Rho_sq_threshold":[[0.02,0.02,0.02] ,[0.02,0.02,0.02] ,[0.02,0.02,0.02] ,[0.02,0.02,0.02] ,  [0.02,0.02,0.02] ,[0.02,0.02,0.02]  ], // [layer 0-5][channel hsv]
-    "SE3_update_dof_weights":[-1, -1, -1, -2000, -2000, -2000],                 // -1, -1, -1  // 0, 0, 0, -100, -100, -1 // -1, -1, -1, -2000, -2000, -2000
+    "SE3_update_dof_weights":[-1, -1, -1, 2000, 2000, 2000],                 // -1, -1, -1  // 0, 0, 0, -100, -100, -1 // -1, -1, -1, -2000, -2000, -2000
     "SE3_float update_layer_weights":[1, 1, 1, 1, 1, 1],
 
     "SO3_delta_theta":1.0,                                              // radians 0.01 = 0.57 degrees
@@ -76,7 +76,7 @@
 
 
     "use_GT_pose":false,
-    "Artif_pose_err_bool":false,
+    "Artif_pose_err_bool":true,
     "Artif_pose_err_algebra":[0.0,  -0.0,  0.0,      0.0,  0.0,  5.0],// SO3 in Radians, ST3 in world units ? Pseudo exp / Log   //  0.10,  0.0,  0.0,      5.0,  -10.0,  0.0 // [0.10,  -0.05,  -0.10,      0.0,  0.0,  5.0]
                                                                         // See A tutorial on SE(3) transformation parameterizations and on-manifold optimization
                                                                         // José Luis Blanco-Claraco     doi.org/10.48550/arXiv.2103.15980

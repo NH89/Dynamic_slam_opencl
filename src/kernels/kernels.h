@@ -41,4 +41,6 @@ inline void atomic_minf(															  				// from https://ingowald.blog/2018/
 	while (myValue > (cur = *g_val)) 		myValue 	= atomic_xchg( g_val,  fmin(cur,myValue) );
 }
 
+// __constant const int test_var = 1;
+
 #endif /*KERNELS_H*/

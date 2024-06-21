@@ -33,8 +33,8 @@ using namespace std::chrono;
 #include "../utils/opencl_utils.hpp"
 #include "../kernels/kernels_macros.h"
 
-const uint tracking_num_colour_channels = 4;
-const uint tracking_num_samples 		= 3;
+const uint tracking_num_colour_channels = TRACKING_NUM_COLOR_CHANNELS;
+const uint tracking_num_samples 		= TRACKING_NUM_SAMPLES;			// One more on host, for original Rho sample.
 const uint max_mipmap_layers 			= 8;
 const uint num_SE3_DoF					= 6;
 

@@ -64,14 +64,13 @@ __kernel void se3_Rho_sq(
 	__global	float16*k2k,					//4		// keyframe2K[3]
 	__global 	float4*	img_cur,				//5		// keyframe
 	__global 	float4*	img_new,				//6
-
-	__global	float8* g1p						//19	keyframe_g1mem
-
 	__global	float* 	depth_map,				//7		// NB keyframe GT_depth, now stored as inv_depth
+	__global	float8* g1p,					//8		// keyframe_g1mem
+
 	// outputs
-	__global	float4* Rho_,					//8
-	__local		float4*	local_sum_rho_sq,		//9		// 1 DoF, float4 channels
-	__global 	float4*	global_sum_rho_sq		//10
+	__global	float4* Rho_,					//9
+	__local		float4*	local_sum_rho_sq,		//10		// 1 DoF, float4 channels
+	__global 	float4*	global_sum_rho_sq		//11
 	)
  {																									// find gradient wrt SE3 find global sum for each of the 6 DoF
 	uint  global_id_u 	= get_global_id(0);
@@ -95,85 +94,89 @@ __kernel void se3_Rho_sq(
 	uint mm_cols		= uint_params[MM_COLS];
 	uint mm_pixels		= uint_params[MM_PIXELS];
 
-	float SE3_LM_a		= fp32_params[SE3_LM_A];													// Optimisation parameters
+	float SE3_LM_a		= fp32_params[SE3_LM_A];														// Optimisation parameters
 	float SE3_LM_b		= fp32_params[SE3_LM_B];
 
 	uint reduction		= mm_cols/read_cols_;
-	uint v    			= global_id_u / read_cols_;													// read_row
-	uint u 				= fmod(global_id_flt, read_cols_);											// read_column
-	float u_flt			= u * reduction;															// NB this causes sparse sampling of the original space, to use the same k2k at every scale.
+	uint v    			= global_id_u / read_cols_;														// read_row
+	uint u 				= fmod(global_id_flt, read_cols_);												// read_column
+	float u_flt			= u * reduction;																// NB this causes sparse sampling of the original space, to use the same k2k at every scale.
 	float v_flt			= v * reduction;
 	uint read_index 	= read_offset_  +  v  * mm_cols  + u ;
-	float alpha			= img_cur[read_index].w;
+	//float alpha			= img_cur[read_index].w;
 
-	float inv_depth 	= depth_map[read_index ]; 									//1.0f;// mid point max-min inv depth	// Find new pixel position, h=homogeneous coords.//inv dept  //depth_index
-	uint read_index_new[3];
+	float inv_depth 	= depth_map[read_index ]; 				//1.0f;// mid point max-min inv depth	// Find new pixel position, h=homogeneous coords.//inv dept  //depth_index
+	uint read_index_new[TRACKING_NUM_SAMPLES];
 
-	for (int sample=0; sample<3; sample++){
-		float16 k2k_pvt		= k2k[0];
+	for (int sample=0; sample<TRACKING_NUM_SAMPLES; sample++){
+
+		float16 k2k_pvt		= k2k[sample];
 		float uh2 			= k2k_pvt[0]*u_flt + k2k_pvt[1]*v_flt + k2k_pvt[2]*1 + k2k_pvt[3]*inv_depth;
 		float vh2 			= k2k_pvt[4]*u_flt + k2k_pvt[5]*v_flt + k2k_pvt[6]*1 + k2k_pvt[7]*inv_depth;
 		float wh2 			= k2k_pvt[8]*u_flt + k2k_pvt[9]*v_flt + k2k_pvt[10]*1+ k2k_pvt[11]*inv_depth;
 		//float h/z  		= k2k_pvt[12]*u_flt + k2k_pvt[13]*v + k2k_pvt[14]*1; // +k2k_pvt[15]/z
 
-		float u2_flt		= uh2/wh2;
-		float v2_flt		= vh2/wh2;
-		int  u2				= floor((u2_flt/reduction)+0.5f) ;											// nearest neighbour interpolation
-		int  v2				= floor((v2_flt/reduction)+0.5f) ;											// NB this corrects the sparse sampling to the redued scales.
+		float u2_flt		= uh2/(wh2*reduction);
+		float v2_flt		= vh2/(wh2*reduction);
+		int  u2				= floor(u2_flt + 0.5f) ;											// nearest neighbour interpolation
+		int  v2				= floor(v2_flt + 0.5f) ;											// NB this corrects the sparse sampling to the redued scales.
 		read_index_new[sample] = read_offset_ + v2 * mm_cols  + u2; // read_cols_
-
 
 		uint num_DoFs 		= 6;
 		float4 new_px;
 
-		local_sum_rho_sq[lid] = 0;																		// Essential to zero local mem.
-	/*
-		if (global_id_u==1){
-			printf("\nkernel se3_Rho_sq(..): u=%i,  v=%i,   inv_depth=%f, u2=%f,  v2=%f,  u2_flt=%f,  v2_flt=%f,    k2k_pvt=(%f,%f,%f,%f    ,%f,%f,%f,%f    ,%f,%f,%f,%f    ,%f,%f,%f,%f)"\
-			,u, v, inv_depth, u_flt, v_flt, u2_flt, v2_flt,  k2k_pvt[0],k2k_pvt[1],k2k_pvt[2],k2k_pvt[3],   k2k_pvt[4],k2k_pvt[5],k2k_pvt[6],k2k_pvt[7],   k2k_pvt[8],k2k_pvt[9],k2k_pvt[10],k2k_pvt[11],   k2k_pvt[12],k2k_pvt[13],k2k_pvt[14],k2k_pvt[15]   )  ;
+		int sample_lid 				= lid + sample * local_size;
+		local_sum_rho_sq[sample_lid] = 0;																// Essential to zero local mem.
+	// /*
+		if ( u==10 && v==10  ){ // (global_id_u==1)
+			printf("\nkernel se3_Rho_sq(..): sample=%u,  global_id_u=%i,  u=%i,  v=%i,   inv_depth=%f, u2=%f,  v2=%f,  u2_flt=%f,  v2_flt=%f,  u2=%i,  v2=%i,    k2k_pvt=(%f,%f,%f,%f    ,%f,%f,%f,%f    ,%f,%f,%f,%f    ,%f,%f,%f,%f)"\
+			,sample, global_id_u, u, v, inv_depth, u_flt, v_flt, u2_flt, v2_flt, u2, v2,      k2k_pvt[0],k2k_pvt[1],k2k_pvt[2],k2k_pvt[3],    k2k_pvt[4],k2k_pvt[5],k2k_pvt[6],k2k_pvt[7],    k2k_pvt[8],k2k_pvt[9],k2k_pvt[10],k2k_pvt[11],    k2k_pvt[12],k2k_pvt[13],k2k_pvt[14],k2k_pvt[15]   )  ;
 		}
-	*/
+	// */
 		float4 rho 											= {0.0f,0.0f,0.0f,0.0f};
 																										// Exclude all out-of-bounds threads:
-		float intersection = (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2>2) && (u2<=read_cols_-2) && (v2>2) && (v2<=read_rows_-2)  &&  (global_id_u<=layer_pixels);
+		bool intersection = (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2>2) && (u2<=read_cols_-2) && (v2>2) && (v2<=read_rows_-2)  &&  (global_id_u<=layer_pixels);
 
+		if ( u==10 && v==10  ){ // (global_id_u==1)
+			printf("\nkernel se3_Rho_sq(..): sample=%u,  global_id_u=%i,  u=%i,  v=%i,   intersection=%i, (u>2)=%i,  (u<=read_cols_-2)=%i,  (v>2)=%i,  (v<=read_rows_-2)=%i,  (u2>2)=%i,  (u2<=read_cols_-2)=%i,  (v2>2)=%i,  (v2<=read_rows_-2)=%i,  (global_id_u<=layer_pixels)=%i"\
+			, sample,  global_id_u,  u,  v,   intersection, (u>2),  (u<=read_cols_-2),  (v>2),  (v<=read_rows_-2),  (u2>2),  (u2<=read_cols_-2),  (v2>2),  (v2<=read_rows_-2),  (global_id_u<=layer_pixels) );
+		}
 		if (  intersection  ) {																			// if (not cleanly within new frame) skip  Problem u2&v2 are wrong.
 			int idx 										= 0;										// float4 bilinear_flt4(__global float4* img, float u_flt, float v_flt, int cols, int read_offset_, uint reduction);
 			new_px 											= bilinear_flt4(img_new, u2_flt/reduction, v2_flt/reduction, mm_cols, read_offset_);
-			//rho 											= img_cur[read_index] - new_px;
 			rho 											= (img_cur[read_index] - new_px)*(1.0f - g1p[read_index].s3);						// g1.s3 = Value channel. Weight rho by edges.
-			rho[3] 											= alpha;
+			rho.w 											= 1.0f; ///alpha;
 
-			Rho_[read_index + sample * mm_pixels ] 			= rho;										// save pixelwise photometric error map to buffer. NB Outside if(){}, to zero non-overlapping pixels.
+			Rho_[read_index + sample*mm_pixels ] 			= rho;										// save pixelwise photometric error map to buffer. NB Outside if(){}, to zero non-overlapping pixels.
 			float4 rho_sq 									= {rho.x*rho.x,  rho.y*rho.y,  rho.z*rho.z, rho.w};
-			local_sum_rho_sq[lid + sample * local_size] 	= rho_sq;									// Also compute global Rho^2.
+			local_sum_rho_sq[sample_lid] 					= rho_sq;									// Also compute global Rho^2.
 // TODO  [sample] index on local mem and final buffer.
 			//if (layer==5) printf(",(%u,%f)", global_id_u ,inv_depth);									// debug chk on value of inv_depth
 		}
 	}
-	////////////////////////////////////////////////////////////////////////////////////////		// Reduction
-	int max_iter = 9; 								//ceil(log2((float)(group_size)));
-	for (uint iter=0; iter<=max_iter ; iter++) {	// for log2(local work group size)				// problem : how to produce one result for each mipmap layer ?
-																									// NB kernels launched separately for each layer, but workgroup size varies between GPUs.
-		group_size   			/= 2;
-		barrier(CLK_LOCAL_MEM_FENCE);																// No 'if->return' before fence between write & read local mem
+	////////////////////////////////////////////////////////////////////////////////////////			// Reduction ///////////////////////////////////////////////////////////////////////
+	int max_iter 											= 9; 										//ceil(log2((float)(group_size)));
+	group_size = local_size;
+	for (uint iter=0; iter<=max_iter ; iter++) {		// for log2(local work group size)				// problem : how to produce one result for each mipmap layer ?
+																										// NB kernels launched separately for each layer, but workgroup size varies between GPUs.
+		barrier(CLK_LOCAL_MEM_FENCE);																	// No 'if->return' before fence between write & read local mem
+		group_size   										/= 2;
 		if (lid<group_size){
-			for (int sample=0; sample<3; sample++){
-				local_sum_rho_sq[ lid + sample * local_size ] += local_sum_rho_sq[ lid + group_size + sample * local_size ];	// Also compute global Rho^2.
+			for (int sample=0; sample<TRACKING_NUM_SAMPLES; sample++){
+				int sample_lid 					= lid + sample * local_size;
+				local_sum_rho_sq[ sample_lid ] += local_sum_rho_sq[ sample_lid + group_size ];			// Also compute global Rho^2.
 			}
 		}
 	}
 	barrier(CLK_LOCAL_MEM_FENCE);
+	////////////////////////////////////////////////////////////////////////////////////////			// Export result ////////////////////////////////////////////////////////////////////
 	if (lid==0) {
-		uint group_id 									= get_group_id(0);
-
-		uint num_groups 								= get_num_groups(0);
-		//printf("\nse3_Rho_sq(..): layer=%i, u=%i, v=%i, group_id=%i,  rho_global_sum_offset=%i,  (float)read_offset_/local_size=%f,  local_size=%u, read_offset_=%u,  local_sum_rho_sq[lid]=(%f,%f,%f,%f), local_sum_rho_sq[lid][3]=%f ",
-		//	   layer, u, v, group_id, rho_global_sum_offset, ((float)read_offset_)/((float)local_size),  local_size, read_offset_, local_sum_rho_sq[lid].x, local_sum_rho_sq[lid].y, local_sum_rho_sq[lid].z, local_sum_rho_sq[lid].w, local_sum_rho_sq[lid][3] );
-
-
-		float4 layer_data 								= {num_groups, reduction, 0.0f, 0.0f };		// Write layer data to first entry
-		for (int sample=0; sample<3; sample++){
+		uint group_id 										= get_group_id(0);
+		uint num_groups 									= get_num_groups(0);
+		float4 layer_data 									= {num_groups, reduction, 0.0f, 0.0f };		// Write layer data to first entry
+																										//	printf("\nse3_Rho_sq(..): layer=%i, u=%i, v=%i, group_id=%i,  rho_global_sum_offset=%i,  (float)read_offset_/local_size=%f,  local_size=%u, read_offset_=%u,  local_sum_rho_sq[lid]=(%f,%f,%f,%f), local_sum_rho_sq[lid][3]=%f ",
+																										//	   layer, u, v, group_id, rho_global_sum_offset, ((float)read_offset_)/((float)local_size),  local_size, read_offset_, local_sum_rho_sq[lid].x, local_sum_rho_sq[lid].y, local_sum_rho_sq[lid].z, local_sum_rho_sq[lid].w, local_sum_rho_sq[lid][3] );
+		for (int sample=0; sample<TRACKING_NUM_SAMPLES; sample++){
 			uint rho_global_sum_offset 						= (read_offset_ / local_size) +  sample * local_size ;				// Compute offset for this layer, and sample
 			if (global_id_u == 0) {
 				global_sum_rho_sq[rho_global_sum_offset ] 	= layer_data;
@@ -182,7 +185,7 @@ __kernel void se3_Rho_sq(
 
 			if (local_sum_rho_sq[lid][3] >0){															// Using last channel rho[3], to count valid pixels being summed.
 				global_sum_rho_sq[rho_global_sum_offset] 	= local_sum_rho_sq[lid];
-				//printf("\nkernel se3_Rho_sq(..)_2: layer=%i,  group_id=%i,   local_sum_rho_sq[lid]=(%f,%f,%f,%f )", layer, group_id,  local_sum_rho_sq[lid].x, local_sum_rho_sq[lid].y, local_sum_rho_sq[lid].z, local_sum_rho_sq[lid].w );
+																										printf("\nkernel se3_Rho_sq(..)_2: layer=%i,  group_id=%i,   local_sum_rho_sq[lid]=(%f,%f,%f,%f )", layer, group_id,  local_sum_rho_sq[lid].x, local_sum_rho_sq[lid].y, local_sum_rho_sq[lid].z, local_sum_rho_sq[lid].w );
 			}else {																						// If no matching pixels in this group, set values to zero.
 				global_sum_rho_sq[rho_global_sum_offset] 	= 0;
 			}
@@ -264,10 +267,10 @@ __kernel void se3_LK_grad(
 	float wh2 			= k2k_pvt[8]*u_flt 	+ k2k_pvt[9]*v_flt 	+ k2k_pvt[10]*1	+ k2k_pvt[11]*inv_depth;
 	//float h/z  		= k2k_pvt[12]*u_flt	+ k2k_pvt[13]*v_flt + k2k_pvt[14]*1; // +k2k_pvt[15]/z
 
-	float u2_flt		= uh2/wh2;
-	float v2_flt		= vh2/wh2;
-	int  u2				= floor((u2_flt/reduction)+0.5f) ;																// nearest neighbour interpolation
-	int  v2				= floor((v2_flt/reduction)+0.5f) ;																// NB this corrects the sparse sampling to the redued scales.
+	float u2_flt		= uh2/(wh2*reduction);
+	float v2_flt		= vh2/(wh2*reduction);
+	int  u2				= floor(u2_flt + 0.5f) ;																// nearest neighbour interpolation
+	int  v2				= floor(v2_flt + 0.5f) ;																// NB this corrects the sparse sampling to the redued scales.
 	uint num_DoFs 		= 6;
 	float4 new_px;
 
@@ -293,11 +296,11 @@ __kernel void se3_LK_grad(
 	if (  intersection  ) {																								// if (not cleanly within new frame) skip  Problem u2&v2 are wrong.
 		int idx 					= 0;																				// float4 bilinear_flt4(__global float4* img, float u_flt, float v_flt, int cols, int read_offset_, uint reduction);
 																														// if(global_id_u == 10000  ){ printf("\n__kernel void se3_LK_grad (global_id_u == 10000 )  chk_3  , read_offset_=%u,  inv_depth=%f, SO3_multiplier=%f, ST3_multiplier=%f ",  read_offset_, inv_depth,  fp32_params[MAX_INV_DEPTH]/((inv_depth + 0.01) *5),  inv_depth/fp32_params[MAX_INV_DEPTH] ); }
-		new_px 						= bilinear_flt4(img_new, u2_flt/reduction, v2_flt/reduction, mm_cols, read_offset_); //   /reduction
+		new_px 						= bilinear_flt4(img_new, u2_flt, v2_flt,  mm_cols, read_offset_); //   /reduction
 		rho 						= (img_cur[read_index] - new_px)*(1.0f - g1p[read_index].s3);						// g1.s3 = Value channel. Weight rho by edges.
 		rho.w 						= 1.0f; ///alpha;
-		float rho_a4[4];
-		vstore4(rho ,0, rho_a4);
+		//float rho_a4[4];
+		//vstore4(rho ,0, rho_a4);
 
 		Rho_[read_index] 			= rho;																				// save pixelwise photometric error map to buffer. NB Outside if(){}, to zero non-overlapping pixels.
 		float4 rho_sq 				= {rho.x*rho.x,  rho.y*rho.y,  rho.z*rho.z, rho.w};
