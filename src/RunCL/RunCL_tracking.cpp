@@ -108,7 +108,7 @@ void RunCL::se3_rho_sq( float Rho_sq_results[3][8][4], const float count[4], uin
 																																				DownloadAndSave_3Channel_volume(  SE3_rho_map_mem,  ss.str(), paths.at("SE3_rho_map_mem"),  mm_size_bytes_C4, mm_Image_size, CV_32FC4, show, max_range, vol_layers, exception_tiff, count[0], display );
 																																			}
 																																			// void RunCL::DownloadAndSave_3Channel_volume( cl_mem buffer,   std::string count,   boost::filesystem::path folder,   size_t image_size_bytes,   cv::Size size_mat,   int type_mat,   bool show,   float max_range,   uint vol_layers,    bool exception_tiff /*=false*/,   float iter,   bool display)
-
+/*
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::se3_rho_sq(..)_chk4 ."<<flush;}
 	cv::Mat rho_sq_sum_mat = cv::Mat::zeros (num_samples*se3_sum_size, num_channels, CV_32FC1); 		// cv::Mat::zeros (int rows, int cols, int type)			// NB the data returned is one float4 per group, holding HSV, plus entry[3]=pixel count.
 	ReadOutput( rho_sq_sum_mat.data, se3_sum_rho_sq_mem, num_samples*pix_sum_size_bytes );																//float Rho_sq_reults[8][4] = {{0}};
@@ -165,6 +165,11 @@ void RunCL::se3_rho_sq( float Rho_sq_results[3][8][4], const float count[4], uin
 																																						}
 																																					}cout << "\n\nRunCL::se3_rho_sq(..)_finish . ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"<<flush;
 																																				}
+	}
+	*/
+	
+	for (int sample = 1; sample=<num_samples; sample++){
+		read_Rho_sq(Rho_sq_results[sample], sample);
 	}
 }
 
@@ -248,15 +253,15 @@ void RunCL::estimateSE3_LK(float SE3_results[8][6][tracking_num_colour_channels]
 	read_se3_incr(SE3_results);																												if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK(..)_finished ."<<flush;}
 }
 
-void RunCL::read_Rho_sq( float Rho_sq_results[8][4] ){
+void RunCL::read_Rho_sq( float Rho_sq_results[8][4],  int offset/*=0*/ ){
 	int local_verbosity_threshold = verbosity_mp["RunCL::read_Rho_sq"];// -1;
-																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::read_Rho_sq(..)_chk4 ."<<flush;}
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::read_Rho_sq(..)_chk4,  offset="<<offset<<flush;}
 	cv::Mat rho_sq_sum_mat = cv::Mat::zeros (se3_sum_size, 4, CV_32FC1); // cv::Mat::zeros (int rows, int cols, int type)					// NB the data returned is one float4 per group, holding HSV, plus entry[3]=pixel count.
-	ReadOutput( rho_sq_sum_mat.data, se3_sum_rho_sq_mem, pix_sum_size_bytes );																//float Rho_sq_reults[8][4] = {{0}};
-																																			if(verbosity>local_verbosity_threshold+1) {cout<<"\nRunCL::read_Rho_sq(..)_chk4.1 ."<<flush;}
+	ReadOutput( rho_sq_sum_mat.data, se3_sum_rho_sq_mem, pix_sum_size_bytes, offset*pix_sum_size_bytes );																//float Rho_sq_reults[8][4] = {{0}};
+																																			if(verbosity>local_verbosity_threshold+1) {cout<<"\nRunCL::read_Rho_sq(..)_chk4.1,  offset="<<offset<<flush;}
 
 																																			if(verbosity>local_verbosity_threshold+2) {
-																																				cout << "\n\nRunCL::read_Rho_sq(..)_chk5 ."<<flush;
+																																				cout << "\n\nRunCL::read_Rho_sq(..)_chk5,  offset="<<offset<<flush;}
 																																				cout << "\nrho_sq_sum_mat.size()="<<rho_sq_sum_mat.size()<<flush;
 																																				cout << "\nse3_sum_size="<<se3_sum_size<<flush;
 																																				cout << "\n mm_num_reductions = " << mm_num_reductions << endl << flush;
@@ -274,7 +279,7 @@ void RunCL::read_Rho_sq( float Rho_sq_results[8][4] ){
 		uint start_group 			= rho_sq_sum_mat.at<float>(layer, 2);  //global_sum_offset;
 		uint stop_group 			= start_group + groups_to_sum ;   																		// -1
 																																			if(verbosity>local_verbosity_threshold+2) {
-																																				cout << "\nRunCL::read_Rho_sq(..)_chk6 layer = "<<layer<<
+																																				cout << "\nRunCL::read_Rho_sq(..)_chk6,  offset="<<offset<<",  layer = "<<layer<<
 																																				", groups_to_sum = "<<groups_to_sum<<
 																																				", start_group = "<<start_group<<
 																																				", stop_group = "<<stop_group<< flush;
@@ -283,7 +288,7 @@ void RunCL::read_Rho_sq( float Rho_sq_results[8][4] ){
 		}																									// sum j groups for this layer of the MipMap.
 	}
 																																			if(verbosity>local_verbosity_threshold+1) {
-																																				cout << "\n\nRunCL::read_Rho_sq(..)_chk7 ."<<flush;
+																																				cout << "\n\nRunCL::read_Rho_sq(..)_chk7,  offset="<<offset<<flush;}
 																																				for (int layer=0; layer<=mm_num_reductions+1; layer++){ 														// results / (num_valid_px * img_variance)
 																																					cout << "\nLayer "<<layer<<" mm_num_reductions = "<< mm_num_reductions <<",  Rho_sq_results/num_groups = (";
 																																					if (Rho_sq_results[layer][3] > 0){

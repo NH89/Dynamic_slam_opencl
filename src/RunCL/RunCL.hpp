@@ -219,7 +219,7 @@ public:
 	void se3_rho_sq(float Rho_sq_results[3][8][4], const float count[4], uint start, uint stop, float k2k_3_16_[3][16]  );				// Tracking
 	void estimateSE3_LK(float SE3_results[8][6][tracking_num_colour_channels], float SE3_weights_results[8][6][tracking_num_colour_channels], float Rho_sq_results[8][4], int count, uint start, uint stop);
 
-	void read_Rho_sq(float Rho_sq_results[8][4]);
+	void read_Rho_sq(float Rho_sq_results[8][4], int offset=0);
 	void read_se3_weights(float SE3_weights_results[8][6][tracking_num_colour_channels]);
 	void read_se3_incr(float SE3_results[8][6][tracking_num_colour_channels]);
 
