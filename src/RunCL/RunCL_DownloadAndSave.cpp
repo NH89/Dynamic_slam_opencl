@@ -162,7 +162,7 @@ void RunCL::Save_vtk(cv::Mat mat, cv::Mat keyframe, boost::filesystem::path fold
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nRunCL::Save_vtk chk0"<<flush;
 	// check mat types
 	if (mat.type() 		!=CV_32FC1) 		{cout << "\n\nError RunCL::Save_vtk  (mat.type() !=CV_32FC1)  "				<< flush; exit(1);}
-	if (keyframe.type() !=CV_32FC4) 		{cout << "\n\nError RunCL::Save_vtk  (keyframe.type() !=CV_32FC4)  keyframe.type() = "<<  CV_chk(keyframe.type())	<< flush; return;}
+	if (keyframe.type() !=CV_32FC4) 		{cout << "\n\nError RunCL::Save_vtk  (keyframe.type() !=CV_32FC4)  keyframe.type() = "<<  checkCVtype(keyframe.type())	<< flush; return;}
 	if (mat.total() != keyframe.total() )	{cout << "\n\nError RunCL::Save_vtk  (mat.total() "<<mat.total()<<" != keyframe.total() "<<keyframe.total()<<" )  "	<< flush; return;}
 
 	// generate filename, by inserting folder "/csv", and adding ".csv" suffix
@@ -252,6 +252,8 @@ void RunCL::Save_vtk(cv::Mat mat, cv::Mat keyframe, boost::filesystem::path fold
 // 	if(verbosity>0) cout << "\nwritePointCloud(..) finished\n" << flush;
 // }
 */
+
+
 
 
 

@@ -1,6 +1,124 @@
 #include "RunCL.hpp"
 
 
+void RunCL::cl_mem_swap_ptr(cl_mem buf1, cl_mem buf2){
+    cl_mem temp_mem = buf1;
+	buf1 = buf2;
+	buf2 = temp_mem;
+}
+
+
+void RunCL::_clSetKernelArg(cl_kernel kernel,  cl_uint arg_index,  size_t arg_size, const void* arg_value){
+	cl_int  res;
+	res 	= clSetKernelArg( kernel, arg_index,  arg_size, arg_value);
+	if(res	!=CL_SUCCESS){	
+		std::cout<<"\n_clSetKernelArg  "<<kernel<<",   arg_index="<<arg_index<<"   res = "<<checkerror(res)<<"\n"<<flush;
+		exit_(res);
+	}
+}
+
+
+void RunCL::_clEnqueueWriteBuffer(
+	cl_command_queue 	command_queue,
+	cl_mem 				buffer,
+	cl_bool 			blocking_write,
+	size_t 				offset,
+	size_t 				size,
+	const void* 		ptr,
+	cl_uint 			num_events_in_wait_list,
+	const cl_event* 	event_wait_list,
+	cl_event* 			event
+)
+{
+	cl_int 		status;
+	status 		= clEnqueueWriteBuffer( command_queue, buffer, blocking_write, offset, size, ptr, num_events_in_wait_list, event_wait_list, event);
+	if (status 	!= CL_SUCCESS)	{ 
+		cout << "\n_clEnqueueWriteBuffer  buffer="<<buffer<<",  status = " << checkerror(status) << "Error1: failed to enqueue\n" << endl;
+		exit_(status);
+	}	
+	clFlush(command_queue);
+	status = clFinish(command_queue);
+	if (status 	!= CL_SUCCESS)	{ 
+		cout << "\n_clEnqueueWriteBuffer  buffer="<<buffer<<",  status = " << checkerror(status) << "Error2: failed to finish\n" << endl;
+		exit_(status);
+	}	
+}
+
+
+void RunCL::_clEnqueueFillBuffer(
+	cl_command_queue 	command_queue,
+	cl_mem 				buffer,
+	const void* 		pattern,
+	size_t 				pattern_size,
+	size_t 				offset,
+	size_t 				size,
+	cl_uint 			num_events_in_wait_list,
+	const cl_event* 	event_wait_list,
+	cl_event* 			event
+)
+{
+	cl_int 		status;
+	status = clEnqueueFillBuffer( command_queue, buffer, pattern, pattern_size, offset, size, num_events_in_wait_list, event_wait_list, event);	
+	if (status != CL_SUCCESS)	{ 
+		cout << "\n_clEnqueueFillBuffer    buffer="<<buffer<<",  status = " << checkerror(status) << "Error1: failed to enqueue\n" << endl;
+		exit_(status);
+	}	
+	clFlush(uload_queue); 
+	status = clFinish(uload_queue);
+	if (status != CL_SUCCESS)	{ 
+		cout << "\n_clEnqueueFillBuffer    buffer="<<buffer<<",  status = " << checkerror(status) << "Error2: failed to finish\n" << endl;
+		exit_(status);
+	}	
+}
+
+
+void RunCL::_clCreateBuffer(
+    cl_context          context,
+    cl_mem_flags        flags,
+    size_t              size,
+    void*               host_ptr,
+    cl_int*             errcode_ret,
+	cl_mem 				memobj
+)
+{
+	cl_int 		 res;
+	memobj = clCreateBuffer(m_context, CL_MEM_READ_ONLY  						, mm_size_bytes_C4,  		0, &res);			
+	
+	if(res!=CL_SUCCESS){
+		cout<<"\n_clCreateBuffer  buffer="<<memobj<<",   error="<<checkerror(res)<<"\n"<<flush;
+		exit_(res);
+	}
+}
+
+
+void RunCL::_clReleaseMemObject(cl_mem 	memobj)
+{
+	cl_int 			status;
+	status 			= clReleaseMemObject( memobj );
+	
+	if (status != CL_SUCCESS)	{ 
+		cout << "\n_clReleaseMemObject("<< memobj <<",   status = " << checkerror(status) <<"\n"<<flush; 
+	}
+}
+
+
+void RunCL::_clReleaseKerne(cl_kernel kernel)
+{
+	cl_int 			status;
+	status = clReleaseKernel(cvt_color_space_linear_kernel);	
+	
+	if (status != CL_SUCCESS)	{ 
+		cout << "\n_clReleaseKerne("<<kernel<<") 	status = " << checkerror(status) <<"\n"<<flush; 
+	}
+}
+
+// TODO
+// Need to put all buffers, kernels and command queues into a set of c++ dictionaries.
+// Use loops to release them.
+// Use a local alias cl_kernel kern = kDict[..kernelname..] to set arguments etc..
+// Have name lists to instantiate  kernels and command queues.
+
+
 string  RunCL::checkerror(int input) {
 		int errorCode = input;
 		switch (errorCode) {
@@ -58,60 +176,5 @@ string  RunCL::checkerror(int input) {
 		case CL_INVALID_PIPE_SIZE:							return "CL_INVALID_PIPE_SIZE";
 #endif
 		default:											return "unknown error code";
-		}
-}
-
-string  RunCL::checkCVtype(int input) {
-		int errorCode = input;
-		switch (errorCode) {
-			//case	CV_8U:										return "CV_8U";
-			case	CV_8UC1:										return "CV_8UC1";
-			case	CV_8UC2:										return "CV_8UC2";
-			case	CV_8UC3:										return "CV_8UC3";
-			case	CV_8UC4:										return "CV_8UC4";
-
-			//case	CV_8S:										return "CV_8S";
-			case	CV_8SC1:										return "CV_8SC1";
-			case	CV_8SC2:										return "CV_8SC2";
-			case	CV_8SC3:										return "CV_8SC3";
-			case	CV_8SC4:										return "CV_8SC4";
-
-			//case	CV_16U:										return "CV_16U";
-			case	CV_16UC1:										return "CV_16UC1";
-			case	CV_16UC2:										return "CV_16UC2";
-			case	CV_16UC3:										return "CV_16UC3";
-			case	CV_16UC4:										return "CV_16UC4";
-
-			//case	CV_16S:										return "CV_16S";
-			case	CV_16SC1:										return "CV_16SC1";
-			case	CV_16SC2:										return "CV_16SC2";
-			case	CV_16SC3:										return "CV_16SC3";
-			case	CV_16SC4:										return "CV_16SC4";
-
-			//case	CV_32S:										return "CV_32S";
-			case	CV_32SC1:										return "CV_32SC1";
-			case	CV_32SC2:										return "CV_32SC2";
-			case	CV_32SC3:										return "CV_32SC3";
-			case	CV_32SC4:										return "CV_32SC4";
-
-			//case	CV_16F
-			case	CV_16FC1:										return "CV_16FC1";
-			case	CV_16FC2:										return "CV_16FC2";
-			case	CV_16FC3:										return "CV_16FC3";
-			case	CV_16FC4:										return "CV_16FC4";
-
-			//case	CV_32F:										return "CV_32F";
-			case	CV_32FC1:										return "CV_32FC1";
-			case	CV_32FC2:										return "CV_32FC2";
-			case	CV_32FC3:										return "CV_32FC3";
-			case	CV_32FC4:										return "CV_32FC4";
-
-			//case	CV_64F:										return "CV_64F";
-			case	CV_64FC1:										return "CV_64FC1";
-			case	CV_64FC2:										return "CV_64FC2";
-			case	CV_64FC3:										return "CV_64FC3";
-			case	CV_64FC4:										return "CV_64FC4";
-
-			default:										return "unknown CV_type code";
 		}
 }

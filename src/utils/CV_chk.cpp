@@ -1,6 +1,6 @@
 #include "CV_chk.hpp"
 
-std::string CV_chk(int code){
+std::string checkCVtype(int code){
 
     switch(code){
         //case CV_8UC :  return "CV_8UC ";

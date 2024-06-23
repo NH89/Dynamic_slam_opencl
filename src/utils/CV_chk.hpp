@@ -11,6 +11,6 @@
 #include <string>
 #include <opencv2/core.hpp>
 
-std::string CV_chk(int code);
+std::string checkCVtype(int code);
 
 #endif

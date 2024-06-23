@@ -47,11 +47,11 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_, int_map verbosity_mp_  ):   runcl(
 																																			if(verbosity>local_verbosity_threshold) cout << "\nDynamic_slam::Dynamic_slam(): "<< png.size()  <<" .png images found in data folder.\t"<<"png[runcl.dataset_frame_num].string()="<< png[runcl.dataset_frame_num].string()  <<flush;
 	runcl.baseImage 	= imread(png[runcl.dataset_frame_num].string());																	// Set image params, ref for dimensions and data type.
 																																			if (verbosity>local_verbosity_threshold) cout << "\nDynamic_slam::Dynamic_slam_chk 3: runcl.baseImage.size() = "<< runcl.baseImage.size() \
-																																				<<" runcl.baseImage.type() = " << runcl.baseImage.type() << "\t"<< runcl.checkCVtype(runcl.baseImage.type()) <<flush;
+																																				<<" runcl.baseImage.type() = " << runcl.baseImage.type() << "\t"<< checkCVtype(runcl.baseImage.type()) <<flush;
 																																			if(verbosity>1) { imshow("runcl.baseImage",runcl.baseImage); cv::waitKey(-1); }
 	runcl.initialize_RunCL();
 	runcl.allocatemem();																													if (verbosity>local_verbosity_threshold) cout << "\nDynamic_slam::Dynamic_slam_chk 4: runcl.baseImage.size() = "<< runcl.baseImage.size() \
-																																				<<" runcl.baseImage.type() = " << runcl.baseImage.type() << "\t"<< runcl.checkCVtype(runcl.baseImage.type()) <<flush;
+																																				<<" runcl.baseImage.type() = " << runcl.baseImage.type() << "\t"<< checkCVtype(runcl.baseImage.type()) <<flush;
 	initialize_camera();
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_ finished\n" << flush;
 };
@@ -317,7 +317,7 @@ void Dynamic_slam::getFrameData(){  // can load use separate CPU thread(s) ?
 																																				stringstream ss;
 																																				stringstream png_ss;
 																																				boost::filesystem::path folder_tiff = runcl.paths.at("depth_GT");
-																																				string type_string = runcl.checkCVtype(depth_GT.type() );
+																																				string type_string = checkCVtype(depth_GT.type() );
 																																				ss << "/" << folder_tiff.filename().string() << "_original_" << runcl.dataset_frame_num <<"type_"<<type_string;
 																																				png_ss << "/" << folder_tiff.filename().string() << "_original_" << runcl.dataset_frame_num;
 																																				boost::filesystem::path folder_png = folder_tiff;

@@ -25,12 +25,14 @@
 #include <chrono>								// For measuring time of execution.
 using namespace std::chrono;
 
+#include "opencl_utils.hpp"
+
 #include "../utils/conf_params.hpp"
 #include "../utils/convertTransforms.hpp"
 #include "../utils/print_functions.hpp"
 #include "../utils/CV_chk.hpp"
 #include "../utils/time_utils.hpp"
-#include "../utils/opencl_utils.hpp"
+
 #include "../kernels/kernels_macros.h"
 
 const uint tracking_num_colour_channels = TRACKING_NUM_COLOR_CHANNELS;
@@ -42,6 +44,8 @@ using namespace std;
 class RunCL
 {
 public:
+	#include "opencl_utils.hpp"
+
 	//RunCL( conf_params j_params ); // map<string, Json::Value> obj_
 	RunCL( Json::Value obj_ , int_map verbosity_mp );
 	Json::Value 		obj;
@@ -145,8 +149,8 @@ public:
 
 	/////////////////////////////////////// RunCL_macro_conversion.cpp
 
-	string 	checkerror(int input);
-	string 	checkCVtype(int input);
+	//string 	checkerror(int input);
+	//string 	checkCVtype(int input);
 
 	/////////////////////////////////////// RunCL_DownloadAndSave.cpp
 
@@ -247,5 +251,50 @@ public:
 	void SpatialCostFns();																												// SIRFS cost functions
 	void ParsimonyCostFns();
 	void ExhaustiveSearch();
+
+	//////////////////////////////////////
+	void cl_mem_swap_ptr(cl_mem buf1, cl_mem buf2);
+
+	void _clSetKernelArg(cl_kernel kernel,  cl_uint arg_index,  size_t arg_size, const void* arg_value);
+
+	void _clEnqueueWriteBuffer(
+		cl_command_queue    command_queue,
+		cl_mem              buffer,
+		cl_bool             blocking_write,
+		size_t              offset,
+		size_t              size,
+		const void*         ptr,
+		cl_uint             num_events_in_wait_list,
+		const cl_event*     event_wait_list,
+		cl_event*           event
+	);
+
+	void _clEnqueueFillBuffer(
+		cl_command_queue    command_queue,
+		cl_mem              buffer,
+		const void*         pattern,
+		size_t              pattern_size,
+		size_t              offset,
+		size_t              size,
+		cl_uint             num_events_in_wait_list,
+		const cl_event*     event_wait_list,
+		cl_event*           event
+	);
+
+	void _clCreateBuffer(
+		cl_context          context,
+		cl_mem_flags        flags,
+		size_t              size,
+		void*               host_ptr,
+		cl_int*             errcode_ret,
+		cl_mem 				memobj
+	);
+
+	void _clReleaseMemObject(cl_mem memobj);
+
+	void _clReleaseKerne(cl_kernel kernel);
+
+	string checkerror(int input);
+
 };
 #endif /*RUNCL_H*/

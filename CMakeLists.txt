@@ -80,10 +80,11 @@ add_executable(Dynamic_slam
          src/RunCL/RunCL.cpp
          src/RunCL/RunCL_DownloadAndSave.cpp
          src/RunCL/RunCL_load_image.cpp
-         src/RunCL/RunCL_macro_conversion.cpp
          src/RunCL/RunCL_mapping.cpp
          src/RunCL/RunCL_setup_keyframe.cpp
          src/RunCL/RunCL_tracking.cpp
+         #src/RunCL/opencl_utils.hpp
+         src/RunCL/opencl_utils.cpp
 
          src/utils/CV_chk.hpp
          src/utils/CV_chk.cpp
@@ -91,8 +92,6 @@ add_executable(Dynamic_slam
          src/utils/time_utils.cpp
          src/utils/conf_params.hpp
          src/utils/conf_params.cpp
-         src/utils/opencl_utils.hpp
-         src/utils/opencl_utils.cpp
          src/utils/print_functions.hpp
          src/utils/print_functions.cpp
          src/utils/convertTransforms.hpp

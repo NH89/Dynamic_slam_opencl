@@ -2,7 +2,8 @@
 # ifndef OPENCL_UTILS_CHK
 # define OPENCL_UTILS_CHK
 
-#include <CL/opencl.hpp>
+//#include "RunCL.hpp"
+//#include <CL/opencl.hpp>
 
 using namespace std;
 
@@ -10,7 +11,7 @@ void cl_mem_swap_ptr(cl_mem buf1, cl_mem buf2);
 
 void _clSetKernelArg(cl_kernel kernel,  cl_uint arg_index,  size_t arg_size, const void* arg_value);
 
-void _cl_int clEnqueueWriteBuffer(
+void _clEnqueueWriteBuffer(
     cl_command_queue    command_queue,
     cl_mem              buffer,
     cl_bool             blocking_write,
@@ -45,9 +46,11 @@ void _clCreateBuffer(
 );
 
 
-void _clReleaseMemObject(clmem memobj);
+void _clReleaseMemObject(cl_mem memobj);
 
 void _clReleaseKerne(cl_kernel kernel);
+
+string checkerror(int input);
 
 # endif
 

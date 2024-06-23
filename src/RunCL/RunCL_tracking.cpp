@@ -168,7 +168,7 @@ void RunCL::se3_rho_sq( float Rho_sq_results[3][8][4], const float count[4], uin
 	}
 	*/
 	
-	for (int sample = 1; sample=<num_samples; sample++){
+	for (int sample = 1; sample<=num_samples; sample++){
 		read_Rho_sq(Rho_sq_results[sample], sample);
 	}
 }
@@ -261,7 +261,7 @@ void RunCL::read_Rho_sq( float Rho_sq_results[8][4],  int offset/*=0*/ ){
 																																			if(verbosity>local_verbosity_threshold+1) {cout<<"\nRunCL::read_Rho_sq(..)_chk4.1,  offset="<<offset<<flush;}
 
 																																			if(verbosity>local_verbosity_threshold+2) {
-																																				cout << "\n\nRunCL::read_Rho_sq(..)_chk5,  offset="<<offset<<flush;}
+																																				cout << "\n\nRunCL::read_Rho_sq(..)_chk5,  offset="<<offset<<flush;
 																																				cout << "\nrho_sq_sum_mat.size()="<<rho_sq_sum_mat.size()<<flush;
 																																				cout << "\nse3_sum_size="<<se3_sum_size<<flush;
 																																				cout << "\n mm_num_reductions = " << mm_num_reductions << endl << flush;
@@ -288,7 +288,7 @@ void RunCL::read_Rho_sq( float Rho_sq_results[8][4],  int offset/*=0*/ ){
 		}																									// sum j groups for this layer of the MipMap.
 	}
 																																			if(verbosity>local_verbosity_threshold+1) {
-																																				cout << "\n\nRunCL::read_Rho_sq(..)_chk7,  offset="<<offset<<flush;}
+																																				cout << "\n\nRunCL::read_Rho_sq(..)_chk7,  offset="<<offset<<flush;
 																																				for (int layer=0; layer<=mm_num_reductions+1; layer++){ 														// results / (num_valid_px * img_variance)
 																																					cout << "\nLayer "<<layer<<" mm_num_reductions = "<< mm_num_reductions <<",  Rho_sq_results/num_groups = (";
 																																					if (Rho_sq_results[layer][3] > 0){
@@ -301,7 +301,7 @@ void RunCL::read_Rho_sq( float Rho_sq_results[8][4],  int offset/*=0*/ ){
 																																					}
 																																				}cout << "\nRunCL::read_Rho_sq(..)_finish . ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"<<flush;
 																																			}
-	}
+}
 
 void RunCL::read_se3_weights(float SE3_weights_results[8][6][tracking_num_colour_channels]){
 	int local_verbosity_threshold = verbosity_mp["RunCL::read_se3_weights"];// -1;
