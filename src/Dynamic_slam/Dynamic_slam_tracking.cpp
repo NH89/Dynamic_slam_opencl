@@ -328,9 +328,9 @@ void Dynamic_slam::compute_optimum( float steps[3], float Rho_sq_results_[tracki
 	h = steps[2] ;
 	i = Rho_sq_results_[2][layer][channel] ;
 
-	b =  (g-e)*(h*h-f*f) - (i-g)*(f*f-d*d) / ( h - 2*f + d);
+	b =  (g-e)*(h*h-f*f) - (i-g)*(f*f-d*d) / ( h - 2*f + d);																				// NB must choose d,f,h such that (h-2*f+d)!=0
 
-	a =  (g-3-(b*(f-d))) / (f*f - d*d);
+	a =  (g-3-(b*(f-d))) / (f*f - d*d);																										// NB must choose f,d such that (f*f-d*d)!=0
 
 	c =   e - a*d*d - b*d;  																												//  c = predicted y value of optimum, e.g. Rho if ve are fitting images.
 
@@ -379,7 +379,7 @@ void Dynamic_slam::estimateSE3(){																											// Adaptive step siz
 */
 	uint  channel  			= 2;
 	const uint num_samples 	= tracking_num_samples+1;
-	float steps[3] 			= {0,1,2};					// NB steps[0] must be 0. Otherwise edit  tracking_num_samples, update_k2k_3(...),  compute_optimum(...)
+	float steps[3] 			= {0, 1, 1.5};					//  NB see  compute_optimum(..) constraints on d,f,h.   NB steps[0] must be 0. Otherwise edit  tracking_num_samples, update_k2k_3(...),  compute_optimum(...)
 	float stepsize 			= 1.0;																					// TODO store and update stepsize multipler wrt predicted optmum. i.e. LM damping.
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout <<  "\n### Dynamic_slam::estimateSE3(): (Rho_sq_result < SE3_Rho_sq_threshold[layer][channel])=("<<Rho_sq_result<<
@@ -485,7 +485,18 @@ void Dynamic_slam::estimateSE3(){																											// Adaptive step siz
 																																			// void RunCL::se3_rho_sq(float Rho_sq_results[8][4], const float count[4], uint start, uint stop,  float k2k_3_16_[3][16]  )
 																																			if(verbosity>local_verbosity_threshold) {cout << "\n\n###  Dynamic_slam::estimateSE3_chk 4.0" << flush;
 																																				stringstream ss;
-																																				ss << "\tRho_sq_results = " << Rho_sq_results ;
+																																				ss << "\tRho_sq_results = "  ;
+																																				for (int sample = 0; sample<3; sample++ ){
+																																					ss << "\n\n sample="<< sample <<"\n";
+																																					for (int layer=0; layer<8; layer++){
+																																						ss << "\nlayer="<< layer << "\t";
+																																						for (int channel=0; channel<4; channel++){
+																																							ss << Rho_sq_results[sample][layer][channel] <<",  \t";
+																																						}
+																																					}
+
+																																				}ss << "\n\n ";
+
 																																				cout << ss.str() << endl << flush;
 																																			}
 		float prediction, optimum1, optimum2;																								// ### 4) compute ideal increment, (i.e. damped)  given three Rho_sq_results and their step sizes .

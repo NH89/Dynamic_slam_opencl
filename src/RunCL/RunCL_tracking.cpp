@@ -76,19 +76,20 @@ void RunCL::se3_rho_sq( float Rho_sq_results[3][8][4], const float count[4], uin
 	const uint wg_divisor =2;  // 1,2,4,8  reduction in workgroup size for this kernel.
 	//input
 	//      __private	 uint layer, set in mipmap_call_kernel(..) below                                                                                                                              __private	    uint	    layer,		                    //0
-    res = clSetKernelArg(se3_rho_sq_kernel, 1, sizeof(cl_mem), &mipmap_buf);										if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__constant    uint*	    mipmap_params,	                //1
-	res = clSetKernelArg(se3_rho_sq_kernel, 2, sizeof(cl_mem), &uint_param_buf);									if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__constant	uint*		uint_params,					//2
-	res = clSetKernelArg(se3_rho_sq_kernel, 3, sizeof(cl_mem), &fp32_param_buf);									if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__constant	float*		fp32_params						//3
-	res = clSetKernelArg(se3_rho_sq_kernel, 4, sizeof(cl_mem), &k2kbuf);											if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global		float* 		k2k,							//4		// TODO keyframe2K
-	res = clSetKernelArg(se3_rho_sq_kernel, 5, sizeof(cl_mem), &keyframe_imgmem);									if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 		float4*		keyframe_imgmem,				//5		// TODO need keyframe mipmap   keyframe_imgmem , keyframe_depth_mem
-	res = clSetKernelArg(se3_rho_sq_kernel, 6, sizeof(cl_mem), &imgmem);											if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 		float4*		imgmem,							//6
-	res = clSetKernelArg(se3_rho_sq_kernel, 7, sizeof(cl_mem), &keyframe_depth_mem);								if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 	 	float*		keyframe_depth_mem				//7		// NB GT_depth, now stoed as inv_depth	// TODO need keyframe mipmap
-	res = clSetKernelArg(se3_rho_sq_kernel, 8, sizeof(cl_mem), &keyframe_g1mem);									if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 	 	float8*		g1p								//8
+    res = clSetKernelArg(se3_rho_sq_kernel, 1, sizeof(size_t), &se3_sum_size);										if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__private		uint		pix_sum_size_bytes,				//1
+    res = clSetKernelArg(se3_rho_sq_kernel, 2, sizeof(cl_mem), &mipmap_buf);										if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__constant    uint*	    mipmap_params,	                //2
+	res = clSetKernelArg(se3_rho_sq_kernel, 3, sizeof(cl_mem), &uint_param_buf);									if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__constant	uint*		uint_params,					//3
+	res = clSetKernelArg(se3_rho_sq_kernel, 4, sizeof(cl_mem), &fp32_param_buf);									if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__constant	float*		fp32_params						//4
+	res = clSetKernelArg(se3_rho_sq_kernel, 5, sizeof(cl_mem), &k2kbuf);											if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global		float* 		k2k,							//5		// TODO keyframe2K
+	res = clSetKernelArg(se3_rho_sq_kernel, 6, sizeof(cl_mem), &keyframe_imgmem);									if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 		float4*		keyframe_imgmem,				//6		// TODO need keyframe mipmap   keyframe_imgmem , keyframe_depth_mem
+	res = clSetKernelArg(se3_rho_sq_kernel, 7, sizeof(cl_mem), &imgmem);											if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 		float4*		imgmem,							//7
+	res = clSetKernelArg(se3_rho_sq_kernel, 8, sizeof(cl_mem), &keyframe_depth_mem);								if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 	 	float*		keyframe_depth_mem				//8		// NB GT_depth, now stoed as inv_depth	// TODO need keyframe mipmap
+	res = clSetKernelArg(se3_rho_sq_kernel, 9, sizeof(cl_mem), &keyframe_g1mem);									if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 	 	float8*		g1p								//9
 
 	//output
-	res = clSetKernelArg(se3_rho_sq_kernel, 9, sizeof(cl_mem), &SE3_rho_map_mem);									if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global	    float4*     Rho_					        //9
-	res = clSetKernelArg(se3_rho_sq_kernel,10, (num_samples*local_work_size*4/wg_divisor)*sizeof(float), NULL);		if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__local		float4*		local_sum_rho_sq				//10	// 1 DoF, float4 channels
-	res = clSetKernelArg(se3_rho_sq_kernel,11, sizeof(cl_mem), &se3_sum_rho_sq_mem);		 						if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 		float4*		global_sum_rho_sq,				//11
+	res = clSetKernelArg(se3_rho_sq_kernel,10, sizeof(cl_mem), &SE3_rho_map_mem);									if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global	    float4*     Rho_					        //10
+	res = clSetKernelArg(se3_rho_sq_kernel,11, (num_samples*local_work_size*4/wg_divisor)*sizeof(float), NULL);		if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__local		float4*		local_sum_rho_sq				//11	// 1 DoF, float4 channels
+	res = clSetKernelArg(se3_rho_sq_kernel,12, sizeof(cl_mem), &se3_sum_rho_sq_mem);		 						if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 		float4*		global_sum_rho_sq,				//12
 
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::se3_rho_sq(..)_chk1 .  start="<<start<<",  stop="<<stop<<flush;}
 	//mipmap_call_kernel( se3_rho_sq_kernel, m_queue, start, stop );
@@ -169,8 +170,75 @@ void RunCL::se3_rho_sq( float Rho_sq_results[3][8][4], const float count[4], uin
 	*/
 	
 	for (int sample = 1; sample<=num_samples; sample++){
-		read_Rho_sq(Rho_sq_results[sample], sample);
+		read_Rho_sq(Rho_sq_results[sample], sample-1);
 	}
+
+////
+/*
+	cv::Mat rho_sq_sum_mat = cv::Mat::zeros (2*se3_sum_size, 4, CV_32FC1); // cv::Mat::zeros (int rows, int cols, int type)					// NB the data returned is one float4 per group, holding HSV, plus entry[3]=pixel count.
+	ReadOutput( rho_sq_sum_mat.data, se3_sum_rho_sq_mem, 2*pix_sum_size_bytes, 0 );
+
+
+																																			if(verbosity>local_verbosity_threshold+1) {cout<<"\nTest RunCL::read_Rho_sq(..)_chk4.1, "<<flush;}
+
+																																			if(verbosity>local_verbosity_threshold+2) {
+																																				cout << "\n\nTest RunCL::read_Rho_sq(..)_chk5,  "<<flush;
+																																				cout << "\nrho_sq_sum_mat.size()="<<rho_sq_sum_mat.size()<<flush;
+																																				cout << "\nse3_sum_size="<<se3_sum_size<<flush;
+																																				cout << "\n mm_num_reductions = " << mm_num_reductions << endl << flush;
+																																				cout << "\n\nrho_sq_sum_mat.at<float> (i*num_DoFs + j,  k) ,  i=group,  j=SO3 DoF,  i=delta4 (H,S,V, (valid pixels/group_size) )";
+																																				for (int i=0; i< 2*se3_sum_size ; i++){//&& i<30
+																																					cout << "\ngroup ="<<i<<":   ";
+																																					cout << ",     \t(";
+																																					for (int k=0; k<4; k++){	cout << ", \t" << rho_sq_sum_mat.at<float>(i, k); }
+																																					cout << ")";
+																																				}cout << endl << endl;
+																																			}
+
+																																			cout << "\n\nmm_start="<<mm_start<<",   mm_stop="<<mm_stop \
+																																				<<",   se3_sum_size="<<se3_sum_size<<flush;
+
+	for (int sample=0; sample<2; sample++){
+		int sample_step = sample * pix_sum_size_bytes;
+		for (int layer=mm_start; layer<=mm_stop; layer++){
+			uint groups_to_sum 			= rho_sq_sum_mat.at<float>(layer+sample_step, 0);
+			uint start_group 			= rho_sq_sum_mat.at<float>(layer+sample_step, 2);  //global_sum_offset;
+			uint stop_group 			= start_group + groups_to_sum ;   																		// -1
+																																			if(verbosity>local_verbosity_threshold+2) {
+																																				cout << "\nTest RunCL::read_Rho_sq(..)_chk6,    layer = "<<layer<<
+																																				", groups_to_sum = "<<groups_to_sum<<
+																																				", start_group = "<<start_group<<
+																																				", stop_group = "<<stop_group<< flush;
+																																			}
+			int group_ = start_group;
+			for (int sample=0; sample<2; sample++){
+				for ( int group=start_group; group< stop_group; group++, group_++ ){
+					for (int chan=0; chan<4; chan++){
+						Rho_sq_results[sample][layer][chan] += rho_sq_sum_mat.at<float>(group_, chan);
+					};
+				}																									// sum j groups for this layer of the MipMap.
+		//}
+																																			if(verbosity>local_verbosity_threshold+1) {
+
+																																				cout << "\n\nTest RunCL::read_Rho_sq(..)_chk7,"  <<flush;
+																																				//for (int sample=0; sample<2; sample++){
+																																					for (int layer=0; layer<=mm_num_reductions+1; layer++){ 														// results / (num_valid_px * img_variance)
+																																						cout << "\nSample="<<sample<<", Layer "<<layer<<" mm_num_reductions = "<< mm_num_reductions <<",  Rho_sq_results/num_groups = (";
+																																						if (Rho_sq_results[sample][layer][3] > 0){
+																																							for (int chan=0; chan<3; chan++){	cout << ",   \t" << Rho_sq_results[sample][layer][chan] / ( Rho_sq_results[sample][layer][3]  *  img_stats[IMG_VAR+chan]  );
+																																							}
+																																							cout << ", \t" << Rho_sq_results[sample][layer][3] << ")";
+																																						}
+																																						else{	for (int chan=0; chan<3; chan++){	cout << ", \t" << 0.0f;		}
+																																							cout << ", \t" << Rho_sq_results[sample][layer][3] << ")";
+																																						}
+																																					}cout << "\nTest RunCL::read_Rho_sq(..)_finish . ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"<<flush;
+																																				//}
+																																			}
+		}
+	}
+	}
+	*/
 }
 
 
@@ -255,9 +323,24 @@ void RunCL::estimateSE3_LK(float SE3_results[8][6][tracking_num_colour_channels]
 
 void RunCL::read_Rho_sq( float Rho_sq_results[8][4],  int offset/*=0*/ ){
 	int local_verbosity_threshold = verbosity_mp["RunCL::read_Rho_sq"];// -1;
-																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::read_Rho_sq(..)_chk4,  offset="<<offset<<flush;}
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::read_Rho_sq(..)_chk4,  offset="<<offset
+																																				<<",   offset*pix_sum_size_bytes="<<offset*pix_sum_size_bytes<<flush;}
 	cv::Mat rho_sq_sum_mat = cv::Mat::zeros (se3_sum_size, 4, CV_32FC1); // cv::Mat::zeros (int rows, int cols, int type)					// NB the data returned is one float4 per group, holding HSV, plus entry[3]=pixel count.
 	ReadOutput( rho_sq_sum_mat.data, se3_sum_rho_sq_mem, pix_sum_size_bytes, offset*pix_sum_size_bytes );																//float Rho_sq_reults[8][4] = {{0}};
+	/*
+	 * void RunCL::ReadOutput( uchar* outmat,   cl_mem buf_mem,   size_t data_size,   size_t offset/ *=0* / ) {...
+	 * 		status = clEnqueueReadBuffer( dload_queue,		// command_queue
+											buf_mem,		// buffer
+											CL_FALSE,		// blocking_read
+											offset,			// offset
+											data_size,		// size
+											outmat,			// pointer
+											0,				// num_events_in_wait_list
+											NULL,			// event_waitlist				needs to know about preceeding events:
+											&readEvt);		// event
+	 * ...}
+	 */
+
 																																			if(verbosity>local_verbosity_threshold+1) {cout<<"\nRunCL::read_Rho_sq(..)_chk4.1,  offset="<<offset<<flush;}
 
 																																			if(verbosity>local_verbosity_threshold+2) {
