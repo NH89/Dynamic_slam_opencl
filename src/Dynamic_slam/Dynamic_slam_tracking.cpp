@@ -314,10 +314,10 @@ void Dynamic_slam::update_k2k_3( float steps[3], Matx16f update_, float k2k_3_16
 	}
 }
 
-void Dynamic_slam::compute_optimum( float steps[3], float Rho_sq_results_[tracking_num_samples+1][max_mipmap_layers][tracking_num_colour_channels], int layer, int channel, float *prediction, float *optimum ){
+void Dynamic_slam::compute_optimum( float steps[3], float Rho_sq_results_[tracking_num_samples+1][max_mipmap_layers][tracking_num_colour_channels], int layer, int channel, float *prediction, float *optimum, float *stepsize  ){
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::compute_tracking_increment"];
 
-	float a, b, c, d, e, f, g, h, i, j;																										// compute x value of the optimum of parabola, y= a*x*x + b*x + c
+	float a, b, c, d, e, f, g, h, i, j, k, d2, f2, h2;																										// compute x value of the optimum of parabola, y= a*x*x + b*x + c
 																																			// given samples at x=1,2,4
 	d = steps[0] ;
 	e = Rho_sq_results_[0][layer][channel] ;
@@ -328,16 +328,43 @@ void Dynamic_slam::compute_optimum( float steps[3], float Rho_sq_results_[tracki
 	h = steps[2] ;
 	i = Rho_sq_results_[2][layer][channel] ;
 
-	b =  (g-e)*(h*h-f*f) - (i-g)*(f*f-d*d) / ( h - 2*f + d);																				// NB must choose d,f,h such that (h-2*f+d)!=0
+	// b =  (g-e)*(h*h-f*f) - (i-g)*(f*f-d*d) / ( h - 2*f + d);																				// NB must choose d,f,h such that (h-2*f+d)!=0
+ //
+	// a =  (g-3-(b*(f-d))) / (f*f - d*d);																										// NB must choose f,d such that (f*f-d*d)!=0
+ //
+	// c =   e - a*d*d - b*d;  																												//  c = predicted y value of optimum, e.g. Rho if ve are fitting images.
 
-	a =  (g-3-(b*(f-d))) / (f*f - d*d);																										// NB must choose f,d such that (f*f-d*d)!=0
+	d2 = d * d;
+	f2 = f * f;
+	h2 = h * h;
 
-	c =   e - a*d*d - b*d;  																												//  c = predicted y value of optimum, e.g. Rho if ve are fitting images.
+	j = (f2 - d2)*(f-h) - (h2 - f2)*(d-f) ;
 
-	*prediction = c;
+	k = (g-i)*(d-f) - (e-g)*(f-h);
 
-	*optimum = -b /(2*a);																													// dy/dx = 0 = 2*a*x + b   =>  x = -b /(2*a)
+	a = k/j;
 
+	b = (e-g +a*(f2-d2))  /  (d-f);
+
+	c = e - a*d2 - b*d;
+
+
+
+	if (a>0){																																// IF concavity leads to a minimum, use it.
+		*prediction 	= c;
+		*optimum 		= -b /(2*a);																												// dy/dx = 0 = 2*a*x + b   =>  x = -b /(2*a)
+	}else{																																	// IF concavity leads to a maximum, pick the best sample so far.
+		if (e>=i){
+			*prediction = i;
+			*optimum 	= h;
+			*stepsize 	*=2;
+
+		}else{
+			*prediction = e;
+			*optimum 	= d;
+			*stepsize 	/=2;
+		}
+	}
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\n Dynamic_slam::compute_optimum: "
 																																				<< ", \ta=" << a
@@ -346,6 +373,9 @@ void Dynamic_slam::compute_optimum( float steps[3], float Rho_sq_results_[tracki
 																																				<< ", \t(d,e)=("<<d<<","<<e<<")"
 																																				<< ", \t(f,g)=("<<f<<","<<g<<")"
 																																				<< ", \t(h,i)=("<<h<<","<<i<<")"
+																																				<< ", \tprediction="<<*prediction
+																																				<< ", \toptimum="<<*optimum
+																																				<< ", \tstepsize="<<*stepsize
 																																				<< endl << flush;
 																																			}
 }
@@ -379,7 +409,7 @@ void Dynamic_slam::estimateSE3(){																											// Adaptive step siz
 */
 	uint  channel  			= 2;
 	const uint num_samples 	= tracking_num_samples+1;
-	float steps[3] 			= {0, 1, 1.5};					//  NB see  compute_optimum(..) constraints on d,f,h.   NB steps[0] must be 0. Otherwise edit  tracking_num_samples, update_k2k_3(...),  compute_optimum(...)
+	float steps[3] 			= {0, 1, 3};					//  NB see  compute_optimum(..) constraints on d,f,h.   NB steps[0] must be 0. Otherwise edit  tracking_num_samples, update_k2k_3(...),  compute_optimum(...)
 	float stepsize 			= 1.0;																					// TODO store and update stepsize multipler wrt predicted optmum. i.e. LM damping.
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout <<  "\n### Dynamic_slam::estimateSE3(): (Rho_sq_result < SE3_Rho_sq_threshold[layer][channel])=("<<Rho_sq_result<<
@@ -466,7 +496,7 @@ void Dynamic_slam::estimateSE3(){																											// Adaptive step siz
 																																				}cout << ss.str() << endl << flush;
 																																			}
 		float k2k_3_16[tracking_num_samples][16] = {{0}};
-		update_k2k_3( steps, update, k2k_3_16 ); 																									// ### 2) generate three poses along the direction "update"
+		update_k2k_3( steps, update*stepsize, k2k_3_16 ); 																									// ### 2) generate three poses along the direction "update"
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\n\nDynamic_slam::estimateSE3_chk 3.1:";
 																																				for (int sample=0; sample<tracking_num_samples; sample++){
@@ -501,7 +531,7 @@ void Dynamic_slam::estimateSE3(){																											// Adaptive step siz
 																																			}
 		float prediction, optimum1, optimum2;																								// ### 4) compute ideal increment, (i.e. damped)  given three Rho_sq_results and their step sizes .
 
-		compute_optimum( steps, Rho_sq_results, layer, channel, &prediction, &optimum1 );															// 1st estimate of optimum step from local curvature.
+		compute_optimum( steps, Rho_sq_results, layer, channel, &prediction, &optimum1, &stepsize );															// 1st estimate of optimum step from local curvature.
 																																			if(verbosity>local_verbosity_threshold) {cout << "\n\n###  Dynamic_slam::estimateSE3_chk 5.0:"
 																																				<<", \titer="<<iter
 																																				<<", \tlayer="<<layer
@@ -533,7 +563,7 @@ void Dynamic_slam::estimateSE3(){																											// Adaptive step siz
 																																			}
 		runcl.se3_rho_sq( Rho_sq_results, count, layer, layer+1, k2k_3_16 );
 
-		compute_optimum( steps, Rho_sq_results, layer, channel, &prediction, &optimum2 );													// 2nd estimate of optimum, on the basis of curvature around expected step size.
+		compute_optimum( steps, Rho_sq_results, layer, channel, &prediction, &optimum2, &stepsize );													// 2nd estimate of optimum, on the basis of curvature around expected step size.
 																																			// On the basis of 3 samples around the 1st predicted optimum, predict a new optimum.
 																																			// NB these samples are likely to be closer to the true optimum, so the new predction will be better.
 																																			// Any original oveshoot may be corrected.

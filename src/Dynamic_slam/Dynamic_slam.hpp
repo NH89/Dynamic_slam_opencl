@@ -151,7 +151,7 @@ class Dynamic_slam
     void generate_SE3_k2k( float _SE3_k2k[96] );
     void update_k2k(Matx16f update_);
     void update_k2k_3( float steps[3], Matx16f update_, float k2k_3_16[3][16] );
-    void compute_optimum( float steps[3], float Rho_sq_results_3[tracking_num_samples][8][tracking_num_colour_channels], int layer, int channel, float *prediction, float *optimum );
+    void compute_optimum( float steps[3], float Rho_sq_results_3[tracking_num_samples][8][tracking_num_colour_channels], int layer, int channel, float *prediction, float *optimum, float *stepsize );
 
     //void compute_tracking_increment(float Rho_sq_results[8][tracking_num_colour_channels], float Rho_sq_results_3[tracking_num_samples][8][tracking_num_colour_channels], Matx16f update, float k2k_3_16[3][16], float stepsize, float optimmum, Matx44f increment);
     void estimateSE3_LK();

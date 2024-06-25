@@ -95,8 +95,12 @@ __kernel void se3_Rho_sq(
 	uint mm_cols		= uint_params[MM_COLS];
 	uint mm_pixels		= uint_params[MM_PIXELS];
 
-	float SE3_LM_a		= fp32_params[SE3_LM_A];														// Optimisation parameters
-	float SE3_LM_b		= fp32_params[SE3_LM_B];
+	//float SE3_LM_a		= fp32_params[SE3_LM_A];														// Optimisation parameters
+	//float SE3_LM_b		= fp32_params[SE3_LM_B];
+	float inv_d_step 	= fp32_params[INV_DEPTH_STEP];
+	float min_inv_depth = fp32_params[MIN_INV_DEPTH] + inv_d_step;
+	float max_inv_depth = fp32_params[MAX_INV_DEPTH] - inv_d_step;
+
 
 	uint reduction		= mm_cols/read_cols_;
 	uint v    			= global_id_u / read_cols_;														// read_row
@@ -136,7 +140,8 @@ __kernel void se3_Rho_sq(
 	// */
 		float4 rho 											= {0.0f,0.0f,0.0f,0.0f};
 																										// Exclude all out-of-bounds threads:
-		bool intersection = (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2>2) && (u2<=read_cols_-2) && (v2>2) && (v2<=read_rows_-2)  &&  (global_id_u<=layer_pixels);
+		//bool intersection = (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2>2) && (u2<=read_cols_-2) && (v2>2) && (v2<=read_rows_-2)  &&  (global_id_u<=layer_pixels);
+		bool intersection = (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2>2) && (u2<=read_cols_-2) && (v2>2) && (v2<=read_rows_-2)  &&  (global_id_u<=layer_pixels) && (inv_depth>min_inv_depth) && (inv_depth<max_inv_depth);
 
 		if ( u==5 && v==5  ){ // (global_id_u==1)
 			printf("\nkernel se3_Rho_sq(..)_1: sample=%u,  layer=%i,  global_id_u=%i,  u=%i,  v=%i,   se3_sum_size=%i,  intersection=%i, (u>2)=%i,  (u<=read_cols_-2)=%i,  (v>2)=%i,  (v<=read_rows_-2)=%i,  (u2>2)=%i,  (u2<=read_cols_-2)=%i,  (v2>2)=%i,  (v2<=read_rows_-2)=%i,  (global_id_u<=layer_pixels)=%i"\
@@ -144,7 +149,7 @@ __kernel void se3_Rho_sq(
 		}
 		if (  intersection  ) {																			// if (not cleanly within new frame) skip  Problem u2&v2 are wrong.
 			int idx 										= 0;										// float4 bilinear_flt4(__global float4* img, float u_flt, float v_flt, int cols, int read_offset_, uint reduction);
-			new_px 											= bilinear_flt4(img_new, u2_flt/reduction, v2_flt/reduction, mm_cols, read_offset_);
+			new_px 											= bilinear_flt4(img_new, u2_flt, v2_flt, mm_cols, read_offset_);
 			rho 											= (img_cur[read_index] - new_px)*(1.0f - g1p[read_index].s3);						// g1.s3 = Value channel. Weight rho by edges.
 			rho.w 											= 1.0f; ///alpha;
 
@@ -299,7 +304,7 @@ __kernel void se3_LK_grad(
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////							// Exclude all out-of-bounds threads:
-	float intersection = (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2>2) && (u2<=read_cols_-2) && (v2>2) && (v2<=read_rows_-2)  &&  (global_id_u<=layer_pixels) && (inv_depth>min_inv_depth) && (inv_depth<max_inv_depth);
+	bool intersection = (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2>2) && (u2<=read_cols_-2) && (v2>2) && (v2<=read_rows_-2)  &&  (global_id_u<=layer_pixels) && (inv_depth>min_inv_depth) && (inv_depth<max_inv_depth);
 
 	if (  intersection  ) {																								// if (not cleanly within new frame) skip  Problem u2&v2 are wrong.
 		int idx 					= 0;																				// float4 bilinear_flt4(__global float4* img, float u_flt, float v_flt, int cols, int read_offset_, uint reduction);
