@@ -58,7 +58,7 @@ __kernel void compute_param_maps(
 __kernel void se3_Rho_sq(
 	// inputs
 	__private	uint	layer,					//0
-	__private	uint	se3_sum_size,		//1
+	__private	uint	se3_sum_size,			//1
 	__constant 	uint8*	mipmap_params,			//2
 	__constant 	uint*	uint_params,			//3
 	__constant  float*  fp32_params,			//4
