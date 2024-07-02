@@ -329,10 +329,10 @@ __kernel void se3_LK_grad(
 		for (uint se3_dim=0; se3_dim<6; se3_dim++) {																																	// for each SE3 DoF
 			float8 grad_v8 											= SE3_grad_map_cur_frame[read_index + (se3_dim * mm_pixels) ] ;
 			grad_v8 												+= bilinear_SE3_grad (SE3_grad_map_new_frame, u2_flt, v2_flt, mm_cols, read_offset_0 + (se3_dim * mm_pixels)  );	// SE3_grad_map_new_frame[read_index_new + se3_dim * mm_pixels ] ;
-			float4 grad_v4 											= grad_v8.hi + grad_v8.lo;
+			float4 grad_v4 											= grad_v8.hi + grad_v8.lo;							// i.e. simm the u and v components of the gradient, for the four colour channels.
 			float4 incr_v4 											= grad_v4  * rho;
 
-			if (se3_dim>=3){multiplier 								= inv_depth/fp32_params[MAX_INV_DEPTH] ;}  // NB multiply pixel inv_depth by min depth in scene.  Office scene depth is in cm from approx 90 to 450cm.
+			if (se3_dim>=3){multiplier 								= inv_depth/fp32_params[MAX_INV_DEPTH] ;}			// NB multiply pixel inv_depth by min depth in scene.  Office scene depth is in cm from approx 90 to 450cm.
 			incr_v4													*= multiplier;
 
 			incr_v4.w 												= 1.0f;

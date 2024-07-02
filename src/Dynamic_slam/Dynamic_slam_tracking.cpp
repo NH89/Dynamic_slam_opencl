@@ -443,8 +443,8 @@ void Dynamic_slam::estimateSE3(){																											// Adaptive step siz
 	// float factor_iter_multiplier 		= obj["SE_factor_iter_multiplier"].asFloat();	//0.9
 	// int   iter_per_layer 				= obj["SE_iter_per_layer"].asInt();				//1
 */
-	uint  channel  			= 2;
 	const uint num_samples 	= tracking_num_samples+1;
+	uint  channel  			= 2;
 	float steps[3] 			= {0, 1, 3};					//  NB see  compute_optimum(..) constraints on d,f,h.   NB steps[0] must be 0. Otherwise edit  tracking_num_samples, update_k2k_3(...),  compute_optimum(...)
 	float stepsize 			= 1.0;																					// TODO store and update stepsize multipler wrt predicted optmum. i.e. LM damping.
 	//float old_Rho			= FLT_MAX;
@@ -501,7 +501,9 @@ void Dynamic_slam::estimateSE3(){																											// Adaptive step siz
 																																				cout << flush;
 																																			}
 																																			if(verbosity>local_verbosity_threshold) {		cout << "\n#### update = "; }
-		cout << "\nSwitch: Rho_sq_results[0][layer][channel]="<<Rho_sq_results[0][layer][channel];
+
+/*
+																																			cout << "\nSwitch: Rho_sq_results[0][layer][channel]="<<Rho_sq_results[0][layer][channel];
 		for(int sample=0; sample<3; sample++){cout << ", \t old_Rho_sq_results["<<sample<<"]="<< old_Rho_sq_results[sample];}
 
 		if (old_layer==layer){
@@ -540,14 +542,14 @@ void Dynamic_slam::estimateSE3(){																											// Adaptive step siz
 					break;
 			}
 		}
-
+*/
 		for (int SE3=0; SE3<6; SE3++) { //6
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << ", \nupdate se3 dof "<<SE3<<", layer "<<layer
 																																				<<" = ("<< SE3_update_dof_weights[SE3]<<" * "<<SE3_update_layer_weights[layer]<<" * "<<factor<<" * "<<SE3_results[layer][SE3][channel]
 																																				<<" / ( "<<SE3_weights[layer][SE3][channel]<<" * "<<runcl.img_stats[IMG_VAR+channel] ;
 																																			}
-			update.operator()(SE3) = SE3_update_dof_weights[SE3] * SE3_update_layer_weights[layer] * factor * SE3_results[layer][SE3][channel] / (SE3_weights[layer][SE3][channel] * runcl.img_stats[IMG_VAR+channel] ) ;							// apply se3_dim weights and global factor.
+			update.operator()(SE3) = 	SE3_update_dof_weights[SE3] * SE3_update_layer_weights[layer] * factor * SE3_results[layer][SE3][channel] 	/ (SE3_weights[layer][SE3][channel] * runcl.img_stats[IMG_VAR+channel] ) ;							// apply se3_dim weights and global factor.
 
 																																			if(verbosity>local_verbosity_threshold) {		cout << " ) ) = \t "<< update.operator()(SE3) << flush;}
 		}
@@ -576,7 +578,9 @@ void Dynamic_slam::estimateSE3(){																											// Adaptive step siz
 																																				}cout << ss.str() << endl << flush;
 																																			}
 		float k2k_3_16[tracking_num_samples][16] = {{0}};
-		update_k2k_3( steps, update*stepsize, k2k_3_16 ); 																									// ### 2) generate three poses along the direction "update"
+
+
+		update_k2k_3( steps, update*stepsize, k2k_3_16 ); 																					// ### 2) generate three poses along the direction "update"
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\n\nDynamic_slam::estimateSE3_chk 3.1:";
 																																				for (int sample=0; sample<tracking_num_samples; sample++){
@@ -607,6 +611,9 @@ void Dynamic_slam::estimateSE3(){																											// Adaptive step siz
 																																				}ss << "\n\n ";
 																																				cout << ss.str() << endl << flush;
 																																			}
+
+
+
 		old_layer 				= layer;
 		//old_Rho					= Rho_sq_results[0][layer][channel];
 		for(int sample=0; sample<3; sample++){ old_Rho_sq_results[sample]  = Rho_sq_results[sample][layer][channel]; }
@@ -624,8 +631,15 @@ void Dynamic_slam::estimateSE3(){																											// Adaptive step siz
 																																				<<", \tRho_sq_results[1]["<<layer<<"]["<<channel<<"]="<<Rho_sq_results[1][layer][channel]
 																																				<<", \tRho_sq_results[2]["<<layer<<"]["<<channel<<"]="<<Rho_sq_results[2][layer][channel]
 																																				<<", \tstepsize="<<stepsize
-																																				<< flush;
-																																				PRINT_MATX16F(update, update);
+																																				<<", \tupdate=";
+																																				print_matx16f(update);
+																																				cout <<", \terror=";
+																																				Matx16f error = LieSub(keyframe_pose2pose_GT_algebra, update);
+																																				print_matx16f(error);
+																																				cout <<", \tkeyframe_pose2pose=";
+																																				print_matx16f(PToLie(keyframe_pose2pose));
+																																				cout <<", \tkeyframe_pose2pose_GT=";
+																																				print_matx16f(keyframe_pose2pose_GT_algebra);
 																																			}
 		if (prediction > 0.98 * Rho_sq_results[0][layer][channel] ){ 																		// ### 5) halt condition, per layer and global ##########################
 			if (layer > SE3_stop_layer) {																									if(verbosity>local_verbosity_threshold) {cout << "\n\n###  Dynamic_slam::estimateSE3_chk 5.1:"
@@ -645,6 +659,7 @@ void Dynamic_slam::estimateSE3(){																											// Adaptive step siz
 		}
 
 		update_k2k( optimum1 * update );
+
 /*
 																																			//compute_tracking_increment( Rho_sq_results, Rho_sq_results, update, k2k_3_16, stepsize, optimum, increment );
 																																			// sample Rho at optimum : replace "update" with stepsize*optimum
@@ -685,7 +700,7 @@ void Dynamic_slam::estimateSE3(){																											// Adaptive step siz
 		}else if (optimum2 <=0) 				{ update_k2k( 0.5*optimum1 * update );		// use 0.5 * optimum1   // TODO think through this condition.
 		}else  									{ update_k2k( optimum2 * update ); }
 */
-	}
+	}// end for (int iter = 0; iter<SE_iter; iter++).
 
 
 

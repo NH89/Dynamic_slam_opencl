@@ -367,7 +367,7 @@ void RunCL::read_Rho_sq( float Rho_sq_results[8][4],  int offset/*=0*/ ){
 																																				", start_group = "<<start_group<<
 																																				", stop_group = "<<stop_group<< flush;
 																																			}
-		for (int group=start_group; group< stop_group; group++){	for (int chan=0; chan<4; chan++){ 	Rho_sq_results[layer][chan] += rho_sq_sum_mat.at<float>(group, chan);		};
+		for (int group=start_group; group< stop_group; group++){	for (int chan=0; chan<4; chan++){ 		Rho_sq_results[layer][chan] 	+= rho_sq_sum_mat.at<float>(group, chan);		};
 		}																									// sum j groups for this layer of the MipMap.
 	}
 																																			if(verbosity>local_verbosity_threshold+1) {
