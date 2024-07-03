@@ -346,7 +346,7 @@ void Dynamic_slam::update_k2k_3( float steps[3], Matx16f update_, float k2k_3_16
 void Dynamic_slam::compute_optimum( float steps[3], float Rho_sq_results_[tracking_num_samples+1][max_mipmap_layers][tracking_num_colour_channels], int layer, int channel, float *prediction, float *optimum, float *stepsize  ){
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::compute_tracking_increment"];
 
-	float a, b, c, d, e, f, g, h, i, j, k, d2, f2, h2;																										// compute x value of the optimum of parabola, y= a*x*x + b*x + c
+	float a, b, c,   d, e,   f, g,   h, i,   j, k, d2, f2, h2;																										// compute x value of the optimum of parabola, y= a*x*x + b*x + c
 																																			// given samples at x=1,2,4
 	d = steps[0];	e = Rho_sq_results_[0][layer][channel] ;
 	f = steps[1];	g = Rho_sq_results_[1][layer][channel] ;
@@ -450,7 +450,7 @@ void Dynamic_slam::estimateSE3(){																											// Adaptive step siz
 	//float old_Rho			= FLT_MAX;
 	int	  old_layer			= -1;
 	cv::Matx44f local_old_pose2pose = keyframe_pose2pose;
-	float old_Rho_sq_results[3] = {FLT_MAX};
+	float old_Rho_sq_results[3] = {FLT_MAX*0.99};
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout <<  "\n### Dynamic_slam::estimateSE3(): (Rho_sq_result < SE3_Rho_sq_threshold[layer][channel])=("<<Rho_sq_result<<
 																																				" < "<<SE3_Rho_sq_threshold[layer][channel]<<")  ";
@@ -463,7 +463,8 @@ void Dynamic_slam::estimateSE3(){																											// Adaptive step siz
 																																			}
 		float SE3_weights[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels]	 		= {{{0}}};
 		float SE3_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels]	 		= {{{0}}};
-		float Rho_sq_results[num_samples][max_mipmap_layers][tracking_num_colour_channels]	 	= {{{FLT_MAX-4}}};
+		float Rho_sq_results[num_samples][max_mipmap_layers][tracking_num_colour_channels]	 	= {{{FLT_MAX*0.99}}};
+		float Rho_sq_results__[max_mipmap_layers][tracking_num_colour_channels]	 				= {{FLT_MAX*0.99}};
 
 		runcl.estimateSE3_LK(SE3_results, SE3_weights, Rho_sq_results[0], iter, layer, layer+1);	//runcl.mm_start, runcl.mm_stop);		// ### 1) find update direction: 	runcl.estSE3()
 																																			if(verbosity>local_verbosity_threshold) {cout 	<< "\n###  Dynamic_slam::estimateSE3_chk 2.0:" << flush;
@@ -502,47 +503,61 @@ void Dynamic_slam::estimateSE3(){																											// Adaptive step siz
 																																			}
 																																			if(verbosity>local_verbosity_threshold) {		cout << "\n#### update = "; }
 
-/*
-																																			cout << "\nSwitch: Rho_sq_results[0][layer][channel]="<<Rho_sq_results[0][layer][channel];
+																																			cout << "\niter="<<iter <<"  layer="<<layer <<"   stepsize="<<stepsize <<" ";
+																																			cout << "\tSwitch: Rho_sq_results[0][layer][channel]="<<Rho_sq_results[0][layer][channel];
+		float kf_k2k[16];
+		Matx44f_To_float16arry(keyframe_K2K, kf_k2k);
+		float count_[4];  count_[0] = iter;  count_[1] = layer;  count_[2] = factor;  count_[3] = 0;
+
+		runcl.se3_rho_sq( Rho_sq_results__, count_, layer, layer+1, kf_k2k );																cout << "\tRho_sq_results__[layer][channel]="<<Rho_sq_results__[layer][channel];
+
+
 		for(int sample=0; sample<3; sample++){cout << ", \t old_Rho_sq_results["<<sample<<"]="<< old_Rho_sq_results[sample];}
 
 		if (old_layer==layer){
-			float lowest_Rho = Rho_sq_results[0][layer][channel];
+			float lowest_Rho = Rho_sq_results__[layer][channel];//Rho_sq_results[0][layer][channel];		// set "lowest_Rho" to the current result, AND "lowest" index to -1
 			int lowest = -1;
-			for(int sample=0; sample<3; sample++){
+			for(int sample=0; sample<3; sample++){						// compare current result to the 3 samples from the previous iteration.
 				if (lowest_Rho > old_Rho_sq_results[sample]){
 					lowest = sample;
 					lowest_Rho =  old_Rho_sq_results[sample];
 				}
 			}
-			switch(lowest){
-				case 0:{
-					cout<<"\tcase 0, "<<flush;
+			switch(lowest){												// choose the lowest of the 4 samples.
+				case 0:{																						// previous sample 0 was lowest
+					cout<<"\tcase 0, ";
 					Matx16f no_update_ = {0};
-					update_k2k( no_update_			, local_old_pose2pose  );
-					if ( stepsize > 1/8) {stepsize /= 2; cout<<"\ncase0.0"<<flush; continue;}					// reduce step size
-					if (layer > 1) {layer--; cout<<"\ncase 0.1"<<flush; continue;}								// change layer
-					cout<<"\ncase 0.2"<<flush;
-					return;															// terminate
+					update_k2k( no_update_			, local_old_pose2pose  );									// reset keyframe_pose2pose and keyframe_K2K
+					if ( stepsize > 1/8) {																		// reduce step size
+						stepsize /= 2; cout<<"\tcase0.0"<<flush;
+						continue;
+					}
+					else if (layer > 1) {																		// change layer
+						layer--; cout<<"\tcase 0.1"<<flush; continue;
+					}
+					else{
+						cout<<"\tcase 0.2"<<flush;
+						return;																					// terminate
+						}
 					}
 				case 1:{
 					cout<<"\tcase 1"<<flush;
-					stepsize /= 2;
-					update_k2k( stepsize * steps[1] * update 	, local_old_pose2pose  );		// repeat at sample 1
+					//stepsize /= 2;
+					update_k2k( stepsize * steps[1] * update 	, local_old_pose2pose  );						// repeat at sample 1
 					continue;
 				}
 				case 2:{
 					cout<<"\tcase 2"<<flush;
 					stepsize *= 2;
-					update_k2k( stepsize * steps[2] * update 	, local_old_pose2pose  );		// repeat at sample 2
+					update_k2k( stepsize * steps[2] * update 	, local_old_pose2pose  );						// repeat at sample 2
 					continue;
 				}
-				default:															// case -1, complete below.
+				default:																						// case -1, complete below.
 					cout<<"\tcase -1"<<flush;
 					break;
 			}
 		}
-*/
+
 		for (int SE3=0; SE3<6; SE3++) { //6
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << ", \nupdate se3 dof "<<SE3<<", layer "<<layer
@@ -578,6 +593,7 @@ void Dynamic_slam::estimateSE3(){																											// Adaptive step siz
 																																				}cout << ss.str() << endl << flush;
 																																			}
 		float k2k_3_16[tracking_num_samples][16] = {{0}};
+		int num = TRACKING_NUM_SAMPLES;
 
 
 		update_k2k_3( steps, update*stepsize, k2k_3_16 ); 																					// ### 2) generate three poses along the direction "update"
@@ -641,22 +657,22 @@ void Dynamic_slam::estimateSE3(){																											// Adaptive step siz
 																																				cout <<", \tkeyframe_pose2pose_GT=";
 																																				print_matx16f(keyframe_pose2pose_GT_algebra);
 																																			}
-		if (prediction > 0.98 * Rho_sq_results[0][layer][channel] ){ 																		// ### 5) halt condition, per layer and global ##########################
-			if (layer > SE3_stop_layer) {																									if(verbosity>local_verbosity_threshold) {cout << "\n\n###  Dynamic_slam::estimateSE3_chk 5.1:"
-																																				<< ", \thalt, move to next layer"
-																																				<< flush;
-																																			}
-				layer --;
-				continue;
-			} else { break; }
-		}
-
-		if (optimum1 >= stepsize*steps[2] ){
-			optimum1 = stepsize*steps[2];
-			stepsize *=2;
-		}else if (optimum1 <= stepsize*steps[1]){
-			stepsize /=2;
-		}
+		// if (prediction > 0.98 * Rho_sq_results[0][layer][channel] ){ 																		// ### 5) halt condition, per layer and global ##########################
+		// 	if (layer > SE3_stop_layer) {																									if(verbosity>local_verbosity_threshold) {cout << "\n\n###  Dynamic_slam::estimateSE3_chk 5.1:"
+		// 																																		<< ", \thalt, move to next layer"
+		// 																																		<< flush;
+		// 																																	}
+		// 		layer --;
+		// 		continue;
+		// 	} else { break; }
+		// }
+  //
+		// if (optimum1 >= stepsize*steps[2] ){
+		// 	optimum1 = stepsize*steps[2];
+		// 	stepsize *=2;
+		// }else if (optimum1 <= stepsize*steps[1]){
+		// 	stepsize /=2;
+		// }
 
 		update_k2k( optimum1 * update );
 

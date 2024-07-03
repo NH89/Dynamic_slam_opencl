@@ -44,6 +44,75 @@ void RunCL::update_tracking_depthmap(){
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_tracking_depthmap(..)_finished ."<<flush;}
 }
 
+
+void RunCL::se3_rho_sq( float Rho_sq_results[8][4], const float count[4], uint start, uint stop,  float k2k_16[16]  ){
+	int local_verbosity_threshold = verbosity_mp["RunCL::se3_rho_sq"];// -1;
+	const int num_samples  = tracking_num_samples;	// Rho_sq_results[samples=3][layers=8][channels=4]
+	const int num_channels = tracking_num_colour_channels;
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::se3_rho_sq(..)_chk0 .##################################################################"<<flush;}
+	cl_event writeEvt;
+	cl_int status;
+																																			if(verbosity>local_verbosity_threshold) {
+																																				cout << "\nRunCL::se3_rho_sq(..)__chk_0.3: K2K= ";
+																																				for (int i=0; i<16; i++){ cout << ",  "<< fp32_k2keyframe[i];  }	cout << flush;
+
+																																				cout << "\n\nk2k_16[16]= ";
+																																				print_float_16( k2k_16 );
+																																				cout << "\n\n" <<flush;
+																																			}
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::se3_rho_sq(..)_chk0.4 ,  dataset_frame_num="<<dataset_frame_num<<",   count="<<count[0]<<flush;}
+
+	status = clEnqueueWriteBuffer(uload_queue, k2kbuf,	CL_FALSE, 0, tracking_num_samples*16*sizeof(float), k2k_16, 	0, NULL, &writeEvt);			if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: RunCL::se3_rho_sq(..)_chk0.5\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	float zero  = 0;
+	status = clEnqueueFillBuffer(uload_queue, SE3_rho_map_mem, 		&zero, sizeof(float), 0, num_samples*2*mm_size_bytes_C4,	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: RunCL::se3_rho_sq(..)_chk0.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	status = clEnqueueFillBuffer(uload_queue, se3_sum_rho_sq_mem, 	&zero, sizeof(float), 0, num_samples*pix_sum_size_bytes, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: RunCL::se3_rho_sq(..)_chk0.9\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+
+	status = clFlush( uload_queue );																						if (status != CL_SUCCESS)	{ cout << "\nclEnqueueWriteBuffer clFlush( uload_queue ) status = " << checkerror(status) <<"\n"<<flush; exit_(status); }
+	clFinish( uload_queue );
+																															if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::se3_rho_sq(..)_chk0.7 "<<flush;}
+																																			// NB GT_depth loaded to depth_mem by void RunCL::loadFrameData(..)
+	cl_int 				res;
+	const uint wg_divisor =2;  // 1,2,4,8  reduction in workgroup size for this kernel.
+	//input
+	//      __private	 uint layer, set in mipmap_call_kernel(..) below                                                                                                                              __private	    uint	    layer,		                    //0
+    res = clSetKernelArg(se3_rho_sq_kernel, 1, sizeof(size_t), &se3_sum_size);										if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__private		uint		pix_sum_size_bytes,				//1
+    res = clSetKernelArg(se3_rho_sq_kernel, 2, sizeof(cl_mem), &mipmap_buf);										if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__constant    uint*	    mipmap_params,	                //2
+	res = clSetKernelArg(se3_rho_sq_kernel, 3, sizeof(cl_mem), &uint_param_buf);									if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__constant	uint*		uint_params,					//3
+	res = clSetKernelArg(se3_rho_sq_kernel, 4, sizeof(cl_mem), &fp32_param_buf);									if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__constant	float*		fp32_params						//4
+	res = clSetKernelArg(se3_rho_sq_kernel, 5, sizeof(cl_mem), &k2kbuf);											if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global		float* 		k2k,							//5		// TODO keyframe2K
+	res = clSetKernelArg(se3_rho_sq_kernel, 6, sizeof(cl_mem), &keyframe_imgmem);									if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 		float4*		keyframe_imgmem,				//6		// TODO need keyframe mipmap   keyframe_imgmem , keyframe_depth_mem
+	res = clSetKernelArg(se3_rho_sq_kernel, 7, sizeof(cl_mem), &imgmem);											if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 		float4*		imgmem,							//7
+	res = clSetKernelArg(se3_rho_sq_kernel, 8, sizeof(cl_mem), &keyframe_depth_mem);								if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 	 	float*		keyframe_depth_mem				//8		// NB GT_depth, now stoed as inv_depth	// TODO need keyframe mipmap
+	res = clSetKernelArg(se3_rho_sq_kernel, 9, sizeof(cl_mem), &keyframe_g1mem);									if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 	 	float8*		g1p								//9
+
+	//output
+	res = clSetKernelArg(se3_rho_sq_kernel,10, sizeof(cl_mem), &SE3_rho_map_mem);									if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global	    float4*     Rho_					        //10
+	res = clSetKernelArg(se3_rho_sq_kernel,11, (num_samples*local_work_size*4/wg_divisor)*sizeof(float), NULL);		if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__local		float4*		local_sum_rho_sq				//11	// 1 DoF, float4 channels
+	res = clSetKernelArg(se3_rho_sq_kernel,12, sizeof(cl_mem), &se3_sum_rho_sq_mem);		 						if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 		float4*		global_sum_rho_sq,				//12
+
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::se3_rho_sq(..)_chk1 .  start="<<start<<",  stop="<<stop<<flush;}
+	//mipmap_call_kernel( se3_rho_sq_kernel, m_queue, start, stop );
+
+	mipmap_call_kernel( se3_rho_sq_kernel, m_queue, start, stop, false, local_work_size/wg_divisor);
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::se3_rho_sq(..)_chk3 ."<<flush;
+																																				stringstream ss;	ss << dataset_frame_num <<"_iter_"<<count[0]<<"_layer"<<count[1]<<"_factor"<<count[2]<<"_se3_rho_sq_";
+																																				stringstream ss_path;
+
+																																				bool show 				= false;
+																																				float max_range 		= -1; 					// i.e. gray = zero.
+																																				uint vol_layers 		= num_samples;			// i.e. 3 samples.
+																																				bool exception_tiff 	= false;
+																																				bool display 			= false; 				//obj["sample_se3_incr"].asBool();
+																																				cout << "\nRunCL::se3_rho_sq(..)_chk3.5   display="<< display<< endl << flush;
+
+																																				DownloadAndSave_3Channel_volume(  SE3_rho_map_mem,  ss.str(), paths.at("SE3_rho_map_mem"),  mm_size_bytes_C4, mm_Image_size, CV_32FC4, show, max_range, vol_layers, exception_tiff, count[0], display );
+																																			}
+																																			// void RunCL::DownloadAndSave_3Channel_volume( cl_mem buffer,   std::string count,   boost::filesystem::path folder,   size_t image_size_bytes,   cv::Size size_mat,   int type_mat,   bool show,   float max_range,   uint vol_layers,    bool exception_tiff /*=false*/,   float iter,   bool display)
+	read_Rho_sq(Rho_sq_results);
+}
+
+
+
 void RunCL::se3_rho_sq( float Rho_sq_results[3][8][4], const float count[4], uint start, uint stop,  float k2k_3_16_[3][16]  ){
 	int local_verbosity_threshold = verbosity_mp["RunCL::se3_rho_sq"];// -1;
 	const int num_samples  = tracking_num_samples;	// Rho_sq_results[samples=3][layers=8][channels=4]
@@ -172,6 +241,10 @@ void RunCL::se3_rho_sq( float Rho_sq_results[3][8][4], const float count[4], uin
 	for (int sample = 1; sample<=num_samples; sample++){
 		read_Rho_sq(Rho_sq_results[sample], sample-1);
 	}
+
+
+
+
 
 ////
 /*
