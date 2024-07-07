@@ -28,7 +28,7 @@ void print_matx44f(cv::Matx44f matx){
              cout << matx.operator()(row,col) << ", \t";
          }
     }
-    cout<<flush;
+    cout<<endl<<flush;
 }
 
 void print_matx61f(cv::Matx61f matx){

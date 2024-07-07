@@ -419,7 +419,10 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 	float 	stepsize 						= 1.0;
 
 	for (int iter = 0; iter<SE_iter; iter++){
-
+																																		if(verbosity>local_verbosity_threshold) {
+																																			cout << "\n\nDynamic_slam::estimateSE3() iter="<< iter
+																																			<<"  ##############################################################"<< flush;
+																																		}
 		float SE3_weights[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels]	 		= {{{0}}};
 		float SE3_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels]	 		= {{{0}}};
 		float Rho_sq_results[4][max_mipmap_layers][tracking_num_colour_channels]	 			= {{{FLT_MAX*0.99}}};
@@ -445,13 +448,30 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 		}
 		update_k2k_3( steps, update*stepsize, k2k_3_16 );
 
+		cout << endl << endl;
+		cout << "\nk2k_3_16[0] = ";		print_float_16(k2k_3_16[0]);
+		cout << "\nk2k_3_16[1] = ";		print_float_16(k2k_3_16[1]);
+		cout << "\nk2k_3_16[2] = ";		print_float_16(k2k_3_16[2]);
+		cout << "\nk2k_3_16[3] = ";		print_float_16(k2k_3_16[3]);
+
 		runcl.se3_rho_sq( Rho_sq_results, count, layer, layer+1, k2k_3_16 );
 
 		compute_optimum( steps, Rho_sq_results, layer, channel, &prediction, &optimum1, &stepsize );
 
-		Matx44f sample_k2k =  K  *	 keyframe_K2K *  LieToP_Matx(optimum1 * update ) * inv_K;
+		Matx44f sample_k2k =  K  *	 keyframe_pose2pose *  LieToP_Matx(optimum1 * update ) * inv_K;
 
 		Matx44f_To_float16arry(sample_k2k, kf_k2k);
+/*
+		cout << flush;
+		PRINT_MATX44F( K , );
+		PRINT_MATX44F( keyframe_pose2pose ,  );
+		PRINT_MATX44F( LieToP_Matx(optimum1 * update ) ,  );
+		PRINT_MATX44F( inv_K ,  );
+*/
+		PRINT_MATX44F(sample_k2k, );
+		print_float_16(kf_k2k);
+
+		cout << flush;
 
 		runcl.se3_rho_sq( Rho_sq_results[3], count, layer, layer+1, kf_k2k );
 
@@ -463,33 +483,37 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 				lowest = Rho_sq_results[i][layer][channel];
 				index = i;
 			}
-			cout << "\n Rho_sq_results[i][layer][channel]="<<Rho_sq_results[i][layer][channel];
+			cout << "\n Rho_sq_results["<<i<<"][layer][channel]="<<Rho_sq_results[i][layer][channel]<<", "<< Rho_sq_results[i][layer][3];
 		}
-		cout << "\n Rho_sq_results[i][layer][channel]="<<Rho_sq_results[3][layer][channel];
+		cout << "\n Rho_sq_results[i][layer][channel]="<<Rho_sq_results[3][layer][channel]<<", "<< Rho_sq_results[3][layer][3];
 
 		switch (index){
 			case 0:{														// The original sample is best, reduce step and repeat, or change level.
 				if ( stepsize > 1 / pow(2,(5-layer))  ){
 					stepsize  /=2;
-					cout <<"\ncase 0.0" <<flush;
+					cout <<"\ncostvol_frame_num="<<runcl.costvol_frame_num<<",  case 0.0,  stepsize="<<stepsize <<flush;
 				}
 				else if ( layer > 1 ){
 					layer--;
-					cout <<"\ncase 0.1" <<flush;
+					cout <<"\ncostvol_frame_num="<<runcl.costvol_frame_num<<",  case 0.1,  layer="<<layer <<flush;
 				}
 				break;
 			}
 			case 1:{														// Use sample 1
-				cout <<"\ncase 1" <<flush;
+				update_k2k( steps[1] * update *stepsize);
+				stepsize  /=2;
+				cout <<"\ncostvol_frame_num="<<runcl.costvol_frame_num<<",  case 1,  stepsize="<<stepsize <<flush;
 				break;
 			}
 			case 2:{														// Use sample 2
-				cout <<"\ncase 2" <<flush;
+				update_k2k( steps[2] * update *stepsize);
+				stepsize  *=2;
+				cout <<"\ncostvol_frame_num="<<runcl.costvol_frame_num<<",  case 2,  stepsize="<<stepsize <<flush;
 				break;
 			}
 			case 3:{														// The predicted optimum is best
 				update_k2k( optimum1 * update );
-				cout <<"\ncase 3" <<flush;
+				cout <<"\ncostvol_frame_num="<<runcl.costvol_frame_num<<",  case 3" <<flush;
 				break;
 			}
 			default: {
