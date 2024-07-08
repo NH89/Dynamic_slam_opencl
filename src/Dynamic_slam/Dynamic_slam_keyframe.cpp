@@ -62,7 +62,9 @@ void Dynamic_slam::initialize_keyframe_from_tracking(){																						// 
 	cv::Matx44f inv_pose2pose = getInvPose( keyframe_pose2pose );																			// cv::Matx44f Dynamic_slam::getInvPose(cv::Matx44f pose)
 	cv::Matx44f forward_keyframe2K  = K * inv_pose2pose * inv_K;	// TODO auto calibration												// Projects new keyframe pixel to previous keyframe
 																																			if(verbosity>local_verbosity_threshold){
-																																				cout<<"\n\nDynamic_slam::initialize_keyframe_from_tracking"<<flush;
+																																				cout<<"\n\nDynamic_slam::initialize_keyframe_from_tracking,  dataset_frame_num="<<runcl.dataset_frame_num<<flush;
+																																				PRINT_MATX16F( PToLie(keyframe_pose2pose), );
+																																				PRINT_MATX16F( PToLie(inv_pose2pose), );
 																																				PRINT_MATX44F(K,);
 																																				PRINT_MATX44F(keyframe_pose2pose,);
 																																				PRINT_MATX44F(inv_pose2pose,);
