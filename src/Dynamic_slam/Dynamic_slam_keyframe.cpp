@@ -25,7 +25,7 @@ void Dynamic_slam::initialize_keyframe_from_GT(){																							// GT de
 	keyframe_old_pose		= old_pose_GT;
 	keyframe_old_K			= old_K_GT;
 
-	keyframe_pose 			= pose_GT;
+	//keyframe_pose 			= pose_GT;
 	keyframe_K				= K_GT;
 	keyframe_inv_pose 		= inv_pose_GT;
 	keyframe_inv_K			= inv_K_GT;
@@ -51,10 +51,10 @@ void Dynamic_slam::initialize_keyframe_from_tracking(){																						// 
 	keyframe_old_pose		= keyframe_pose;
 	keyframe_old_K			= keyframe_K;
 
-	keyframe_pose 			= pose;
-	keyframe_K				= K;
-	keyframe_inv_pose 		= inv_pose;
-	keyframe_inv_K			= inv_K;
+	//keyframe_pose 			= pose;
+	//keyframe_K				= K;
+	//keyframe_inv_pose 		= inv_pose;
+	//keyframe_inv_K			= inv_K;
 /*
 	// keyframe_K2K   		// d_slam.predictFrame() sets 	keyframe_K2K  		= K * pose * keyframe_inv_pose * inv_old_K.					// Projects keyframe pixel to current frame
 	// keyframe_pose2pose	// d_slam.predictFrame() sets 	keyframe_pose2pose 	= pose2pose
@@ -87,6 +87,7 @@ void Dynamic_slam::initialize_keyframe_from_tracking(){																						// 
 		initialize_new_keyframe();																											// runcl.initialize_fp32_params();  runcl.keyFrameCount++; runcl.dataset_frame_num++;
 		runcl.transform_costvolume( forward_keyframe2K );
 	}
+	keyframe_pose2pose =  pose2pose; 																										// reset to predct next frame relative to the new keyframe.
 }
 
 void Dynamic_slam::initialize_new_keyframe(){

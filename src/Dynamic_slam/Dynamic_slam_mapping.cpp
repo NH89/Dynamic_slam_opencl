@@ -65,7 +65,6 @@ void Dynamic_slam::updateDepthCostVol(){																							// Built forwards
 	runcl.updateDepthCostVol( K2K_, runcl.costvol_frame_num, runcl.mm_start, runcl.mm_stop  ); 										// NB in DTAM_opencl : void RunCL::calcCostVol(float* k2k,  cv::Mat &image)
 																																			// in  void Dynamic_slam::estimateSE3() above : runcl.estimateSE3(SE3_reults, Rho_sq_results, iter, 0, 8);
 																																			// -> mipmap_call_kernel( se3_grad_kernel, m_queue, start, stop );
-
 }
 
 void Dynamic_slam::buildDepthCostVol_fast_peripheral(){																						// Higher levels only, built on current frame.
