@@ -50,12 +50,12 @@ void Dynamic_slam::initialize_keyframe_from_tracking(){																						// 
 
 	keyframe_old_pose		= keyframe_pose;
 	keyframe_old_K			= keyframe_K;
-
+/*
 	//keyframe_pose 			= pose;
 	//keyframe_K				= K;
 	//keyframe_inv_pose 		= inv_pose;
 	//keyframe_inv_K			= inv_K;
-/*
+
 	// keyframe_K2K   		// d_slam.predictFrame() sets 	keyframe_K2K  		= K * pose * keyframe_inv_pose * inv_old_K.					// Projects keyframe pixel to current frame
 	// keyframe_pose2pose	// d_slam.predictFrame() sets 	keyframe_pose2pose 	= pose2pose
 */
@@ -71,7 +71,6 @@ void Dynamic_slam::initialize_keyframe_from_tracking(){																						// 
 																																				PRINT_MATX44F(inv_K,);
 																																				PRINT_MATX44F(forward_keyframe2K,);
 																																			}
-
 	if( obj["initialize_tracking_from_GT_depth"].asBool() ){  																				// j_params.bool_mp["initialize_keyframe_from_GT"];
 																																			if(verbosity>local_verbosity_threshold){
 																																				cout<<"\nobj[\"Dynamic_slam::initialize_keyframe_from_tracking(),  initialize_tracking_from_GT_depth\"].asBool() = true "<<flush;
@@ -83,11 +82,11 @@ void Dynamic_slam::initialize_keyframe_from_tracking(){																						// 
 																																			if(verbosity>local_verbosity_threshold){
 																																				cout<<"\nobj[\"Dynamic_slam::initialize_keyframe_from_tracking(),  initialize_tracking_from_GT_depth\"].asBool() = false "<<flush;
 																																			}
-		runcl.transform_depthmap(forward_keyframe2K, runcl.amem );		// runcl.depth_mem );																	// Sets new depth_mem used in tracking.
+		//runcl.transform_depthmap(forward_keyframe2K, runcl.amem );		// runcl.depth_mem );																	// Sets new depth_mem used in tracking.
 		runcl.swap_costvol_pointers();																										// Swaps old cdatabuf and hdatabuf to temp_cdatabuf and temp_hdatabuf.
 		runcl.initializeDepthCostVol( runcl.amem );		// runcl.depth_mem );																// Zeros buffers: cdatabuf, hdatabuf, lomem, himem) Also copies  runcl.depth_mem -> runcl.keyframe_depth_mem
 		initialize_new_keyframe();																											// runcl.initialize_fp32_params();  runcl.keyFrameCount++; runcl.dataset_frame_num++;
-		runcl.transform_costvolume( forward_keyframe2K );
+		//runcl.transform_costvolume( forward_keyframe2K );
 	}
 	keyframe_pose2pose =  pose2pose; 																										// reset to predct next frame relative to the new keyframe.
 }
@@ -104,4 +103,22 @@ void Dynamic_slam::initialize_new_keyframe(){
 								// TODO   keyframe_K2K_GT, keyframe_K2K etc ?
 	runcl.keyFrameCount++;
 	//runcl.dataset_frame_num++;
+}
+
+
+void Dynamic_slam::initialize_keyframe_vec(){
+	// set this frame as a new keyframe in the vectors
+	uint frame_num = 0; // TODO
+	keyframe_index.push_back( frame_num );
+
+
+	// transform the depthmap
+
+
+	// transform the cost_volume
+
+
+	// reset parameters
+
+
 }

@@ -233,6 +233,70 @@ cv::Matx44f Dynamic_slam::getInvPose(cv::Matx44f pose) {	// Matx44f pose, Matx44
 																																			*/
 }
 
+void Dynamic_slam::getFrameData_vec( uint key_frame_index ){
+	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::getFrameData"];
+
+	std::string str = txt[runcl.dataset_frame_num].c_str();																					// grab .txt file from array of files (e.g. "scene_00_0000.txt")
+    char        *ch = new char [str.length()+1];
+    std::strcpy (ch, str.c_str());
+	cv::Mat T_alt;
+    convertAhandaPovRayToStandard(verbosity_mp, ch,R,T,cameraMatrix);
+	free(ch);
+																																			if(verbosity>local_verbosity_threshold) {
+																																				cout << "\nR=";
+																																				for (int i=0; i<3; i++){
+																																					cout <<"\n(";
+																																					for (int j=0; j<3; j++){
+																																						cout << ", " << R.at<float>(i,j);
+																																					}cout << ")\n";
+																																				}cout<<endl<<flush;
+
+																																				cout << "\nT=(";
+																																				for (int i=0; i<3; i++) cout << ", " << T.at<float>(i);
+																																				cout << ")\n"<<endl<<flush;
+																																			}
+	cv::Matx44f K_GT = cv::Matx44f::zeros();
+	for (int i=0; i<3; i++){
+		for (int j=0; j<3; j++){
+			K_GT.operator()(i,j) = cameraMatrix.at<float>(i,j);
+		}
+	}K_GT.operator()(3,3) = 1;
+
+	cv::Matx44f		K2K_GT;
+	cv::Matx44f		pose2pose_GT;
+	cv::Matx44f		keyframe_pose2pose_GT;
+	cv::Matx44f		keyframe_K2K_GT;
+	cv::Matx44f		pose2pose_accumulated_GT;
+
+	if ( runcl.dataset_frame_num > 0 ){
+		K2K_GT 						= old_K_GT * old_pose_GT * inv_pose_GT * inv_K_GT;  // ?
+		pose2pose_GT 				= old_pose_GT * inv_pose_GT;
+		keyframe_pose2pose_GT 		= pose_GT * keyframe_inv_pose_GT;
+		keyframe_K2K_GT 			= K_GT * pose_GT * keyframe_inv_pose_GT * keyframe_inv_K_GT;
+		pose2pose_accumulated_GT 	= frame_data_GT.back().pose_from_start * pose2pose_GT;
+	}else{
+		K2K_GT 						= cv::Matx44f::eye();				// If first frame, set to identity matrix.
+		pose2pose_GT 				= cv::Matx44f::eye();
+		keyframe_pose2pose_GT 		= cv::Matx44f::eye();
+		keyframe_K2K_GT 			= cv::Matx44f::eye();
+		pose2pose_accumulated_GT 	= cv::Matx44f::eye();
+	}
+	runcl.load_GT_depth(depth_GT, invert_GT_depth);
+
+	frame_datum new_frame;
+	new_frame.key_frame_index	=	key_frame_index ;					// uint
+	new_frame.K 				=   K_GT;								// cv::Matx44f
+	new_frame.inv_K 			=   generate_invK_(new_frame.K);
+	new_frame.pose 				=   getPose(R, T);
+	new_frame.inv_pose 			=   getInvPose(new_frame.pose);
+	new_frame.pose2pose_algebra =   PToLie(pose2pose_GT);				// cv::Matx16f
+	new_frame.pose_from_start	=   pose2pose_accumulated_GT;
+	new_frame.K2K 				=   K2K_GT;
+
+	frame_data_GT.push_back( new_frame );
+}
+
+
 void Dynamic_slam::getFrameData(){  // can load use separate CPU thread(s) ?
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::getFrameData"];// -2;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_chk 0.  runcl.dataset_frame_num = "<< runcl.dataset_frame_num <<flush;

@@ -485,7 +485,8 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 				lowest = Rho_sq_results[i][layer][channel];
 				index = i;
 			}else if (Rho_sq_results[i][layer][3] <= 0.8*Rho_sq_results[0][layer][3]) { cout << "\n Rho_sq_results["<<i<<"][layer][channel]  excluded due to low overlap"; }
-			cout << "\n Rho_sq_results["<<i<<"][layer][channel]="<<Rho_sq_results[i][layer][channel]<<", "<< Rho_sq_results[i][layer][3] <<",\t"<<Rho_sq_results[i][layer][channel] / Rho_sq_results[i][layer][3]<<",\t iter="<<iter;
+			cout << "\n Rho_sq_results["<<i<<"][layer][channel]="<<Rho_sq_results[i][layer][channel]<<", "<< Rho_sq_results[i][layer][3] <<",\t"<<Rho_sq_results[i][layer][channel] / Rho_sq_results[i][layer][3]<<",\t iter="<<iter
+			<<",  dataset_frame_num="<<runcl.dataset_frame_num<<",  costvol_frame_num="<<runcl.costvol_frame_num;
 		}
 		cout << "\n Rho_sq_results index="<<index;
 
@@ -493,7 +494,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 			case 0:{														// The original sample is best, reduce step and repeat, or change level.
 				if ( stepsize > 1 / pow(2,(5-layer))  ){
 					stepsize  /=2;
-					cout <<"\ncostvol_frame_num="<<runcl.costvol_frame_num<<",  case 0.0,  stepsize="<<stepsize <<flush;
+					cout <<"\ndataset_frame_num="<<runcl.dataset_frame_num<<",  costvol_frame_num="<<runcl.costvol_frame_num<<",  case 0.0,  stepsize="<<stepsize <<flush;
 				}
 				else if ( layer > 1 ){
 					layer--;

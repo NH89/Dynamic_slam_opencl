@@ -54,7 +54,7 @@ class Dynamic_slam
     struct frame_datum{
       uint key_frame_index;           // Index within this vector< >, of the keyframe for this frame.
       cv::Matx44f K,      inv_K;      // camera intrinsic matrix
-      cv::Matx44f pose,   inv_pose;   // pose in abs coords. (not pose2pose from prev_frame, nor from keyframe)
+      cv::Matx44f pose,   inv_pose;   // pose in abs coords. (not pose2pose from prev_frame, nor from keyframe) ?
       cv::Matx16f pose2pose_algebra;
       cv::Matx44f pose_from_start;    // pose2pose_accumulated
       cv::Matx44f K2K;                //
@@ -66,6 +66,11 @@ class Dynamic_slam
     vector<frame_datum> frame_data_GT;        //
     vector<frame_datum> error_data;           // difference between prediction and GT.
     vector<uint>        keyframe_index;       // Vector listing the idices of the keyframes, within frame_data vector
+
+
+
+
+
 
 
     cv::Matx44f K_start,            inv_K_start,            pose_start,             inv_pose_start,           K2K_start,        pose2pose_start ;                                 // frame_data[0]
@@ -110,6 +115,8 @@ class Dynamic_slam
     void use_GT_pose();
     void getFrame();
     void getFrameData();
+    void getFrameData_vec(uint key_frame_index);
+
     cv::Matx44f getPose(cv::Mat R, cv::Mat T);
     cv::Matx44f getInvPose(cv::Matx44f pose);
 
@@ -127,6 +134,8 @@ class Dynamic_slam
     void getResult();                         // called at end of main(). Currentlyshows mapping params and saves amem & dmem depth maps.
 
     /////////////////////////////////////// Dynamic_slam_keyframe.cpp
+    void initialize_keyframe_vec();
+
     void initialize_keyframe();
     void initialize_keyframe_from_GT();
     void initialize_keyframe_from_tracking();
