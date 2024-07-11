@@ -43,6 +43,26 @@ void Dynamic_slam::artificial_pose_error(){
 	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] = K2K.operator()(i/4, i%4);  }														if(verbosity>local_verbosity_threshold){ PRINT_FLOAT_16(runcl.fp32_k2keyframe,New); cout << "\nDynamic_slam::artificial_pose_error()_finish ##############################################" << flush;}
 }
 
+void Dynamic_slam::predictFrame_vec(){
+	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::predictFrame"];
+	vector<frame_datum>::iterator frame_minus_one 		= 	frame_data.end()--;
+	vector<frame_datum>::iterator frame_minus_two 		= 	frame_minus_one--;
+
+	frame_data.end()->frame_data.K 						= 	frame_minus_one->frame_data.K;
+	frame_data.end()->frame_data.inv_K 					= 	frame_minus_one->frame_data.inv_K;
+
+	frame_data.end()->frame_data.keyframe2pose    		= 	frame_minus_one->frame_data.keyframe2pose  *  frame_minus_one->frame_data.keyframe2pose  *  frame_minus_two->frame_data.inv_pose; 			// Assume linear velocity in SE3. ### error problem in first frames since keyframe
+
+	//frame_data.end()->frame_data.pose					=	frame_minus_one->frame_data.;
+	//frame_data.end()->frame_data.inv_pose				=	frame_minus_one->frame_data.;
+
+	frame_data.end()->frame_data.keyframe2pose_algebra	=	PToLie(frame_data.end()->frame_data.keyframe2pose );
+	frame_data.end()->frame_data.pose_from_start		=	keyframe_data.end()->frame_data.frame_data.pose_from_start   *   frame_data.end()->frame_data.keyframe2pose;
+
+	frame_data.end()->frame_data.K2K					=	frame_data.end()->frame_data.K  *  frame_data.end()->frame_data.keyframe2pose  *  frame_data.end()->frame_data.inv_K;
+}
+
+
 void Dynamic_slam::predictFrame(){
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::predictFrame"];/* -2;*/														if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::predictFrame_chk 0.  runcl.dataset_frame_num = "<< runcl.dataset_frame_num  << flush;
 																																				PRINT_MATX44F(K2K,Old);
@@ -58,7 +78,7 @@ void Dynamic_slam::predictFrame(){
 																																				PRINT_MATX44F(K2K,Old);
 																																				PRINT_MATX44F(keyframe_K2K,Old);
 																																			}
-	keyframe_inv_old_pose 			= getInvPose(keyframe_pose2pose);
+	keyframe_inv_old_pose 			= getInvPose(keyframe_old_pose2pose);
 	pose2pose 						= keyframe_inv_old_pose * keyframe_pose2pose;
 	if (runcl.costvol_frame_num>0)	{
 		pose2pose 					= pose2pose * getInvPose(old_pose2pose) * pose2pose;													// Only use accel if there are enough previous frames.

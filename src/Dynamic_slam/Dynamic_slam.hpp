@@ -26,52 +26,66 @@ class Dynamic_slam
   public:
     ~Dynamic_slam();
     Dynamic_slam(Json::Value obj_, int_map verbosity_mp);
-    Json::Value obj;
-    int_map verbosity_mp;
+    Json::Value             obj;
+    int_map                 verbosity_mp;
+    bool                    invert_GT_depth = false;
 
-    RunCL runcl;
-    int   verbosity;
-    bool  invert_GT_depth = false;
-    int   SE_iter_per_layer, SE3_stop_layer, SE3_start_layer, SE_iter;
-    float SE3_Rho_sq_threshold[5][3], SE_factor, SE3_update_dof_weights[6], SE3_update_layer_weights[5];
+    RunCL                   runcl;
+
+    int                     verbosity;
+    int                     SE_iter_per_layer;
+    int                     SE3_stop_layer;
+    int                     SE3_start_layer;
+    int                     SE_iter;
+    float                   SE_factor;
+    float                   SE3_Rho_sq_threshold[5][3];
+    float                   SE3_update_dof_weights[6];
+    float                   SE3_update_layer_weights[5];
 
     // image parameters
-    cv::Size    base_image_size;
-    int         base_image_type;
+    cv::Size                base_image_size;
+    int                     base_image_type;
 
     // data files
-    std::string       rootpath;
-    fs::path          root;
-    vector<fs::path>  txt;
-    vector<fs::path>  png;
-    vector<fs::path>  depth;
-
+    std::string             rootpath;
+    fs::path                root;
+    vector<fs::path>        txt;
+    vector<fs::path>        png;
+    vector<fs::path>        depth;
 
     // camera & pose params
-    const cv::Matx44f Matx44f_zero = {0,0,0,0,  0,0,0,0,  0,0,0,0,  0,0,0,0};   //  = cv::Matx44f::zeros();//
-    const cv::Matx44f Matx44f_eye  = {1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1};
+    const cv::Matx44f       Matx44f_zero = {0,0,0,0,  0,0,0,0,  0,0,0,0,  0,0,0,0};   //  = cv::Matx44f::zeros();//
+    const cv::Matx44f       Matx44f_eye  = {1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1};
     
-    struct frame_datum{
+    struct pose_datum{
       uint key_frame_index;           // Index within this vector< >, of the keyframe for this frame.
-      cv::Matx44f K,      inv_K;      // camera intrinsic matrix
-      cv::Matx44f pose,   inv_pose;   // pose in abs coords. (not pose2pose from prev_frame, nor from keyframe) ?
-      cv::Matx16f pose2pose_algebra;
-      cv::Matx44f pose_from_start;    // pose2pose_accumulated
-      cv::Matx44f K2K;                //
-
+      cv::Matx44f           K;                  // camera intrinsic matrix
+      cv::Matx44f           inv_K;
+      cv::Matx44f           pose;               // pose in abs coords. (not pose2pose from prev_frame, nor from keyframe) ?
+      cv::Matx44f           inv_pose;
+      cv::Matx44f           keyframe2pose;
+      cv::Matx16f           keyframe2pose_algebra;
+      cv::Matx44f           pose_from_start;    // pose2pose_accumulated
+      cv::Matx44f           K2K;                //
       // lens distortion params
-
     };
-    vector<frame_datum> frame_data;           // (frame_data start, old, current, key_frame) are now indices of elements in the vector.
-    vector<frame_datum> frame_data_GT;        //
-    vector<frame_datum> error_data;           // difference between prediction and GT.
-    vector<uint>        keyframe_index;       // Vector listing the idices of the keyframes, within frame_data vector
+    struct frame_datum{
+      uint                  keyframe_index;
+      pose_datum            frame_data;
+      pose_datum            frame_data_GT;
+      pose_datum            error_data;
+    };
+    struct keyframe_datum{
+      cv::Mat               reference_image;
+      cv::Mat               depthmap;
+      frame_datum           frame_data;
+    };
+    vector<frame_datum>     frame_data;           // (frame_data start, old, current, key_frame) are now indices of elements in the vector.
+    vector<keyframe_datum>  keyframe_data;
 
 
 
-
-
-
+    //////////////////  old non_vector pose variables:
 
     cv::Matx44f K_start,            inv_K_start,            pose_start,             inv_pose_start,           K2K_start,        pose2pose_start ;                                 // frame_data[0]
     cv::Matx44f old_K,              inv_old_K,              old_pose,               inv_old_pose,             old_K2K;                                                            // frame_data[current_frame-1]
@@ -109,6 +123,7 @@ class Dynamic_slam
     // functions ////////////////////////////////////////
     /////////////////////////////////////// Dynamic_slam_class.cpp
     void initialize_resultsMat();
+    void initialize_camera_vec();
     void initialize_camera();
 
     int  nextFrame();
@@ -153,6 +168,8 @@ class Dynamic_slam
     void report_GT_pose_error();
     void display_frame_resluts();
     void artificial_pose_error();
+
+    void predictFrame_vec();
     void predictFrame();
     cv::Matx44f generate_invK_(cv::Matx44f K_);
     void generate_invK();

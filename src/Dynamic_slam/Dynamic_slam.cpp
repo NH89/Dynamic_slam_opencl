@@ -67,6 +67,20 @@ void Dynamic_slam::initialize_resultsMat(){	// need to take layer 2, or read it 
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::initialize_resultsMat()_chk  finished\n" 	<< flush;
 }
 
+void Dynamic_slam::initialize_camera_vec(){
+	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::initialize_camera"];// verbosity_mp[""];//2;
+
+	auto k = frame_data.end()->frame_data.K;
+	k = k.zeros();																															// NB In DTAM_opencl, "cameraMatrix" found by convertAhandPovRay, called by fileLoader
+	k.operator()(3,3) = 1;
+	for (int i=0; i<9; i++){k.operator()(i/3,i%3) = obj["cameraMatrix"][i].asFloat(); }
+	frame_data.end()->frame_data.K = k;
+
+
+
+
+}
+
 void Dynamic_slam::initialize_camera(){
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::initialize_camera"];// verbosity_mp[""];//2;
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_chk 0:" <<flush;}
@@ -79,8 +93,9 @@ void Dynamic_slam::initialize_camera(){
 																																				PRINT_MATX44F(K,);
 																																				print_json_float_9(obj, "cameraMatrix");
 																																			}
-	R 							= cv::Mat::eye(3,3 , CV_32FC1);																							// intialize ground truth extrinsic data, NB Mat (int rows, int cols, int type)
+	R 							= cv::Mat::eye(3,3 , CV_32FC1);																				// intialize ground truth extrinsic data, NB Mat (int rows, int cols, int type)
 	T 							= cv::Mat::zeros(3,1 , CV_32FC1);
+
 	keyframe_pose2pose 			= Matx44f_eye;
 	pose2pose					= Matx44f_eye;
 	K2K							= Matx44f_eye;
@@ -89,10 +104,12 @@ void Dynamic_slam::initialize_camera(){
 																																			}
 	// TODO Also initialize any lens distorsion, vignetting. etc
 	getFrameData();																															// Loads GT depth of the new frame. NB depends on image.size from getFrame().
+
 	K_start 					= K_GT; 																									// NB The same frame will be loaded to the opposite imgmem, on the first iteration of Dynamic_slam::nextFrame()
 	inv_K_start 				= inv_K_GT;
 	pose_start 					= pose_GT;
 	inv_pose_start 				= inv_pose_GT;
+
 	K2K_GT 						= Matx44f_eye; 																								//  = cv::Matx44f::eye();
 	K2K_start 					= Matx44f_eye;
 	pose2pose_GT 				= Matx44f_eye;
@@ -109,6 +126,10 @@ int Dynamic_slam::nextFrame() {
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::nextFrame"];// -2;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::nextFrame_chk 0,  runcl.dataset_frame_num="<<runcl.dataset_frame_num<<" \n" << flush; //  runcl.frame_bool_idx="<<runcl.frame_bool_idx<<"
 																					auto step_0 = high_resolution_clock::now();
+	frame_datum new_frame;
+	new_frame.keyframe_index		= keyframe_data.size();
+	frame_data.push_back(new_frame); //////////////////////////////////////////
+
 	predictFrame();																	auto step_1 = high_resolution_clock::now();				// updates pose2pose for next frame in cost volume.
 	getFrameData();																	auto step_2 = high_resolution_clock::now();				// Loads GT depth of the new frame. NB depends on image.size from getFrame().
 	if(obj["use_GT_pose"].asBool() == true )		{	use_GT_pose();	}			auto step_3 = high_resolution_clock::now();
