@@ -59,7 +59,13 @@ void Dynamic_slam::updateDepthCostVol(){																							// Built forwards
 // Select naive depth map
 // See CostVol::updateCost(..), RunCL::calcCostVol(..) &  __kernel void BuildCostVolume2
 																																			// int count: Iteration of for loop in this function. Here used to count num imgages use in costvol.
-	cv::Matx44f K2K_ =  keyframe_K2K_GT; 					//TODO K2K; 		// needs keyframe_K2K from keyframe. 						// camera-to-camera transform for this image to the keyframe of this cost vol.
+	cv::Matx44f K2K_;
+	if( obj["use_GT_pose"].asBool() ){
+		K2K_ = frame_data.end()->frame_data.K2K;
+	}else{
+		K2K_ = frame_data.end()->frame_data_GT.K2K;
+	}
+	// keyframe_K2K_GT; 					//TODO K2K; 		// needs keyframe_K2K from keyframe. 						// camera-to-camera transform for this image to the keyframe of this cost vol.
 	//bool image_ = runcl.frame_bool_idx; 																									// Index to correct img pyramid buffer on device.
 
 	runcl.updateDepthCostVol( K2K_, runcl.costvol_frame_num, runcl.mm_start, runcl.mm_stop  ); 										// NB in DTAM_opencl : void RunCL::calcCostVol(float* k2k,  cv::Mat &image)

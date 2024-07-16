@@ -74,7 +74,8 @@ cout << "\n\nmain_chk_6" <<flush;
 																			// NB need to initialize the cost volume with a key frame, and tracking with a depth map.
 																			// Also need a test for when to start a new keyframe.
 	cerr << "\n\nmain()  dynamic_slam.initialize_keyframe_from_GT()"<<flush;
-	dynamic_slam.initialize_keyframe_from_GT();
+	dynamic_slam.initialize_keyframe_vec();
+	//dynamic_slam.initialize_keyframe_from_GT();
 	frame_count++;
 																			if(verbosity_>0) cout << "\n main_chk 2\n" << flush;
 	do{																		// Long do while not yet crashed loop.

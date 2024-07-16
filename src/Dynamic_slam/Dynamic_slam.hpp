@@ -127,10 +127,11 @@ class Dynamic_slam
     void initialize_camera();
 
     int  nextFrame();
+    void use_GT_pose_vec();
     void use_GT_pose();
     void getFrame();
     void getFrameData();
-    void getFrameData_vec(uint key_frame_index);
+    void getFrameData_vec();
 
     cv::Matx44f getPose(cv::Mat R, cv::Mat T);
     cv::Matx44f getInvPose(cv::Matx44f pose);
@@ -167,6 +168,8 @@ class Dynamic_slam
     /////////////////////////////////////// Dynamic_slam_tracking.cpp
     void report_GT_pose_error();
     void display_frame_resluts();
+
+    void artificial_pose_error_vec();
     void artificial_pose_error();
 
     void predictFrame_vec();
