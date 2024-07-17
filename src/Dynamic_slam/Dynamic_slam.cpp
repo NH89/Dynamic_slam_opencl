@@ -83,8 +83,7 @@ cout<<"\n frame_data.size() = "<<frame_data.size()<<flush;
 	R 								= cv::Mat::eye(3,3 , CV_32FC1);																				// intialize ground truth extrinsic data, NB Mat (int rows, int cols, int type)
 	T 								= cv::Mat::zeros(3,1 , CV_32FC1);
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 1:" <<flush;}
-
-	auto data 						= frame_data.end()->frame_data;
+	pose_datum data;
 	data.inv_K 						= generate_invK_(k);
 	data.pose						= Matx44f_eye;               					// pose in abs coords. (not pose2pose from prev_frame, nor from keyframe) ?
 	data.inv_pose					= Matx44f_eye;
@@ -92,13 +91,15 @@ cout<<"\n frame_data.size() = "<<frame_data.size()<<flush;
 	data.keyframe2pose_algebra		= {0};
 	data.pose_from_start			= Matx44f_eye;
 	data.K2K						= Matx44f_eye;
-	frame_data.end()->frame_data	= data;
-	frame_data.end()->frame_data_GT	= data;
-	frame_data.end()->error_data	= data;
+
+	frame_datum datum;
+	datum.frame_data	= data;
+	datum.frame_data_GT	= data;
+	datum.error_data	= data;
+	frame_data.push_back(datum);
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 2:" <<flush;}
-
 	getFrameData_vec();
-
+																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 3:" <<flush;}
 	generate_SE3_k2k( SE3_k2k );																											// fills float[96] ie 6xfloat[16] from conf.json intrinsic camera matrix + SE3 increments.
 	runcl.precom_param_maps( SE3_k2k );																										// GPU computes J(u,v/SE3) Jacobian of optical flow wrt SE3.
 	getFrame();
@@ -317,6 +318,12 @@ void Dynamic_slam::getFrameData_vec(){
 		keyframe_K2K_GT 			= cv::Matx44f::eye();
 		pose2pose_accumulated_GT 	= cv::Matx44f::eye();
 	}
+
+
+	if ( runcl.baseImage.empty() ) {cerr << "\nDynamic_slam::getFrameData_vec():   Error runcl.baseImage.empty() "<<flush;  exit(1); }
+	int r = runcl.baseImage.rows;  //image.rows;
+    int c = runcl.baseImage.cols;  //image.cols;
+	depth_GT = loadDepthAhanda(verbosity_mp, depth[runcl.dataset_frame_num].string(), r,c,cameraMatrix);
 	runcl.load_GT_depth(depth_GT, invert_GT_depth);
 
 	frame_datum new_frame;

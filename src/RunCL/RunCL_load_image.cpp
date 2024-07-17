@@ -342,7 +342,8 @@ void RunCL::img_gradients(){ //getFrame();
 void RunCL::load_GT_depth(cv::Mat GT_depth, bool invert){ //getFrameData();, cv::Matx44f GT_K2K,   cv::Matx44f GT_pose2pose
     int local_verbosity_threshold = verbosity_mp["RunCL::load_GT_depth"];// -4;
 																																		if(verbosity>local_verbosity_threshold) cout << "\nRunCL::load_GT_depth(..)_chk_0:"<<flush;
-    cl_event 		writeEvt;
+																																		if ( GT_depth.empty() ) {cerr << "\nRunCL::load_GT_depth(..)_chk_0:   Error  GT_depth.empty() "<<flush;  exit(1); }
+	cl_event 		writeEvt;
 	cl_int 	 		status;
 	stringstream 	ss;
 	ss << "__load_GT_depth" << (keyFrameCount*1000 + costvol_frame_num);
