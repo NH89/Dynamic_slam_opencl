@@ -61,9 +61,9 @@ void Dynamic_slam::updateDepthCostVol(){																							// Built forwards
 																																			// int count: Iteration of for loop in this function. Here used to count num imgages use in costvol.
 	cv::Matx44f K2K_;
 	if( obj["use_GT_pose"].asBool() ){
-		K2K_ = frame_data.end()->frame_data.K2K;
+		K2K_ = frame_data.back().frame_data.K2K;
 	}else{
-		K2K_ = frame_data.end()->frame_data_GT.K2K;
+		K2K_ = frame_data.back().frame_data_GT.K2K;
 	}
 	// keyframe_K2K_GT; 					//TODO K2K; 		// needs keyframe_K2K from keyframe. 						// camera-to-camera transform for this image to the keyframe of this cost vol.
 	//bool image_ = runcl.frame_bool_idx; 																									// Index to correct img pyramid buffer on device.

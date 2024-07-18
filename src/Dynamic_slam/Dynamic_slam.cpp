@@ -71,14 +71,14 @@ void Dynamic_slam::initialize_resultsMat(){	// need to take layer 2, or read it 
 void Dynamic_slam::initialize_camera_vec(){
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::initialize_camera"];// verbosity_mp[""];//2;
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 0:" <<flush;}
-	cv::Matx44f k ;//= frame_data.end()->frame_data.K;
+	cv::Matx44f k ;//= frame_data.back()->frame_data.K;
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 0.1:" <<flush;}
 	k = k.zeros();																															// NB In DTAM_opencl, "cameraMatrix" found by convertAhandPovRay, called by fileLoader
 	k.operator()(3,3) = 1;
 	for (int i=0; i<9; i++){k.operator()(i/3,i%3) = obj["cameraMatrix"][i].asFloat(); }
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 0.2:" <<flush;}
 cout<<"\n frame_data.size() = "<<frame_data.size()<<flush;
-	//frame_data.end()->frame_data.K 	= k;
+	//frame_data.back()->frame_data.K 	= k;
 
 	R 								= cv::Mat::eye(3,3 , CV_32FC1);																				// intialize ground truth extrinsic data, NB Mat (int rows, int cols, int type)
 	T 								= cv::Mat::zeros(3,1 , CV_32FC1);
@@ -100,7 +100,12 @@ cout<<"\n frame_data.size() = "<<frame_data.size()<<flush;
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 2:" <<flush;}
 	getFrameData_vec();
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 3:" <<flush;}
-	generate_SE3_k2k( SE3_k2k );																											// fills float[96] ie 6xfloat[16] from conf.json intrinsic camera matrix + SE3 increments.
+
+																																			if(verbosity>local_verbosity_threshold) {
+																																				PRINT_MATX44F(frame_data.back().frame_data_GT.K,);
+																																				PRINT_MATX44F(frame_data.back().frame_data_GT.inv_K,);
+																																			}
+	generate_SE3_k2k_vec( SE3_k2k );																											// fills float[96] ie 6xfloat[16] from conf.json intrinsic camera matrix + SE3 increments.
 	runcl.precom_param_maps( SE3_k2k );																										// GPU computes J(u,v/SE3) Jacobian of optical flow wrt SE3.
 	getFrame();
 																																			if (verbosity>local_verbosity_threshold){ cout << "\nDynamic_slam::initialize_camera_vec Finished:" <<flush; }
@@ -291,11 +296,18 @@ void Dynamic_slam::getFrameData_vec(){
 	cv::Mat T_alt;
     convertAhandaPovRayToStandard(verbosity_mp, ch,R,T,cameraMatrix);
 	free(ch);
+																																			if(verbosity>local_verbosity_threshold) {
+																																				cout << "\n Dynamic_slam::getFrameData_vec_chk 1";
+																																				cout << "\n R = " << R;
+																																				cout << "\n T = " << T;
+																																				cout << "\n cameraMatrix = " << cameraMatrix;
+																																			}
 
 	cv::Matx44f K_GT = cv::Matx44f::zeros();
 	for (int i=0; i<3; i++){
 		for (int j=0; j<3; j++){
 			K_GT.operator()(i,j) = cameraMatrix.at<float>(i,j);
+			cout << ", " <<  cameraMatrix.at<float>(i,j);
 		}
 	}K_GT.operator()(3,3) = 1;
 
@@ -310,7 +322,7 @@ void Dynamic_slam::getFrameData_vec(){
 		pose2pose_GT 				= old_pose_GT * inv_pose_GT;
 		keyframe_pose2pose_GT 		= pose_GT * keyframe_inv_pose_GT;
 		keyframe_K2K_GT 			= K_GT * pose_GT * keyframe_inv_pose_GT * keyframe_inv_K_GT;
-		pose2pose_accumulated_GT 	= frame_data.end()->frame_data_GT.pose_from_start * pose2pose_GT;	// .back()
+		pose2pose_accumulated_GT 	= frame_data.back().frame_data_GT.pose_from_start * pose2pose_GT;	// .back()
 	}else{
 		K2K_GT 						= cv::Matx44f::eye();												// If first frame, set to identity matrix.
 		pose2pose_GT 				= cv::Matx44f::eye();
@@ -337,6 +349,29 @@ void Dynamic_slam::getFrameData_vec(){
 	new_frame.frame_data_GT.K2K 					=   K2K_GT;
 
 	frame_data.push_back( new_frame );
+
+																																			if(verbosity>local_verbosity_threshold) {
+																																				PRINT_MATX44F(K_GT,);
+																																				PRINT_MATX44F(new_frame.frame_data_GT.K,);
+																																				PRINT_MATX44F(new_frame.frame_data_GT.inv_K,);
+																																				PRINT_MATX44F(new_frame.frame_data_GT.pose,);
+																																				PRINT_MATX44F(new_frame.frame_data_GT.inv_pose,);
+
+																																				PRINT_MATX44F(frame_data.back().frame_data_GT.pose ,);
+																																				PRINT_MATX44F(frame_data.back().frame_data_GT.K,);
+																																				PRINT_MATX44F(frame_data.back().frame_data_GT.inv_K,);
+
+																																				cout << "\nframe_data.size()="<<frame_data.size()<<flush;
+																																				vector<frame_datum>::iterator ptr;
+																																				int iteration=0;
+																																				for (ptr = frame_data.begin(); ptr < frame_data.end(); ptr++, iteration++) {
+																																					cout<<"\n\n### iteration="<< iteration  << flush;
+																																					PRINT_MATX44F(frame_data[iteration].frame_data_GT.pose ,);
+																																					PRINT_MATX44F(ptr->frame_data_GT.pose ,);
+																																					PRINT_MATX44F(ptr->frame_data_GT.K,);
+																																					PRINT_MATX44F(ptr->frame_data_GT.inv_K,);
+																																				}
+																																			}
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec_chk Finished "<<flush;
 }
 
@@ -452,7 +487,7 @@ void Dynamic_slam::getFrameData(){  // can load use separate CPU thread(s) ?
 }
 
 void Dynamic_slam::use_GT_pose_vec(){
-	frame_data.end()->frame_data = frame_data.end()->frame_data_GT;
+	frame_data.back().frame_data = frame_data.back().frame_data_GT;
 }
 
 void Dynamic_slam::use_GT_pose(){

@@ -40,12 +40,12 @@ void Dynamic_slam::artificial_pose_error_vec(){
 	for (int SE3=0; SE3<6; SE3++)  pose_step_algebra.operator()(0,SE3) = obj["Artif_pose_err_algebra"][SE3].asFloat();
 	Matx44f poseStep 	= LieToP_Matx(pose_step_algebra);																					if(verbosity>local_verbosity_threshold){ PRINT_MATX44F(poseStep,);	PRINT_MATX16F(pose_step_algebra,);	PRINT_MATX16F(PToLie(keyframe_pose2pose),True);  }
 
-	frame_data.end()->frame_data.keyframe2pose = frame_data.end()->frame_data.keyframe2pose * poseStep;										if(verbosity>local_verbosity_threshold){ PRINT_MATX16F(PToLie(frame_data.end()->frame_data.keyframe2pose),Start); }
+	frame_data.back().frame_data.keyframe2pose = frame_data.back().frame_data.keyframe2pose * poseStep;										if(verbosity>local_verbosity_threshold){ PRINT_MATX16F(PToLie(frame_data.back().frame_data.keyframe2pose),Start); }
 
-	frame_data.end()->frame_data.K2K 	= frame_data.end()->frame_data.K  * frame_data.end()->frame_data.keyframe2pose  *  frame_data.end()->frame_data.inv_K;
-																																			if(verbosity>local_verbosity_threshold){ PRINT_MATX44F(frame_data.end()->frame_data.K2K,New);	PRINT_FLOAT_16(runcl.fp32_k2keyframe,Old); }// Add error of one step in the 2nd SE3 DoF.
+	frame_data.back().frame_data.K2K 	= frame_data.back().frame_data.K  * frame_data.back().frame_data.keyframe2pose  *  frame_data.back().frame_data.inv_K;
+																																			if(verbosity>local_verbosity_threshold){ PRINT_MATX44F(frame_data.back().frame_data.K2K,New);	PRINT_FLOAT_16(runcl.fp32_k2keyframe,Old); }// Add error of one step in the 2nd SE3 DoF.
 
-	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] = frame_data.end()->frame_data.K2K.operator()(i/4, i%4);  }							if(verbosity>local_verbosity_threshold){ PRINT_FLOAT_16(runcl.fp32_k2keyframe,New); cout << "\nDynamic_slam::artificial_pose_error()_finish ##############################################" << flush;}
+	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] = frame_data.back().frame_data.K2K.operator()(i/4, i%4);  }							if(verbosity>local_verbosity_threshold){ PRINT_FLOAT_16(runcl.fp32_k2keyframe,New); cout << "\nDynamic_slam::artificial_pose_error()_finish ##############################################" << flush;}
 }
 
 void Dynamic_slam::artificial_pose_error(){
@@ -63,17 +63,17 @@ void Dynamic_slam::predictFrame_vec(){
 	vector<frame_datum>::iterator frame_minus_one 		= 	frame_data.end()--;
 	vector<frame_datum>::iterator frame_minus_two 		= 	frame_minus_one--;
 
-	frame_data.end()->frame_data.K 						= 	frame_minus_one->frame_data.K;
-	frame_data.end()->frame_data.inv_K 					= 	frame_minus_one->frame_data.inv_K;
-	frame_data.end()->frame_data.keyframe2pose    		= 	frame_minus_one->frame_data.keyframe2pose  *  frame_minus_one->frame_data.keyframe2pose  *  frame_minus_two->frame_data.inv_pose; 			// Assume linear velocity in SE3. ### error problem in first frames since keyframe
+	frame_data.back().frame_data.K 						= 	frame_minus_one->frame_data.K;
+	frame_data.back().frame_data.inv_K 					= 	frame_minus_one->frame_data.inv_K;
+	frame_data.back().frame_data.keyframe2pose    		= 	frame_minus_one->frame_data.keyframe2pose  *  frame_minus_one->frame_data.keyframe2pose  *  frame_minus_two->frame_data.inv_pose; 			// Assume linear velocity in SE3. ### error problem in first frames since keyframe
 
-	//frame_data.end()->frame_data.pose					=	frame_minus_one->frame_data.;
-	//frame_data.end()->frame_data.inv_pose				=	frame_minus_one->frame_data.;
+	//frame_data.back().frame_data.pose					=	frame_minus_one->frame_data.;
+	//frame_data.back().frame_data.inv_pose				=	frame_minus_one->frame_data.;
 
-	frame_data.end()->frame_data.keyframe2pose_algebra	=	PToLie(frame_data.end()->frame_data.keyframe2pose );
-	frame_data.end()->frame_data.pose_from_start		=	keyframe_data.end()->frame_data.frame_data.pose_from_start   *   frame_data.end()->frame_data.keyframe2pose;
+	frame_data.back().frame_data.keyframe2pose_algebra	=	PToLie(frame_data.back().frame_data.keyframe2pose );
+	frame_data.back().frame_data.pose_from_start		=	keyframe_data.back().frame_data.frame_data.pose_from_start   *   frame_data.back().frame_data.keyframe2pose;
 
-	frame_data.end()->frame_data.K2K					=	frame_data.end()->frame_data.K  *  frame_data.end()->frame_data.keyframe2pose  *  frame_data.end()->frame_data.inv_K;
+	frame_data.back().frame_data.K2K					=	frame_data.back().frame_data.K  *  frame_data.back().frame_data.keyframe2pose  *  frame_data.back().frame_data.inv_K;
 }
 
 
@@ -181,13 +181,103 @@ cv::Matx44f Dynamic_slam::generate_invK_(cv::Matx44f K_){
 																																				//PRINT_MATX44F(pose,);
 																																				//PRINT_MATX44F(inv_old_pose,);
 																																				PRINT_MATX44F(K_,);
-																																				PRINT_MATX44F(inv_K,);
+																																				PRINT_MATX44F(inv_K_,);
 																																			}
 	return inv_K_;
 }
 
 void Dynamic_slam::generate_invK(){ inv_K = generate_invK_(K);  }
 
+void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {																				// Generates a set of 6 k2k to be used to compute the SE3 maps for the current camera intrinsic matrix.
+	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::generate_SE3_k2k"];// -2;
+																																			if(verbosity>local_verbosity_threshold) cout << "\nDynamic_slam::generate_SE3_k2k( float _SE3_k2k[6*16] ) chk_0" << endl << flush;
+	// SE3
+	//const float res			= ( obj["cameraMatrix"][2].asFloat() + obj["cameraMatrix"][5].asFloat() ) /2.0;
+	const float f			= ( obj["cameraMatrix"][0].asFloat() + obj["cameraMatrix"][4].asFloat() ) /2.0;									// focal length in pixels.
+	const float delta 	  	= obj["ST3_delta"].asFloat() * obj["min_depth"].asFloat()  / f ;												// ST3_delta * (Translation to cause 1 pixel of parallax at min_depth)  	//1.0;//0.01; //0.001;  //  * obj["min_depth"].asFloat()
+	const float delta_theta = obj["SO3_delta_theta"].asFloat() / f;																			// SO3_delta_theta * (Rotation to cause 1 pixel of rotation flow) //0.01; //0.001;
+	const float cos_theta   = cos(delta_theta);
+	const float sin_theta   = sin(delta_theta);
+																																			// Old :  Rotate 0.01 radians i.e 0.573  degrees.  Translate 0.001 'units' of distance
+																																			if(verbosity>local_verbosity_threshold){ cout << "\nDynamic_slam::generate_SE3_k2k( ) chk_1,"<<endl << flush;
+																																				print_json_float_9(obj, "cameraMatrix");
+																																				cout << "  delta_theta = "	<<delta_theta	<< " radians," 								<<endl << flush;
+																																				cout << "  delta = "		<<delta			<< " units distance," 						<<endl << flush;
+																																				cout << "  f = "			<<f				<< " pixels," 								<<endl << flush;
+																																				cout << "  obj[\"ST3_delta\"] =  "            <<obj["ST3_delta"].asFloat()				<<endl << flush;
+																																				cout << "  obj[\"min_depth\"] =  "            <<obj["min_depth"].asFloat()				<<endl << flush;
+																																				cout << "  obj[\"SO3_delta_theta\"] =  "      <<obj["SO3_delta_theta"].asFloat()		<<endl << flush;
+																																			}
+	//Identity =				(1,			0,			0,			0,  			0,			1,			0,			0,  			0,			0,			1,			0,  			0,	0,	0,	1);
+	cv::Matx44f transform[6];
+	transform[Rx] = cv::Matx44f(1,         0,          0,          0,\
+								0,         cos_theta, -sin_theta,  0,\
+								0,         sin_theta,  cos_theta,  0,\
+								0,         0,          0,          1);
+
+	transform[Ry] = cv::Matx44f(cos_theta,   0,         sin_theta,  0,\
+								0,           1,         0,          0,\
+								-sin_theta,  0,         cos_theta,  0,\
+								0,           0,         0,          1);
+
+	transform[Rz] = cv::Matx44f(cos_theta, -sin_theta,  0,          0,\
+								sin_theta,  cos_theta,  0,          0,\
+								0,           0,         1,          0,\
+								0,           0,         0,          1);
+
+	transform[Tx] = cv::Matx44f(1,0,0,delta, 	0,1,0,0,		0,0,1,0,		0,0,0,1);
+	transform[Ty] = cv::Matx44f(1,0,0,0, 		0,1,0,delta,	0,0,1,0,		0,0,0,1);
+	transform[Tz] = cv::Matx44f(1,0,0,0, 		0,1,0,0,		0,0,1,delta,	0,0,0,1);
+
+	cv::Matx44f cam2cam[6];
+																																			if(verbosity>local_verbosity_threshold) {
+																																				PRINT_MATX44F(frame_data.back().frame_data_GT.K,);
+																																				PRINT_MATX44F(frame_data.back().frame_data_GT.inv_K,);
+																																			}
+
+	for (int i=0; i<6; i++) {  cam2cam[i] = frame_data.back().frame_data_GT.K  *  transform[i]  *  frame_data.back().frame_data_GT.inv_K; 	if(verbosity>local_verbosity_threshold) { PRINT_MATX44F(transform[i],);  PRINT_MATX44F(cam2cam[i],); }   	}
+
+	for (int i=0; i<6; i++) {
+		cam2cam[i] = frame_data.back().frame_data_GT.K  *  transform[i] *  frame_data.back().frame_data_GT.inv_K;
+																																			if(verbosity>local_verbosity_threshold) {
+																																				cout << "\ncam2cam["<<i<<"]=";
+																																				for (int j=0; j<16; j++) cout << ", "<<cam2cam[i].operator()(j/4,j%4);
+																																				cout << flush;
+																																			}
+		for (uint row=0; row<4; row++) {
+			for (uint col=0; col<4; col++){
+				_SE3_k2k[i*16 + row*4 + col] 	= cam2cam[i].operator()(row,col);
+			}
+		}
+	}
+																																			if(verbosity>local_verbosity_threshold) {
+																																				cout << setprecision(9);
+																																				for (int i=0; i<6; i++) {
+																																					cout << "\n _SE3_k2k ["<<i<<"*16 + row*4 + col]=\n";
+																																					for (int row=0; row<4; row++) {
+																																						for (int col=0; col<4; col++){
+																																							cout << _SE3_k2k[i*16 + row*4 + col] <<"\t  ";
+																																						}cout<<endl;
+																																					}cout<<endl;
+																																				}
+
+																																				// Chk k2k makes sense for each SE3 DoF
+																																				// Image size 640 * 480, from K as loaded from .json file.
+																																				// Homogeneous image coords : (col, row, depth, w), so ater transformation divide by w to find new (col, row, depth, 1).
+																																				// NB if there are points at infinite distance, then w=0.
+																																				// For this reason we store inverse depth, and use a minimum depth cut off, to avoid points at the optical centre of the camera.
+																																				// See __kernel void compute_param_maps(..) , or hand calculate the elements of the matrix multiplication.
+																																				cv::Matx14f topleft = {10,10,1,1},  topright = {630,10,1,1}, centre = {320,240,1,1}, bottomleft = {10,470,1,1}, bottomright = {630,470,1,1} , result;	// (column, row, w, 1/depth)
+																																				cv::Matx44f identity = {1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1};
+
+																																				cout << "\n topleft * 	identity = " << topleft * 		identity << flush;
+																																				cout << "\n topright * 	identity = " << topright * 		identity << flush;
+																																				cout << "\n bottomleft *  identity = " << bottomleft * 	identity << flush;
+																																				cout << "\n bottomright * identity = " << bottomright * 	identity << flush;
+
+																																				cout << "\n\nDynamic_slam::generate_SE3_k2k( float _SE3_k2k[6*16] )   finished" << endl << flush;
+																																			}
+}
 
 void Dynamic_slam::generate_SE3_k2k( float _SE3_k2k[6*16] ) {																				// Generates a set of 6 k2k to be used to compute the SE3 maps for the current camera intrinsic matrix.
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::generate_SE3_k2k"];// -2;
@@ -278,32 +368,32 @@ void Dynamic_slam::generate_SE3_k2k( float _SE3_k2k[6*16] ) {																			
 void Dynamic_slam::update_k2k(Matx16f update_){
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::update_k2k"];// -3;
 																																			if(verbosity>local_verbosity_threshold) { cout << "\n\n Dynamic_slam::update_k2k()_chk 1, compute idealSE3Incr_algebra :" << flush;
-																																				PRINT_MATX44F(frame_data.end()->frame_data.keyframe2pose,);
-																																				PRINT_MATX44F(frame_data.end()->frame_data_GT.keyframe2pose,);
-																																				PRINT_MATX16F(frame_data.end()->frame_data.keyframe2pose_algebra	,update_k2k()_chk 1);
-																																				PRINT_MATX16F(frame_data.end()->frame_data_GT.keyframe2pose_algebra ,update_k2k()_chk 1);
+																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);
+																																				PRINT_MATX44F(frame_data.back().frame_data_GT.keyframe2pose,);
+																																				PRINT_MATX16F(frame_data.back().frame_data.keyframe2pose_algebra	,update_k2k()_chk 1);
+																																				PRINT_MATX16F(frame_data.back().frame_data_GT.keyframe2pose_algebra ,update_k2k()_chk 1);
 
-																																				Matx16f idealSE3Incr_alg_ 						= LieSub(frame_data.end()->frame_data.keyframe2pose_algebra, frame_data.end()->frame_data_GT.keyframe2pose_algebra);
+																																				Matx16f idealSE3Incr_alg_ 						= LieSub(frame_data.back().frame_data.keyframe2pose_algebra, frame_data.back().frame_data_GT.keyframe2pose_algebra);
 																																				PRINT_MATX16F(idealSE3Incr_alg_					,update_k2k()_chk 1);
 																																				PRINT_MATX44F(LieToP_Matx(idealSE3Incr_alg_)	,update_k2k()_chk 1);
 
-																																				PRINT_MATX44F(frame_data.end()->frame_data.keyframe2pose.inv()	,update_k2k()_chk 1);
+																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose.inv()	,update_k2k()_chk 1);
 
-																																				Matx44f idealSE3Incr 							= frame_data.end()->frame_data_GT.keyframe2pose * frame_data.end()->frame_data.keyframe2pose.inv();
+																																				Matx44f idealSE3Incr 							= frame_data.back().frame_data_GT.keyframe2pose * frame_data.back().frame_data.keyframe2pose.inv();
 																																				PRINT_MATX44F(idealSE3Incr						,update_k2k()_chk 1);
 																																				PRINT_MATX16F(PToLie(idealSE3Incr)				,update_k2k()_chk 1);
 																																			}
 	cv::Matx44f SE3Incr_matx = LieToP_Matx(update_); 																						// 						= SE3_Matx44f(update_);
-	frame_data.end()->frame_data.keyframe2pose 			= frame_data.end()->frame_data.keyframe2pose *  SE3Incr_matx;
-	frame_data.end()->frame_data.K2K 					= frame_data.end()->frame_data.K * frame_data.end()->frame_data.keyframe2pose * frame_data.end()->frame_data.inv_K;
-	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] 	= frame_data.end()->frame_data.K2K.operator()(i/4, i%4);   }
+	frame_data.back().frame_data.keyframe2pose 			= frame_data.back().frame_data.keyframe2pose *  SE3Incr_matx;
+	frame_data.back().frame_data.K2K 					= frame_data.back().frame_data.K * frame_data.back().frame_data.keyframe2pose * frame_data.back().frame_data.inv_K;
+	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] 	= frame_data.back().frame_data.K2K.operator()(i/4, i%4);   }
 																																			if(verbosity>local_verbosity_threshold) { cout << "\n\n Dynamic_slam::update_k2k()_chk 2, compute K2K :" << flush;
 																																				PRINT_MATX16F(update_										,update_k2k()_chk 2);
 																																				PRINT_MATX44F(SE3Incr_matx									,update_k2k()_chk 2);
-																																				PRINT_MATX44F(frame_data.end()->frame_data.K2K				,update_k2k()_chk 2);
-																																				PRINT_MATX44F(frame_data.end()->frame_data.keyframe2pose	,update_k2k()_chk 2);
-																																				PRINT_MATX44F(frame_data.end()->frame_data.K				,update_k2k()_chk 2);
-																																				PRINT_MATX44F(frame_data.end()->frame_data.inv_K			,update_k2k()_chk 2);
+																																				PRINT_MATX44F(frame_data.back().frame_data.K2K				,update_k2k()_chk 2);
+																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose	,update_k2k()_chk 2);
+																																				PRINT_MATX44F(frame_data.back().frame_data.K				,update_k2k()_chk 2);
+																																				PRINT_MATX44F(frame_data.back().frame_data.inv_K			,update_k2k()_chk 2);
 
 																																				cout << "\n####################################### finished Dynamic_slam::update_k2k(Matx16f update_)"<<flush;
 																																			}
@@ -344,9 +434,9 @@ void Dynamic_slam::update_k2k_3( float steps[3], Matx16f update_, float k2k_3_16
 	Matx44f keyframe_pose2pose_3[tracking_num_samples];
 	Matx44f k2k_3[tracking_num_samples];
 	Matx44f SE3Incr_matx 		= LieToP_Matx(update_);
-	Matx44f keyframe_pose2pose 	= frame_data.end()->frame_data.keyframe2pose;
-	Matx44f K					= frame_data.end()->frame_data.K;
-	Matx44f inv_K				= frame_data.end()->frame_data.inv_K;
+	Matx44f keyframe_pose2pose 	= frame_data.back().frame_data.keyframe2pose;
+	Matx44f K					= frame_data.back().frame_data.K;
+	Matx44f inv_K				= frame_data.back().frame_data.inv_K;
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\n Dynamic_slam::update_k2k_3: " << endl << flush;
 																																				PRINT_MATX16F(update_,				update_);
@@ -462,9 +552,24 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 	float 	steps[3] 						= {0, 1, 3};
 	float 	stepsize 						= 1.0;
 
-	Matx44f K 								= frame_data.end()->frame_data.K;
-	Matx44f inv_K 							= frame_data.end()->frame_data.inv_K;
-	Matx44f keyframe_pose2pose 				= frame_data.end()->frame_data.keyframe2pose;
+	Matx44f K 								= frame_data.back().frame_data.K;
+	Matx44f inv_K 							= frame_data.back().frame_data.inv_K;
+	Matx44f keyframe_pose2pose 				= frame_data.back().frame_data.keyframe2pose;
+	Matx44f keyframe_k2k					= K*keyframe_pose2pose*inv_K;
+
+	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] = keyframe_k2k.operator()(i/4,i%4); }
+
+																																			if(verbosity>local_verbosity_threshold) {
+																																				PRINT_MATX44F(K,);
+																																				PRINT_MATX44F(inv_K,);
+																																				PRINT_MATX44F(keyframe_pose2pose,);
+																																				PRINT_MATX44F(keyframe_k2k,);
+																																				cout << "\n\n runcl.fp32_k2keyframe[i] = ";
+																																				for (int i=0; i<16; i++){
+																																					if ( i%4 == 0 )cout <<endl;
+																																					cout << runcl.fp32_k2keyframe[i] << ",\t ";
+																																				}
+																																			}
 
 	for (int iter = 0; iter<SE_iter; iter++){
 																																		if(verbosity>local_verbosity_threshold) {
@@ -483,6 +588,14 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 		count[2]  = factor;
 		count[3]  = 0;
 		float prediction, optimum1;
+
+																																		if(verbosity>local_verbosity_threshold) {
+																																			cout << "\n\n runcl.fp32_k2keyframe[i] = ";
+																																			for (int i=0; i<16; i++){
+																																				if ( i%4 == 0 )cout <<endl;
+																																				cout << runcl.fp32_k2keyframe[i] << ",\t ";
+																																			}
+																																		}
 
 		runcl.estimateSE3_LK(SE3_results, SE3_weights, Rho_sq_results[0], iter, layer, layer+1);
 
@@ -506,7 +619,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 
 		compute_optimum( steps, Rho_sq_results, layer, channel, &prediction, &optimum1, &stepsize );
 
-		Matx44f sample_k2k =  frame_data.end()->frame_data.K  *	 frame_data.end()->frame_data.keyframe2pose *  LieToP_Matx(optimum1 * update * stepsize ) * frame_data.end()->frame_data.inv_K;
+		Matx44f sample_k2k =  frame_data.back().frame_data.K  *	 frame_data.back().frame_data.keyframe2pose *  LieToP_Matx(optimum1 * update * stepsize ) * frame_data.back().frame_data.inv_K;
 
 		Matx44f_To_float16arry(sample_k2k, kf_k2k);
 /*
@@ -573,7 +686,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 		if ( lowest/Rho_sq_results[0][layer][3] < 0.00005 ) layer--;
 	}
 
-	//  TODO update all variables in frame_data.end()
+	//  TODO update all variables in frame_data.back()
 
 
 
@@ -581,16 +694,16 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 }
 
 
-
+/*
 // void Dynamic_slam::estimateSE3(){																											// Adaptive step size LM tracking and halting
 // 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::estimateSE3"];// -1;
-// 																																			/*
+// 																																			/ *
 // 																																			* 1) find update direction: 	runcl.estSE3()
 // 																																			* 2) generate three poses along the direction "update"
 // 																																			* 3) find update magnitude: 	runcl.se3_rho_sq()
 // 																																			* 4) compute ideal increment, i.e. damped
 // 																																			* 5) halt condition, per layer and global
-// 																																			*/
+// 																																			* /
 // 	Matx16f update = {0,0,0, 0,0,0};		// old_update = {0,0,0, 0,0,0}, 																// SE3 Lie Algebra holding the DoF of SE3.
 // 	//Matx44f SE3Incr_matx;																													// SE3 transformation matrix.
 // 																											if (obj["sample_se3_incr"]==true){
@@ -604,11 +717,11 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 // 	float Rho_sq_result	=FLT_MAX*0.99,   next_layer_Rho_sq_result=FLT_MAX*0.99;				// old_Rho_sq_result=FLT_MAX*0.99 ,
 // 	uint  layer 						= SE3_start_layer;
 // 	float factor 						= obj["SE_factor"].asFloat();						//0.04
-// /*
+// / *
 // 	// float factor_layer_multiplier 		= obj["SE_factor_layer_multiplier"].asFloat();  //0.75
 // 	// float factor_iter_multiplier 		= obj["SE_factor_iter_multiplier"].asFloat();	//0.9
 // 	// int   iter_per_layer 				= obj["SE_iter_per_layer"].asInt();				//1
-// */
+// * /
 // 	const uint num_samples 	= tracking_num_samples+1;
 // 	uint  channel  			= 2;
 // 	float steps[3] 			= {0, 1, 3};					//  NB see  compute_optimum(..) constraints on d,f,h.   NB steps[0] must be 0. Otherwise edit  tracking_num_samples, update_k2k_3(...),  compute_optimum(...)
@@ -842,7 +955,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 //
 // 		update_k2k( optimum1 * update );
 //
-// /*
+// / *
 // 																																			//compute_tracking_increment( Rho_sq_results, Rho_sq_results, update, k2k_3_16, stepsize, optimum, increment );
 // 																																			// sample Rho at optimum : replace "update" with stepsize*optimum
 // 		update_k2k_3( steps, update*stepsize*optimum1, k2k_3_16 );																					// generates 3 samples spread around the expected optimum. NB stapsize = 0.5 will give 0.25. 0.5, 1.0 times optimum.
@@ -881,19 +994,19 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 // 		if ( optimum2 > 2*stepsize*optimum1  )  { update_k2k( 2*optimum1 * update ); 		// anti instability
 // 		}else if (optimum2 <=0) 				{ update_k2k( 0.5*optimum1 * update );		// use 0.5 * optimum1   // TODO think through this condition.
 // 		}else  									{ update_k2k( optimum2 * update ); }
-// */
+// * /
 // 	}// end for (int iter = 0; iter<SE_iter; iter++).
 //
 //
 // 	///////////////////////////////////////////////
 // 	// old_update 				= update;
 // 	// old_Rho_sq_result 		= Rho_sq_result;
-// 																																			/*
+// 																																			/ *
 // 																																					// # TODO maybe ...
 // 																																					// # Predict dammped least squares step of SE3 for whole image + residual of translation for relative velocity map.
 // 																																					// # Pass prediction to lower layers. Does it fit better ?
 // 																																					// # Repeat SE3 fitting n-times. ? Damping factor adjustment ?
-// 																																			*/
+// 																																			* /
 // 																											if(obj["sample_se3_incr"].asBool()==true) { cout << "\n###  Dynamic_slam::estimateSE3_chk 6.3, display and save ResultsMat\n" << flush;
 // 																												if(obj["sample_se3_incr::display"].asBool()==true){
 // 																													cv::namedWindow( "Dynamic_slam::estimateSE3_LK()_chk 6: writeToResultsMat" , 0 );									// show runcl.resultsMat
@@ -914,7 +1027,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 // 	if (runcl.dataset_frame_num > 0 ) pose2pose_accumulated = pose2pose_accumulated * pose2pose; // TODO wrong formula.
 // 																																			if(verbosity>local_verbosity_threshold){ cout << "\n###  Dynamic_slam::estimateSE3_chk 8  Finished ####################################\n" << flush;}
 //}
-
+*/
 
 void Dynamic_slam::estimateSE3_LK(){
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::estimateSE3_LK"];// -1;

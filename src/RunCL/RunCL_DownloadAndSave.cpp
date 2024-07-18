@@ -361,11 +361,13 @@ void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, bo
 		png_ss_v << "/" << folder_tiff.filename().string() << "layer_"<<layer<<"_V_" << count << date_time_str;
 
 		boost::filesystem::path folder_png_u = folder_tiff, folder_png_v = folder_tiff;
-		folder_tiff += "/tiff/";
+		//folder_tiff += "/tiff/";
 		boost::filesystem::path folder_tiff_u = folder_tiff, folder_tiff_v = folder_tiff;
+		folder_tiff_u += "/tiff/";
 		folder_tiff_u += ss_u.str();
 		folder_tiff_u += ".tiff";
 
+		folder_tiff_v += "/tiff/";
 		folder_tiff_v += ss_v.str();
 		folder_tiff_v += ".tiff";
 
@@ -373,10 +375,10 @@ void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, bo
 		folder_png_u  += png_ss_u.str();
 		folder_png_u  += ".png";
 
-		folder_png_v  += "/png/";
+		//folder_png_v  += "/png/";
 		folder_png_v  += png_ss_v.str();
 		folder_png_v  += ".png";
-																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave_2Channel_volume(), max_range="<<max_range<<",   filename = ["<<ss_u.str()<<" , "<<ss_v.str()<<"]";
+																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave_2Channel_volume(), max_range="<<max_range<<",   filepath = ["<<folder_png_u.string()<<" ,\t "<<folder_png_v.string()<<"]";
 		cv::Mat outMat_u, outMat_v;
 		if (type_mat != CV_32FC2 && type_mat != CV_16FC2 ) {
 			cout << "\n\n## Error  (type_mat != CV_32FC2 or CV_16FC2) ##\n\n" << flush;

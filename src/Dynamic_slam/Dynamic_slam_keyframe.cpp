@@ -109,10 +109,10 @@ void Dynamic_slam::initialize_new_keyframe(){
 
 void Dynamic_slam::initialize_keyframe_vec(){
 	keyframe_datum new_keyframe;
-	new_keyframe.frame_data  				=  *frame_data.end();
+	new_keyframe.frame_data  				=  frame_data.back();
 	keyframe_data.push_back( new_keyframe );
 
-	//frame_data.end()->keyframe_index		= keyframe_data.size(); 	// TODO move to initiation of new frame_data elements				// set this frame as a new keyframe in the vectors
+	//frame_data.back()->keyframe_index		= keyframe_data.size(); 	// TODO move to initiation of new frame_data elements				// set this frame as a new keyframe in the vectors
 
 	if ( keyframe_data.size() > 1 ){
 		cv::Matx44f inv_pose2pose = getInvPose( keyframe_pose2pose );																		// cv::Matx44f Dynamic_slam::getInvPose(cv::Matx44f pose)
@@ -127,7 +127,7 @@ void Dynamic_slam::initialize_keyframe_vec(){
 		runcl.initialize_fp32_params();									// reset parameters													// runcl.initialize_fp32_params();  runcl.keyFrameCount++; runcl.dataset_frame_num++;
 		runcl.keyFrameCount++;
 
-		//vector<keyframe_datum>::iterator keyframe_data_minus_one 	=  keyframe_data.end()--;												// Save ref img and depth map for previous keyframe
+		//vector<keyframe_datum>::iterator keyframe_data_minus_one 	=  keyframe_data.back()--;												// Save ref img and depth map for previous keyframe
 		//keyframe_data_minus_one->reference_image 					= 	;
 		//keyframe_data_minus_one->depthmap 						= 	;
 	}else{

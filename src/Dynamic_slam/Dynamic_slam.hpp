@@ -177,6 +177,7 @@ class Dynamic_slam
     cv::Matx44f generate_invK_(cv::Matx44f K_);
     void generate_invK();
 
+    void generate_SE3_k2k_vec( float _SE3_k2k[6*16] );
     void generate_SE3_k2k( float _SE3_k2k[96] );
     void update_k2k(Matx16f update_);
     void update_k2k(Matx16f update_,  Matx44f local_keyframe_pose2pose);
