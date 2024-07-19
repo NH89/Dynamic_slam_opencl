@@ -35,17 +35,31 @@ void Dynamic_slam::display_frame_resluts(){
 }
 
 void Dynamic_slam::artificial_pose_error_vec(){
-	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::artificial_pose_error"];//-2;																										if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::artificial_pose_error() chk_0"<<flush; }
+	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::artificial_pose_error"];													if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::artificial_pose_error() chk_0"<<flush; }
 	Matx16f pose_step_algebra;
 	for (int SE3=0; SE3<6; SE3++)  pose_step_algebra.operator()(0,SE3) = obj["Artif_pose_err_algebra"][SE3].asFloat();
-	Matx44f poseStep 	= LieToP_Matx(pose_step_algebra);																					if(verbosity>local_verbosity_threshold){ PRINT_MATX44F(poseStep,);	PRINT_MATX16F(pose_step_algebra,);	PRINT_MATX16F(PToLie(keyframe_pose2pose),True);  }
+	Matx44f poseStep 	= LieToP_Matx(pose_step_algebra);																					if(verbosity>local_verbosity_threshold){
+																																				PRINT_MATX44F(poseStep,);
+																																				PRINT_MATX16F(pose_step_algebra,);
+																																				PRINT_MATX16F(PToLie(keyframe_pose2pose),True);  }
 
-	frame_data.back().frame_data.keyframe2pose = frame_data.back().frame_data.keyframe2pose * poseStep;										if(verbosity>local_verbosity_threshold){ PRINT_MATX16F(PToLie(frame_data.back().frame_data.keyframe2pose),Start); }
+	frame_data.back().frame_data.keyframe2pose = frame_data.back().frame_data.keyframe2pose * poseStep;										if(verbosity>local_verbosity_threshold){
+																																				PRINT_MATX16F(PToLie(frame_data.back().frame_data.keyframe2pose), Start); 	}
 
 	frame_data.back().frame_data.K2K 	= frame_data.back().frame_data.K  * frame_data.back().frame_data.keyframe2pose  *  frame_data.back().frame_data.inv_K;
-																																			if(verbosity>local_verbosity_threshold){ PRINT_MATX44F(frame_data.back().frame_data.K2K,New);	PRINT_FLOAT_16(runcl.fp32_k2keyframe,Old); }// Add error of one step in the 2nd SE3 DoF.
+																																			if(verbosity>local_verbosity_threshold){
+																																				cout << "\n\n##Dynamic_slam::artificial_pose_error() : frame_data.back().frame_data.K2K,New" << endl << flush;
+																																				PRINT_MATX44F(frame_data.back().frame_data.K ,);
+																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose ,);
+																																				PRINT_MATX44F(frame_data.back().frame_data.inv_K ,);
 
-	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] = frame_data.back().frame_data.K2K.operator()(i/4, i%4);  }							if(verbosity>local_verbosity_threshold){ PRINT_FLOAT_16(runcl.fp32_k2keyframe,New); cout << "\nDynamic_slam::artificial_pose_error()_finish ##############################################" << flush;}
+																																				PRINT_MATX44F(frame_data.back().frame_data.K2K, New);
+																																				PRINT_FLOAT_16(runcl.fp32_k2keyframe,Old);
+																																			}// Add error of one step in the 2nd SE3 DoF.
+
+	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] = frame_data.back().frame_data.K2K.operator()(i/4, i%4);  }							if(verbosity>local_verbosity_threshold){
+																																				PRINT_FLOAT_16(runcl.fp32_k2keyframe,New);
+																																				cout << "\nDynamic_slam::artificial_pose_error()_finish ##############################################" << flush;	}
 }
 
 void Dynamic_slam::artificial_pose_error(){
@@ -60,9 +74,22 @@ void Dynamic_slam::artificial_pose_error(){
 
 void Dynamic_slam::predictFrame_vec(){
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::predictFrame"];
-	vector<frame_datum>::iterator frame_minus_one 		= 	frame_data.end()--;
-	vector<frame_datum>::iterator frame_minus_two 		= 	frame_minus_one--;
-
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::predictFrame_chk 0. "<<flush; }
+	vector<frame_datum>::iterator frame_minus_one 		= 	frame_data.end();
+	frame_minus_one--;
+																																			if(verbosity>local_verbosity_threshold){
+																																				PRINT_MATX44F( frame_minus_one->frame_data.K , )
+																																				PRINT_MATX44F( frame_minus_one->frame_data_GT.K , )
+																																			}
+	frame_minus_one--;
+	vector<frame_datum>::iterator frame_minus_two 		= 	frame_minus_one;
+	frame_minus_two--;
+																																			if(verbosity>local_verbosity_threshold){
+																																				PRINT_MATX44F( frame_minus_one->frame_data.K , )
+																																				PRINT_MATX44F( frame_minus_one->frame_data_GT.K , )
+																																				PRINT_MATX44F( frame_minus_two->frame_data.K , )
+																																				PRINT_MATX44F( frame_minus_two->frame_data_GT.K , )
+																																			}
 	frame_data.back().frame_data.K 						= 	frame_minus_one->frame_data.K;
 	frame_data.back().frame_data.inv_K 					= 	frame_minus_one->frame_data.inv_K;
 	frame_data.back().frame_data.keyframe2pose    		= 	frame_minus_one->frame_data.keyframe2pose  *  frame_minus_one->frame_data.keyframe2pose  *  frame_minus_two->frame_data.inv_pose; 			// Assume linear velocity in SE3. ### error problem in first frames since keyframe
@@ -74,6 +101,13 @@ void Dynamic_slam::predictFrame_vec(){
 	frame_data.back().frame_data.pose_from_start		=	keyframe_data.back().frame_data.frame_data.pose_from_start   *   frame_data.back().frame_data.keyframe2pose;
 
 	frame_data.back().frame_data.K2K					=	frame_data.back().frame_data.K  *  frame_data.back().frame_data.keyframe2pose  *  frame_data.back().frame_data.inv_K;
+																																			if(verbosity>local_verbosity_threshold){
+																																				PRINT_MATX44F( frame_data.back().frame_data.K , )
+																																				PRINT_MATX44F( frame_data.back().frame_data.inv_K , )
+																																				PRINT_MATX44F( frame_data.back().frame_data.keyframe2pose , )
+																																				PRINT_MATX44F( frame_data.back().frame_data.K2K , )
+																																			}
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::predictFrame Finished ################. "<<flush; }
 }
 
 
@@ -545,6 +579,9 @@ void Dynamic_slam::compute_optimum( float steps[3], float Rho_sq_results_[tracki
 
 void Dynamic_slam::estimateSE3(){																										// Adaptive step size LM tracking and halting
 	int 	local_verbosity_threshold 		= verbosity_mp["Dynamic_slam::estimateSE3"];
+																																		if(verbosity>local_verbosity_threshold) {
+																																			cout << "\n\nDynamic_slam::estimateSE3() chk_0"<<flush;
+																																		}
 	Matx16f update 							= {0,0,0, 0,0,0};																			// SE3 Lie Algebra holding the DoF of SE3.
 	uint  	layer 							= SE3_start_layer;
 	float 	factor 							= obj["SE_factor"].asFloat();
@@ -554,15 +591,15 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 
 	Matx44f K 								= frame_data.back().frame_data.K;
 	Matx44f inv_K 							= frame_data.back().frame_data.inv_K;
-	Matx44f keyframe_pose2pose 				= frame_data.back().frame_data.keyframe2pose;
-	Matx44f keyframe_k2k					= K*keyframe_pose2pose*inv_K;
+	Matx44f keyframe2pose 					= frame_data.back().frame_data.keyframe2pose;
+	Matx44f keyframe_k2k					= K*keyframe2pose*inv_K;
 
 	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] = keyframe_k2k.operator()(i/4,i%4); }
 
 																																			if(verbosity>local_verbosity_threshold) {
 																																				PRINT_MATX44F(K,);
 																																				PRINT_MATX44F(inv_K,);
-																																				PRINT_MATX44F(keyframe_pose2pose,);
+																																				PRINT_MATX44F(keyframe2pose,);
 																																				PRINT_MATX44F(keyframe_k2k,);
 																																				cout << "\n\n runcl.fp32_k2keyframe[i] = ";
 																																				for (int i=0; i<16; i++){
