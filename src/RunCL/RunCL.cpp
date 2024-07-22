@@ -10,11 +10,11 @@ RunCL::RunCL( Json::Value obj_ , int_map verbosity_mp_ ){
 	tiff 							= obj["tiff"].asBool();
 	png 							= obj["png"].asBool();
 	vtp 							= obj["vtp"].asBool();
-	if(verbosity>local_verbosity_threshold) {
+																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\nRunCL_chk 0\n" << flush;
 																																				cout << "\nverbosity = "<<verbosity<< flush;
 																																			}
-																																			/*Step1: Getting platforms and choose an available one.*/////////
+																																			/*Step1: Getting platforms and choose an available one.*/////////###############################
 	testOpencl();																															// Displays available OpenCL Platforms and Devices.
 	cl_uint 		numPlatforms;																											//the NO. of platforms
 	cl_platform_id 	platform 		= NULL;																									//the chosen platform
@@ -34,7 +34,7 @@ RunCL::RunCL( Json::Value obj_ , int_map verbosity_mp_ ){
 		free(platforms);
 	} else {																																cout<<"Error: Platform num "<<conf_platform<<" not available."<<flush; exit(0);}
 
-	cl_uint			numDevices		= 0;																									/*Step 2:Query the platform.*//////////////////////////////////
+	cl_uint			numDevices		= 0;																									/*Step 2:Query the platform.*//////////////////////////////////################################
 	cl_device_id    *devices;
 	status = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 0, NULL, &numDevices);			if (status != CL_SUCCESS) {cout << "\n3 status = " << checkerror(status) <<"\n"<<flush; exit_(status);}
 	uint conf_device = obj["opencl_device"].asUInt();
@@ -44,10 +44,10 @@ RunCL::RunCL( Json::Value obj_ , int_map verbosity_mp_ ){
 		status  = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, numDevices, devices, NULL);  if (status != CL_SUCCESS) {cout << "\n4 status = " << checkerror(status) <<"\n"<<flush; exit_(status);}
 	}else{                                                                                  cout << "\n\nRunCL::RunCL(..), (numDevices <= conf_device)\n" << flush; exit(status);}
 
-	cl_context_properties cps[3]={CL_CONTEXT_PLATFORM,(cl_context_properties)platform,0};													/*Step 3: Create context.*////////////////////////////////////
+	cl_context_properties cps[3]={CL_CONTEXT_PLATFORM,(cl_context_properties)platform,0};													/*Step 3: Create context.*////////////////////////////////////##################################
 	m_context 	= clCreateContextFromType( cps, CL_DEVICE_TYPE_GPU, NULL, NULL, &status);	if(status!=0) {cout<<"\n5 status="<<checkerror(status)<<"\n"<<flush;exit_(status);}
 
-	deviceId  	= devices[conf_device];																										/*Step 4: Create command queue & associate context.*///////////
+	deviceId  	= devices[conf_device];																										/*Step 4: Create command queue & associate context.*///////////#################################
 																																			if(verbosity>local_verbosity_threshold){
 																																				cout << "\ndeviceId = " << deviceId <<"\n" <<flush;
 																																				cl_int err;
@@ -64,12 +64,13 @@ RunCL::RunCL( Json::Value obj_ , int_map verbosity_mp_ ){
 																																			// NB Might want to create command queues on multiple platforms & devices.
 																																			// NB might want to divde a task across multiple MPI Ranks on a multi-GPU WS or cluster.
 
-	createAndBulidProgramFromSource( devices ); 																							/*Step 5: Create program object*/////////////
-																																			/*Step 6: Build program.*////////////////////
-																																			/*Step 7: Create kernel objects.*////////////
+	createAndBulidProgramFromSource( devices ); 																							/*Step 5: Create program object*/////////////###################################################
+																																			/*Step 6: Build program.*////////////////////###################################################
+																																			/*Step 7: Create kernel objects.*////////////###################################################
 	createKernels();
-	basemem=imgmem=dbg_databuf=cdatabuf=hdatabuf=temp_cdatabuf=temp_hdatabuf=k2kbuf=dmem=amem=gxmem=gymem=g1mem=lomem=himem=mean_mem=0;		// set device pointers to zero
-	createFolders( );																														if(verbosity>local_verbosity_threshold) cout << "RunCL_constructor finished ##########################\n" << flush;
+	basemem=imgmem=dbg_databuf=cdatabuf=hdatabuf=temp_cdatabuf=temp_hdatabuf=k2kbuf=dmem=amem=gxmem=gymem=g1mem=lomem=himem=mean_mem=0;		// Set device pointers to zero
+	createFolders( );																														// Create the folders to which the output will be written.
+																																			if(verbosity>local_verbosity_threshold) cout << "RunCL_constructor finished ##########################\n" << flush;
 }
 
 void RunCL::testOpencl(){
@@ -309,10 +310,19 @@ void RunCL::initialize_fp32_params(){
 	fp32_params[SE3_LM_B]		=    obj["SE3_LM_B"].asFloat()		;
 }
 
-void RunCL::initialize_RunCL(){
+void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	int local_verbosity_threshold = verbosity_mp["RunCL::initialize_RunCL"];// -1;
-																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_RunCL_chk0\n\n" << flush;
-																																			if(baseImage.empty()){cout <<"\nError RunCL::initialize() : runcl.baseImage.empty()"<<flush; exit(0); }
+																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_RunCL_chk_0\n\n" << flush;
+	baseImage =  baseImage_;
+																																			if( baseImage.empty() ){cout <<"\nError RunCL::initialize() : runcl.baseImage.empty()"<<flush; exit(0); }
+																																			if (verbosity>local_verbosity_threshold) {
+																																				cout << "\n"
+																																				<< "RunCL::initialize_RunCL_chk_1: runcl.baseImage.size() = "<< baseImage.size() \
+																																				<<" runcl.baseImage.type() = " << baseImage.type() << "\t"<< checkCVtype(baseImage.type()) <<flush;
+																																			}
+																																			if(verbosity>1) { imshow("runcl.baseImage",baseImage); cv::waitKey(-1); }
+
+
 	image_size_bytes	= baseImage.total() * baseImage.elemSize();																			// Constant parameters of the base image
 	image_size_bytes_C1	= baseImage.total() * sizeof(float);
 	costVolLayers 		=( 1 + obj["layers"].asUInt() ); // TODO  2*

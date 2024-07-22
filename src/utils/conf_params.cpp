@@ -1,24 +1,25 @@
 #include "conf_params.hpp"
 
 /////// functions
-conf_params::conf_params(char * arg, Json::Value &val){
-
+conf_params::conf_params(char * arg, Json::Value &val){															// "arg" contains the path to the "local_conf/filepaths_<computer name>.json" file, which includes "conf.json" and "verbosity.json".
 	int local_verbosity_threshold = val["conf_params::conf_params"].asInt();
-
                                                                                 cout << "\nconf_params::conf_params(char * \""<<arg<<"\", arg, Json::Value &val) chk 1"<<flush;
 	ifstream ifs(arg);
-	Json::Reader reader;
-	Json::Value paths_obj, params_obj, verbosity_obj;
+	Json::Reader 	reader;
+	Json::Value 	paths_obj, 		params_obj, 	verbosity_obj;
 
-    bool b = reader.parse(ifs, paths_obj); 										if (!b) { cout << "Error: " << reader.getFormattedErrorMessages(); exit(1) ;}   else {cout << "\nconf_params::conf_params(..) chk_2: \tNB lists .json file entries alphabetically: \npaths_obj = \n" << paths_obj ;}
+    bool b;
+	b = reader.parse(ifs, paths_obj); 											if (!b) { cout << "Error: " << reader.getFormattedErrorMessages(); exit(1) ;}   else {cout << "\nconf_params::conf_params(..) chk_2: \tNB lists .json file entries alphabetically: \npaths_obj = \n" << paths_obj ;}
 
-	ifstream ifs_params(	paths_obj["source_filepath"].asString()	 +  paths_obj["params_conf"].asString() 	);	if (!ifs_params.is_open()) {
+	ifstream ifs_params(	paths_obj["source_filepath"].asString()	 +  paths_obj["params_conf"].asString() 	);
+																													if (!ifs_params.is_open()) {
 																															cout << "\njson_params::json_params(char * arg):  ifs_params  is NOT open !"<< flush;
 																															cout << "\nfilepath + "<< paths_obj["source_filepath"].asString()	 +  paths_obj["params_conf"].asString() << endl<<flush;
 																															exit(1);
 																													}
 
-	ifstream ifs_verbosity( paths_obj["source_filepath"].asString()	 +  paths_obj["verbosity_conf"].asString()	);	if (!ifs_verbosity.is_open()) {
+	ifstream ifs_verbosity( paths_obj["source_filepath"].asString()	 +  paths_obj["verbosity_conf"].asString()	);
+																													if (!ifs_verbosity.is_open()) {
 																															cout << "\njson_params::json_params(char * arg):  ifs_verbosity  is NOT open !"<< flush;
 																															cout << "\nfilepath + "<< paths_obj["source_filepath"].asString()	 +  paths_obj["verbosity_conf"].asString() << endl<<flush;
 																															exit(1);
@@ -28,21 +29,20 @@ conf_params::conf_params(char * arg, Json::Value &val){
 
 	b = reader.parse(ifs_verbosity, verbosity_obj); 							if (!b) { cout << "Error: " << reader.getFormattedErrorMessages(); exit(1) ;}   else {cout << "\nconf_params::conf_params(..) chk_4: \tNB lists .json file entries alphabetically: \nverbosity_obj = \n" << verbosity_obj ;}
 
-	//cout << "\v verbosity_obj = " << verbosity_obj << endl << flush;
-
-	read_verbosity( verbosity_obj);
+	read_verbosity( verbosity_obj);																					// Writes the verbosity values to an Map<int> object. This makes checking local verbosity at every function faster than reading a json string.
+/*
 	//read_paths(   paths_obj);        // Need updating given reorganization of conf.json and filepaths.json .
 	//read_jparams(	params_obj);
-
-    val = params_obj ;
-    Json::Value::ArrayIndex size = paths_obj.size();
-	Json::Value::Members members = paths_obj.getMemberNames();
+*/
+    val = params_obj ;																								// Copies the local "params_obj" to "val" passed by reference to this function.
+    Json::Value::ArrayIndex 	size 	= paths_obj.size();
+	Json::Value::Members 		members = paths_obj.getMemberNames();
     string member;
-	for (int index=0; index<size; index++){
-		member = members[index];
-		val[  members[index] ]   =    paths_obj[member];//.asInt();
+	for (int index=0; index<size; index++){																			// Appends "paths_obj" contents to "val". Now "val" contains "conf.json" + "filepaths<computer_name>.json"
+		member 					=	members[index];
+		val[  members[index] ]	=	paths_obj[member];
     }
-    																			cout << "\njson_params::json_params(char * arg) finished\n"<<flush;
+																													cout << "\njson_params::json_params(char * arg) finished\n"<<flush;
 }
 
 
@@ -62,7 +62,7 @@ void conf_params::read_verbosity(Json::Value verbosity_obj){	                   
 																													cout << "\njson_params::read_verbosity(..) : finished\n"<<flush;
 }
 
-
+/*
 void conf_params::read_paths(Json::Value paths_obj){	                                                           //string_map path_map = const_cast<string_map&>(paths);
 
 	Json::ArrayIndex size = paths_obj.size();
@@ -159,7 +159,7 @@ void conf_params::readVecString( string member, Json::Value params_obj  ){
 	}
 	string_vec_mp[  member ] = vec0;
 }
-
+*/
 
 void conf_params::display_params(  ) {
 	cout << "\n\n params.paths   = "  << flush;

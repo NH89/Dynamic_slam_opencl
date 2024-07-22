@@ -56,7 +56,8 @@ class Dynamic_slam
     // camera & pose params
     const cv::Matx44f       Matx44f_zero = {0,0,0,0,  0,0,0,0,  0,0,0,0,  0,0,0,0};   //  = cv::Matx44f::zeros();//
     const cv::Matx44f       Matx44f_eye  = {1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1};
-    
+
+
     struct pose_datum{
       uint key_frame_index;           // Index within this vector< >, of the keyframe for this frame.
       cv::Matx44f           K;                  // camera intrinsic matrix
@@ -69,6 +70,7 @@ class Dynamic_slam
       cv::Matx44f           K2K;                //
       // lens distortion params
     };
+
     struct frame_datum{
       uint                  keyframe_index;
       pose_datum            frame_data;
@@ -76,6 +78,7 @@ class Dynamic_slam
       pose_datum            error_data;
     };
     struct keyframe_datum{
+      uint                  first_frame_index;
       cv::Mat               reference_image;
       cv::Mat               depthmap;
       frame_datum           frame_data;

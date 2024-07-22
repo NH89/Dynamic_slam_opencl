@@ -68,9 +68,12 @@ void RunCL::transform_depthmap( cv::Matx44f K2K_ , cl_mem depthmap_ ){										
 
 void RunCL::swap_costvol_pointers()
 {
-	cl_mem temp_mem = cdatabuf;
+	cl_mem temp_mem;
+
+	temp_mem 		= cdatabuf;
 	cdatabuf		= temp_cdatabuf;
 	temp_cdatabuf	= temp_mem;
+
 	temp_mem 		= hdatabuf;
 	hdatabuf		= temp_hdatabuf;
 	temp_hdatabuf	= temp_mem;

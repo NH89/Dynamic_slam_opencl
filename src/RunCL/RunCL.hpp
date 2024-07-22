@@ -140,7 +140,7 @@ public:
 	// 	mipmap_call_kernel( 	depth_cost_vol_kernel, 		m_queue, 	start, 	stop );
 
 	void initialize_fp32_params();
-	void initialize_RunCL();																													// Setting up buffers & mipmap parameters
+	void initialize_RunCL( cv::Mat baseImage_ );																						// Setting up buffers & mipmap parameters
 	void allocatemem();
 
 	void CleanUp();																														// Exit...
