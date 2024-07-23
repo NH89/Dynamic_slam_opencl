@@ -56,32 +56,32 @@ class Dynamic_slam
     // camera & pose params
     const cv::Matx44f       Matx44f_zero = {0,0,0,0,  0,0,0,0,  0,0,0,0,  0,0,0,0};   //  = cv::Matx44f::zeros();//
     const cv::Matx44f       Matx44f_eye  = {1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1};
+    #define                 MATX44F_EYE    {1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1}
 
-
-    struct pose_datum{
-      uint key_frame_index;           // Index within this vector< >, of the keyframe for this frame.
-      cv::Matx44f           K;                  // camera intrinsic matrix
-      cv::Matx44f           inv_K;
-      cv::Matx44f           pose;               // pose in abs coords. (not pose2pose from prev_frame, nor from keyframe) ?
-      cv::Matx44f           inv_pose;
-      cv::Matx44f           keyframe2pose;
-      cv::Matx16f           keyframe2pose_algebra;
-      cv::Matx44f           pose_from_start;    // pose2pose_accumulated
-      cv::Matx44f           K2K;                //
+    struct pose_datum{      // default intitialization, if instatiated with " ... = {}; "
+      uint                  key_frame_index         = 0 ;                       // Index within this vector< >, of the keyframe for this frame.
+      cv::Matx44f           K                       = MATX44F_EYE ;             // camera intrinsic matrix
+      cv::Matx44f           inv_K                   = MATX44F_EYE ;
+      cv::Matx44f           pose                    = MATX44F_EYE ;             // pose in abs coords. (not pose2pose from prev_frame, nor from keyframe) ?
+      cv::Matx44f           inv_pose                = MATX44F_EYE ;
+      cv::Matx44f           keyframe2pose           = MATX44F_EYE ;
+      cv::Matx16f           keyframe2pose_algebra   = {0} ;
+      cv::Matx44f           pose_from_start         = MATX44F_EYE ;             // pose2pose_accumulated
+      cv::Matx44f           K2K                     = MATX44F_EYE ;             //
       // lens distortion params
     };
 
-    struct frame_datum{
-      uint                  keyframe_index;
-      pose_datum            frame_data;
-      pose_datum            frame_data_GT;
-      pose_datum            error_data;
+    struct frame_datum{     // default intitialization, if instatiated with " ... = {}; "
+      uint                  keyframe_index          = 0 ;
+      pose_datum            frame_data              = {};
+      pose_datum            frame_data_GT           = {};
+      pose_datum            error_data              = {};
     };
-    struct keyframe_datum{
-      uint                  first_frame_index;
+    struct keyframe_datum{  // default intitialization, if instatiated with " ... = {}; "
+      uint                  first_frame_index       = 0 ;
       cv::Mat               reference_image;
       cv::Mat               depthmap;
-      frame_datum           frame_data;
+      frame_datum           frame_data              = {};
     };
     vector<frame_datum>     frame_data;           // (frame_data start, old, current, key_frame) are now indices of elements in the vector.
     vector<keyframe_datum>  keyframe_data;

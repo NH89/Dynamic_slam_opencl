@@ -68,6 +68,8 @@ void RunCL::transform_depthmap( cv::Matx44f K2K_ , cl_mem depthmap_ ){										
 
 void RunCL::swap_costvol_pointers()
 {
+	int local_verbosity_threshold = verbosity_mp["RunCL::swap_costvol_pointers"];
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nRunCL::swap_costvol_pointers()_chk 0,  "<< flush; }
 	cl_mem temp_mem;
 
 	temp_mem 		= cdatabuf;
@@ -217,5 +219,5 @@ void RunCL::initializeDepthCostVol( cl_mem key_frame_depth_map_src){			 								
 
 																																				DownloadAndSave_6Channel_volume(  keyframe_SE3_grad_map_mem, ss.str(), paths.at("keyframe_SE3_grad_map_mem"), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, -1, 6 );
 																																			}
-																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initializeDepthCostVol(..)_chk2 ."<<flush;}
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initializeDepthCostVol(..)_Finished ########################################## ."<<flush;}
 }

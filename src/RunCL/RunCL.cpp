@@ -322,7 +322,6 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																			}
 																																			if(verbosity>1) { imshow("runcl.baseImage",baseImage); cv::waitKey(-1); }
 
-
 	image_size_bytes	= baseImage.total() * baseImage.elemSize();																			// Constant parameters of the base image
 	image_size_bytes_C1	= baseImage.total() * sizeof(float);
 	costVolLayers 		=( 1 + obj["layers"].asUInt() ); // TODO  2*
@@ -499,18 +498,18 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																			*/
 
 																																			// Summation buffer sizes
-	se3_sum_size 		= 1 + ceil( (float)(MipMap[(mm_num_reductions+1)*8 + MiM_READ_OFFSET]) / (float)local_work_size ) ;					// i.e. num workgroups used = MiM_READ_OFFSET for 1 layer more than used / local_work_size,   will give one row of vector per group.
-	se3_sum_size *= 2;  																													// *2 incr num grps for reduced groupsize
-	uint num_DoFs		= 6 ; 																												// 6 DoF of float4 channels, + 1 DoF to compute global Rho.
-	se3_sum_size_bytes	= se3_sum_size * sizeof(float) * 4 * num_DoFs ;																		if(verbosity>local_verbosity_threshold) cout <<"\n\n se3_sum_size="<< se3_sum_size<<",    se3_sum_size_bytes="<<se3_sum_size_bytes<<flush;
-	se3_sum2_size_bytes = 2 * mm_num_reductions * sizeof(float) * 4 * num_DoFs;																// NB the data returned is 6xfloat4 per group, holding one float4 per 6DoF of SE3, where alpha channel=pixel count.
-	se3_sum2_size_bytes = ((se3_sum2_size_bytes%32) + 1) * 32;																				// Needed for Nvidia, to ensure memory allocations are multiples of 32bytes.
+	se3_sum_size 			= 1 + ceil( (float)(MipMap[(mm_num_reductions+1)*8 + MiM_READ_OFFSET]) / (float)local_work_size ) ;				// i.e. num workgroups used = MiM_READ_OFFSET for 1 layer more than used / local_work_size,   will give one row of vector per group.
+	se3_sum_size 			*= 2;  																											// *2 incr num grps for reduced groupsize
+	uint num_DoFs			= 6 ; 																											// 6 DoF of float4 channels, + 1 DoF to compute global Rho.
+	se3_sum_size_bytes		= se3_sum_size * sizeof(float) * 4 * num_DoFs ;																	if(verbosity>local_verbosity_threshold) cout <<"\n\n se3_sum_size="<< se3_sum_size<<",    se3_sum_size_bytes="<<se3_sum_size_bytes<<flush;
+	se3_sum2_size_bytes 	= 2 * mm_num_reductions * sizeof(float) * 4 * num_DoFs;															// NB the data returned is 6xfloat4 per group, holding one float4 per 6DoF of SE3, where alpha channel=pixel count.
+	se3_sum2_size_bytes 	= ((se3_sum2_size_bytes%32) + 1) * 32;																			// Needed for Nvidia, to ensure memory allocations are multiples of 32bytes.
 
-	so3_sum_size_bytes	= se3_sum_size_bytes / 2;
-	so3_sum_size		= se3_sum_size ;
-	//pix_sum_size		= 1 + ceil( (float)(baseImage_width * baseImage_height) / (float)local_work_size ) ;  								// i.e. num workgroups used = baseImage_width * baseImage_height / local_work_size,   will give one row of vector per group.
-	pix_sum_size		= se3_sum_size;
-	pix_sum_size_bytes	= pix_sum_size * sizeof(float) * 4;																					// NB the data returned is one float4 per group, for the base image, holding hsv channels plus entry[3]=pixel count.
+	so3_sum_size_bytes		= se3_sum_size_bytes / 2;
+	so3_sum_size			= se3_sum_size ;
+	//pix_sum_size			= 1 + ceil( (float)(baseImage_width * baseImage_height) / (float)local_work_size ) ;  							// i.e. num workgroups used = baseImage_width * baseImage_height / local_work_size,   will give one row of vector per group.
+	pix_sum_size			= se3_sum_size;
+	pix_sum_size_bytes		= pix_sum_size * sizeof(float) * 4;																				// NB the data returned is one float4 per group, for the base image, holding hsv channels plus entry[3]=pixel count.
 
 	d_disp_sum_size			=  1 + ceil( (float)(MipMap[(mm_num_reductions+1) + MiM_READ_OFFSET]) / (float)local_work_size ) ;				// mm_size_bytes_C1 =	mm_size_bytes_C1	= temp2.total() * temp2.elemSize();
 	d_disp_sum_size_bytes	=  d_disp_sum_size * sizeof(float) * 4;

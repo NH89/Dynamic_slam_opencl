@@ -108,7 +108,7 @@ void Dynamic_slam::initialize_new_keyframe(){
 ///////////
 
 void Dynamic_slam::initialize_keyframe_vec(){
-int local_verbosity_threshold = verbosity_mp["Dynamic_slam::initialize_new_keyframe"];// -1;
+	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::initialize_new_keyframe"];// -1;
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::initialize_keyframe_vec()_chk 0,  runcl.dataset_frame_num = "<< runcl.dataset_frame_num << flush;}
 	keyframe_datum 							new_keyframe;
 	new_keyframe.frame_data  				=	frame_data.back();
@@ -139,9 +139,13 @@ int local_verbosity_threshold = verbosity_mp["Dynamic_slam::initialize_new_keyfr
 		runcl.swap_costvol_pointers();																										// Swaps	cdatabuf<->temp_cdatabuf ,  hdatabuf<->temp_hdatabuf.
 		runcl.initializeDepthCostVol( 		runcl.amem );																					// Copies	amem	=	key_frame_depth_map_src -> keyframe_depth_mem
 	}
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::initialize_keyframe_vec()_chk 2, " << flush; }
+
+	keyframe_data.back().depthmap			= cv::Mat::zeros(		runcl.uint_params[MM_ROWS], 	runcl.uint_params[MM_ROWS],  CV_32FC4	);
+	keyframe_data.back().reference_image	= cv::Mat::zeros(		runcl.uint_params[MM_ROWS], 	runcl.uint_params[MM_ROWS],  CV_32FC4	);
 
 	runcl.ReadOutput(  keyframe_data.back().depthmap.data, 			runcl.amem,  	runcl.image_size_bytes );
-	runcl.ReadOutput(  keyframe_data.back().reference_image .data, 	runcl.imgmem,	runcl.image_size_bytes );
+	runcl.ReadOutput(  keyframe_data.back().reference_image.data, 	runcl.imgmem,	runcl.image_size_bytes );
 
 	runcl.initialize_fp32_params();												// reset parameters											// runcl.initialize_fp32_params();  runcl.keyFrameCount++; runcl.dataset_frame_num++;
 	runcl.keyFrameCount++;

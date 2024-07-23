@@ -2,7 +2,7 @@
     // Local verbosity for each funtionm  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // NB Need to include classname. to prevent function name clashes between classes..... Or make it one list per class.
     // NB Also overlarded function names within a class.
-    "verbosity": 3,									// -1= none, 0=errors only, 1=basic, 2=lots.
+    "verbosity": 1,									// -1= none, 0=errors only, 1=basic, 2=lots.
 
     // utils/ ###############################################################
     /////////////////////////////////////// convertAhandaPovRayToStandard.cpp
@@ -31,23 +31,23 @@
 
     // Dynaic_slam/ ##############################################
     /////////////////////////////////////// Dynamic_slam_class.cpp
-    "~Dynamic_slam":1,
-    "Dynamic_slam::Dynamic_slam":1,
-    "Dynamic_slam::initialize_resultsMat":1,
-    "Dynamic_slam::initialize_camera":1,
+    "~Dynamic_slam":0,
+    "Dynamic_slam::Dynamic_slam":0,
+    "Dynamic_slam::initialize_resultsMat":0,
+    "Dynamic_slam::initialize_camera":0,
     "Dynamic_slam::nextFrame": -2,
-    "Dynamic_slam::getFrame": 1,
-    "Dynamic_slam::getPose": 1,
-    "Dynamic_slam::getInvPose": 1,
-    "Dynamic_slam::getFrameData": 1,
-    "Dynamic_slam::use_GT_pose": 1,
+    "Dynamic_slam::getFrame": 0,
+    "Dynamic_slam::getPose": 0,
+    "Dynamic_slam::getInvPose": 0,
+    "Dynamic_slam::getFrameData": 0,
+    "Dynamic_slam::use_GT_pose": 0,
 
-    //"generate_invPose": 1,
-    "Dynamic_slam::estimateCalibration": 1,
-    "Dynamic_slam::SpatialCostFns": 1,
-    "Dynamic_slam::ParsimonyCostFns": 1,
-    "Dynamic_slam::ExhaustiveSearch": 1,
-    "Dynamic_slam::getResult": 1,
+    //"generate_invPose": 0,
+    "Dynamic_slam::estimateCalibration": 0,
+    "Dynamic_slam::SpatialCostFns": 0,
+    "Dynamic_slam::ParsimonyCostFns": 0,
+    "Dynamic_slam::ExhaustiveSearch": 0,
+    "Dynamic_slam::getResult": 0,
 
     /////////////////////////////////////// Dynamic_slam_keyframe.cpp
     "Dynamic_slam::initialize_keyframe":-2,
@@ -56,9 +56,9 @@
     "Dynamic_slam::initialize_new_keyframe": -2,
 
     /////////////////////////////////////// Dynamic_slam_mapping.cpp
-    "Dynamic_slam::optimize_depth": 1,
+    "Dynamic_slam::optimize_depth": 0,
     "Dynamic_slam::updateDepthCostVol": -2,
-	"Dynamic_slam::buildDepthCostVol_fast_peripheral": 1,
+	"Dynamic_slam::buildDepthCostVol_fast_peripheral": 0,
     "Dynamic_slam::updateQD": -1,
     "Dynamic_slam::cacheGValues": -1,
     "Dynamic_slam::updateA": -1,
@@ -68,8 +68,8 @@
     "Dynamic_slam::display_frame_resluts": -2,
     "Dynamic_slam::artificial_pose_error": -1,
     "Dynamic_slam::predictFrame": -1,
-    "Dynamic_slam::generate_invK_": 1,
-    "Dynamic_slam::generate_SE3_k2k": 1,
+    "Dynamic_slam::generate_invK_": 0,
+    "Dynamic_slam::generate_SE3_k2k": 0,
     "Dynamic_slam::update_k2k": -2,
 
     "Dynamic_slam::update_k2k_3": -2,
@@ -79,23 +79,23 @@
 
 	// RunCL/ ##############################################
 	/////////////////////////////////////// RunCL_class.cpp
-	"RunCL::RunCL": 1,
-	"RunCL::testOpencl": 1,
-	"RunCL::getDeviceInfoOpencl": 1,
-	"RunCL::createQueues": 1,
-	"RunCL::createAndBulidProgramFromSource": 1,
-	"RunCL::createKernels": 1,
+	"RunCL::RunCL": 0,
+	"RunCL::testOpencl": 0,
+	"RunCL::getDeviceInfoOpencl": 0,
+	"RunCL::createQueues": 0,
+	"RunCL::createAndBulidProgramFromSource": 0,
+	"RunCL::createKernels": 0,
 
-	"RunCL::convertToString": 1,
-	"RunCL::initialize_fp32_params": 1,
-	"RunCL::initialize_RunCL": 1,
+	"RunCL::convertToString": 0,
+	"RunCL::initialize_fp32_params": 0,
+	"RunCL::initialize_RunCL": 0,
 
 	"RunCL::mipmap_call_kernel": 2,
 	"RunCL::waitForEventAndRelease": 1,
 	"RunCL::allocatemem": 0,
 
 	"~RunCL": 0,
-	"exit_": 1,
+	"exit_": 0,
 
 	/////////////////////////////////////// RunCL_macro_conversion.cpp
 	"checkerror": 1,
@@ -175,7 +175,9 @@
 	"RunCL::estimateCalibration": 1,
 	"RunCL::transform_depthmap": -2,
 	"RunCL::transform_costvolume":-2,
-	"RunCL::initializeDepthCostVol": -2
+	"RunCL::initializeDepthCostVol": -2,
+
+	"RunCL::swap_costvol_pointers": -2
 }
 
 
