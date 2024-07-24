@@ -178,7 +178,7 @@ void RunCL::initializeDepthCostVol( cl_mem key_frame_depth_map_src){			 								
 	clFlush(m_queue); status = clFinish(m_queue);																							if(status!= CL_SUCCESS){cout << "\n status = " << checkerror(status) <<", Error: RunCL::initializeDepthCostVol(..)_clFinish(m_queue)\n" 	<< flush;exit_(status);}
 
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initializeDepthCostVol(..)_chk1 ."<<flush;}
-	float depth = 1/( obj["max_depth"].asFloat() - obj["min_depth"].asFloat() );															// Zero the new cost vol. NB 'depth' _might_ be a useful start value when bootstrapping.
+	//float depth = fp32_params[MIN_INV_DEPTH]; //1/( obj["max_depth"].asFloat() - obj["min_depth"].asFloat() );															// Zero the new cost vol. NB 'depth' _might_ be a useful start value when bootstrapping.
 	float zero  = 0;
 	status = clEnqueueFillBuffer(uload_queue, dbg_databuf, 	&zero, sizeof(float),   0, mm_vol_size_bytes, 0, NULL, &writeEvt);				if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: RunCL::initializeDepthCostVol_chk1.1\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueFillBuffer(uload_queue, cdatabuf, 	&zero, sizeof(float),   0, mm_vol_size_bytes, 0, NULL, &writeEvt);				if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: RunCL::initializeDepthCostVol_chk1.1\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);

@@ -98,8 +98,8 @@ __kernel void se3_Rho_sq(
 	//float SE3_LM_a		= fp32_params[SE3_LM_A];														// Optimisation parameters
 	//float SE3_LM_b		= fp32_params[SE3_LM_B];
 	float inv_d_step 	= fp32_params[INV_DEPTH_STEP];
-	float min_inv_depth = fp32_params[MIN_INV_DEPTH] + inv_d_step;
-	float max_inv_depth = fp32_params[MAX_INV_DEPTH] - inv_d_step;
+	float min_inv_depth = fp32_params[MIN_INV_DEPTH] ; //+ inv_d_step;
+	float max_inv_depth = fp32_params[MAX_INV_DEPTH] ; //- inv_d_step;
 
 
 	uint reduction		= mm_cols/read_cols_;
@@ -127,6 +127,15 @@ __kernel void se3_Rho_sq(
 		int  v2				= floor(v2_flt + 0.5f) ;											// NB this corrects the sparse sampling to the redued scales.
 		//read_index_new[sample] = read_offset_ + v2 * mm_cols  + u2; // read_cols_
 
+																	if(global_id_u == 1  ){
+																		printf("\n\n\n\n__kernel void se3_Rho_sq chk 0  (global_id_u == 1 ) : local_size=%u,  reduction=%u,  layer=%u, read_offset_=%u, read_cols_=%u, read_rows_=%u, layer_pixels=%u, read_index=%u,  \nk2k_pvt=[\n%f,%f,%f,%f,   \n%f,%f,%f,%f,    \n%f,%f,%f,%f,   \n%f,%f,%f,%f   ]\n", \
+																		local_size, reduction, layer, read_offset_, read_cols_, read_rows_, layer_pixels, read_index,   k2k_pvt[0],k2k_pvt[1],k2k_pvt[2],k2k_pvt[3],  k2k_pvt[4],k2k_pvt[5],k2k_pvt[6],k2k_pvt[7],    k2k_pvt[8],k2k_pvt[9],k2k_pvt[10],k2k_pvt[11],   k2k_pvt[12],k2k_pvt[13],k2k_pvt[14],k2k_pvt[15]  );
+																	}
+																	if((u==read_cols_-1) && (v== read_rows_-1 )){
+																		printf("\n\n__kernel void se3_Rho_sq chk 1  (u==read_cols_-1) && (v== read_rows_-1 ) :  local_size=%u,  reduction=%u,  layer=%u, read_offset_=%u, read_cols_=%u, read_rows_=%u, layer_pixels=%u, read_index=%u, ", \
+																		local_size, reduction, layer, read_offset_, read_cols_, read_rows_, layer_pixels, read_index   );
+																	}
+
 		uint num_DoFs 		= 6;
 		float4 new_px;
 
@@ -141,7 +150,16 @@ __kernel void se3_Rho_sq(
 		float4 rho 											= {0.0f,0.0f,0.0f,0.0f};
 																										// Exclude all out-of-bounds threads:
 		//bool intersection = (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2>2) && (u2<=read_cols_-2) && (v2>2) && (v2<=read_rows_-2)  &&  (global_id_u<=layer_pixels);
-		bool intersection = (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2>2) && (u2<=read_cols_-2) && (v2>2) && (v2<=read_rows_-2)  &&  (global_id_u<=layer_pixels) && (inv_depth>min_inv_depth) && (inv_depth<max_inv_depth);
+		bool intersection = (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2>2) && (u2<=read_cols_-2) && (v2>2) && (v2<=read_rows_-2)  &&  (global_id_u<=layer_pixels) && (inv_depth>=min_inv_depth) && (inv_depth<=max_inv_depth);
+
+		if( (u==10) && (v==10) ){
+			printf("\n\n__kernel void se3_Rho_sq chk 2   (u==10) && (v==10) :  intersection = %i,  (u>2) = %i,  (u<=read_cols_-2) = %i,  (v>2) = %i,  (v<=read_rows_-2) = %i,  (u2>2) = %i,  (u2<=read_cols_-2) = %i,  (v2>2) = %i,  (v2<=read_rows_-2) = %i,  (global_id_u<=layer_pixels) = %i,  (inv_depth>=min_inv_depth) = %i,  (inv_depth<=max_inv_depth) = %i", \
+				intersection,  (u>2) , (u<=read_cols_-2) , (v>2) , (v<=read_rows_-2) , (u2>2) , (u2<=read_cols_-2) , (v2>2) , (v2<=read_rows_-2)  ,  (global_id_u<=layer_pixels) , (inv_depth>min_inv_depth) , (inv_depth<max_inv_depth)  );
+
+			printf("\n\n__kernel void se3_Rho_sq chk 2.5   (u==10) && (v==10) :  intersection = %i,  u = %i,  read_cols_-2 = %i,  v = %i,  read_rows_-2 = %i,  u2 = %i,    v2 = %i,       global_id_u=%i,  layer_pixels = %i,  inv_depth=%f,  min_inv_depth = %f,  max_inv_depth = %f", \
+				intersection,  u, read_cols_-2, v, read_rows_-2, u2,   v2,    global_id_u,  layer_pixels,  inv_depth,  min_inv_depth,  max_inv_depth  );
+		}
+
 	/*
 		if ( u==5 && v==5  ){ // (global_id_u==1)
 			printf("\nkernel se3_Rho_sq(..)_1: sample=%u,  layer=%i,  global_id_u=%i,  u=%i,  v=%i,   se3_sum_size=%i,  intersection=%i, (u>2)=%i,  (u<=read_cols_-2)=%i,  (v>2)=%i,  (v<=read_rows_-2)=%i,  (u2>2)=%i,  (u2<=read_cols_-2)=%i,  (v2>2)=%i,  (v2<=read_rows_-2)=%i,  (global_id_u<=layer_pixels)=%i" \
@@ -264,8 +282,8 @@ __kernel void se3_LK_grad(
 	uint mm_pixels		= uint_params[MM_PIXELS];
 
 	float inv_d_step 	= fp32_params[INV_DEPTH_STEP];
-	float min_inv_depth = fp32_params[MIN_INV_DEPTH] + inv_d_step;
-	float max_inv_depth = fp32_params[MAX_INV_DEPTH] - inv_d_step;
+	float min_inv_depth = fp32_params[MIN_INV_DEPTH]; // + inv_d_step;
+	float max_inv_depth = fp32_params[MAX_INV_DEPTH]; // - inv_d_step;
 
 	uint reduction		= mm_cols/read_cols_;
 	uint v 				= global_id_u / read_cols_;																		// read_row
@@ -292,12 +310,16 @@ __kernel void se3_LK_grad(
 	float4 rho 			= zero_v4f;
 	float weight;
 	float8 se3_incr;
-/*
-																	//if(global_id_u == 1  ){ printf("\n__kernel void se3_LK_grad (global_id_u == 1 )  chk_2,  local_size=%u,  reduction=%u,  layer=%u, read_offset_=%u, read_cols_=%u, read_rows_=%u, layer_pixels=%u, read_index=%u, alpha=%f", \
-																		local_size, reduction, layer, read_offset_, read_cols_, read_rows_, layer_pixels, read_index, alpha    ); }
-																	//if((u==read_cols_-1) && (v== read_rows_-1 )){ printf("\n__kernel void se3_LK_grad (u==read_cols_-1) && (v== read_rows_-1 )  chk_2,  local_size=%u,  reduction=%u,  layer=%u, read_offset_=%u, read_cols_=%u, read_rows_=%u, layer_pixels=%u, read_index=%u, num_groups=%u, alpha=%f", \
-																		local_size, reduction, layer, read_offset_, read_cols_, read_rows_, layer_pixels, read_index, num_groups, alpha   ); }
-*/
+// / *
+																	if(global_id_u == 1  ){
+																		printf("\n\n\n\n__kernel void se3_LK_grad chk 0  (global_id_u == 1 ) : local_size=%u,  reduction=%u,  layer=%u, read_offset_=%u, read_cols_=%u, read_rows_=%u, layer_pixels=%u, read_index=%u, alpha=%f, \nk2k_pvt=[\n%f,%f,%f,%f,   \n%f,%f,%f,%f,    \n%f,%f,%f,%f,   \n%f,%f,%f,%f   ]\n", \
+																		local_size, reduction, layer, read_offset_, read_cols_, read_rows_, layer_pixels, read_index, alpha,  k2k_pvt[0],k2k_pvt[1],k2k_pvt[2],k2k_pvt[3],  k2k_pvt[4],k2k_pvt[5],k2k_pvt[6],k2k_pvt[7],    k2k_pvt[8],k2k_pvt[9],k2k_pvt[10],k2k_pvt[11],   k2k_pvt[12],k2k_pvt[13],k2k_pvt[14],k2k_pvt[15]  );
+																	}
+																	if((u==read_cols_-1) && (v== read_rows_-1 )){
+																		printf("\n\n__kernel void se3_LK_grad chk 1  (u==read_cols_-1) && (v== read_rows_-1 ) :  local_size=%u,  reduction=%u,  layer=%u, read_offset_=%u, read_cols_=%u, read_rows_=%u, layer_pixels=%u, read_index=%u, num_groups=%u, alpha=%f", \
+																		local_size, reduction, layer, read_offset_, read_cols_, read_rows_, layer_pixels, read_index, num_groups, alpha   );
+																	}
+// * /
 	for (int i=0; i<6; i++) {																							// Essential to zero local mem.
 		local_sum_rho_sq[i*local_size + lid] 	= zero_v4f;
 		local_sum_weight[i*local_size + lid] 	= zero_v4f;
@@ -305,7 +327,15 @@ __kernel void se3_LK_grad(
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////							// Exclude all out-of-bounds threads:
-	bool intersection = (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2>2) && (u2<=read_cols_-2) && (v2>2) && (v2<=read_rows_-2)  &&  (global_id_u<=layer_pixels) && (inv_depth>min_inv_depth) && (inv_depth<max_inv_depth);
+	bool intersection = (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2>2) && (u2<=read_cols_-2) && (v2>2) && (v2<=read_rows_-2)  &&  (global_id_u<=layer_pixels) && (inv_depth>=min_inv_depth) && (inv_depth<=max_inv_depth);
+
+	if( (u==10) && (v==10) ){
+		printf("\n\n__kernel void se3_LK_grad chk 2   (u==10) && (v==10) :  intersection = %i,  (u>2) = %i,  (u<=read_cols_-2) = %i,  (v>2) = %i,  (v<=read_rows_-2) = %i,  (u2>2) = %i,  (u2<=read_cols_-2) = %i,  (v2>2) = %i,  (v2<=read_rows_-2) = %i,  (global_id_u<=layer_pixels) = %i,  (inv_depth>=min_inv_depth) = %i,  (inv_depth<=max_inv_depth) = %i", \
+		intersection,  (u>2) , (u<=read_cols_-2) , (v>2) , (v<=read_rows_-2) , (u2>2) , (u2<=read_cols_-2) , (v2>2) , (v2<=read_rows_-2)  ,  (global_id_u<=layer_pixels) , (inv_depth>min_inv_depth) , (inv_depth<max_inv_depth)  );
+
+		printf("\n\n__kernel void se3_LK_grad chk 2.5   (u==10) && (v==10) :  intersection = %i,  u = %i,  read_cols_-2 = %i,  v = %i,  read_rows_-2 = %i,  u2 = %i,    v2 = %i,       global_id_u=%i,  layer_pixels = %i,  inv_depth=%f,  min_inv_depth = %f,  max_inv_depth = %f", \
+		intersection,  u, read_cols_-2, v, read_rows_-2, u2,   v2,    global_id_u,  layer_pixels,  inv_depth,  min_inv_depth,  max_inv_depth  );
+	}
 
 	if (  intersection  ) {																								// if (not cleanly within new frame) skip  Problem u2&v2 are wrong.
 		int idx 					= 0;																				// float4 bilinear_flt4(__global float4* img, float u_flt, float v_flt, int cols, int read_offset_, uint reduction);
@@ -319,6 +349,9 @@ __kernel void se3_LK_grad(
 		Rho_[read_index] 			= rho;																				// save pixelwise photometric error map to buffer. NB Outside if(){}, to zero non-overlapping pixels.
 		float4 rho_sq 				= {rho.x*rho.x,  rho.y*rho.y,  rho.z*rho.z, rho.w};
 		local_sum_rho_sq[lid] 		= rho_sq;																			// Also compute global Rho^2.
+
+		if( (u==10) && (v==10) ){ printf("\n\n__kernel void se3_LK_grad chk 3  (u==10) && (v==10) : , img_cur[read_index] = new_px = [%f,%f,%f,%f],  g1p[read_index].s3 = %f,  new_px = [%f,%f,%f,%f],   rho = [%f,%f,%f,%f] ", img_cur[read_index].x,img_cur[read_index].y,img_cur[read_index].z,img_cur[read_index].w,   g1p[read_index].s3,    new_px.x,new_px.y,new_px.z,new_px.w,   rho.x,rho.y,rho.z,rho.w );  }
+
 		/*
 		float4 weights_v4[6] 		= {{0,0,0,0}}; // float4
 
@@ -470,7 +503,7 @@ __kernel void se3_LK_grad(
 			global_sum_rho_sq [layer]							= layer_data;
 			global_sum_weight [layer*num_DoFs] 					= layer_data;
 			global_sum_grads  [layer*num_DoFs] 					= layer_data;
-																									printf("\nkernel se3_LK_grad(..)_2:  layer=%i,  rho_global_sum_offset=%i,   group_id=%i,   global_id_u=%i,  layer_data=( %f,  %f,  %f,  %f )", \
+																									printf("\n\n__kernel se3_LK_grad chk_10   (global_id_u == 0) :  layer=%i,  rho_global_sum_offset=%i,   group_id=%i,   global_id_u=%i,  layer_data=( %f,  %f,  %f,  %f )", \
 																										 layer,   rho_global_sum_offset,   group_id,   global_id_u,  layer_data.x,  layer_data.y,  layer_data.z,  layer_data.w );
 /*
 			//printf("\nkernel se3_grad_d(..)_2: layer=%i,  group_id=%i,  se3_global_sum_offset=%i,  layer_data=(%f,%f,%f,%f),    u=%i,  v=%i,   inv_depth=%f, u2=%f,  v2=%f,  u2_flt=%f,  v2_flt=%f,    k2k_pvt=(%f,%f,%f,%f    ,%f,%f,%f,%f    ,%f,%f,%f,%f    ,%f,%f,%f,%f),\t rho=(%f,%f,%f,%f), local_sum_grads=(%f,%f,%f,%f)"\
@@ -479,7 +512,7 @@ __kernel void se3_LK_grad(
 		}
 		if (local_sum_grads[0][3] >0){																// Using last channel local_sum_pix[0][7], to count valid pixels being summed.
 			global_sum_rho_sq[rho_global_sum_offset]			= local_sum_rho_sq[lid];
-																									printf("\nkernel se3_LK_grad(..)_3:  layer=%i,  group_id=%i,   local_sum_rho_sq[lid]=( %f,  %f,  %f,  %f )", \
+																									printf("\n\n__kernel se3_LK_grad chk_11   (local_sum_grads[0][3] >0) :  layer=%i,  group_id=%i,   local_sum_rho_sq[lid]=( %f,  %f,  %f,  %f )", \
 																										 layer, group_id,  local_sum_rho_sq[lid].x, local_sum_rho_sq[lid].y, local_sum_rho_sq[lid].z, local_sum_rho_sq[lid].w );
 			for (int i=0; i<num_DoFs; i++){
 				float4 temp_weights_float4 						= local_sum_weight[i*local_size + lid] / local_size;

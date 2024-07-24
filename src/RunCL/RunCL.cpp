@@ -292,9 +292,12 @@ int RunCL::convertToString(const char *filename, std::string& s){
 
 void RunCL::initialize_fp32_params(){
 	int local_verbosity_threshold = verbosity_mp["RunCL::initialize_fp32_params"];
+																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_fp32_params_chk_0,  \n" << flush;
+	if ( obj["max_depth_infinity"].asBool()  ) { fp32_params[MIN_INV_DEPTH]	= 0;
+	} else { fp32_params[MIN_INV_DEPTH]	=  1/obj["max_depth"].asFloat()		;   }
 
 	fp32_params[MAX_INV_DEPTH]	=  1/obj["min_depth"].asFloat()		;																		// This works: Initialize 'params[]' from conf.json .
-	fp32_params[MIN_INV_DEPTH]	=  1/obj["max_depth"].asFloat()		;
+	//fp32_params[MIN_INV_DEPTH]	=  1/obj["max_depth"].asFloat()		;
 
 	fp32_params[INV_DEPTH_STEP]	=	 ( fp32_params[MAX_INV_DEPTH] - fp32_params[MIN_INV_DEPTH] ) /  uint_params[COSTVOL_LAYERS]	;
 
@@ -308,6 +311,7 @@ void RunCL::initialize_fp32_params(){
 	fp32_params[SCALE_EAUX]		=    obj["scale_E_aux"].asFloat()	;
 	fp32_params[SE3_LM_A]		=    obj["SE3_LM_A"].asFloat()		;
 	fp32_params[SE3_LM_B]		=    obj["SE3_LM_B"].asFloat()		;
+																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_fp32_params_finished,  fp32_params[MIN_INV_DEPTH] = "<<fp32_params[MIN_INV_DEPTH]<<"\n\n" << flush;
 }
 
 void RunCL::initialize_RunCL(cv::Mat baseImage_){
@@ -653,6 +657,11 @@ void RunCL::allocatemem(){
 																																			cout << "\n" << flush;
 																																		}
 
+																																		if(verbosity>local_verbosity_threshold) {
+																																			cout << "\n\nRunCL::allocatemem_chk3.1\n\n" << flush;
+																																			cout << "fp32_params[MIN_INV_DEPTH] = " << fp32_params[MIN_INV_DEPTH] << flush;
+																																			cout << "\n" << flush;
+																																		}
 
 	status = clEnqueueWriteBuffer(uload_queue, fp32_param_buf, 	CL_FALSE, 0, 16 * sizeof(float), fp32_params, 			0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.5\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueWriteBuffer(uload_queue, k2kbuf,			CL_FALSE, 0, 16 * sizeof(float), fp32_k2keyframe, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.5\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);

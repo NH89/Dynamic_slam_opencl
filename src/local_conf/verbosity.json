@@ -141,16 +141,16 @@
 
 	/////////////////////////////////////// RunCL_tracking.cpp
 	"RunCL::precom_param_maps": 2,
-	"RunCL::update_tracking_depthmap":2,
-	"RunCL::se3_rho_sq": 2,
+	"RunCL::update_tracking_depthmap":-2,
+	"RunCL::se3_rho_sq": -2,
 
 	"RunCL::estimateSE3_LK": -2,
-	"RunCL::read_Rho_sq": 2,
-	"RunCL::read_se3_weights": 1,
-	"RunCL::read_se3_incr": 1,
+	"RunCL::read_Rho_sq": -2,
+	"RunCL::read_se3_weights": -1,
+	"RunCL::read_se3_incr": -1,
 
-	"RunCL::tracking_result": 2,
-	"RelativeVel_Map": 1,
+	"RunCL::tracking_result": -2,
+	"RelativeVel_Map": -1,
 	"RunCL::atomic_test1": 1,
 	"RunCL::atomic_test2": 2,
 

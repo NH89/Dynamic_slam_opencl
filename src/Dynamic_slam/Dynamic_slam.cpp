@@ -160,7 +160,7 @@ int Dynamic_slam::nextFrame() {
 	frame_data.push_back(new_frame); //////////////////////////////////////////
 
 	predictFrame_vec();																	auto step_1 = high_resolution_clock::now();			// updates pose2pose for next frame in cost volume.
-	getFrameData_vec();																	auto step_2 = high_resolution_clock::now();			// Loads GT depth of the new frame. NB depends on image.size from getFrame().
+	getFrameData_vec();		/*Only IF GT available*/									auto step_2 = high_resolution_clock::now();			// Loads GT depth of the new frame. NB depends on image.size from getFrame().
 
 	if(obj["use_GT_pose"].asBool() == true )		{	use_GT_pose_vec();	}			auto step_3 = high_resolution_clock::now();			// use_GT_pose();
 	getFrame();																			auto step_4 = high_resolution_clock::now();
@@ -238,7 +238,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 	runcl.img_gradients();
 																																			// # Get 1st & 2nd order image gradients of MipMap
 																																			// see CostVol::cacheGValues(), RunCL::cacheGValue2 & __kernel void CacheG3
-																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::getFrame_chk 1  Finished\n" << flush;}
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::getFrame_chk 1  Finished #######################################################################\n" << flush;}
 }
 
 cv::Matx44f Dynamic_slam::getPose(Mat R, Mat T){																							// Mat R, Mat T, Matx44f& pose  // NB Matx::operator()() does not copy, but creates a submatrix. => would be updated when R & T are updated.
@@ -296,10 +296,11 @@ void Dynamic_slam::getFrameData_vec(){
 	free(ch);
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\n Dynamic_slam::getFrameData_vec_chk 1";
-																																				cout << "\n R = " << R;
-																																				cout << "\n T = " << T;
+																																				cout << "\n\n R = " << R;
+																																				cout << "\n\n T = " << T;
 																																				cout << "\n cameraMatrix = " << cameraMatrix;
 																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);		// correct here
+																																				cout << endl << flush;
 																																			}
 	cv::Matx44f K_GT = cv::Matx44f::zeros();
 	for (int i=0; i<3; i++){

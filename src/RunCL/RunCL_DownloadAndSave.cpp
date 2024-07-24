@@ -674,7 +674,7 @@ void RunCL::DownloadAndSave_6Channel(cl_mem buffer, std::string count, boost::fi
 
 void RunCL::writeToResultsMat(cv::Mat *bufImg , uint column_of_images , uint row_of_images ){													// writeToResultsMat(buffer , column of images = iteration, row of images );
 	int local_verbosity_threshold = verbosity_mp["RunCL::writeToResultsMat"];
-	if (obj["sample_se3_incr"]==false) {cout<<"RunCL::writeToResultsMat:  ####  No resultsMat ####   (obj[\"sample_se3_incr\"]==false)  "<<flush; return;}
+	if (obj["sample_se3_incr"]==false) {cout<<"\nRunCL::writeToResultsMat: (1) ####  No resultsMat ####   (obj[\"sample_se3_incr\"]==false)  "<<flush; return;}
 																																			if(verbosity> local_verbosity_threshold) {cout<<"\n\nRunCL::writeToResultsMat(..)_chk0,"<<flush;
 																																				cout<<"\n\t column_of_images="<<column_of_images<<flush;
 																																				cout<<"\n\t row_of_images="<<row_of_images<<" "<<flush;
@@ -689,7 +689,7 @@ void RunCL::writeToResultsMat(cv::Mat *bufImg , uint column_of_images , uint row
 	int col_offset2			= mm_margin + column_of_images * ( mm_margin + patch_cols );													if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::writeToResultsMat(..)_chk5.1"<<flush;}
 
 																																			if(verbosity>local_verbosity_threshold) cout <<"\nresultsMat.size()="<<resultsMat.size()<<", bufImg->size()="<< bufImg->size()<<flush;
-	if ((resultsMat.size().width < patch_cols) || (resultsMat.size().height < patch_rows)) {cout<<"RunCL::writeToResultsMat: ####  No resultsMat ####  ((resultsMat.size().width < patch_cols) || (resultsMat.size().height < patch_rows))  "<<flush; return;}
+	if ((resultsMat.size().width < patch_cols) || (resultsMat.size().height < patch_rows)) {cout<<"\nRunCL::writeToResultsMat: (2) ####  No resultsMat ####  ((resultsMat.size().width < patch_cols) || (resultsMat.size().height < patch_rows))  "<<flush; return;}
 
 	for (int col = 0; col < patch_cols ; col++ ) {
 		for (int row = 0; row < patch_rows ; row ++) {
