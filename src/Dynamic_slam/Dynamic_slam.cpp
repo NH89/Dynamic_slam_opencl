@@ -109,7 +109,7 @@ void Dynamic_slam::initialize_camera_vec(){
 	runcl.dataset_frame_num++;
 																																			if (verbosity>local_verbosity_threshold){ cout << "\nDynamic_slam::initialize_camera_vec Finished:" <<flush; }
 }
-
+/*
 void Dynamic_slam::initialize_camera(){
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::initialize_camera"];// verbosity_mp[""];//2;
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_chk 0:" <<flush;}
@@ -150,7 +150,7 @@ void Dynamic_slam::initialize_camera(){
 	runcl.precom_param_maps( SE3_k2k );
 	getFrame();																																// Causes the first frame to be loaded into first imgmem, and prepared.
 }
-
+*/
 int Dynamic_slam::nextFrame() {
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::nextFrame"];// -2;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::nextFrame_chk 0,  runcl.dataset_frame_num="<<runcl.dataset_frame_num<<" \n" << flush; //  runcl.frame_bool_idx="<<runcl.frame_bool_idx<<"
@@ -365,7 +365,7 @@ void Dynamic_slam::getFrameData_vec(){
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec_chk Finished ############################"<<flush;
 }
 
-
+/*
 void Dynamic_slam::getFrameData(){  // can load use separate CPU thread(s) ?
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::getFrameData"];// -2;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_chk 0.  runcl.dataset_frame_num = "<< runcl.dataset_frame_num <<flush;
@@ -475,7 +475,7 @@ void Dynamic_slam::getFrameData(){  // can load use separate CPU thread(s) ?
 	runcl.load_GT_depth(depth_GT, invert_GT_depth);																							// loads to depth_mem_GT buffer.
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData finished,#################################################################"<<flush;
 }
-
+*/
 void Dynamic_slam::use_GT_pose_vec(){
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::use_GT_pose"];// -1;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::use_GT_pose_chk_0,"<<flush;
@@ -488,7 +488,7 @@ void Dynamic_slam::use_GT_pose_vec(){
 																																				PRINT_FLOAT_16(runcl.fp32_k2keyframe,);
 																																			}
 }
-
+/*
 void Dynamic_slam::use_GT_pose(){
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::use_GT_pose"];// -1;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::use_GT_pose_chk_0,"<<flush;
@@ -513,7 +513,7 @@ void Dynamic_slam::use_GT_pose(){
 																																			}
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::use_GT_pose finished,"<<flush;
 }
-
+*/
 
 //////
 

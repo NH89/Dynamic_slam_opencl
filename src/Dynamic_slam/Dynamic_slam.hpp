@@ -87,7 +87,7 @@ class Dynamic_slam
     vector<keyframe_datum>  keyframe_data;
 
 
-
+/*
     //////////////////  old non_vector pose variables:
 
     cv::Matx44f K_start,            inv_K_start,            pose_start,             inv_pose_start,           K2K_start,        pose2pose_start ;                                 // frame_data[0]
@@ -114,12 +114,12 @@ class Dynamic_slam
 
     // Memory between pose fitting iterations: place in sub-class
     cv::Matx16f pose2pose_algebra_0, pose2pose_algebra_1, pose2pose_algebra_2;
-
+*/
     // GT data loading ?
     cv::Mat image, depth_GT, cameraMatrix;       // TODO should these be Matx ?   , projection   NB cameraMatrix => K_GT
     cv::Mat R,     T;
     cv::Mat old_R, old_T;
-    cv::Mat R_dif, T_dif;
+    //cv::Mat R_dif, T_dif;
 
     float SE3_k2k[6*16];
 
@@ -184,7 +184,7 @@ class Dynamic_slam
     void generate_SE3_k2k( float _SE3_k2k[96] );
     void update_k2k(Matx16f update_);
     void update_k2k(Matx16f update_,  Matx44f local_keyframe_pose2pose);
-    void update_k2k_3( float steps[3], Matx16f update_, float k2k_3_16[3][16] );
+    void update_k2k_4(float steps[3], cv::Matx16f update_, float local_k2k_4_16[4][16] );
     void compute_optimum( float steps[3], float Rho_sq_results_3[tracking_num_samples][8][tracking_num_colour_channels], int layer, int channel, float *prediction, float *optimum, float *stepsize );
 
     //void compute_tracking_increment(float Rho_sq_results[8][tracking_num_colour_channels], float Rho_sq_results_3[tracking_num_samples][8][tracking_num_colour_channels], Matx16f update, float k2k_3_16[3][16], float stepsize, float optimmum, Matx44f increment);

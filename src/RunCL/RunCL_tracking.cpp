@@ -45,10 +45,9 @@ void RunCL::update_tracking_depthmap(){
 }
 
 
-void RunCL::se3_rho_sq( float Rho_sq_results[8][4], const float count[4], uint start, uint stop,  float k2k_16[16]  ){
+void RunCL::se3_rho_sq( float Rho_sq_results[max_mipmap_layers][tracking_num_colour_channels], const float count[4], uint start, uint stop,  float k2k_16[16]  ){
 	int local_verbosity_threshold = verbosity_mp["RunCL::se3_rho_sq"];// -1;
-	const int num_samples  = tracking_num_samples;	// Rho_sq_results[samples=3][layers=8][channels=4]
-	const int num_channels = tracking_num_colour_channels;
+	const int num_samples  = tracking_num_samples;
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::se3_rho_sq(..)_chk0 .##################################################################"<<flush;}
 	cl_event writeEvt;
 	cl_int status;
@@ -113,7 +112,7 @@ void RunCL::se3_rho_sq( float Rho_sq_results[8][4], const float count[4], uint s
 
 
 
-void RunCL::se3_rho_sq( float Rho_sq_results[3][8][4], const float count[4], uint start, uint stop,  float k2k_3_16_[3][16]  ){
+void RunCL::se3_rho_sq( float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels], const float count[4], uint start, uint stop,  float k2k_3_16_[tracking_tot_samples][16]  ){	// Rho_sq_results[tracking_tot_samples=4][max_mipmap_layers=8][tracking_num_colour_channels=4]
 	int local_verbosity_threshold = verbosity_mp["RunCL::se3_rho_sq"];// -1;
 	const int num_samples  = tracking_num_samples;	// Rho_sq_results[samples=3][layers=8][channels=4]
 	const int num_channels = tracking_num_colour_channels;
@@ -177,166 +176,34 @@ void RunCL::se3_rho_sq( float Rho_sq_results[3][8][4], const float count[4], uin
 
 																																				DownloadAndSave_3Channel_volume(  SE3_rho_map_mem,  ss.str(), paths.at("SE3_rho_map_mem"),  mm_size_bytes_C4, mm_Image_size, CV_32FC4, show, max_range, vol_layers, exception_tiff, count[0], display );
 																																			}
-																																			// void RunCL::DownloadAndSave_3Channel_volume( cl_mem buffer,   std::string count,   boost::filesystem::path folder,   size_t image_size_bytes,   cv::Size size_mat,   int type_mat,   bool show,   float max_range,   uint vol_layers,    bool exception_tiff /*=false*/,   float iter,   bool display)
-/*
-																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::se3_rho_sq(..)_chk4 ."<<flush;}
-	cv::Mat rho_sq_sum_mat = cv::Mat::zeros (num_samples*se3_sum_size, num_channels, CV_32FC1); 		// cv::Mat::zeros (int rows, int cols, int type)			// NB the data returned is one float4 per group, holding HSV, plus entry[3]=pixel count.
-	ReadOutput( rho_sq_sum_mat.data, se3_sum_rho_sq_mem, num_samples*pix_sum_size_bytes );																//float Rho_sq_reults[8][4] = {{0}};
-																																			if(verbosity>local_verbosity_threshold+2) {
-																																				cout << "\n\nRunCL::se3_rho_sq(..)_chk5 ."							<< flush;
-																																				cout << "\nrho_sq_sum_mat.size()="	<< rho_sq_sum_mat.size()		<< flush;
-																																				cout << "\nse3_sum_size="			<< se3_sum_size					<< flush;
-																																				cout << "\n mm_num_reductions = " 	<< mm_num_reductions 			<< flush;
-																																				cout << "\n num_samples = " 		<< num_samples 					<< flush;
-																																				cout << "\n\nrho_sq_sum_mat.at<float> (i*num_DoFs + j,  k) ,  i=group,  j=SO3 DoF,  i=delta4 (H,S,V, (valid pixels/group_size) )";
-
-																																				for (int sample = 0; sample<num_samples-1; sample++){
-																																					cout <<"\n\nSample = " << sample << flush;
-																																					for (int i=0; i< se3_sum_size ; i++){//&& i<30
-																																						cout << "\ngroup ="<<i<<":   ";
-																																						cout << ",     \t(";
-																																						for (int k=0; k<4; k++){	cout << ", \t" << rho_sq_sum_mat.at<float>(i, k); }
-																																						cout << ")";
-																																					}cout << endl << endl;
-																																				}
-																																			}
-
-	for (int sample = 0; sample<num_samples; sample++){
-		cout <<"\n\nSample = " << sample << flush;
-
-		for (int reduction=0; reduction<=mm_num_reductions+1; reduction++){
-			uint read_offset_ 			= MipMap[reduction*8 +MiM_READ_OFFSET];																			// mipmap_params_[MiM_READ_OFFSET];
-			uint global_sum_offset 		= read_offset_ / local_work_size ;
-			uint groups_to_sum 			= rho_sq_sum_mat.at<float>(global_sum_offset, 0);
-			uint start_group 			= global_sum_offset + 1;
-			uint stop_group 			= start_group + groups_to_sum ;   																		if(verbosity>local_verbosity_threshold+1) {
-																																					cout << "\nRunCL::se3_rho_sq(..)_chk6 layer = "	<<reduction<<
-																																					", read_offset_="			<<read_offset_<<
-																																					", global_sum_offset = "	<<global_sum_offset<<
-																																					", groups_to_sum = "		<<groups_to_sum<<
-																																					", start_group = "			<<start_group<<
-																																					", stop_group = "			<<stop_group<< flush;
-																																				}
-			for (int group=start_group; group< stop_group; group++){
-				for (int channel=0; channel<num_channels; channel++){ 					Rho_sq_results[sample][reduction][channel] += rho_sq_sum_mat.at<float>(group + sample * se3_sum_size , channel);		};						// sum j groups for this layer of the MipMap.
-			}
-		}
-																																				if(verbosity>local_verbosity_threshold+1) {
-																																					cout << endl;
-																																					for (int reduction_=0; reduction_<=mm_num_reductions+1; reduction_++){ 																// results / (num_valid_px * img_variance)
-																																						cout << "\nLayer "<<reduction_<<" mm_num_reductions = "<< mm_num_reductions <<",  Rho_sq_results/num_groups = (";
-																																						if (Rho_sq_results[sample][reduction_][3] > 0){																					// channel = 3 i.e. alpha channel is not zero.
-																																							for (int channel_=0; channel_<3; channel_++){	cout << ", \t" << Rho_sq_results[sample][reduction_][channel_] / ( Rho_sq_results[sample][reduction_][3]  *  img_stats[IMG_VAR+channel_]  );
-																																							}
-																																							cout << ", \t" << Rho_sq_results[sample][reduction_][3] << ")";
-																																						}
-																																						else{	for (int l=0; l<3; l++){	cout << ", \t" << 0.0f;		}
-																																							cout << ", \t" << Rho_sq_results[sample][reduction_][3] << ")";
-																																						}
-																																					}cout << "\n\nRunCL::se3_rho_sq(..)_finish . ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"<<flush;
-																																				}
-	}
-	*/
-	
 	for (int sample = 1; sample<=num_samples; sample++){
 		read_Rho_sq(Rho_sq_results[sample], sample-1);
 	}
-
-
-
-
-
-////
-/*
-	cv::Mat rho_sq_sum_mat = cv::Mat::zeros (2*se3_sum_size, 4, CV_32FC1); // cv::Mat::zeros (int rows, int cols, int type)					// NB the data returned is one float4 per group, holding HSV, plus entry[3]=pixel count.
-	ReadOutput( rho_sq_sum_mat.data, se3_sum_rho_sq_mem, 2*pix_sum_size_bytes, 0 );
-
-
-																																			if(verbosity>local_verbosity_threshold+1) {cout<<"\nTest RunCL::read_Rho_sq(..)_chk4.1, "<<flush;}
-
-																																			if(verbosity>local_verbosity_threshold+2) {
-																																				cout << "\n\nTest RunCL::read_Rho_sq(..)_chk5,  "<<flush;
-																																				cout << "\nrho_sq_sum_mat.size()="<<rho_sq_sum_mat.size()<<flush;
-																																				cout << "\nse3_sum_size="<<se3_sum_size<<flush;
-																																				cout << "\n mm_num_reductions = " << mm_num_reductions << endl << flush;
-																																				cout << "\n\nrho_sq_sum_mat.at<float> (i*num_DoFs + j,  k) ,  i=group,  j=SO3 DoF,  i=delta4 (H,S,V, (valid pixels/group_size) )";
-																																				for (int i=0; i< 2*se3_sum_size ; i++){//&& i<30
-																																					cout << "\ngroup ="<<i<<":   ";
-																																					cout << ",     \t(";
-																																					for (int k=0; k<4; k++){	cout << ", \t" << rho_sq_sum_mat.at<float>(i, k); }
-																																					cout << ")";
-																																				}cout << endl << endl;
-																																			}
-
-																																			cout << "\n\nmm_start="<<mm_start<<",   mm_stop="<<mm_stop \
-																																				<<",   se3_sum_size="<<se3_sum_size<<flush;
-
-	for (int sample=0; sample<2; sample++){
-		int sample_step = sample * pix_sum_size_bytes;
-		for (int layer=mm_start; layer<=mm_stop; layer++){
-			uint groups_to_sum 			= rho_sq_sum_mat.at<float>(layer+sample_step, 0);
-			uint start_group 			= rho_sq_sum_mat.at<float>(layer+sample_step, 2);  //global_sum_offset;
-			uint stop_group 			= start_group + groups_to_sum ;   																		// -1
-																																			if(verbosity>local_verbosity_threshold+2) {
-																																				cout << "\nTest RunCL::read_Rho_sq(..)_chk6,    layer = "<<layer<<
-																																				", groups_to_sum = "<<groups_to_sum<<
-																																				", start_group = "<<start_group<<
-																																				", stop_group = "<<stop_group<< flush;
-																																			}
-			int group_ = start_group;
-			for (int sample=0; sample<2; sample++){
-				for ( int group=start_group; group< stop_group; group++, group_++ ){
-					for (int chan=0; chan<4; chan++){
-						Rho_sq_results[sample][layer][chan] += rho_sq_sum_mat.at<float>(group_, chan);
-					};
-				}																									// sum j groups for this layer of the MipMap.
-		//}
-																																			if(verbosity>local_verbosity_threshold+1) {
-
-																																				cout << "\n\nTest RunCL::read_Rho_sq(..)_chk7,"  <<flush;
-																																				//for (int sample=0; sample<2; sample++){
-																																					for (int layer=0; layer<=mm_num_reductions+1; layer++){ 														// results / (num_valid_px * img_variance)
-																																						cout << "\nSample="<<sample<<", Layer "<<layer<<" mm_num_reductions = "<< mm_num_reductions <<",  Rho_sq_results/num_groups = (";
-																																						if (Rho_sq_results[sample][layer][3] > 0){
-																																							for (int chan=0; chan<3; chan++){	cout << ",   \t" << Rho_sq_results[sample][layer][chan] / ( Rho_sq_results[sample][layer][3]  *  img_stats[IMG_VAR+chan]  );
-																																							}
-																																							cout << ", \t" << Rho_sq_results[sample][layer][3] << ")";
-																																						}
-																																						else{	for (int chan=0; chan<3; chan++){	cout << ", \t" << 0.0f;		}
-																																							cout << ", \t" << Rho_sq_results[sample][layer][3] << ")";
-																																						}
-																																					}cout << "\nTest RunCL::read_Rho_sq(..)_finish . ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"<<flush;
-																																				//}
-																																			}
-		}
-	}
-	}
-	*/
 }
 
 
-void RunCL::estimateSE3_LK(float SE3_results[8][6][tracking_num_colour_channels], float SE3_weights_results[8][6][tracking_num_colour_channels], float Rho_sq_results[8][4], int count, uint start, uint stop){ //estimateSE3_LK(); 	(uint start=0, uint stop=8)			// TODO replace arbitrary fixed constant with a const uint variable in the header...
+void RunCL::estimateSE3_LK(float local_k2k[16], float SE3_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels], float SE3_weights_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels], float Rho_sq_results[max_mipmap_layers][4], int count, uint start, uint stop){ //estimateSE3_LK(); 	(uint start=0, uint stop=8)			// TODO replace arbitrary fixed constant with a const uint variable in the header...
 	int local_verbosity_threshold = verbosity_mp["RunCL::estimateSE3_LK"];																	if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK(..)_chk0 .##################################################################"<<flush;}
     cl_event writeEvt;
     cl_int status;
-																																			if(verbosity>local_verbosity_threshold) {cout << "\nRunCL::estimateSE3_LK(..)__chk_1: K2K= ";
-																																				for (int i=0; i<16; i++){ cout << ",  "<< fp32_k2keyframe[i];  }	cout << flush;
+																																			if(verbosity>local_verbosity_threshold) {cout << "\nRunCL::estimateSE3_LK(..)_chk_1: K2K= ";
+																																				PRINT_FLOAT_16(local_k2k,);
+																																				cout<<"\n dataset_frame_num="	<<dataset_frame_num
+																																				<<",      count="				<<count				<<flush;
 																																			}
-																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK(..)_chk_2,  dataset_frame_num="<<dataset_frame_num<<",   count="<<count<<flush;}
-	status = clEnqueueWriteBuffer(uload_queue, k2kbuf,	CL_FALSE, 0, 16 * sizeof(float), fp32_k2keyframe, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: RunCL::estimateSE3_LK(..)_chk0.5\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	status = clEnqueueWriteBuffer(uload_queue, k2kbuf,	CL_FALSE, 0,  16 * sizeof(float), local_k2k, 				0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: RunCL::estimateSE3_LK(..)_chk0.5\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	float zero  = 0;
-	status = clEnqueueFillBuffer(uload_queue, SE3_rho_map_mem, 		&zero, sizeof(float), 0, 2*mm_size_bytes_C4,	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: RunCL::se3_rho_sq(..)_chk0.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
-	status = clEnqueueFillBuffer(uload_queue, se3_sum_rho_sq_mem, 	&zero, sizeof(float), 0, pix_sum_size_bytes, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: RunCL::se3_rho_sq(..)_chk0.9\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	status = clEnqueueFillBuffer(uload_queue, SE3_rho_map_mem, 		&zero, sizeof(float), 0, 2*mm_size_bytes_C4,	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: RunCL::se3_rho_sq(..)_chk0.8\n" 	 << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	status = clEnqueueFillBuffer(uload_queue, se3_sum_rho_sq_mem, 	&zero, sizeof(float), 0, pix_sum_size_bytes, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: RunCL::se3_rho_sq(..)_chk0.9\n" 	 << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueFillBuffer(uload_queue, se3_weight_sum_mem, 	&zero, sizeof(float), 0, se3_sum_size_bytes, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: RunCL::estimateSE3_LK(..)_chk0.6\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueFillBuffer(uload_queue, se3_sum_mem, 			&zero, sizeof(float), 0, se3_sum_size_bytes, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: RunCL::estimateSE3_LK(..)_chk0.6\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueFillBuffer(uload_queue, SE3_incr_map_mem, 	&zero, sizeof(float), 0, mm_size_bytes_C1*24, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: RunCL::estimateSE3_LK(..)_chk0.7\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clFlush( uload_queue );																										if (status != CL_SUCCESS)	{ cout << "\nclEnqueueWriteBuffer clFlush( uload_queue ) status = " << checkerror(status) <<"\n"<<flush; exit_(status); }
 	clFinish( uload_queue );
-																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK(..)_chk_3 "<<flush;}
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK(..)_chk_2 "<<flush;}
 																																			// NB GT_depth loaded to depth_mem by void RunCL::loadFrameData(..)
-	cl_int 				res;
-																																																	//input
-	const uint wg_divisor =2;  // 1,2,4,8  reduction in workgroup size for this kernel.
+	cl_int 	res;
+	const 	uint wg_divisor =2;  // 1,2,4,8  reduction in workgroup size for this kernel.
 	// inputs
 	//      __private	 uint layer, set in mipmap_call_kernel(..) below																																__private		uint		layer,							//0
 	res = clSetKernelArg(se3_lk_grad_kernel, 1, sizeof(cl_mem), &mipmap_buf);										if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__constant	uint*		mipmap_params,					//1
@@ -367,11 +234,10 @@ void RunCL::estimateSE3_LK(float SE3_results[8][6][tracking_num_colour_channels]
 	res = clSetKernelArg(se3_lk_grad_kernel,18, sizeof(cl_mem), &se3_sum_mem);		 								if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 		float4*		global_sum_grads,				//18
 
 	res = clSetKernelArg(se3_lk_grad_kernel,19, sizeof(cl_mem), &keyframe_g1mem);									if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 	 	float8*		g1p								//19
-	//res = clSetKernelArg(se3_lk_grad_kernel,19, sizeof(int), &wg_divisor);											if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__private		uint 		wg_divisor						//19
 
-																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK(..)_chk_4 ."<<flush;}
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK(..)_chk_3 ."<<flush;}
 	mipmap_call_kernel( se3_lk_grad_kernel, m_queue, start, stop, false, local_work_size/wg_divisor); 										// reduced worksize to allow for local memory limit 4kb on rtx 3030
-																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK(..)_chk_5 ."<<flush;
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK(..)_chk_4 ."<<flush;
 																																				stringstream ss;	ss << dataset_frame_num << "_iter_"<< count << "_estimateSE3_LK_";
                                                                                                                                                 stringstream ss_path;
 																																				bool show 				= false;
@@ -388,13 +254,13 @@ void RunCL::estimateSE3_LK(float SE3_results[8][6][tracking_num_colour_channels]
 																																				PrepareResults_3Channel_volume(  SE3_rho_map_mem,  	mm_size_bytes_C4, mm_Image_size, CV_32FC4, -1, 1,  count );
 																																				PrepareResults_3Channel_volume(  SE3_incr_map_mem, 	mm_size_bytes_C4, mm_Image_size, CV_32FC4, -1, 6,  count );
 																																			}
-																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK(..)_chk_6 ."<<flush;}
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK(..)_chk_5 ."<<flush;}
 	read_Rho_sq(Rho_sq_results);
 	read_se3_weights(SE3_weights_results);
 	read_se3_incr(SE3_results);																												if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK(..)_finished ."<<flush;}
 }
 
-void RunCL::read_Rho_sq( float Rho_sq_results[8][4],  int offset/*=0*/ ){
+void RunCL::read_Rho_sq( float Rho_sq_results[max_mipmap_layers][4],  int offset/*=0*/ ){
 	int local_verbosity_threshold = verbosity_mp["RunCL::read_Rho_sq"];// -1;
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::read_Rho_sq(..)_chk1,  offset="<<offset
 																																				<<",   offset*pix_sum_size_bytes="<<offset*pix_sum_size_bytes<<flush;}
@@ -459,7 +325,7 @@ void RunCL::read_Rho_sq( float Rho_sq_results[8][4],  int offset/*=0*/ ){
 																																			}
 }
 
-void RunCL::read_se3_weights(float SE3_weights_results[8][6][tracking_num_colour_channels]){
+void RunCL::read_se3_weights(float SE3_weights_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels]){
 	int local_verbosity_threshold = verbosity_mp["RunCL::read_se3_weights"];// -1;
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::read_se3_weights(..)_chk1 ."<<flush;}
                                                                                                                                             // directly read higher layers
@@ -516,7 +382,7 @@ void RunCL::read_se3_weights(float SE3_weights_results[8][6][tracking_num_colour
 																																			}
 	}
 
-void RunCL::read_se3_incr(float SE3_results[8][6][tracking_num_colour_channels]){
+void RunCL::read_se3_incr(float SE3_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels]){
 	int local_verbosity_threshold = verbosity_mp["RunCL::read_se3_incr"];// -1;
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::read_se3_incr(..)_chk1 ."<<flush;}
                                                                                                                                             // directly read higher layers

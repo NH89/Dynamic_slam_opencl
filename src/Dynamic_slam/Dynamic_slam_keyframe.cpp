@@ -6,7 +6,7 @@
 
 using namespace cv;
 using namespace std;
-
+/*
 void Dynamic_slam::initialize_keyframe(){
 	if( obj["initialize_keyframe_from_GT"].asBool() ){  	// j_params.bool_mp["initialize_keyframe_from_GT"];
 		initialize_keyframe_from_GT();
@@ -50,7 +50,7 @@ void Dynamic_slam::initialize_keyframe_from_tracking(){																						// 
 
 	keyframe_old_pose		= keyframe_pose;
 	keyframe_old_K			= keyframe_K;
-/*
+// / *
 	//keyframe_pose 			= pose;
 	//keyframe_K				= K;
 	//keyframe_inv_pose 		= inv_pose;
@@ -58,7 +58,7 @@ void Dynamic_slam::initialize_keyframe_from_tracking(){																						// 
 
 	// keyframe_K2K   		// d_slam.predictFrame() sets 	keyframe_K2K  		= K * pose * keyframe_inv_pose * inv_old_K.					// Projects keyframe pixel to current frame
 	// keyframe_pose2pose	// d_slam.predictFrame() sets 	keyframe_pose2pose 	= pose2pose
-*/
+// * /
 	cv::Matx44f inv_pose2pose = getInvPose( keyframe_pose2pose );																			// cv::Matx44f Dynamic_slam::getInvPose(cv::Matx44f pose)
 	cv::Matx44f forward_keyframe2K  = K * inv_pose2pose * inv_K;	// TODO auto calibration												// Projects new keyframe pixel to previous keyframe
 																																			if(verbosity>local_verbosity_threshold){
@@ -104,7 +104,7 @@ void Dynamic_slam::initialize_new_keyframe(){
 	runcl.keyFrameCount++;
 	//runcl.dataset_frame_num++;
 }
-
+*/
 ///////////
 
 void Dynamic_slam::initialize_keyframe_vec(){
@@ -120,7 +120,7 @@ void Dynamic_slam::initialize_keyframe_vec(){
 	if ( keyframe_data.size() > 1 ){
 
 		cv::Matx44f inv_pose2pose 			=  getInvPose( frame_data.back().frame_data.keyframe2pose ); //    keyframe_pose2pose );		// cv::Matx44f Dynamic_slam::getInvPose(cv::Matx44f pose)
-		cv::Matx44f forward_keyframe2K  	=  K * inv_pose2pose * inv_K;																	// Projects new keyframe pixel to previous keyframe
+		cv::Matx44f forward_keyframe2K  	=  frame_data.back().frame_data.K * inv_pose2pose * frame_data.back().frame_data.inv_K;			// Projects new keyframe pixel to previous keyframe
 		runcl.transform_depthmap( 			forward_keyframe2K, runcl.amem );																// Sets new depth_mem used in tracking.
 		runcl.swap_costvol_pointers();																										// Swaps   cdatabuf<->temp_cdatabuf ,  hdatabuf<->temp_hdatabuf.
 		runcl.initializeDepthCostVol( 		runcl.amem );																					// Also copies  	imgmem 						-> keyframe_imgmem
