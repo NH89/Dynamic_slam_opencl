@@ -434,6 +434,19 @@ void Dynamic_slam::generate_SE3_k2k( float _SE3_k2k[6*16] ) {																			
 																																			}
 }
 */
+
+void Dynamic_slam::update_k2k(  int case_idx,  Matx16f update_,  float k2k_4_16[tracking_tot_samples][16]  ){
+	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::update_k2k"];// -3;
+																																			if(verbosity>local_verbosity_threshold) { cout << "\n\n Dynamic_slam::update_k2k()_chk 1, compute idealSE3Incr_algebra :" << flush; }
+	for (int i=0; i<16; i++) {
+		k2k_4_16[0][i]	 =	k2k_4_16[case_idx][i];
+		k2k_4_16[1][i]	 =	0;
+		k2k_4_16[2][i]	 =	0;
+		k2k_4_16[3][i]	 =	0;
+	}
+}
+
+
 void Dynamic_slam::update_k2k(Matx16f update_){
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::update_k2k"];// -3;
 																																			if(verbosity>local_verbosity_threshold) { cout << "\n\n Dynamic_slam::update_k2k()_chk 1, compute idealSE3Incr_algebra :" << flush;
@@ -496,21 +509,21 @@ void Dynamic_slam::update_k2k(Matx16f update_,  Matx44f local_keyframe_pose2pose
 																																				cout << "\n####################################### finished Dynamic_slam::update_k2k(Matx16f update_)"<<flush;
 																																			}
 }*/
-
-void Dynamic_slam::update_k2k_4( float steps[3], Matx16f update_, float local_k2k_4_16[tracking_tot_samples][16] ){											// Generates  local_k2k_4_16[1][16]  and  local_k2k_4_16[2][16],   to be used to compute the optimal SE3 step.
+/*
+void Dynamic_slam::update_k2k_4( float steps[3], Matx16f update_,  Matx44f K,  Matx44f keyframe2pose,  Matx44f inv_K,  Matx44f keyframe_k2k,  float local_k2k_4_16[tracking_tot_samples][16] ){											// Generates  local_k2k_4_16[1][16]  and  local_k2k_4_16[2][16],   to be used to compute the optimal SE3 step.
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::update_k2k_3"];
 
 	Matx44f keyframe_pose2pose_3[tracking_num_samples];
 	Matx44f k2k_3[tracking_num_samples];
 	Matx44f SE3Incr_matx 								= LieToP_Matx(update_);
-	Matx44f keyframe_pose2pose 							= frame_data.back().frame_data.keyframe2pose;
-	Matx44f K											= frame_data.back().frame_data.K;
-	Matx44f inv_K										= frame_data.back().frame_data.inv_K;
+	// Matx44f keyframe_pose2pose 							= frame_data.back().frame_data.keyframe2pose;
+	// Matx44f K											= frame_data.back().frame_data.K;
+	// Matx44f inv_K										= frame_data.back().frame_data.inv_K;
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\n Dynamic_slam::update_k2k_3: " << endl << flush;
 																																				PRINT_MATX16F(update_,				update_);
 																																				PRINT_MATX44F(SE3Incr_matx, 		SE3Incr_matx);
-																																				PRINT_MATX44F(keyframe_pose2pose,	keyframe_pose2pose);
+																																				PRINT_MATX44F(keyframe2pose,		keyframe2pose);
 																																				PRINT_MATX44F(K, 					K)
 																																				PRINT_MATX44F(inv_K,				inv_K);
 																																			}
@@ -521,7 +534,7 @@ void Dynamic_slam::update_k2k_4( float steps[3], Matx16f update_, float local_k2
 																																				cout << "\n Dynamic_slam::update_k2k_3:  update_multiplier="<< update_multiplier << endl << flush;
 																																				PRINT_MATX44F(SE3Incr_matx, 		SE3Incr_matx);
 																																			}
-		keyframe_pose2pose_3[sample] 					= keyframe_pose2pose *  SE3Incr_matx;
+		keyframe_pose2pose_3[sample] 					= keyframe2pose *  SE3Incr_matx;
 		k2k_3[sample] 									= K * keyframe_pose2pose_3[sample] * inv_K;
 
 		Matx44f_To_float16arry(  k2k_3[sample] , local_k2k_4_16[sample+1] );
@@ -530,7 +543,7 @@ void Dynamic_slam::update_k2k_4( float steps[3], Matx16f update_, float local_k2
 																																			}
 	}
 }
-
+*/
 void Dynamic_slam::compute_optimum( float steps[3], float Rho_sq_results_[tracking_num_samples+1][max_mipmap_layers][tracking_num_colour_channels], int layer, int channel, float *prediction, float *optimum, float *stepsize  ){
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::compute_tracking_increment"];
 
@@ -625,7 +638,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 	Matx44f keyframe_k2k					= K*keyframe2pose*inv_K;
 	float 	k2k_4_16[tracking_tot_samples][16] 		= {{0}};
 	Matx44f_To_float16arry(keyframe_k2k, k2k_4_16[0]);																					// NB float float 	k2k_4_16[..][16]  is passed by RunCL to kernels.
-
+	uint 	local_num_samples, start_sample_idx;
 																																		if(verbosity>local_verbosity_threshold) {
 																																			PRINT_MATX44F(K,);
 																																			PRINT_MATX44F(inv_K,);
@@ -656,7 +669,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 		for (int SE3=0; SE3<6; SE3++) {	update.operator()(SE3) = 	SE3_update_dof_weights[SE3] * SE3_update_layer_weights[layer] * factor * SE3_results[layer][SE3][channel] 	/ (SE3_weights[layer][SE3][channel] * runcl.img_stats[IMG_VAR+channel] ) ;  }
 
 																																		if(verbosity>local_verbosity_threshold) {
-																																			cout << "update.operator()(SE3) = 	SE3_update_dof_weights[SE3] * SE3_update_layer_weights[layer] * factor * SE3_results[layer][SE3][channel] "
+																																			cout << "\nDynamic_slam::estimateSE3() : update.operator()(SE3) = 	SE3_update_dof_weights[SE3] * SE3_update_layer_weights[layer] * factor * SE3_results[layer][SE3][channel] "
 																																			<< " / (SE3_weights[layer][SE3][channel] * runcl.img_stats[IMG_VAR+channel] )";
 																																			for (int SE3=0; SE3<6; SE3++) {
 																																				cout << "\n update.operator()("<<SE3<<") = " << update.operator()(SE3)
@@ -672,26 +685,57 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 		for (int SE3=0; SE3<6; SE3++) {																									// Exit if tracking fails #####################################################
 			if ( isfinite( update.operator()(SE3) ) ) continue;
 			else {
-																																		cout << "\n\nTracking failed,  isfinite( update.operator()("<<SE3<<") ) = " <<  isfinite( update.operator()(SE3) ) << endl<<endl<<flush;
+																																		cout << "\n\n\nDynamic_slam::estimateSE3() : Tracking failed,  isfinite( update.operator()("<<SE3<<") ) = "
+																																		<<  isfinite( update.operator()(SE3) ) << endl<<endl<<flush;
 				runcl.exit_(1);
 			}
 		}
-		update_k2k_4( steps, update*stepsize, k2k_4_16 );																				// Generate two sample steps
+		//update_k2k_4( steps, update*stepsize, K, keyframe2pose, inv_K,  keyframe_k2k,   k2k_4_16 );																				// Generate two sample steps
+
+		Matx44f sample_1_k2k = K * keyframe2pose * LieToP_Matx( update * stepsize ) * inv_K;
+		Matx44f_To_float16arry( sample_1_k2k,  k2k_4_16[1] );
+
+		Matx44f sample_2_k2k = K * keyframe2pose * LieToP_Matx( update * stepsize * 3 ) * inv_K;
+		Matx44f_To_float16arry( sample_2_k2k,  k2k_4_16[2] );
+
 																																		if(verbosity>local_verbosity_threshold) {
 																																			for (int pose_idx=0; pose_idx<4; pose_idx++){  PRINT_FLOAT_16(k2k_4_16[pose_idx],);  }
 																																		}
-		runcl.se3_rho_sq( Rho_sq_results, count, layer, layer+1, k2k_4_16 );															// Find Rho for the two sample steps
+		local_num_samples	= 2;
+		start_sample_idx	= 1;
+		runcl.se3_rho_sq( local_num_samples, start_sample_idx, Rho_sq_results, count, layer, layer+1, k2k_4_16 );															// Find Rho for the two sample steps
+
+																																		if(verbosity>local_verbosity_threshold) {
+																																			cout << "\n\nDynamic_slam::estimateSE3(): k2k_4_16[tracking_tot_samples][16] : ";
+																																			for (int a=0; a<tracking_tot_samples; a++){
+																																				cout << "\n\n tracking_sample k2k_4_16[a], a = " << a << " : ";
+																																				PRINT_FLOAT_16( k2k_4_16[a] , );
+																																			}
+
+																																			cout << "\n\nDynamic_slam::estimateSE3():  Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels] : ";
+																																			for (int a=0; a<tracking_tot_samples; a++){
+																																				cout << "\n\n tracking_sample = " << a << " : ";
+																																				for (int b=0; b<max_mipmap_layers; b++){
+																																					cout << "\nlayer = " << b << " ( ";
+																																					for (int c=0; c<tracking_num_colour_channels; c++){
+																																						cout << Rho_sq_results[a][b][c] << ", ";
+																																					}
+																																					cout << " ), ";
+																																				}
+																																			}
+																																		}
 
 		compute_optimum( steps, Rho_sq_results, layer, channel, &prediction, &optimum1, &stepsize );									// Compute optimal step from the three samples above
 
 		Matx44f sample_k2k   =   K  *  keyframe2pose  *  LieToP_Matx(optimum1*update*stepsize )  *  inv_K;
-
 		Matx44f_To_float16arry( sample_k2k,  k2k_4_16[3] );
 																																		if(verbosity>local_verbosity_threshold) {
 																																			PRINT_MATX44F(sample_k2k, );
 																																			PRINT_FLOAT_16(k2k_4_16[3],);
 																																		}
-		runcl.se3_rho_sq( Rho_sq_results[3], count, layer, layer+1, k2k_4_16[3] );															// Find Rho at the predicted optimal step
+		local_num_samples	=1;
+		start_sample_idx	=3;
+		runcl.se3_rho_sq( local_num_samples, start_sample_idx, Rho_sq_results, count, layer, layer+1, k2k_4_16 );														// Find Rho at the predicted optimal step
 
 		float 	lowest = FLT_MAX;																										// Choose best of the 4 samples
 		int 	index  = 0;
@@ -703,7 +747,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 																																		cout << "\n\n Rho_sq_results["<<i<<"][layer][channel]  excluded due to low overlap";
 			}
 																																		if(verbosity>local_verbosity_threshold) {
-																																			cout
+																																			cout << "\nDynamic_slam::estimateSE3() : "
 																																			<<" \n Rho_sq_results["<<i<<"][layer][channel]="    << Rho_sq_results[i][layer][channel]
 																																			<<",\t valid_pixels="								<< Rho_sq_results[i][layer][3]
 																																			<<",\t Rho/valid_pixels ="							<< Rho_sq_results[i][layer][channel] / Rho_sq_results[i][layer][3]
@@ -714,9 +758,9 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 																																		}
 		}
 																																		if(verbosity>local_verbosity_threshold) {
-																																			cout << "\n\n Rho_sq_results index="<<index;
+																																			cout << "\n\n\nDynamic_slam::estimateSE3() : Rho_sq_results index="<<index;
 																																		}
-
+		update_k2k( index, update, k2k_4_16);
 		switch (index){														// Set the best sample as the step for the next iteration
 			case 0:{														// The original sample is best, reduce step and repeat, or change level.
 				if ( stepsize > 1 / pow(2,(5-layer))  ){					// Reduce stepsize, unless already minimum for layer
@@ -731,19 +775,22 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 			}
 			case 1:{														// Use sample 1
 																																		if(verbosity>local_verbosity_threshold) { cout <<"\ncostvol_frame_num="<<runcl.costvol_frame_num<<",  case 1,  stepsize="<<stepsize <<",  halve stepsize for next iteration."<<flush;}
-				update_k2k( steps[1] * update );
+				//update_k2k( steps[1] * update );
+				keyframe2pose  = keyframe2pose * LieToP_Matx( update * stepsize  );
 				stepsize  /=2;
 				break;
 			}
 			case 2:{														// Use sample 2
 																																		if(verbosity>local_verbosity_threshold) { cout <<"\ncostvol_frame_num="<<runcl.costvol_frame_num<<",  case 2,  stepsize="<<stepsize <<",  double stepsize for netx iteration."<<flush;}
-				update_k2k( steps[2] * update );
+				//update_k2k( steps[2] * update );
+				keyframe2pose = keyframe2pose * LieToP_Matx( update * stepsize * 3 );
 				stepsize  *=2;
 				break;
 			}
 			case 3:{														// The predicted optimum is best
 																																		if(verbosity>local_verbosity_threshold) { cout <<"\ncostvol_frame_num="<<runcl.costvol_frame_num<<",  case 3" <<flush; }
-				update_k2k( optimum1 * update );
+				//update_k2k( optimum1 * update );
+				keyframe2pose  = keyframe2pose  *  LieToP_Matx(optimum1*update*stepsize );
 				break;
 			}
 			default: {
@@ -754,8 +801,10 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 		if ( lowest/Rho_sq_results[0][layer][3] < 0.00005 ) layer--;
 	}
 																																		//  TODO Update all variables in frame_data.back()
-	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] = k2k_4_16[0][i]; }
-
+	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] 		= k2k_4_16[0][i]; }
+	frame_data.back().frame_data.keyframe2pose  			= keyframe2pose ;
+	frame_data.back().frame_data.keyframe2pose_algebra 		= PToLie(keyframe2pose);
+	frame_data.back().frame_data.K2K						= K * keyframe2pose * inv_K;
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nDynamic_slam::estimateSE3() Finished  ##############################################################"<< flush;
 																																		}

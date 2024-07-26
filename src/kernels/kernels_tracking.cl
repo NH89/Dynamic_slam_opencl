@@ -58,20 +58,22 @@ __kernel void compute_param_maps(
 __kernel void se3_Rho_sq(
 	// inputs
 	__private	uint	layer,					//0
-	__private	uint	se3_sum_size,			//1
-	__constant 	uint8*	mipmap_params,			//2
-	__constant 	uint*	uint_params,			//3
-	__constant  float*  fp32_params,			//4
-	__global	float16*k2k,					//5		// keyframe2K[3]
-	__global 	float4*	img_cur,				//6		// keyframe
-	__global 	float4*	img_new,				//7
-	__global	float* 	depth_map,				//8		// NB keyframe GT_depth, now stored as inv_depth
-	__global	float8* g1p,					//9		// keyframe_g1mem
+	__private	uint	local_num_samples,		//1
+	__private	uint	se3_sum_size,			//2
+
+	__constant 	uint8*	mipmap_params,			//3
+	__constant 	uint*	uint_params,			//4
+	__constant  float*  fp32_params,			//5
+	__global	float16*k2k,					//6		// keyframe2K[3]
+	__global 	float4*	img_cur,				//7		// keyframe
+	__global 	float4*	img_new,				//8
+	__global	float* 	depth_map,				//9		// NB keyframe GT_depth, now stored as inv_depth
+	__global	float8* g1p,					//10		// keyframe_g1mem
 
 	// outputs
-	__global	float4* Rho_,					//10
-	__local		float4*	local_sum_rho_sq,		//11		// 1 DoF, float4 channels
-	__global 	float4*	global_sum_rho_sq		//12
+	__global	float4* Rho_,					//11
+	__local		float4*	local_sum_rho_sq,		//12		// 1 DoF, float4 channels
+	__global 	float4*	global_sum_rho_sq		//13
 	)
  {																									// find gradient wrt SE3 find global sum for each of the 6 DoF
 	uint  global_id_u 	= get_global_id(0);
@@ -111,11 +113,10 @@ __kernel void se3_Rho_sq(
 	//float alpha			= img_cur[read_index].w;
 
 	float inv_depth 	= depth_map[read_index ]; 				//1.0f;// mid point max-min inv depth	// Find new pixel position, h=homogeneous coords.//inv dept  //depth_index
-	//uint read_index_new[TRACKING_NUM_SAMPLES];
 
-	for (int sample=0; sample<TRACKING_NUM_SAMPLES; sample++){
+	for (int sample=0; sample<local_num_samples; sample++){
 
-		float16 k2k_pvt		= k2k[sample];
+		float16 k2k_pvt		= k2k[sample];															// NB we read  k2k[1] and  k2k[2]
 		float uh2 			= k2k_pvt[0]*u_flt + k2k_pvt[1]*v_flt + k2k_pvt[2]*1 + k2k_pvt[3]*inv_depth;
 		float vh2 			= k2k_pvt[4]*u_flt + k2k_pvt[5]*v_flt + k2k_pvt[6]*1 + k2k_pvt[7]*inv_depth;
 		float wh2 			= k2k_pvt[8]*u_flt + k2k_pvt[9]*v_flt + k2k_pvt[10]*1+ k2k_pvt[11]*inv_depth;
@@ -123,13 +124,13 @@ __kernel void se3_Rho_sq(
 
 		float u2_flt		= uh2/(wh2*reduction);
 		float v2_flt		= vh2/(wh2*reduction);
-		int  u2				= floor(u2_flt + 0.5f) ;											// nearest neighbour interpolation
-		int  v2				= floor(v2_flt + 0.5f) ;											// NB this corrects the sparse sampling to the redued scales.
+		int  u2				= floor(u2_flt + 0.5f) ;													// nearest neighbour interpolation
+		int  v2				= floor(v2_flt + 0.5f) ;													// NB this corrects the sparse sampling to the redued scales.
 		//read_index_new[sample] = read_offset_ + v2 * mm_cols  + u2; // read_cols_
 
 																	if(global_id_u == 1  ){
-																		printf("\n\n\n\n__kernel void se3_Rho_sq chk 0  (global_id_u == 1 ) : local_size=%u,  reduction=%u,  layer=%u, read_offset_=%u, read_cols_=%u, read_rows_=%u, layer_pixels=%u, read_index=%u,  \nk2k_pvt=[\n%f,%f,%f,%f,   \n%f,%f,%f,%f,    \n%f,%f,%f,%f,   \n%f,%f,%f,%f   ]\n", \
-																		local_size, reduction, layer, read_offset_, read_cols_, read_rows_, layer_pixels, read_index,   k2k_pvt[0],k2k_pvt[1],k2k_pvt[2],k2k_pvt[3],  k2k_pvt[4],k2k_pvt[5],k2k_pvt[6],k2k_pvt[7],    k2k_pvt[8],k2k_pvt[9],k2k_pvt[10],k2k_pvt[11],   k2k_pvt[12],k2k_pvt[13],k2k_pvt[14],k2k_pvt[15]  );
+																		printf("\n\n\n\n__kernel void se3_Rho_sq chk 0  (global_id_u == 1 ) : sample=%u,  local_size=%u,  reduction=%u,  layer=%u, read_offset_=%u, read_cols_=%u, read_rows_=%u, layer_pixels=%u, read_index=%u,  \nk2k_pvt=[\n%f,%f,%f,%f,   \n%f,%f,%f,%f,    \n%f,%f,%f,%f,   \n%f,%f,%f,%f   ]\n", \
+																		sample, local_size, reduction, layer, read_offset_, read_cols_, read_rows_, layer_pixels, read_index,   k2k_pvt[0],k2k_pvt[1],k2k_pvt[2],k2k_pvt[3],  k2k_pvt[4],k2k_pvt[5],k2k_pvt[6],k2k_pvt[7],    k2k_pvt[8],k2k_pvt[9],k2k_pvt[10],k2k_pvt[11],   k2k_pvt[12],k2k_pvt[13],k2k_pvt[14],k2k_pvt[15]  );
 																	}
 																	if((u==read_cols_-1) && (v== read_rows_-1 )){
 																		printf("\n\n__kernel void se3_Rho_sq chk 1  (u==read_cols_-1) && (v== read_rows_-1 ) :  local_size=%u,  reduction=%u,  layer=%u, read_offset_=%u, read_cols_=%u, read_rows_=%u, layer_pixels=%u, read_index=%u, ", \

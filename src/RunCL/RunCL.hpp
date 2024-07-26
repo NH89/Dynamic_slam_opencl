@@ -221,11 +221,12 @@ public:
 	
 	/////////////////////////////////////// RunCL_tracking.cpp
 	void update_tracking_depthmap();
-	void se3_rho_sq( float	 Rho_sq_results[max_mipmap_layers][tracking_num_colour_channels],    						const float count[4], uint start, uint stop,  float k2k_[16]  );
-	void se3_rho_sq( float	 Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels], 	const float count[4], uint start, uint stop, float k2k_3_16_[tracking_tot_samples][16]  );				// Tracking
+	void se3_rho_sq( const uint local_num_samples,  const uint start_sample_idx,  float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels],    const float count[4], uint start, uint stop, float k2k_3_16_[tracking_tot_samples][16]  ); //float k2k_[16]  );
+	void se3_rho_sq( 								float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels], 	const float count[4], uint start, uint stop, float k2k_3_16_[tracking_tot_samples][16]  );				// Tracking
 	void estimateSE3_LK(float local_k2k[16], float SE3_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels], float SE3_weights_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels], float Rho_sq_results[max_mipmap_layers][tracking_num_colour_channels], int count, uint start, uint stop);
 
 	void read_Rho_sq(float Rho_sq_results[max_mipmap_layers][tracking_num_colour_channels], int offset=0);
+
 	void read_se3_weights(float SE3_weights_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels]);
 	void read_se3_incr(float SE3_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels]);
 
