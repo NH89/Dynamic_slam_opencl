@@ -806,6 +806,15 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 	frame_data.back().frame_data.keyframe2pose_algebra 		= PToLie(keyframe2pose);
 	frame_data.back().frame_data.K2K						= K * keyframe2pose * inv_K;
 																																		if(verbosity>local_verbosity_threshold) {
+																																			cout << "\n\nDynamic_slam::estimateSE3() Results" << flush;
+																																			PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose, );
+																																			PRINT_MATX16F(frame_data.back().frame_data.keyframe2pose_algebra , );
+																																			PRINT_MATX44F( LieToP_Matx(frame_data.back().frame_data.keyframe2pose_algebra) , );
+																																			PRINT_MATX44F(frame_data.back().frame_data.K2K, );
+																																			PRINT_MATX44F(K,);
+																																			PRINT_MATX44F(inv_K,);
+																																			PRINT_MATX44F(K*inv_K,);
+
 																																			cout << "\n\nDynamic_slam::estimateSE3() Finished  ##############################################################"<< flush;
 																																		}
 }

@@ -302,15 +302,15 @@ void RunCL::DownloadAndSave(cl_mem buffer, std::string count, boost::filesystem:
 		}else{ temp_mat /=max_range;}
 																																		//	if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave chk4 filename = ["<<ss.str()<<"]"<<flush;
 		if(tiff==true) cv::imwrite(folder_tiff.string(), temp_mat );
-																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave chk5 filename = ["<<ss.str()<<"]"<<flush;
+																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave chk5 tiff filename = ["<<folder_tiff.string()<<"]"<<flush;
 		if(vtp==true) Save_vtk(temp_mat, key_frame, folder_png );
 
 		temp_mat *= 256*256;
 		temp_mat.convertTo(outMat, CV_16UC1);
-																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave chk6 filename = ["<<ss.str()<<"]"<<flush;
+																																		//	if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave chk6 filename = ["<<ss.str()<<"]"<<flush;
 
 		if(png==true) cv::imwrite(folder_png.string(), outMat );
-																																			//if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave chk7 filename = ["<<ss.str()<<"],  show="<<show<<flush;
+																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave chk7 png filename = ["<<folder_png.string()<<"],  show="<<show<<flush;
 
 		if(show==true) {cv::imshow( ss.str(), outMat );}
 																																			//if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave chk finished filename = ["<<ss.str()<<"]"<<flush;

@@ -118,6 +118,11 @@ __kernel void DepthCostVol(
 	bool in_image = false;
 	if ( global_id_u  < mipmap_params_[MiM_PIXELS] ) in_image = true;
 
+																		if(global_id_u == 1  ){
+																		printf("\n\n\n\n__kernel void DepthCostVol chk 0  (global_id_u == 1 ) :  reduction=%u,  layer=%u, read_offset_=%u, read_cols_=%u, read_rows_=%u,  read_index=%u,  \nk2k_pvt=[\n%f,\t%f,\t%f,\t%f,   \n%f,\t%f,\t%f,\t%f,    \n%f,\t%f,\t%f,\t%f,   \n%f,\t%f,\t%f,\t%f   ]\n", \
+																		reduction, layer, read_offset_, read_cols_, read_rows_,  read_index,   k2k_pvt[0],k2k_pvt[1],k2k_pvt[2],k2k_pvt[3],  k2k_pvt[4],k2k_pvt[5],k2k_pvt[6],k2k_pvt[7],    k2k_pvt[8],k2k_pvt[9],k2k_pvt[10],k2k_pvt[11],   k2k_pvt[12],k2k_pvt[13],k2k_pvt[14],k2k_pvt[15]  );
+																	}
+
 	for( layer=0;  layer<=costvol_layers; layer++ ){
 		inv_depth = (layer * inv_d_step) + min_inv_depth;								// locate pixel to sample from  new image. Depth dependent part.
 		uh3  = uh2 + k2k_pvt[3]*inv_depth;

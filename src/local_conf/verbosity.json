@@ -106,7 +106,7 @@
 	"RunCL::ReadOutput": 1,
 	"RunCL::saveCostVols": 1,
 
-	"RunCL::DownloadAndSave": 1,
+	"RunCL::DownloadAndSave": -1,
 	"RunCL::DownloadAndSave_2Channel_volume": 1,
 
 	"RunCL::DownloadAndSave_3Channel": 1,
@@ -135,9 +135,9 @@
 	"RunCL::mipmap_linear": -1,
 	"RunCL::img_gradients": -1,
 
-	"RunCL::load_GT_depth": 1,
-	"RunCL::convert_depth": 1,
-	"RunCL::mipmap_depthmap": 2,
+	"RunCL::load_GT_depth": -1,
+	"RunCL::convert_depth": -1,
+	"RunCL::mipmap_depthmap": -2,
 
 	/////////////////////////////////////// RunCL_tracking.cpp
 	"RunCL::precom_param_maps": 2,
