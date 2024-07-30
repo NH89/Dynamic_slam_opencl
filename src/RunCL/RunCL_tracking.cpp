@@ -33,17 +33,29 @@ void RunCL::precom_param_maps(float SE3_k2k[6*16]){ //  Compute maps of pixel mo
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\nRunCL::precom_param_maps(float SE3_k2k[6*16])_chk.. Finished "<<flush;}
 }
 
-void RunCL::update_tracking_depthmap(){
+void RunCL::update_tracking_depthmap(cl_mem depthmap_){
 	int local_verbosity_threshold = verbosity_mp["RunCL::update_tracking_depthmap"];
 	cl_event writeEvt;
     cl_int status;
 
-	status = clEnqueueCopyBuffer( m_queue,  amem, keyframe_depth_mem, 0, 0, mm_size_bytes_C1, 0, NULL, &writeEvt);	if(status!= CL_SUCCESS){cout << " status = " << checkerror(status) <<", Error: RunCL::update_tracking_depthmap(..)_clEnqueueCopyBuffer\n" << flush;exit_(status);}
+	status = clEnqueueCopyBuffer( m_queue,  depthmap_, keyframe_depth_mem, 0, 0, mm_size_bytes_C1, 0, NULL, &writeEvt);	if(status!= CL_SUCCESS){cout << " status = " << checkerror(status) <<", Error: RunCL::update_tracking_depthmap(..)_clEnqueueCopyBuffer\n" << flush;exit_(status);}
 
 	clFlush(m_queue); status = clFinish(m_queue);																							if(status!= CL_SUCCESS){cout << " status = " << checkerror(status) <<", Error: RunCL::update_tracking_depthmap(..)_clfinish_clEnqueueCopyBuffer\n" << flush;exit_(status);}
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_tracking_depthmap(..)_finished ."<<flush;}
 }
 
+
+void RunCL::initialize_tracking_depthmap(float initial_depth){
+	int local_verbosity_threshold = verbosity_mp["RunCL::update_tracking_depthmap"];
+	string fname = "RunCL::initialize_tracking_depthmap";
+	cl_event writeEvt;
+    cl_int status;
+
+	_clEnqueueFillBuffer(uload_queue, depth_mem, 	&initial_depth, sizeof(float), 0, mm_size_bytes_C1, 	0, NULL, &writeEvt, fname);
+
+	status = clFinish(uload_queue);																											if(status!= CL_SUCCESS){cout << " status = " << checkerror(status) <<", Error: RunCL::initialize_tracking_depthmap(..)_clfinish_clEnqueueCopyBuffer\n" << flush;exit_(status);}
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initialize_tracking_depthmap(..)_finished ."<<flush;}
+}
 
 void RunCL::se3_rho_sq(const uint local_num_samples,  const uint start_sample_idx,  float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels], const float count[4], uint start, uint stop,  float k2k_3_16_[tracking_tot_samples][16]   ){
 	int local_verbosity_threshold = verbosity_mp["RunCL::se3_rho_sq"];// -1;
@@ -151,11 +163,11 @@ void RunCL::estimateSE3_LK(float local_k2k[16], float SE3_results[max_mipmap_lay
 	res = clSetKernelArg(se3_lk_grad_kernel, 6, sizeof(cl_mem), &imgmem);											if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 		float4*		imgmem,							//6
 	res = clSetKernelArg(se3_lk_grad_kernel, 7, sizeof(cl_mem), &keyframe_SE3_grad_map_mem);						if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 	 	float4*		keyframe_SE3_grad_map_mem		//7
 	res = clSetKernelArg(se3_lk_grad_kernel, 8, sizeof(cl_mem), &SE3_grad_map_mem);									if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 	 	float4*		SE3_grad_map					//8
-	if( costvol_frame_num  >1 ){
-		res = clSetKernelArg(se3_lk_grad_kernel, 9, sizeof(cl_mem), &amem);											if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 	 	float*		amem							//9		// NB GT_depth, now stoed as inv_depth	// TODO need keyframe mipmap
-	}else{
+	// if( costvol_frame_num  >1 ){
+	// 	res = clSetKernelArg(se3_lk_grad_kernel, 9, sizeof(cl_mem), &amem);		/* TODO remove to proper place */	if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 	 	float*		amem							//9		// NB GT_depth, now stoed as inv_depth	// TODO need keyframe mipmap
+	// }else{
 		res = clSetKernelArg(se3_lk_grad_kernel, 9, sizeof(cl_mem), &keyframe_depth_mem);							if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global 	 	float*		keyframe_depth_mem				//9		// NB GT_depth, now stoed as inv_depth	// TODO need keyframe mipmap
-	}
+	//}
 	//outputs
 	res = clSetKernelArg(se3_lk_grad_kernel,10, sizeof(cl_mem), &SE3_rho_map_mem);									if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}		//__global	    float4*     Rho_							//10
 

@@ -341,6 +341,7 @@ void RunCL::img_gradients(){ //getFrame();
 
 void RunCL::load_GT_depth(cv::Mat GT_depth, bool invert){ //getFrameData();, cv::Matx44f GT_K2K,   cv::Matx44f GT_pose2pose
     int local_verbosity_threshold = verbosity_mp["RunCL::load_GT_depth"];// -4;
+	string fname = "RunCL::load_GT_depth";
 																																		if(verbosity>local_verbosity_threshold) cout << "\nRunCL::load_GT_depth(..)_chk_0:"<<flush;
 																																		if ( GT_depth.empty() ) {cerr << "\nRunCL::load_GT_depth(..)_chk_0:   Error  GT_depth.empty() "<<flush;  exit(1); }
 	cl_event 		writeEvt;
@@ -349,8 +350,13 @@ void RunCL::load_GT_depth(cv::Mat GT_depth, bool invert){ //getFrameData();, cv:
 	ss << "__load_GT_depth" << (keyFrameCount*1000 + costvol_frame_num);
 
 	float default_depth  = (fp32_params[MAX_INV_DEPTH] + fp32_params[MIN_INV_DEPTH])/2.0; // 0;
-	status = clEnqueueFillBuffer(uload_queue, depth_mem, 	&default_depth, sizeof(float), 0, mm_size_bytes_C1, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: RunCL::load_GT_depth_chk1\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
-	status = clEnqueueFillBuffer(uload_queue, depth_mem_GT, &default_depth, sizeof(float), 0, mm_size_bytes_C1, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: RunCL::load_GT_depth_chk1\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+
+	_clEnqueueFillBuffer(uload_queue, depth_mem, 	&default_depth, sizeof(float), 0, mm_size_bytes_C1, 	0, NULL, &writeEvt, fname);
+	_clEnqueueFillBuffer(uload_queue, depth_mem_GT, &default_depth, sizeof(float), 0, mm_size_bytes_C1, 	0, NULL, &writeEvt, fname);
+	/*
+	//status = clEnqueueFillBuffer(uload_queue, depth_mem, 	&default_depth, sizeof(float), 0, mm_size_bytes_C1, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: RunCL::load_GT_depth_chk1\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	//status = clEnqueueFillBuffer(uload_queue, depth_mem_GT, &default_depth, sizeof(float), 0, mm_size_bytes_C1, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: RunCL::load_GT_depth_chk1\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	*/
 	float max_range_ = 0.0f;																											// 0.0f => (temp_mat / maxVal) * 256*256 for .png; TODO move this to conf.json
 																																		if(verbosity>local_verbosity_threshold+1){
 																																			DownloadAndSave( depth_mem_GT,  ss.str(),   paths.at("depth_GT"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;

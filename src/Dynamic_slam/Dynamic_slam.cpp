@@ -51,7 +51,7 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_, int_map verbosity_mp_  ):   runcl(
 	runcl.allocatemem();																													// Allocate buffers on the GPU ######
 
 	initialize_camera_vec();
-	initialize_keyframe_vec();
+	initialize_keyframe_vec();																												// First keyframe
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_ finished\n" << flush;
 };
 
@@ -159,12 +159,16 @@ int Dynamic_slam::nextFrame() {
 	new_frame.keyframe_index		= keyframe_data.size();																					// i.e. the new frame will be tracked from the current keyframe.
 	frame_data.push_back(new_frame); //////////////////////////////////////////
 
+	if ( obj["initialize_tracking_from_GT_depth"].asBool() == false  ){ runcl.update_tracking_depthmap( runcl.amem   );	}					// copies buffer: amem to keyframe_depth_mem.  NB amem initialization will affect 1st tracking.
+																																			// This would update keyframe_depth_mem ith the raw amem, every frame.
+
 	predictFrame_vec();																	auto step_1 = high_resolution_clock::now();			// updates pose2pose for next frame in cost volume.
 	getFrameData_vec();		/*Only IF GT available*/									auto step_2 = high_resolution_clock::now();			// Loads GT depth of the new frame. NB depends on image.size from getFrame().
 
 	if(obj["use_GT_pose"].asBool() == true )		{	use_GT_pose_vec();	}			auto step_3 = high_resolution_clock::now();			// use_GT_pose();
 	getFrame();																			auto step_4 = high_resolution_clock::now();
 	if(obj["Artif_pose_err_bool"].asBool() == true ){ 	artificial_pose_error_vec();}	auto step_5 = high_resolution_clock::now();
+
 	estimateSE3();
 																						auto step_6 = high_resolution_clock::now();			// own thread ? num iter ?
 	//estimateCalibration(); 																												// own thread, one iter.

@@ -220,7 +220,8 @@ public:
 	void mipmap_depthmap(cl_mem depthmap_);
 	
 	/////////////////////////////////////// RunCL_tracking.cpp
-	void update_tracking_depthmap();
+	void update_tracking_depthmap(cl_mem depthmap_);
+	void initialize_tracking_depthmap(float initial_depth);
 	void se3_rho_sq( const uint local_num_samples,  const uint start_sample_idx,  float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels],    const float count[4], uint start, uint stop, float k2k_3_16_[tracking_tot_samples][16]  ); //float k2k_[16]  );
 	void se3_rho_sq( 								float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels], 	const float count[4], uint start, uint stop, float k2k_3_16_[tracking_tot_samples][16]  );				// Tracking
 	void estimateSE3_LK(float local_k2k[16], float SE3_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels], float SE3_weights_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels], float Rho_sq_results[max_mipmap_layers][tracking_num_colour_channels], int count, uint start, uint stop);
@@ -258,7 +259,7 @@ public:
 	//////////////////////////////////////
 	void cl_mem_swap_ptr(cl_mem buf1, cl_mem buf2);
 
-	void _clSetKernelArg(cl_kernel kernel,  cl_uint arg_index,  size_t arg_size, const void* arg_value);
+	void _clSetKernelArg(cl_kernel kernel,  cl_uint arg_index,  size_t arg_size, const void* arg_value, string fname);
 
 	void _clEnqueueWriteBuffer(
 		cl_command_queue    command_queue,
@@ -269,7 +270,8 @@ public:
 		const void*         ptr,
 		cl_uint             num_events_in_wait_list,
 		const cl_event*     event_wait_list,
-		cl_event*           event
+		cl_event*           event,
+		string 				fname
 	);
 
 	void _clEnqueueFillBuffer(
@@ -281,7 +283,8 @@ public:
 		size_t              size,
 		cl_uint             num_events_in_wait_list,
 		const cl_event*     event_wait_list,
-		cl_event*           event
+		cl_event*           event,
+		string 				fname
 	);
 
 	void _clCreateBuffer(
@@ -290,7 +293,8 @@ public:
 		size_t              size,
 		void*               host_ptr,
 		cl_int*             errcode_ret,
-		cl_mem 				memobj
+		cl_mem 				memobj,
+		string 				fname
 	);
 
 	void _clReleaseMemObject(cl_mem memobj);

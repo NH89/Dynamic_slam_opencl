@@ -111,7 +111,7 @@ void Dynamic_slam::initialize_keyframe_vec(){
 	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::initialize_new_keyframe"];// -1;
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::initialize_keyframe_vec()_chk 0,  runcl.dataset_frame_num = "<< runcl.dataset_frame_num << flush;}
 	keyframe_datum 							new_keyframe;
-	new_keyframe.frame_data  				=	frame_data.back();
+	new_keyframe.frame_data  				=	frame_data.back();																			// Copy current tracking frame to the new keyframe.
 	keyframe_data.push_back( 				new_keyframe );
 	keyframe_data.back().first_frame_index	=	frame_data.size();
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::initialize_keyframe_vec()_chk 1, "
@@ -138,14 +138,22 @@ void Dynamic_slam::initialize_keyframe_vec(){
 		runcl.initializeDepthCostVol( 		runcl.amem );																					// Zeros  	amem, cdatabuf, hdatabuf etc..
 		runcl.swap_costvol_pointers();																										// Swaps	cdatabuf<->temp_cdatabuf ,  hdatabuf<->temp_hdatabuf.
 		runcl.initializeDepthCostVol( 		runcl.amem );																					// Copies	amem	=	key_frame_depth_map_src -> keyframe_depth_mem
+		float initial_depth  = (runcl.fp32_params[MAX_INV_DEPTH] + runcl.fp32_params[MIN_INV_DEPTH])/2.0;									// Fills depth_mem buffer with mid depth.
+		runcl.initialize_tracking_depthmap(initial_depth);
 	}
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::initialize_keyframe_vec()_chk 2, " << flush; }
-
-	keyframe_data.back().depthmap			= cv::Mat::zeros(		runcl.uint_params[MM_ROWS], 	runcl.uint_params[MM_ROWS],  CV_32FC4	);
+	if( obj["initialize_tracking_from_GT_depth"].asBool() == true ){
+		runcl.update_tracking_depthmap( runcl.depth_mem_GT );																				// copies buffer runcl.depth_mem_GT to keyframe_depth_mem
+	}
+	if(  obj["initialize_keyframe_from_GT"].asBool() == true ){
+		keyframe_data.back().frame_data.frame_data = keyframe_data.back().frame_data.frame_data_GT;											// copies frame_data_GT to frame_data for the new keyframe
+	}
+																																			// Save keyframe "amem" and "reference_image" /////////////////////////////////////
+	keyframe_data.back().depthmap			= cv::Mat::zeros(		runcl.uint_params[MM_ROWS], 	runcl.uint_params[MM_ROWS],  CV_32FC4	);	// Instantiate and zero CV::Mat
 	keyframe_data.back().reference_image	= cv::Mat::zeros(		runcl.uint_params[MM_ROWS], 	runcl.uint_params[MM_ROWS],  CV_32FC4	);
 
-	runcl.ReadOutput(  keyframe_data.back().depthmap.data, 			runcl.amem,  	runcl.image_size_bytes );
-	runcl.ReadOutput(  keyframe_data.back().reference_image.data, 	runcl.imgmem,	runcl.image_size_bytes );
+	runcl.ReadOutput(  keyframe_data.back().depthmap.data, 			runcl.amem,  	runcl.image_size_bytes );								// Saves "amem" and "reference_image" buffers to CV::Mat in current elem of vector<> Keyframe_data.
+	runcl.ReadOutput(  keyframe_data.back().reference_image.data, 	runcl.imgmem,	runcl.image_size_bytes );								// These can be used for loop closure later on.
 
 	runcl.initialize_fp32_params();												// reset parameters											// runcl.initialize_fp32_params();  runcl.keyFrameCount++; runcl.dataset_frame_num++;
 	runcl.keyFrameCount++;

@@ -603,19 +603,20 @@ void Dynamic_slam::compute_optimum( float steps[3], float Rho_sq_results_[tracki
 	}
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\n Dynamic_slam::compute_optimum: "
-																																				<< ", \ta=" << a
+																																				<< ", \na=" << a
 																																				<< ", \tb=" << b
 																																				<< ", \tc=" << c
-																																				<< ", \t(d,e)=("<<d<<","<<e<<")"<<a*d*d + b*d + c
-																																				<< ", \t(f,g)=("<<f<<","<<g<<")"<<a*f*f + b*f + c
-																																				<< ", \t(h,i)=("<<h<<","<<i<<")"<<a*h*h + b*h + c
-																																				<< ", \tprediction="<<*prediction
+																																				<< ", \n(d,e)=("<<d<<","<<e<<")"<<a*d*d + b*d + c
+																																				<< ", \n(f,g)=("<<f<<","<<g<<")"<<a*f*f + b*f + c
+																																				<< ", \n(h,i)=("<<h<<","<<i<<")"<<a*h*h + b*h + c
+																																				<< ", \nprediction="<<*prediction
 																																				<< ", \toptimum="<<*optimum
 																																				<< ", \tstepsize="<<*stepsize
 																																				<< ", \tlayer="<<layer
 																																				<< endl << flush;
 																																			}
-																																		if( e<*prediction || g<*prediction || i<*prediction ) {
+																																		float prediction_ = *prediction * 0.999f; // prevents rounding error from triggering error.
+																																		if( e<prediction_ || g<prediction_ || i<prediction_ ) {
 																																			cout <<"\n logic error: prediction > sample." << flush; runcl.exit_(1); }
 }
 
@@ -1183,7 +1184,7 @@ void Dynamic_slam::estimateSE3_LK(){
 																																				for(int i=0;i<5;i++){cout<<" ( "; for(int j=0;j<3;j++) {cout<<", ["<<i<<"]["<<j<<"]"<<SE3_Rho_sq_threshold[i][j];}	cout << " ) "; }
 																																				cout << ",\t layer = "<<layer<< ",\t factor = "<<factor << endl << flush;
 																																			}
-	//if( runcl.costvol_frame_num  >0 ) runcl.update_tracking_depthmap(); // TODO later put this at the end of updateDepthCostVol(); OR just use amem for tracking, and therefore update amem in RunCL::transform_depthmap(..).
+	//if( runcl.costvol_frame_num  >0 ) runcl.update_tracking_depthmap(); // TODO later put this at the end of updateDepthCostVol(); or optimize_depth(), OR just use amem for tracking, and therefore update amem in RunCL::transform_depthmap(..).
 
 	for (int iter = 0; iter<SE_iter; iter++){ 																								// TODO step down layers if fits well enough, and out if fits before iteration limit. Set iteration limit param in config.json file.
 																																			if(verbosity>local_verbosity_threshold) {cout << "\n###  Dynamic_slam::estimateSE3_LK()_chk 1.0" << "\t  iter = " << iter <<
