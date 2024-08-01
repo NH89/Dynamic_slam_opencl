@@ -90,8 +90,8 @@
 	"RunCL::initialize_fp32_params": 0,
 	"RunCL::initialize_RunCL": 0,
 
-	"RunCL::mipmap_call_kernel": 2,
-	"RunCL::waitForEventAndRelease": 1,
+	"RunCL::mipmap_call_kernel": 0,
+	"RunCL::waitForEventAndRelease": 0,
 	"RunCL::allocatemem": 0,
 
 	"~RunCL": 0,
@@ -112,7 +112,7 @@
 	"RunCL::DownloadAndSave_3Channel": 1,
 	"RunCL::DownloadAndSave_3Channel_volume": 1,
 
-	"RunCL::PrepareResults_3Channel_volume":1,
+	"RunCL::PrepareResults_3Channel_volume":2,
 	"RunCL::PrepareResults_3Channel":1,
 	"RunCL::writeToResultsMat": 1,
 
@@ -140,19 +140,19 @@
 	"RunCL::mipmap_depthmap": -2,
 
 	/////////////////////////////////////// RunCL_tracking.cpp
-	"RunCL::precom_param_maps": 2,
-	"RunCL::update_tracking_depthmap":-2,
-	"RunCL::se3_rho_sq": -2,
+	"RunCL::precom_param_maps": 1,
+	"RunCL::update_tracking_depthmap":1,
+	"RunCL::se3_rho_sq": 1,
 
-	"RunCL::estimateSE3_LK": -2,
-	"RunCL::read_Rho_sq": -2,
-	"RunCL::read_se3_weights": -1,
-	"RunCL::read_se3_incr": -1,
+	"RunCL::estimateSE3_LK": 0,
+	"RunCL::read_Rho_sq": 0,
+	"RunCL::read_se3_weights": 0,
+	"RunCL::read_se3_incr": 0,
 
-	"RunCL::tracking_result": -2,
-	"RelativeVel_Map": -1,
+	"RunCL::tracking_result": 1,
+	"RelativeVel_Map": 1,
 	"RunCL::atomic_test1": 1,
-	"RunCL::atomic_test2": 2,
+	"RunCL::atomic_test2": 1,
 
 	/////////////////////////////////////// RunCL_mapping.cpp
 	"RunCL::updateDepthCostVol": -2,

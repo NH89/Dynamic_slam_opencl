@@ -33,10 +33,10 @@ class Dynamic_slam
     RunCL                   runcl;
 
     int                     verbosity;
-    int                     SE_iter_per_layer;
-    int                     SE3_stop_layer;
-    int                     SE3_start_layer;
-    int                     SE_iter;
+    uint                    SE_iter_per_layer;
+    uint                    SE3_stop_layer;
+    uint                    SE3_start_layer;
+    uint                    SE_iter;
     float                   SE_factor;
     float                   SE3_Rho_sq_threshold[5][3];
     float                   SE3_update_dof_weights[6];

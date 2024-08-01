@@ -9,12 +9,13 @@ conf_params::conf_params(char * arg, Json::Value &val){															// "arg" c
 	Json::Value 	paths_obj, 		params_obj, 	verbosity_obj;
 
     bool b;
-	b = reader.parse(ifs, paths_obj); 											if (!b) { cout << "Error: " << reader.getFormattedErrorMessages(); exit(1) ;}   else {cout << "\nconf_params::conf_params(..) chk_2: \tNB lists .json file entries alphabetically: \npaths_obj = \n" << paths_obj ;}
+	b = reader.parse(ifs, paths_obj); 											if (!b) { cout << "Error: " << reader.getFormattedErrorMessages()<<flush; cerr << flush;  exit(1) ;}   else {cout << "\nconf_params::conf_params(..) chk_2: \tNB lists .json file entries alphabetically: \npaths_obj = \n" << paths_obj ;}
 
 	ifstream ifs_params(	paths_obj["source_filepath"].asString()	 +  paths_obj["params_conf"].asString() 	);
 																													if (!ifs_params.is_open()) {
 																															cout << "\njson_params::json_params(char * arg):  ifs_params  is NOT open !"<< flush;
 																															cout << "\nfilepath + "<< paths_obj["source_filepath"].asString()	 +  paths_obj["params_conf"].asString() << endl<<flush;
+																															cerr << flush;
 																															exit(1);
 																													}
 
@@ -22,12 +23,13 @@ conf_params::conf_params(char * arg, Json::Value &val){															// "arg" c
 																													if (!ifs_verbosity.is_open()) {
 																															cout << "\njson_params::json_params(char * arg):  ifs_verbosity  is NOT open !"<< flush;
 																															cout << "\nfilepath + "<< paths_obj["source_filepath"].asString()	 +  paths_obj["verbosity_conf"].asString() << endl<<flush;
+																															cerr << flush;
 																															exit(1);
 																													}
 
-	b = reader.parse(ifs_params, 	params_obj); 								if (!b) { cout << "Error: " << reader.getFormattedErrorMessages(); exit(1) ;}   else {cout << "\nconf_params::conf_params(..) chk_3: \tNB lists .json file entries alphabetically: \nparams_obj = \n" << params_obj ;}
+	b = reader.parse(ifs_params, 	params_obj); 								if (!b) { cout << "Error: " << reader.getFormattedErrorMessages()<< flush;; cerr << flush; exit(1) ;}   else {cout << "\nconf_params::conf_params(..) chk_3: \tNB lists .json file entries alphabetically: \nparams_obj = \n" << params_obj ;}
 
-	b = reader.parse(ifs_verbosity, verbosity_obj); 							if (!b) { cout << "Error: " << reader.getFormattedErrorMessages(); exit(1) ;}   else {cout << "\nconf_params::conf_params(..) chk_4: \tNB lists .json file entries alphabetically: \nverbosity_obj = \n" << verbosity_obj ;}
+	b = reader.parse(ifs_verbosity, verbosity_obj); 							if (!b) { cout << "Error: " << reader.getFormattedErrorMessages()<< flush;; cerr << flush; exit(1) ;}   else {cout << "\nconf_params::conf_params(..) chk_4: \tNB lists .json file entries alphabetically: \nverbosity_obj = \n" << verbosity_obj ;}
 
 	read_verbosity( verbosity_obj);																					// Writes the verbosity values to an Map<int> object. This makes checking local verbosity at every function faster than reading a json string.
 /*

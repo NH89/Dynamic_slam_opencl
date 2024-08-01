@@ -76,7 +76,7 @@ float trilinear (__global float* vol, float u_flt, float v_flt, float layer_flt,
 
 float8 bilinear_SE3_grad (__global float8* img, float u_flt, float v_flt, int cols, int read_offset_){ 								//, uint reduction, int i, int mm_pixels){
 	float8 	c, c_00, c_01, c_10, c_11;
-	int coff_00, coff_01, coff_10, coff_11;
+	//int coff_00, coff_01, coff_10, coff_11;
 	int int_u2 = ceil(u_flt);
 	int int_v2 = ceil(v_flt);
 																			// compute adjacent pixel indices & sample adjacent pixels
@@ -97,7 +97,7 @@ float8 bilinear_SE3_grad (__global float8* img, float u_flt, float v_flt, int co
 
 float4 bilinear_flt4 (__global float4* img, float u_flt, float v_flt, int cols, int read_offset_){                                   // Used in tracking
 	float4 	c, c_00, c_01, c_10, c_11;										// read_offset_ + v2 * mm_cols  + u2;
-	int coff_00, coff_01, coff_10, coff_11;
+	//int coff_00, coff_01, coff_10, coff_11;
 	int int_u2 = ceil(u_flt);
 	int int_v2 = ceil(v_flt);
 																			// compute adjacent pixel indices & sample adjacent pixels

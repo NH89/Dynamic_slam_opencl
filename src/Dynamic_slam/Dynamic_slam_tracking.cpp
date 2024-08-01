@@ -647,7 +647,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 																																			PRINT_MATX44F(keyframe_k2k,);
 																																			PRINT_FLOAT_16(k2k_4_16[0],);
 																																		}
-	for (int iter = 0; iter<SE_iter; iter++){																							// The pose optimization loop.##################################################
+	for (uint iter = 0; iter<SE_iter; iter++){																							// The pose optimization loop.##################################################
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nDynamic_slam::estimateSE3() iter="<< iter
 																																			<<"  ##############################################################"<< flush;
@@ -664,6 +664,14 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 		float prediction, optimum1;
 																																		if(verbosity>local_verbosity_threshold) {
 																																			PRINT_FLOAT_16(runcl.fp32_k2keyframe,);
+																																			cout << "\n Dynamic_slam::estimateSE3(): launching runcl.estimateSE3_LK(..),"
+																																			<<"   iter="<<iter
+																																			<<"   layer="<<layer
+																																			<<"   SE3_start_layer="<<SE3_start_layer
+																																			<<"   obj['SE3_start_layer'].asUInt()="<<obj["SE3_start_layer"].asUInt()
+																																			<<endl<<flush;
+																																			layer=obj["SE3_start_layer"].asUInt();
+																																			if (layer>6) runcl.exit_(1);
 																																		}
 		runcl.estimateSE3_LK( k2k_4_16[0], SE3_results, SE3_weights, Rho_sq_results[0], iter, layer, layer+1 );							// Find the gradient "update" wrt SE3
 
@@ -978,7 +986,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 // 			if ( isfinite( update.operator()(SE3) ) ) continue;												// TODO handle exception and recover.
 // 			else {
 // 				cout << "\n\nTracking failed,  isfinite( update.operator()("<<SE3<<") ) = " <<  isfinite( update.operator()(SE3) ) << endl<<endl<<flush;
-// 				exit(1);
+// 				exit_(1);
 // 			}
 // 		}
 // 																																			if(verbosity>local_verbosity_threshold) {cout << "\n\n###  Dynamic_slam::estimateSE3_chk 3.0" << flush;

@@ -49,7 +49,10 @@ int main(int argc, char *argv[])
 																														cout <<"\nimagesPerCV = "	<<imagesPerCV;
 																														cout <<"\noutpath = " 		<< j_params.paths_mp["out_path"];
 
-	Dynamic_slam 	dynamic_slam( obj,  j_params.  verbosity_mp );														// Construct Dynamic_slam object (including RunCL object) before while loop.################################
+
+	Dynamic_slam 	dynamic_slam( obj,  j_params.verbosity_mp );														// Construct Dynamic_slam object (including RunCL object) before while loop.################################
+	exit(1);
+
 	frame_count++;
 
 	stringstream 	outfile;																							// Redirecting cout to write to "output.txt" ########
@@ -90,5 +93,5 @@ int main(int argc, char *argv[])
 																														cout << "\n\nDynamic_slam finished. Exiting."<<flush;
 	fflush (stdout);
     fclose (stdout);
-	exit(0);																											// guarantees class destructors are called.
+	dynamic_slam.runcl.exit_(0);																						// guarantees class destructors are called.
 }

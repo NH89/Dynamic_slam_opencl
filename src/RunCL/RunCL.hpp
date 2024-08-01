@@ -145,7 +145,7 @@ public:
 	void allocatemem();
 
 	void CleanUp();																														// Exit...
-	void exit_(cl_int res);
+	void exit_(int res);
 	~RunCL();
 
 	/////////////////////////////////////// RunCL_macro_conversion.cpp

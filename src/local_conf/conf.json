@@ -5,7 +5,7 @@
 
     // Debug options ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     "tiff":false,//true,//false
-    "png":true,
+    "png":false,
     "vtp":false, // NB depends on saving keyframe.   NB very slow. To examine depth maps for debugging only.
 
     // Setup openCL /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -22,15 +22,15 @@
     // gaussian_size 3                                                  // Box blurr size. Actually using 5x5 box in the code.
 
     "imagesPerCV":2,//5, //########## //10,//20,//4,//30//4//7    ######################################################################################      imagesPerCV
-    "max_frame_count":5,//27,//30,       //4,//30,//4,//140,//30,                // how many frames to run for. NB -1 -> run indefinitely.                       max_frame_count
+    "max_frame_count":2,//27,//30,       //4,//30,//4,//140,//30,                // how many frames to run for. NB -1 -> run indefinitely.                       max_frame_count
     "max_opt_count":5,          //5,//60,
     "max_inner_opt_count":10,   //10,
     "cameraMatrix":[481.20,   0.0,  319.5, 	    0.0,  480.0,  239.5, 	  0.0,    0.0,    1.0],
 
     // Mapping parameters - DTAM ////////////////////////////////////////////////////////////////////////////////////////////////////
-    "regularizer_outer_iter":30,
-    "regularizer_inner_iter":10,
-    "layers":64,                //7;//32;//64;//128;//256//255;         // Layers of CostVol. Coarse to fine warping may allow few layers to be selected. Need to store the range.
+    "regularizer_outer_iter":1,//30,
+    "regularizer_inner_iter":1,//10,
+    "layers":2,//64,                //7;//32;//64;//128;//256//255;         // Layers of CostVol. Coarse to fine warping may allow few layers to be selected. Need to store the range.
                                                                         // Also keep layers for for depths across edge boundaries.
     "invert_GT_depth":true,                                             // 'true' if ground truth depth needs to be inverted.  
     "max_depth_infinity":true,
@@ -62,8 +62,8 @@
     "SE3_LM_B":0.1,
     "SE3_start_layer":5,
     "SE3_stop_layer":1,
-    "SE_iter_per_layer":10,      //5
-    "SE_iter":10,//50,//25,               //1 //10
+    "SE_iter_per_layer":1,//10 //5
+    "SE_iter":1,//10//50//25,               //1 //10
     "SE_factor":0.003,          //0.5
     "SE_factor_iter_multiplier":0.9,
     "SE_factor_layer_multiplier":0.75,

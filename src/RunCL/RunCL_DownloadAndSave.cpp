@@ -161,7 +161,7 @@ void RunCL::Save_vtk(cv::Mat mat, cv::Mat keyframe, boost::filesystem::path fold
 	int local_verbosity_threshold = verbosity_mp["RunCL::DownloadAndSave"];
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nRunCL::Save_vtk chk0"<<flush;
 	// check mat types
-	if (mat.type() 		!=CV_32FC1) 		{cout << "\n\nError RunCL::Save_vtk  (mat.type() !=CV_32FC1)  "				<< flush; exit(1);}
+	if (mat.type() 		!=CV_32FC1) 		{cout << "\n\nError RunCL::Save_vtk  (mat.type() !=CV_32FC1)  "				<< flush; exit_(1);}
 	if (keyframe.type() !=CV_32FC4) 		{cout << "\n\nError RunCL::Save_vtk  (keyframe.type() !=CV_32FC4)  keyframe.type() = "<<  checkCVtype(keyframe.type())	<< flush; return;}
 	if (mat.total() != keyframe.total() )	{cout << "\n\nError RunCL::Save_vtk  (mat.total() "<<mat.total()<<" != keyframe.total() "<<keyframe.total()<<" )  "	<< flush; return;}
 
@@ -521,7 +521,7 @@ void RunCL::DownloadAndSave_3Channel(cl_mem buffer, std::string count, boost::fi
 
 			if(png==true) cv::imwrite(folder_png.string(), (outMat) );
 			outMat.copyTo(*bufImg);
-		}else {cout << "\n\nError RunCL::DownloadAndSave_3Channel(..)  needs new code for "<<checkCVtype(type_mat)<<endl<<flush; exit(0);}
+		}else {cout << "\n\nError RunCL::DownloadAndSave_3Channel(..)  needs new code for "<<checkCVtype(type_mat)<<endl<<flush; exit_(0);}
 																																			//if(verbosity>local_verbosity_threshold) cout << "\nDownloadAndSave_3Channel  bufImg->type() = "<<bufImg->type()<<"\t "<< checkCVtype(bufImg->type())  <<" \n" << flush;
 	tiff = old_tiff;
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave_3Channel_Chk_9, finished "<<flush;
@@ -600,7 +600,7 @@ void RunCL::PrepareResults_3Channel(cl_mem buffer, size_t image_size_bytes, cv::
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nPrepareResults_3Channel_Chk_7, "<<flush;
 			temp_mat.copyTo(*bufImg);
 
-		}else {cout << "\n\nError RunCL::PrepareResults_3Channel(..)  needs new code for "<<checkCVtype(type_mat)<<endl<<flush; exit(0);}
+		}else {cout << "\n\nError RunCL::PrepareResults_3Channel(..)  needs new code for "<<checkCVtype(type_mat)<<endl<<flush; exit_(0);}
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nPrepareResults_3Channel_Chk_9, finished "<<flush;
 }
 
@@ -616,7 +616,7 @@ void RunCL::PrepareResults_3Channel_volume(cl_mem buffer, size_t image_size_byte
 	for (uint i=0; i<vol_layers; i++) {
 		PrepareResults_3Channel(buffer, image_size_bytes, size_mat, type_mat, &bufImg, max_range, i*image_size_bytes);
 
-		if (verbosity> verbosity_mp["RunCL::PrepareResults_3Channel_volume"]){
+		if (verbosity > verbosity_mp["RunCL::PrepareResults_3Channel_volume"]){
 			cv::namedWindow( "RunCL::PrepareResults_3Channel_volume: bufImg" , 0 );
 			cv::imshow( "RunCL::PrepareResults_3Channel_volume: bufImg" , bufImg  );
 			cv::waitKey(-1);
@@ -807,7 +807,7 @@ void RunCL::SaveMat(cv::Mat temp_mat, int type_mat, boost::filesystem::path fold
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nSaveMat_Chk_7, "<<flush;
 			if(tiff==true) cv::imwrite(folder_tiff.string(), temp_mat );
 			if(png==true)  cv::imwrite(folder_png.string(),  temp_mat );
-		}																																	else {cout << "\n\nError RunCL::SaveMat(..)  needs new code for "<<checkCVtype(type_mat)<<endl<<flush; exit(0);}
+		}																																	else {cout << "\n\nError RunCL::SaveMat(..)  needs new code for "<<checkCVtype(type_mat)<<endl<<flush; exit_(0);}
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nSaveMat_Chk_9, finished "<<flush;
 }
 
@@ -856,7 +856,7 @@ void RunCL::SaveMat_1chan(cv::Mat temp_mat, int type_mat, boost::filesystem::pat
 
 			temp_mat.convertTo(outMat, CV_8U, 255);																							if(verbosity>local_verbosity_threshold) cout<<"\n\nSaveMat_1chan_Chk_6,  folder_png.string()="<< folder_png.string() <<flush;
 			if(png==true)  cv::imwrite(folder_png.string(), (outMat) );																		// Has "Grayscale 16-bit gamma integer" ?
-		}																																	else {cout << "\n\nError RunCL::SaveMat_1chan(..)  needs new code for "<<checkCVtype(type_mat)<<endl<<flush; exit(0);}
+		}																																	else {cout << "\n\nError RunCL::SaveMat_1chan(..)  needs new code for "<<checkCVtype(type_mat)<<endl<<flush; exit_(0);}
 
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nSaveMat_1chan_Chk_7, finished "<<flush;
 }

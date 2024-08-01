@@ -20,7 +20,7 @@ void convertAhandaPovRayToStandard(int_map verbosity_mp, const char *filepath,  
     char     text_file_name[600];                                               // open .txt file
     sprintf(text_file_name,"%s",filepath);
     ifstream cam_pars_file(text_file_name);
-    if( !cam_pars_file.is_open() ){  cerr<<"Failed to open param file, check location of sample trajectory!"<<endl;  exit(1); }
+    if( !cam_pars_file.is_open() ){  cerr<<"Failed to open param file, check location of sample trajectory!"<<endl<< flush;  cout<< flush; exit(1); }
     char     readlinedata[300];
     Point3f  direction;
     Point3f  upvector;

@@ -269,7 +269,7 @@ void RunCL::mipmap_linear(){
 	float		b = float(0.125);
 	float		c = float(0.25);
 	float 		gaussian[9] = {a, b, a, b, c, b, a , b, a };																																//  TODO load gaussian kernel & size from conf.json .
-	if (mm_gaussian_size!=3) {cout<<"Error: (mm_gaussian_size!=3). Need to add code to malloc gaussian array. Probably with jsoncpp from 'conf.json' file." <<flush; exit(0); }
+	if (mm_gaussian_size!=3) {cout<<"Error: (mm_gaussian_size!=3). Need to add code to malloc gaussian array. Probably with jsoncpp from 'conf.json' file." <<flush; exit_(0); }
 
 	status = clEnqueueWriteBuffer(uload_queue, gaussian_buf, CL_FALSE, 0, mm_gaussian_size*mm_gaussian_size*sizeof(float), gaussian, 0, NULL, &writeEvt);											// write mipmap_buf
 	if (status != CL_SUCCESS){cout<<"\nstatus = "<<checkerror(status)<<"\n"<<flush; cout << "Error: RunCL::mipmap, clEnqueueWriteBuffer, mipmap_buf \n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
@@ -343,7 +343,7 @@ void RunCL::load_GT_depth(cv::Mat GT_depth, bool invert){ //getFrameData();, cv:
     int local_verbosity_threshold = verbosity_mp["RunCL::load_GT_depth"];// -4;
 	string fname = "RunCL::load_GT_depth";
 																																		if(verbosity>local_verbosity_threshold) cout << "\nRunCL::load_GT_depth(..)_chk_0:"<<flush;
-																																		if ( GT_depth.empty() ) {cerr << "\nRunCL::load_GT_depth(..)_chk_0:   Error  GT_depth.empty() "<<flush;  exit(1); }
+																																		if ( GT_depth.empty() ) {cerr << "\nRunCL::load_GT_depth(..)_chk_0:   Error  GT_depth.empty() "<<flush;  exit_(1); }
 	cl_event 		writeEvt;
 	cl_int 	 		status;
 	stringstream 	ss;

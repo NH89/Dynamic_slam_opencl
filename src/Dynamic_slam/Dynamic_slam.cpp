@@ -16,10 +16,10 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_, int_map verbosity_mp_  ):   runcl(
 	runcl.dataset_frame_num 	= obj["data_file_offset"].asUInt();
 	invert_GT_depth  			= obj["invert_GT_depth"].asBool();
 
-	SE3_start_layer 			= obj["SE3_start_layer"].asInt();
-    SE3_stop_layer 				= obj["SE3_stop_layer"].asInt();
-	SE_iter_per_layer 			= obj["SE_iter_per_layer"].asInt();
-    SE_iter 					= obj["SE_iter"].asInt();
+	SE3_start_layer 			= obj["SE3_start_layer"].asUInt();
+    SE3_stop_layer 				= obj["SE3_stop_layer"].asUInt();
+	SE_iter_per_layer 			= obj["SE_iter_per_layer"].asUInt();
+    SE_iter 					= obj["SE_iter"].asUInt();
 	SE_factor					= obj["SE_factor"].asFloat();
 
 	for (int layer=0; layer<MAX_LAYERS; layer++){for (int chan=0; chan<3; chan++)	SE3_Rho_sq_threshold[layer][chan]  	= obj["SE3_Rho_sq_threshold"][layer][chan].asFloat();  }	//j_params.float_vecvec_mp["SE3_Rho_sq_threshold"][layer][chan]; }		//
@@ -36,9 +36,9 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_, int_map verbosity_mp_  ):   runcl(
 	rootpath 	= ss0.str();
 	root 		= rootpath;
 
-	if ( exists(root)==false )		{ cout << "Data folder "<< ss0.str()  <<" does not exist.\n" <<flush; exit(0); }
-	if ( is_directory(root)==false ){ cout << "Data folder "<< ss0.str()  <<" is not a folder.\n"<<flush; exit(0); }
-	if ( empty(root)==true )		{ cout << "Data folder "<< ss0.str()  <<" is empty.\n"		 <<flush; exit(0); }
+	if ( exists(root)==false )		{ cout << "Data folder "<< ss0.str()  <<" does not exist.\n" <<flush; runcl.exit_(0); }
+	if ( is_directory(root)==false ){ cout << "Data folder "<< ss0.str()  <<" is not a folder.\n"<<flush; runcl.exit_(0); }
+	if ( empty(root)==true )		{ cout << "Data folder "<< ss0.str()  <<" is empty.\n"		 <<flush; runcl.exit_(0); }
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_chk 1\n" << flush;
 	get_all(root, ".txt",   txt);																											// Get lists of files. Gathers all filepaths with each suffix, into c++ vectors.
 	get_all(root, ".png",   png);
@@ -48,11 +48,11 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_, int_map verbosity_mp_  ):   runcl(
 																																				<<"png[runcl.dataset_frame_num].string()="<< png[runcl.dataset_frame_num].string()  <<flush;
 																																			}
 	runcl.initialize_RunCL( imread(png[runcl.dataset_frame_num].string() ) );																// Set image params, ref for dimensions and data type. ########################################################################
-	runcl.allocatemem();																													// Allocate buffers on the GPU ######
+	/*runcl.allocatemem();																													// Allocate buffers on the GPU ######
 
 	initialize_camera_vec();
 	initialize_keyframe_vec();																												// First keyframe
-																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_ finished\n" << flush;
+	*/																																		if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_ finished\n" << flush;
 };
 
 void Dynamic_slam::initialize_resultsMat(){	// need to take img pyramid layer 2 of output, or read layer num from .json .
@@ -230,7 +230,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 																																			if (image.type()!= runcl.baseImage.type() || image.size()!=runcl.baseImage.size() ) {
 																																				cout<< "\n\nError: Dynamic_slam::getFrame(), runcl.dataset_frame_num = " << runcl.dataset_frame_num << " : missmatched. runcl.baseImage.size()="<<runcl.baseImage.size()<<\
 																																				", image.size()="<<image.size()<<", runcl.baseImage.type()="<<runcl.baseImage.type()<<", image.type()="<<image.type()<<"\n\n"<<flush;
-																																				exit(0);
+																																				runcl.exit_(0);
 																																			}
 																																			//image.convertTo(image, CV_16FC3, 1.0/256, 0.0); // NB cv_16FC3 is preferable, for faster half precision processing on AMD, Intel & ARM GPUs.
 	runcl.loadFrame( image );																												// NB Nvidia GeForce have 'Tensor Compute" FP16, accessible by PTX. AMD have RDNA and CDNA. These need PTX/assembly code and may use BF16 instead of FP16.
@@ -338,7 +338,7 @@ void Dynamic_slam::getFrameData_vec(){
 	frame_data.back().keyframe_index		= runcl.dataset_frame_num;
 	frame_data.back().frame_data_GT			= datum;
 	// frame_data.back().frame_data			= datum;						// TODO if(use GT),  but move it out to Dynamic_slam::next_frame()
-																																			if ( runcl.baseImage.empty() ) {cerr << "\nDynamic_slam::getFrameData_vec():   Error runcl.baseImage.empty() "<<flush;  exit(1); }
+																																			if ( runcl.baseImage.empty() ) {cerr << "\nDynamic_slam::getFrameData_vec():   Error runcl.baseImage.empty() "<<flush;  runcl.exit_(1); }
 	int r 									= runcl.baseImage.rows;
     int c 									= runcl.baseImage.cols;
 	depth_GT 								= loadDepthAhanda(verbosity_mp, depth[runcl.dataset_frame_num].string(), r,c,cameraMatrix);

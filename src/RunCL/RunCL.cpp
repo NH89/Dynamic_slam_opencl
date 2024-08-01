@@ -1,6 +1,13 @@
 #include "RunCL.hpp"
 
-
+/*
+ * NB there are memory leaks assoc with the Intel and AMD  OpenCL-ICD
+ https://stackoverflow.com/questions/47869162/opencl-clgetplatformids-gives-around-230-valgrind-memcheck-errors
+ https://community.khronos.org/t/opencl-clgetplatformids-gives-around-230-valgrind-memcheck-errors/7388
+ https://community.intel.com/t5/OpenCL-for-CPU/OpenCL-clGetPlatformIDs-gives-26-valgrind-memcheck-errors/td-p/1174915
+ Memory leak in icd.c #13
+ https://github.com/KhronosGroup/OpenCL-ICD-Loader/issues/13
+ */
 
 RunCL::RunCL( Json::Value obj_ , int_map verbosity_mp_ ){
 	obj 		 	= obj_;																													// NB save obj_ to class member obj, so that it persists within this RunCL object.
@@ -15,7 +22,7 @@ RunCL::RunCL( Json::Value obj_ , int_map verbosity_mp_ ){
 																																				cout << "\nverbosity = "<<verbosity<< flush;
 																																			}
 																																			/*Step1: Getting platforms and choose an available one.*/////////###############################
-	testOpencl();																															// Displays available OpenCL Platforms and Devices.
+	//testOpencl();																															// Displays available OpenCL Platforms and Devices.
 	cl_uint 		numPlatforms;																											//the NO. of platforms
 	cl_platform_id 	platform 		= NULL;																									//the chosen platform
 	cl_int			status 			= clGetPlatformIDs(0, NULL, &numPlatforms);				if (status != CL_SUCCESS){ cout << "Error: Getting platforms!" << endl; exit_(status); };
@@ -32,17 +39,18 @@ RunCL::RunCL( Json::Value obj_ , int_map verbosity_mp_ ){
 																																								 cout <<"\nSelected platform number :"<<conf_platform<<", cl_platform_id platform = " << platform<<"\n"<<flush;
 																																							}
 		free(platforms);
-	} else {																																cout<<"Error: Platform num "<<conf_platform<<" not available."<<flush; exit(0);}
+	} else {																																cout<<"Error: Platform num "<<conf_platform<<" not available."<<flush; exit_(0);}
 
 	cl_uint			numDevices		= 0;																									/*Step 2:Query the platform.*//////////////////////////////////################################
 	cl_device_id    *devices;
 	status = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 0, NULL, &numDevices);			if (status != CL_SUCCESS) {cout << "\n3 status = " << checkerror(status) <<"\n"<<flush; exit_(status);}
 	uint conf_device = obj["opencl_device"].asUInt();
 
-	if (numDevices > conf_device){																											/*Choose the device*/
-		devices = (cl_device_id*)malloc(numDevices * sizeof(cl_device_id));
-		status  = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, numDevices, devices, NULL);  if (status != CL_SUCCESS) {cout << "\n4 status = " << checkerror(status) <<"\n"<<flush; exit_(status);}
-	}else{                                                                                  cout << "\n\nRunCL::RunCL(..), (numDevices <= conf_device)\n" << flush; exit(status);}
+
+	if (numDevices <= conf_device){                                                         cout << "\n\nRunCL::RunCL(..), (numDevices <= conf_device)\n" << flush; exit_(status); }
+	devices = (cl_device_id*)malloc(numDevices * sizeof(cl_device_id));																		/*Choose the device*/
+	status  = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, numDevices, devices, NULL);  if (status != CL_SUCCESS) {cout << "\n4 status = " << checkerror(status) <<"\n"<<flush; exit_(status);}
+
 
 	cl_context_properties cps[3]={CL_CONTEXT_PLATFORM,(cl_context_properties)platform,0};													/*Step 3: Create context.*////////////////////////////////////##################################
 	m_context 	= clCreateContextFromType( cps, CL_DEVICE_TYPE_GPU, NULL, NULL, &status);	if(status!=0) {cout<<"\n5 status="<<checkerror(status)<<"\n"<<flush;exit_(status);}
@@ -54,7 +62,7 @@ RunCL::RunCL( Json::Value obj_ , int_map verbosity_mp_ ){
 																																				cl_uint addr_data;
 																																				char name_data[48], ext_data[4096];
 																																				err = clGetDeviceInfo(deviceId, CL_DEVICE_NAME, sizeof(name_data), name_data, NULL);
-																																				if(err < 0) {perror("Couldn't read extension data"); exit(1); }
+																																				if(err < 0) {perror("Couldn't read extension data"); exit_(1); }
 																																				clGetDeviceInfo(deviceId, CL_DEVICE_ADDRESS_BITS, sizeof(ext_data), &addr_data, NULL);
 																																				clGetDeviceInfo(deviceId, CL_DEVICE_EXTENSIONS, sizeof(ext_data), ext_data, NULL);
 																																				printf("\nDevice num: %i \nNAME: %s\nADDRESS_WIDTH: %u\nEXTENSIONS: %s \n", conf_device, name_data, addr_data, ext_data);
@@ -68,8 +76,28 @@ RunCL::RunCL( Json::Value obj_ , int_map verbosity_mp_ ){
 																																			/*Step 6: Build program.*////////////////////###################################################
 																																			/*Step 7: Create kernel objects.*////////////###################################################
 	createKernels();
+	/*
+	 * Given the "apparet memory leaks wrt the Intel ocl-icd,  this is the "valgrind --leak-check=full" result upto this point on Intel IrisXe GPU, on ubuntu 23.04"
+	==264229== LEAK SUMMARY:
+	==264229==    definitely lost: 126,434 bytes in 577 blocks
+	==264229==    indirectly lost: 16,608 bytes in 3 blocks
+	==264229==      possibly lost: 529,189 bytes in 37 blocks
+	==264229==    still reachable: 2,102,638 bytes in 8,690 blocks
+	==264229==                       of which reachable via heuristic:
+	==264229==                         newarray           : 1,032 bytes in 1 blocks
+	==264229==                         multipleinheritance: 21,536 bytes in 4 blocks
+	==264229==         suppressed: 0 bytes in 0 blocks
+	==264229== Reachable blocks (those to which a pointer was found) are not shown.
+	==264229== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+	==264229==
+	==264229== For lists of detected and suppressed errors, rerun with: -s
+	==264229== ERROR SUMMARY: 11 errors from 11 contexts (suppressed: 0 from 0)
+	*/
+
 	basemem=imgmem=dbg_databuf=cdatabuf=hdatabuf=temp_cdatabuf=temp_hdatabuf=k2kbuf=dmem=amem=gxmem=gymem=g1mem=lomem=himem=mean_mem=0;		// Set device pointers to zero
 	createFolders( );																														// Create the folders to which the output will be written.
+
+	free(devices);
 																																			if(verbosity>local_verbosity_threshold) cout << "RunCL_constructor finished ##########################\n" << flush;
 }
 
@@ -89,9 +117,8 @@ void RunCL::testOpencl(){
 								cl_uint *num_platforms)
 	*/
 																																			// Find number of platforms
-	err = clGetPlatformIDs(1, NULL, &num_platforms);										if(err < 0) { perror("Couldn't find any platforms."); exit(1); }
-	platforms = (cl_platform_id*)
-	malloc(sizeof(cl_platform_id) * num_platforms);																							// Allocate platform array
+	err = clGetPlatformIDs(1, NULL, &num_platforms);										if(err < 0) { perror("Couldn't find any platforms."); exit_(1); }
+	platforms = (cl_platform_id*)malloc(sizeof(cl_platform_id) * num_platforms);															// Allocate platform array
 	clGetPlatformIDs(num_platforms, platforms, NULL);																						// Initialize platform array
 																																			if(verbosity>local_verbosity_threshold) cout << "\nnum_platforms="<<num_platforms<<"\n" << flush;
 	for(i=0; i<num_platforms; i++) {
@@ -105,13 +132,13 @@ void RunCL::testOpencl(){
 									size_t *param_value_size_ret)
 		*/
 																																			// Find size of name data
-		err = clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, 0, NULL, &ext_size);		if(err < 0) { perror("Couldn't read platform name data."); exit(1); }
+		err = clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, 0, NULL, &ext_size);		if(err < 0) { perror("Couldn't read platform name data."); exit_(1); }
 
 		name_data = (char*)malloc(ext_size);
 		clGetPlatformInfo( platforms[i],  CL_PLATFORM_NAME, ext_size, name_data, NULL);														printf("Platform %d name: %s\n", i, name_data);
 		free(name_data);
 																																			// Find size of extension data
-		err = clGetPlatformInfo(platforms[i], CL_PLATFORM_EXTENSIONS, 0, NULL, &ext_size);	if(err < 0) { perror("Couldn't read extension data."); exit(1); }
+		err = clGetPlatformInfo(platforms[i], CL_PLATFORM_EXTENSIONS, 0, NULL, &ext_size);	if(err < 0) { perror("Couldn't read extension data."); exit_(1); }
 
 		ext_data = (char*)malloc(ext_size);																									// Read data extension
 		clGetPlatformInfo( platforms[i],  CL_PLATFORM_EXTENSIONS, ext_size, ext_data, NULL);
@@ -131,6 +158,7 @@ void RunCL::testOpencl(){
 		devices = (cl_device_id*) malloc(sizeof(cl_device_id) * num_devices);																// Allocate platform array
 		clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, num_devices, devices, NULL);														// Initialize platform array
 																																			if(verbosity>local_verbosity_threshold) cout << "\nnum_devices="<<num_devices<<"\n" << flush;
+		free(devices);
 		getDeviceInfoOpencl(platforms[i]);
 	}
 																																			if(platform_index > -1) printf("Platform %d supports the %s extension.\n", platform_index, icd_ext);
@@ -146,11 +174,11 @@ void RunCL::getDeviceInfoOpencl(cl_platform_id platform){
 	cl_uint num_devices, addr_data;
 	cl_int i, err;
 	char name_data[48], ext_data[4096];
-	err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, 1, NULL, &num_devices); 																if(err < 0) {perror("Couldn't find any devices"); exit(1); }
+	err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, 1, NULL, &num_devices); 																if(err < 0) {perror("Couldn't find any devices"); exit_(1); }
 	devices = (cl_device_id*) malloc(sizeof(cl_device_id) * num_devices);
 	clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, num_devices, devices, NULL);
 	for(i=0; i<num_devices; i++) {
-		err = clGetDeviceInfo(devices[i], CL_DEVICE_NAME, sizeof(name_data), name_data, NULL); 												if(err < 0) {perror("Couldn't read extension data"); exit(1); }
+		err = clGetDeviceInfo(devices[i], CL_DEVICE_NAME, sizeof(name_data), name_data, NULL); 												if(err < 0) {perror("Couldn't read extension data"); exit_(1); }
 		clGetDeviceInfo(devices[i], CL_DEVICE_ADDRESS_BITS, sizeof(ext_data), &addr_data, NULL);
 		clGetDeviceInfo(devices[i], CL_DEVICE_EXTENSIONS, sizeof(ext_data), ext_data, NULL);
 																																			printf("\nDevice num: %i \nNAME: %s\nADDRESS_WIDTH: %u\nEXTENSIONS: %s \n", i, name_data, addr_data, ext_data);
@@ -192,7 +220,7 @@ void RunCL::createAndBulidProgramFromSource(cl_device_id *devices){
 		const char* char_filepath = tmp.c_str();
 		program_handle = fopen(char_filepath, "r");                                          if(program_handle == NULL) { perror("Couldn't find the program file");
 																															cout << "\tchar_filepath = "<< char_filepath << flush;
-																															exit(1); }
+																															exit_(1); }
         fseek(program_handle, 0, SEEK_END);
         lengths[i] = ftell(program_handle);
         rewind(program_handle);
@@ -235,32 +263,32 @@ void RunCL::createKernels(){
 
 	cl_int err_code;
 
-    cvt_color_space_linear_kernel 	= clCreateKernel(m_program, "cvt_color_space_linear", 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'cvt_color_space_linear'  kernel not built.\n"	<<flush; exit(0);   }
-	img_variance_kernel				= clCreateKernel(m_program, "image_variance", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'image_variance'  kernel not built.\n"			<<flush; exit(0);   }
-	blur_image_kernel				= clCreateKernel(m_program, "blur_image", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'blur_image'  kernel not built.\n"				<<flush; exit(0);   }
-	reduce_kernel					= clCreateKernel(m_program, "reduce", 						&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'reduce'  kernel not built.\n"					<<flush; exit(0);   }
-	mipmap_float4_kernel			= clCreateKernel(m_program, "mipmap_linear_flt4", 			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'mipmap_linear_flt4'  kernel not built.\n"		<<flush; exit(0);   }
-	mipmap_float_kernel				= clCreateKernel(m_program, "mipmap_linear_flt", 			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'mipmap_linear_flt'  kernel not built.\n"		<<flush; exit(0);   }
+    cvt_color_space_linear_kernel 	= clCreateKernel(m_program, "cvt_color_space_linear", 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'cvt_color_space_linear'  kernel not built.\n"	<<flush; exit_(0);   }
+	img_variance_kernel				= clCreateKernel(m_program, "image_variance", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'image_variance'  kernel not built.\n"			<<flush; exit_(0);   }
+	blur_image_kernel				= clCreateKernel(m_program, "blur_image", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'blur_image'  kernel not built.\n"				<<flush; exit_(0);   }
+	reduce_kernel					= clCreateKernel(m_program, "reduce", 						&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'reduce'  kernel not built.\n"					<<flush; exit_(0);   }
+	mipmap_float4_kernel			= clCreateKernel(m_program, "mipmap_linear_flt4", 			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'mipmap_linear_flt4'  kernel not built.\n"		<<flush; exit_(0);   }
+	mipmap_float_kernel				= clCreateKernel(m_program, "mipmap_linear_flt", 			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'mipmap_linear_flt'  kernel not built.\n"		<<flush; exit_(0);   }
 
-	img_grad_kernel					= clCreateKernel(m_program, "img_grad", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'img_grad'  kernel not built.\n"					<<flush; exit(0);   }
-	comp_param_maps_kernel			= clCreateKernel(m_program, "compute_param_maps", 			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'compute_param_maps'  kernel not built.\n"		<<flush; exit(0);   }
-	se3_rho_sq_kernel				= clCreateKernel(m_program, "se3_Rho_sq", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'se3_Rho_sq'  kernel not built.\n"				<<flush; exit(0);   }
-	se3_lk_grad_kernel				= clCreateKernel(m_program, "se3_LK_grad", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'se3_LK_grad'  kernel not built.\n"				<<flush; exit(0);   }
+	img_grad_kernel					= clCreateKernel(m_program, "img_grad", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'img_grad'  kernel not built.\n"					<<flush; exit_(0);   }
+	comp_param_maps_kernel			= clCreateKernel(m_program, "compute_param_maps", 			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'compute_param_maps'  kernel not built.\n"		<<flush; exit_(0);   }
+	se3_rho_sq_kernel				= clCreateKernel(m_program, "se3_Rho_sq", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'se3_Rho_sq'  kernel not built.\n"				<<flush; exit_(0);   }
+	se3_lk_grad_kernel				= clCreateKernel(m_program, "se3_LK_grad", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'se3_LK_grad'  kernel not built.\n"				<<flush; exit_(0);   }
 
-	atomic_test1_kernel				= clCreateKernel(m_program, "atomic_test1", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'atomic_test1'  kernel not built.\n"				<<flush; exit(0);   }
-	atomic_test2_kernel				= clCreateKernel(m_program, "atomic_test2", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'atomic_test1'  kernel not built.\n"				<<flush; exit(0);   }
+	atomic_test1_kernel				= clCreateKernel(m_program, "atomic_test1", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'atomic_test1'  kernel not built.\n"				<<flush; exit_(0);   }
+	atomic_test2_kernel				= clCreateKernel(m_program, "atomic_test2", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'atomic_test1'  kernel not built.\n"				<<flush; exit_(0);   }
 
 
-	convert_depth_kernel			= clCreateKernel(m_program, "convert_depth", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'convert_depth'  kernel not built.\n"			<<flush; exit(0);   }
-	transform_depthmap_kernel		= clCreateKernel(m_program, "transform_depthmap", 			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'transform_depthmap'  kernel not built.\n"		<<flush; exit(0);   }
-	transform_costvolume_kernel 	= clCreateKernel(m_program, "transform_cost_volume", 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'transform_cost_volume'  kernel not built.\n"	<<flush; exit(0);   }
+	convert_depth_kernel			= clCreateKernel(m_program, "convert_depth", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'convert_depth'  kernel not built.\n"			<<flush; exit_(0);   }
+	transform_depthmap_kernel		= clCreateKernel(m_program, "transform_depthmap", 			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'transform_depthmap'  kernel not built.\n"		<<flush; exit_(0);   }
+	transform_costvolume_kernel 	= clCreateKernel(m_program, "transform_cost_volume", 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'transform_cost_volume'  kernel not built.\n"	<<flush; exit_(0);   }
 	
-	depth_cost_vol_kernel			= clCreateKernel(m_program, "DepthCostVol", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'DepthCostVol'  kernel not built.\n"				<<flush; exit(0);   }
-	updateQD_kernel 				= clCreateKernel(m_program, "UpdateQD", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'UpdateQD'  kernel not built.\n"					<<flush; exit(0);   }
-	updateG_kernel  				= clCreateKernel(m_program, "UpdateG", 						&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'UpdateG'  kernel not built.\n"					<<flush; exit(0);   }
-	updateA_kernel  				= clCreateKernel(m_program, "UpdateA", 						&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'UpdateA'  kernel not built.\n"					<<flush; exit(0);   }
+	depth_cost_vol_kernel			= clCreateKernel(m_program, "DepthCostVol", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'DepthCostVol'  kernel not built.\n"				<<flush; exit_(0);   }
+	updateQD_kernel 				= clCreateKernel(m_program, "UpdateQD", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'UpdateQD'  kernel not built.\n"					<<flush; exit_(0);   }
+	updateG_kernel  				= clCreateKernel(m_program, "UpdateG", 						&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'UpdateG'  kernel not built.\n"					<<flush; exit_(0);   }
+	updateA_kernel  				= clCreateKernel(m_program, "UpdateA", 						&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'UpdateA'  kernel not built.\n"					<<flush; exit_(0);   }
 
-	measureDepthFit_kernel			= clCreateKernel(m_program, "MeasureDepthFit", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'MeasureDepthFit'  kernel not built.\n"			<<flush; exit(0);   }
+	measureDepthFit_kernel			= clCreateKernel(m_program, "MeasureDepthFit", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'MeasureDepthFit'  kernel not built.\n"			<<flush; exit_(0);   }
 }
 
 int RunCL::convertToString(const char *filename, std::string& s){
@@ -318,7 +346,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	int local_verbosity_threshold = verbosity_mp["RunCL::initialize_RunCL"];// -1;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_RunCL_chk_0\n\n" << flush;
 	baseImage =  baseImage_;
-																																			if( baseImage.empty() ){cout <<"\nError RunCL::initialize() : runcl.baseImage.empty()"<<flush; exit(0); }
+																																			if( baseImage.empty() ){cout <<"\nError RunCL::initialize() : runcl.baseImage.empty()"<<flush; exit_(0); }
 																																			if (verbosity>local_verbosity_threshold) {
 																																				cout << "\n"
 																																				<< "RunCL::initialize_RunCL_chk_1: runcl.baseImage.size() = "<< baseImage.size() \
@@ -376,12 +404,13 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																				cout<<"\n";
 																																				cout<<"\nRunCL::initialize, image_size_bytes="<< image_size_bytes <<  ", sizeof(float)="<< sizeof(float)<<flush;
 																																				cout<<"\n";
-																																				cout<<"\n"<<", fp16_size ="<< fp16_size   <<", mm_margin="     << mm_margin       <<", mm_width ="     <<  mm_width       <<flush;
-																																				cout<<"\n"<<", mm_height ="<< mm_height   <<", mm_Image_size ="<<  mm_Image_size  <<", mm_Image_type ="<< mm_Image_type   <<flush;
-																																				cout<<"\n"<<", mm_size_bytes_C1="<< mm_size_bytes_C1  <<", mm_size_bytes_C3="<< mm_size_bytes_C3 <<", mm_size_bytes_C4="<< mm_size_bytes_C4 << ", mm_size_bytes_C8="<< mm_size_bytes_C8 <<", mm_vol_size_bytes ="<<  mm_vol_size_bytes  <<flush;
-																																				cout<<"\n";
-																																				cout<<"\n"<<", temp.elemSize() ="<< temp.elemSize()   <<", temp2.elemSize()="<< temp2.elemSize() <<flush;
-																																				cout<<"\n"<<", temp.total() ="<< temp.total()         <<", temp2.total()="   << temp2.total()    <<flush;
+																																				// cout<<"\n"<<", fp16_size ="<< fp16_size   <<", mm_margin="     << mm_margin       <<", mm_width ="     <<  mm_width       <<flush;
+																																				// cout<<"\n"<<", mm_height ="<< mm_height   <<", mm_Image_size ="<<  mm_Image_size  <<", mm_Image_type ="<< mm_Image_type   <<flush;
+																																				// cout<<"\n"<<", mm_size_bytes_C1="<< mm_size_bytes_C1  <<", mm_size_bytes_C3="<< mm_size_bytes_C3 <<", mm_size_bytes_C4="<< mm_size_bytes_C4 << ", mm_size_bytes_C8="<< mm_size_bytes_C8 <<", mm_vol_size_bytes ="<<  mm_vol_size_bytes  <<flush;
+																																				// cout<<"\n";
+																																				// cout<<"\n"<<", temp.elemSize() ="<< temp.elemSize()   <<", temp2.elemSize()="<< temp2.elemSize() <<flush;
+																																				// cout<<"\n"<<", temp.total() ="<< temp.total()         <<", temp2.total()="   << temp2.total()    <<flush;
+																																				exit_(1);
 																																			}
 																																			if(verbosity>local_verbosity_threshold) cout <<"\n\nRunCL::initialize_RunCL_chk3.8\n\n" << flush;
 	uint_params[PIXELS]			= 	baseImage_height * baseImage_width ;
@@ -855,7 +884,9 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 																																			cout<<"\nRunCL::~RunCL_chk1_finished"<<flush;
 }
 
-void RunCL::exit_(cl_int res)   // TODO convert all uses to exit(res); Will call RunCL::~RunCL() automatically.
+void RunCL::exit_(int res)   // TODO convert all uses to exit_(res); Will call RunCL::~RunCL() automatically.
 {
+	cout <<endl<< flush;
+	cerr <<endl<< flush;
 	exit(res);
 }
