@@ -48,11 +48,12 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_, int_map verbosity_mp_  ):   runcl(
 																																				<<"png[runcl.dataset_frame_num].string()="<< png[runcl.dataset_frame_num].string()  <<flush;
 																																			}
 	runcl.initialize_RunCL( imread(png[runcl.dataset_frame_num].string() ) );																// Set image params, ref for dimensions and data type. ########################################################################
-	/*runcl.allocatemem();																													// Allocate buffers on the GPU ######
+	runcl.allocatemem();																													// Allocate buffers on the GPU ######
 
 	initialize_camera_vec();
+
 	initialize_keyframe_vec();																												// First keyframe
-	*/																																		if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_ finished\n" << flush;
+																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_ finished\n" << flush;
 };
 
 void Dynamic_slam::initialize_resultsMat(){	// need to take img pyramid layer 2 of output, or read layer num from .json .
@@ -77,7 +78,6 @@ void Dynamic_slam::initialize_camera_vec(){
 	R 								= cv::Mat::eye(3,3 , CV_32FC1);																			// intialize ground truth extrinsic data, NB Mat (int rows, int cols, int type)
 	T 								= cv::Mat::zeros(3,1 , CV_32FC1);
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 1:" <<flush;}
-
 	frame_datum 					datum = {};																								// default initialization, to values in header, or zero if not set in header.
 	datum.keyframe_index			= -1; 								// i.e. an invalid index that must be handled.
 	datum.frame_data.K 				= k;

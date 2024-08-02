@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
 
 
 	Dynamic_slam 	dynamic_slam( obj,  j_params.verbosity_mp );														// Construct Dynamic_slam object (including RunCL object) before while loop.################################
-	exit(1);
+
 
 	frame_count++;
 

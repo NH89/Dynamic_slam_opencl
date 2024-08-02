@@ -2,10 +2,11 @@
 
 void RunCL::computeSigmas(float epsilon, float theta, float L, float &sigma_d, float &sigma_q ){
 	int local_verbosity_threshold = verbosity_mp["RunCL::computeSigmas"];
-
+																																			if(verbosity>local_verbosity_threshold) cout <<"\n\nRunCL::computeSigmas chk 0\n\n" << flush;
 		float mu	= 2.0*std::sqrt((1.0/theta)*epsilon) /L;
 		sigma_d		=  mu / (2.0/ theta)  ;
 		sigma_q 	=  mu / (2.0*epsilon) ;
+																																			if(verbosity>local_verbosity_threshold) cout <<"\n\nRunCL::computeSigmas Finished\n\n" << flush;
 }
 
 void RunCL::updateDepthCostVol(cv::Matx44f K2K_, int count, uint start, uint stop){ //buildDepthCostVol();

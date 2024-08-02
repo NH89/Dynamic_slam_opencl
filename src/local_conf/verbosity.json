@@ -57,6 +57,7 @@
 
     /////////////////////////////////////// Dynamic_slam_mapping.cpp
     "Dynamic_slam::optimize_depth": 0,
+    "RunCL::computeSigmas":1,
     "Dynamic_slam::updateDepthCostVol": -2,
 	"Dynamic_slam::buildDepthCostVol_fast_peripheral": 0,
     "Dynamic_slam::updateQD": -1,
