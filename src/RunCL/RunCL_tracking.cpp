@@ -1,7 +1,7 @@
 #include "RunCL.hpp"
 
 void RunCL::precom_param_maps(float SE3_k2k[6*16]){ //  Compute maps of pixel motion for each SE3 DoF, and camera params // Derived from RunCL::mipmap
-	int local_verbosity_threshold = verbosity_mp["RunCL::precom_param_maps"];// -2;
+	int local_verbosity_threshold = V_RUNCL_PRECOM_PARAM_MAPS;//verbosity_mp["RunCL::precom_param_maps"];// -2;
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::precom_param_maps(float SE3_k2k[6*16])_chk_0 "<<flush;}
 	cl_event 			writeEvt;
 	cl_int 				res, status;
@@ -34,7 +34,7 @@ void RunCL::precom_param_maps(float SE3_k2k[6*16]){ //  Compute maps of pixel mo
 }
 
 void RunCL::update_tracking_depthmap(cl_mem depthmap_){
-	int local_verbosity_threshold = verbosity_mp["RunCL::update_tracking_depthmap"];
+	int local_verbosity_threshold = V_RUNCL_UPDATE_TRACKING_DEPTHMAP;//verbosity_mp["RunCL::update_tracking_depthmap"];
 	cl_event writeEvt;
     cl_int status;
 
@@ -46,7 +46,7 @@ void RunCL::update_tracking_depthmap(cl_mem depthmap_){
 
 
 void RunCL::initialize_tracking_depthmap(float initial_depth){
-	int local_verbosity_threshold = verbosity_mp["RunCL::update_tracking_depthmap"];
+	int local_verbosity_threshold = V_RUNCL_INITIALIZE_TRACKING_DEPTHMAP;//verbosity_mp["RunCL::update_tracking_depthmap"];
 	string fname = "RunCL::initialize_tracking_depthmap";
 	cl_event writeEvt;
     cl_int status;
@@ -58,7 +58,7 @@ void RunCL::initialize_tracking_depthmap(float initial_depth){
 }
 
 void RunCL::se3_rho_sq(const uint local_num_samples,  const uint start_sample_idx,  float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels], const float count[4], uint start, uint stop,  float k2k_3_16_[tracking_tot_samples][16]   ){
-	int local_verbosity_threshold = verbosity_mp["RunCL::se3_rho_sq"];// -1;
+	int local_verbosity_threshold = V_RUNCL_SE3_RHO_SQ;//verbosity_mp["RunCL::se3_rho_sq"];// -1;
 	const int num_samples  = 1; //tracking_num_samples;
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::se3_rho_sq(..)_chk0 .##################################################################"<<flush;}
 	cl_event writeEvt;
@@ -132,7 +132,7 @@ void RunCL::se3_rho_sq(const uint local_num_samples,  const uint start_sample_id
 
 
 void RunCL::estimateSE3_LK(float local_k2k[16], float SE3_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels], float SE3_weights_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels], float Rho_sq_results[max_mipmap_layers][4], int count, uint start, uint stop){ //estimateSE3_LK(); 	(uint start=0, uint stop=8)			// TODO replace arbitrary fixed constant with a const uint variable in the header...
-	int local_verbosity_threshold = verbosity_mp["RunCL::estimateSE3_LK"];																	if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK(..)_chk0 .##################################################################"<<flush;}
+	int local_verbosity_threshold = V_RUNCL_ESTIMATESE3_LK;//verbosity_mp["RunCL::estimateSE3_LK"];																	if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK(..)_chk0 .##################################################################"<<flush;}
     cl_event writeEvt;
     cl_int status;
 																																			if(verbosity>local_verbosity_threshold) {cout << "\nRunCL::estimateSE3_LK(..)_chk_1: K2K= ";
@@ -210,7 +210,7 @@ void RunCL::estimateSE3_LK(float local_k2k[16], float SE3_results[max_mipmap_lay
 }
 
 void RunCL::read_Rho_sq( float Rho_sq_results[max_mipmap_layers][4],  int offset/*=0*/ ){
-	int local_verbosity_threshold = verbosity_mp["RunCL::read_Rho_sq"];// -1;
+	int local_verbosity_threshold = V_RUNCL_READ_RHO_SQ;//verbosity_mp["RunCL::read_Rho_sq"];// -1;
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::read_Rho_sq(..)_chk1,  offset="<<offset
 																																				<<",   offset*pix_sum_size_bytes="<<offset*pix_sum_size_bytes<<flush;}
 	cv::Mat rho_sq_sum_mat = cv::Mat::zeros (se3_sum_size, 4, CV_32FC1); // cv::Mat::zeros (int rows, int cols, int type)					// NB the data returned is one float4 per group, holding HSV, plus entry[3]=pixel count.
@@ -275,7 +275,7 @@ void RunCL::read_Rho_sq( float Rho_sq_results[max_mipmap_layers][4],  int offset
 }
 
 void RunCL::read_se3_weights(float SE3_weights_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels]){
-	int local_verbosity_threshold = verbosity_mp["RunCL::read_se3_weights"];// -1;
+	int local_verbosity_threshold = V_RUNCL_READ_SE3_WEIGHTS;//verbosity_mp["RunCL::read_se3_weights"];// -1;
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::read_se3_weights(..)_chk1 ."<<flush;}
                                                                                                                                             // directly read higher layers
 	uint num_DoFs = 6;
@@ -332,7 +332,7 @@ void RunCL::read_se3_weights(float SE3_weights_results[max_mipmap_layers][num_SE
 	}
 
 void RunCL::read_se3_incr(float SE3_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels]){
-	int local_verbosity_threshold = verbosity_mp["RunCL::read_se3_incr"];// -1;
+	int local_verbosity_threshold = V_RUNCL_READ_SE3_INCR;//verbosity_mp["RunCL::read_se3_incr"];// -1;
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::read_se3_incr(..)_chk1 ."<<flush;}
                                                                                                                                             // directly read higher layers
 	uint num_DoFs = 6;
@@ -381,7 +381,7 @@ void RunCL::read_se3_incr(float SE3_results[max_mipmap_layers][num_SE3_DoF][trac
 }
 
 void RunCL::tracking_result(string result){
-	if(verbosity>verbosity_mp["RunCL::tracking_result"]) {
+	if(verbosity>V_RUNCL_TRACKING_RESULT) {
 		cout<<"\n\nRunCL::tracking_result(..)_chk0"<<flush;
 		stringstream ss;			ss << dataset_frame_num <<  "_img_grad_" << result;				// "_iter_"<< count <<
 		stringstream ss_path_rho;	ss_path_rho << "SE3_rho_map_mem";
@@ -395,7 +395,7 @@ void RunCL::tracking_result(string result){
 */
 
 void RunCL::atomic_test1(){
-	int local_verbosity_threshold = verbosity_mp["RunCL::atomic_test1"];
+	int local_verbosity_threshold = V_RUNCL_ATOMIC_TEST1;//verbosity_mp["RunCL::atomic_test1"];
 
 	cl_int res, status;
 	cl_event ev, writeEvt;
@@ -451,7 +451,7 @@ void RunCL::atomic_test1(){
 
 
 void RunCL::atomic_test2(){
-	int local_verbosity_threshold = verbosity_mp["RunCL::atomic_test2"];
+	int local_verbosity_threshold = V_RUNCL_ATOMIC_TEST2;//verbosity_mp["RunCL::atomic_test2"];
 
 	cl_int res, status;
 	cl_event ev, writeEvt;

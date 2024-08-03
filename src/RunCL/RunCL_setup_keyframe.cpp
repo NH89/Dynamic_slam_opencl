@@ -1,19 +1,12 @@
 #include "RunCL.hpp"
 
-/*
-void RunCL::predictFrame(){ //predictFrame();
-	int local_verbosity_threshold = verbosity_mp["RunCL::predictFrame"];
-
-}
-*/
-
 void RunCL::estimateCalibration(){ //estimateCalibration(); 		// own thread, one iter.
-	int local_verbosity_threshold = verbosity_mp["RunCL::estimateCalibration"];
+	int local_verbosity_threshold = V_RUNCL_ESTIMATECALIBRATION;//verbosity_mp["RunCL::estimateCalibration"];
 
 }
 
 void RunCL::transform_depthmap( cv::Matx44f K2K_ , cl_mem depthmap_ ){																		// NB must be used _before_ initializing the new cost_volume, because it uses keyframe_imgmem.
-	int local_verbosity_threshold = verbosity_mp["RunCL::transform_depthmap"];// 0;
+	int local_verbosity_threshold = V_RUNCL_TRANSFORM_DEPTHMAP;//verbosity_mp["RunCL::transform_depthmap"];// 0;
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::transform_depthmap(..)_chk0 .   runcl.dataset_frame_num="<< dataset_frame_num<<flush;}
 	cl_event writeEvt;
 	cl_int status;
@@ -68,7 +61,7 @@ void RunCL::transform_depthmap( cv::Matx44f K2K_ , cl_mem depthmap_ ){										
 
 void RunCL::swap_costvol_pointers()
 {
-	int local_verbosity_threshold = verbosity_mp["RunCL::swap_costvol_pointers"];
+	int local_verbosity_threshold = V_RUNCL_SWAP_COSTVOL_POINTERS;//verbosity_mp["RunCL::swap_costvol_pointers"];
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nRunCL::swap_costvol_pointers()_chk 0,  "<< flush; }
 	cl_mem temp_mem;
 
@@ -84,7 +77,7 @@ void RunCL::swap_costvol_pointers()
 
 void RunCL::transform_costvolume( cv::Matx44f K2K_)// , cl_mem old_cdata_mem,  cl_mem new_cdata_mem, cl_mem old_hdata_mem,  cl_mem new_hdata_mem       ){												// NB must be used _after_ initializing the new cost_volume.
 {
-	int local_verbosity_threshold = verbosity_mp["RunCL::transform_costvolume"];// 0;
+	int local_verbosity_threshold = V_RUNCL_TRANSFORM_COSTVOLUME;//verbosity_mp["RunCL::transform_costvolume"];// 0;
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::transform_costvolume(..)_chk0 .    runcl.dataset_frame_num="<< dataset_frame_num<<flush;}
 	cl_event writeEvt;
 	cl_int status;
@@ -141,9 +134,9 @@ void RunCL::transform_costvolume( cv::Matx44f K2K_)// , cl_mem old_cdata_mem,  c
 																																				DownloadAndSave(	lomem,  ss.str(), paths.at("lomem"),  mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	show , 8);	// a little more than the num images in costvol.
 																																				DownloadAndSave(	himem,  ss.str(), paths.at("himem"),  mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	show , 8);	//params[COSTVOL_LAYERS]
 
-																																				if (verbosity_mp["RunCL::updateDepthCostVol::cdatabuf"])																// divisor max_range = 0 -> val/max_val.   max_range <0 -> grey=0
+																																				if (V_RUNCL_UPDATEDEPTHCOSTVOL_CDATABUF)																// divisor max_range = 0 -> val/max_val.   max_range <0 -> grey=0
 																																					DownloadAndSaveVolume(		cdatabuf, 			ss.str(), paths.at("cdatabuf"), mm_size_bytes_C1,	mm_Image_size,   CV_32FC1,  show , 0 /*float max_range*/ , exception_tiff );
-																																				if (verbosity_mp["RunCL::updateDepthCostVol::hdatabuf"])
+																																				if (V_RUNCL_UPDATEDEPTHCOSTVOL_HDATABUF)
 																																					DownloadAndSaveVolume(		hdatabuf, 			ss.str(), paths.at("hdatabuf"), mm_size_bytes_C1,	mm_Image_size,   CV_32FC1,  show , 0 /*float max_range*/ , exception_tiff );
 																																			}
 	
@@ -152,7 +145,7 @@ void RunCL::transform_costvolume( cv::Matx44f K2K_)// , cl_mem old_cdata_mem,  c
 
 void RunCL::initializeDepthCostVol( cl_mem key_frame_depth_map_src){			 															// Uses the current frame as the keyframe for a new depth cost volume.
 																																			// Dynamic_slam::initialize_from_GT(), Dynamic_slam::initialize_new_keyframe();
-	int local_verbosity_threshold = verbosity_mp["RunCL::initializeDepthCostVol"];// -2;
+	int local_verbosity_threshold = V_RUNCL_INITIALIZEDEPTHCOSTVOL;//verbosity_mp["RunCL::initializeDepthCostVol"];// -2;
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initializeDepthCostVol(..)_chk0 ."<<flush;}
 	costvol_frame_num = 0;
 	cl_event writeEvt, ev;																													// Load keyframe

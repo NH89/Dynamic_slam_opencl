@@ -17,6 +17,7 @@
 #include <sstream>
 #include "Dynamic_slam/Dynamic_slam.hpp"
 #include "utils/conf_params.hpp"
+#include "utils/verbosity.hpp"
 
 using namespace cv;
 using namespace std;
@@ -35,10 +36,10 @@ int main(int argc, char *argv[])
 	if (argc !=2) { cout << "\n\nUsage : DTAM_OpenCL <config_file.json>\n\n" << flush; exit(1); }
 	Json::Value obj;
 	conf_params j_params(argv[1], obj);																					// Construct conf_params object j_params,  i.e. read all three .json files.#################################
-	j_params.display_params();																							// "conf.json" and "filepaths<computer_name>.json" are written to "obj".
+	//j_params.display_params();																							// "conf.json" and "filepaths<computer_name>.json" are written to "obj".
 																														// "verbosity.json" is written to  "Map<int> j_params::verbosity_mp",
 
-	int verbosity_ 		= j_params.verbosity_mp["verbosity"]; 															// obj["verbosity"]["verbosity"].asInt() ;	// Global verbosity: -1= none, 0=errors only, 1=basic, 2=lots.
+	int verbosity_ 		= obj["imagesPerCV"].asUInt() ;//V_VERBOSITY; //j_params.verbosity_mp["verbosity"]; 															// obj["verbosity"]["verbosity"].asInt() ;	// Global verbosity: -1= none, 0=errors only, 1=basic, 2=lots.
 	int imagesPerCV 	= obj["imagesPerCV"].asUInt() ;																	// j_params.int_mp["imagesPerCV"]; 			//
 	int max_frame_count = obj["max_frame_count"].asUInt();																// j_params.int_mp["max_frame_count"]; 		//
 	int frame_count 	= 0;
@@ -47,10 +48,10 @@ int main(int argc, char *argv[])
 																														cout <<"\nconf file = "		<< argv[1];
 																														cout <<"\nverbosity_ = "	<<verbosity_;
 																														cout <<"\nimagesPerCV = "	<<imagesPerCV;
-																														cout <<"\noutpath = " 		<< j_params.paths_mp["out_path"];
+																														cout <<"\noutpath = " 		<<obj["out_path"].asString(); //j_params.paths_mp
 
 
-	Dynamic_slam 	dynamic_slam( obj,  j_params.verbosity_mp );														// Construct Dynamic_slam object (including RunCL object) before while loop.################################
+	Dynamic_slam 	dynamic_slam( obj );	//,  j_params.verbosity_mp													// Construct Dynamic_slam object (including RunCL object) before while loop.################################
 
 
 	frame_count++;

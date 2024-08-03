@@ -1,8 +1,9 @@
 #include "conf_params.hpp"
+#include "../utils/verbosity.hpp"
 
 /////// functions
 conf_params::conf_params(char * arg, Json::Value &val){															// "arg" contains the path to the "local_conf/filepaths_<computer name>.json" file, which includes "conf.json" and "verbosity.json".
-	int local_verbosity_threshold = val["conf_params::conf_params"].asInt();
+	int local_verbosity_threshold = V_CONF_PARAMS_CONF_PARAMS;//val["conf_params::conf_params"].asInt();
                                                                                 cout << "\nconf_params::conf_params(char * \""<<arg<<"\", arg, Json::Value &val) chk 1"<<flush;
 	ifstream ifs(arg);
 	Json::Reader 	reader;
@@ -31,12 +32,12 @@ conf_params::conf_params(char * arg, Json::Value &val){															// "arg" c
 
 	b = reader.parse(ifs_verbosity, verbosity_obj); 							if (!b) { cout << "Error: " << reader.getFormattedErrorMessages()<< flush;; cerr << flush; exit(1) ;}   else {cout << "\nconf_params::conf_params(..) chk_4: \tNB lists .json file entries alphabetically: \nverbosity_obj = \n" << verbosity_obj ;}
 
-	read_verbosity( verbosity_obj);																					// Writes the verbosity values to an Map<int> object. This makes checking local verbosity at every function faster than reading a json string.
+//	read_verbosity( verbosity_obj);																					// Writes the verbosity values to an Map<int> object. This makes checking local verbosity at every function faster than reading a json string.
 /*
 	//read_paths(   paths_obj);        // Need updating given reorganization of conf.json and filepaths.json .
 	//read_jparams(	params_obj);
 */
-    val = params_obj ;																								// Copies the local "params_obj" to "val" passed by reference to this function.
+	val = params_obj ;																								// Copies the local "params_obj" to "val" passed by reference to this function.
     Json::Value::ArrayIndex 	size 	= paths_obj.size();
 	Json::Value::Members 		members = paths_obj.getMemberNames();
     string member;
@@ -47,7 +48,7 @@ conf_params::conf_params(char * arg, Json::Value &val){															// "arg" c
 																													cout << "\njson_params::json_params(char * arg) finished\n"<<flush;
 }
 
-
+/*
 void conf_params::read_verbosity(Json::Value verbosity_obj){	                                                   // iterate over all entries in the verbosity.json file.
 	// NB Need to include classname. to prevent function name clashes between classes.
 																													cout << "\njson_params::read_verbosity(..) : chk_0\n"<<flush;
@@ -63,7 +64,7 @@ void conf_params::read_verbosity(Json::Value verbosity_obj){	                   
 	}
 																													cout << "\njson_params::read_verbosity(..) : finished\n"<<flush;
 }
-
+*/
 /*
 void conf_params::read_paths(Json::Value paths_obj){	                                                           //string_map path_map = const_cast<string_map&>(paths);
 
@@ -163,48 +164,48 @@ void conf_params::readVecString( string member, Json::Value params_obj  ){
 }
 */
 
-void conf_params::display_params(  ) {
-	cout << "\n\n params.paths   = "  << flush;
-	for (auto elem : paths_mp) cout << "\n " <<  elem.first <<" : "<< elem.second << flush;
-
-	cout << "\n\n params.int_   = "  << flush;
-	for (auto elem : int_mp) cout << "\n " <<  elem.first <<" : "<< elem.second << flush;
-
-	cout << "\n\n params.float_   = "  << flush;
-	for (auto elem : float_mp) cout << "\n " <<  elem.first <<" : "<< elem.second << flush;
-
-	cout << "\n\n params.float_vec   = "  << flush;
-	for (auto elem : float_vec_mp) {
-		cout << "\n " <<  elem.first <<" :  {";
-		for (auto elem2 : elem.second) {
-			cout << elem2 << ", ";
-		}
-		cout << " } " << flush;
-	}
-
-	cout << "\n\n params.float_vecvec   = "  << flush;
-	for (auto elem : float_vecvec_mp) {
-		cout << "\n " <<  elem.first <<" :  {";
-		for (auto elem2 : elem.second) {
-			cout <<"\t [ " ;
-			for (auto elem3 : elem2){
-				cout << elem3 << ", ";
-			}
-			cout <<"], ";
-		}
-		cout << " } " << flush;
-	}
-
-	cout << "\n\n params.string_vec   = "  << flush;
-	for (auto elem : string_vec_mp) {
-		cout << "\n " <<  elem.first <<" :  {";
-		for (auto elem2 : elem.second) {
-			cout << elem2 << ", ";
-		}
-		cout << " } " << flush;
-	}
-
-	cout << "\n\n params.verbosity   = "  << flush;
-	for (auto elem : verbosity_mp) cout << "\n " <<  elem.first <<" : "<< elem.second << flush;
-}
+// void conf_params::display_params(  ) {
+// 	//cout << "\n\n params.paths   = "  << flush;
+// 	//for (auto elem : paths_mp) cout << "\n " <<  elem.first <<" : "<< elem.second << flush;
+//
+// 	//cout << "\n\n params.int_   = "  << flush;
+// 	//for (auto elem : int_mp) cout << "\n " <<  elem.first <<" : "<< elem.second << flush;
+//
+// 	//cout << "\n\n params.float_   = "  << flush;
+// 	//for (auto elem : float_mp) cout << "\n " <<  elem.first <<" : "<< elem.second << flush;
+//
+// 	cout << "\n\n params.float_vec   = "  << flush;
+// 	for (auto elem : float_vec_mp) {
+// 		cout << "\n " <<  elem.first <<" :  {";
+// 		for (auto elem2 : elem.second) {
+// 			cout << elem2 << ", ";
+// 		}
+// 		cout << " } " << flush;
+// 	}
+//
+// 	cout << "\n\n params.float_vecvec   = "  << flush;
+// 	for (auto elem : float_vecvec_mp) {
+// 		cout << "\n " <<  elem.first <<" :  {";
+// 		for (auto elem2 : elem.second) {
+// 			cout <<"\t [ " ;
+// 			for (auto elem3 : elem2){
+// 				cout << elem3 << ", ";
+// 			}
+// 			cout <<"], ";
+// 		}
+// 		cout << " } " << flush;
+// 	}
+//
+// 	cout << "\n\n params.string_vec   = "  << flush;
+// 	for (auto elem : string_vec_mp) {
+// 		cout << "\n " <<  elem.first <<" :  {";
+// 		for (auto elem2 : elem.second) {
+// 			cout << elem2 << ", ";
+// 		}
+// 		cout << " } " << flush;
+// 	}
+//
+// 	//cout << "\n\n params.verbosity   = "  << flush;
+// 	//for (auto elem : verbosity_mp) cout << "\n " <<  elem.first <<" : "<< elem.second << flush;
+// }
 

@@ -1,7 +1,7 @@
 #include "RunCL.hpp"
 
 void RunCL::computeSigmas(float epsilon, float theta, float L, float &sigma_d, float &sigma_q ){
-	int local_verbosity_threshold = verbosity_mp["RunCL::computeSigmas"];
+	int local_verbosity_threshold = V_RUNCL_COMPUTESIGMAS;//verbosity_mp["RunCL::computeSigmas"];
 																																			if(verbosity>local_verbosity_threshold) cout <<"\n\nRunCL::computeSigmas chk 0\n\n" << flush;
 		float mu	= 2.0*std::sqrt((1.0/theta)*epsilon) /L;
 		sigma_d		=  mu / (2.0/ theta)  ;
@@ -10,7 +10,7 @@ void RunCL::computeSigmas(float epsilon, float theta, float L, float &sigma_d, f
 }
 
 void RunCL::updateDepthCostVol(cv::Matx44f K2K_, int count, uint start, uint stop){ //buildDepthCostVol();
-	int local_verbosity_threshold = verbosity_mp["RunCL::updateDepthCostVol"];// -1;																										if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateDepthCostVol(..)_chk0 ."<<flush;}
+	int local_verbosity_threshold = V_RUNCL_UPDATEDEPTHCOSTVOL;//verbosity_mp["RunCL::updateDepthCostVol"];// -1;																										if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateDepthCostVol(..)_chk0 ."<<flush;}
 	save_index = keyFrameCount*1000 + costvol_frame_num;
 
 	cl_event writeEvt;
@@ -150,13 +150,13 @@ void RunCL::updateDepthCostVol(cv::Matx44f K2K_, int count, uint start, uint sto
 																																				DownloadAndSave(		 	amem,   			ss.str(), paths.at("amem"),   			mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	show , fp32_params[MAX_INV_DEPTH]);
 																																				DownloadAndSave(		 	dmem,   			ss.str(), paths.at("dmem"),   			mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	show , fp32_params[MAX_INV_DEPTH]);
 
-																																				if (verbosity_mp["RunCL::updateDepthCostVol::cdatabuf"] && (count==0 || count== imagesPerCV-1 ) )
+																																				if (V_RUNCL_UPDATEDEPTHCOSTVOL_CDATABUF && (count==0 || count== imagesPerCV-1 ) )
 																																					DownloadAndSaveVolume(		cdatabuf, 			ss.str(), paths.at("cdatabuf"), 		mm_size_bytes_C1,	mm_Image_size,   CV_32FC1,  show , 0 /*float max_range*/ , exception_tiff );
 
-																																				if (verbosity_mp["RunCL::updateDepthCostVol::cdatabuf_8chan"])
+																																				if (V_RUNCL_UPDATEDEPTHCOSTVOL_CDATABUF_8CHAN)
 																																					DownloadAndSave_8Channel_volume( cdatabuf_8chan,ss.str(), paths.at("cdatabuf_8chan"),	mm_size_bytes_C8,	mm_Image_size,   CV_32FC1,  show , 1 /*float max_range*/ , costVolLayers  );
 
-																																				if (verbosity_mp["RunCL::updateDepthCostVol::hdatabuf"] && (count==0 || count== imagesPerCV-1 ) )
+																																				if (V_RUNCL_UPDATEDEPTHCOSTVOL_HDATABUF && (count==0 || count== imagesPerCV-1 ) )
 																																					DownloadAndSaveVolume(		hdatabuf, 			ss.str(), paths.at("hdatabuf"), 		mm_size_bytes_C1,	mm_Image_size,   CV_32FC1,  show , 0 /*float max_range*/ , exception_tiff );
 
 																																				if(verbosity>1) cout << "\ncostvol_frame_num="<<costvol_frame_num;
@@ -165,7 +165,7 @@ void RunCL::updateDepthCostVol(cv::Matx44f K2K_, int count, uint start, uint sto
 }
 
 void RunCL::updateQD(float epsilon, float theta, float sigma_q, float sigma_d, uint start, uint stop){
-	int local_verbosity_threshold = verbosity_mp["RunCL::updateQD"];// -1;																										if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateQD(..)_chk0 ."<<flush;}
+	int local_verbosity_threshold = V_RUNCL_UPDATEQD;//verbosity_mp["RunCL::updateQD"];// -1;																										if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateQD(..)_chk0 ."<<flush;}
 	QD_count++;
 
 	fp32_params[EPSILON]		=  epsilon;
@@ -215,7 +215,7 @@ void RunCL::updateQD(float epsilon, float theta, float sigma_q, float sigma_d, u
 }
 
 void RunCL::updateG(int count, uint start, uint stop){
-	int local_verbosity_threshold = verbosity_mp["RunCL::updateG"];// -1;																										if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateG(..)_chk0"<<flush;}
+	int local_verbosity_threshold = V_RUNCL_UPDATEG;//verbosity_mp["RunCL::updateG"];// -1;																										if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateG(..)_chk0"<<flush;}
 	G_count++;
 	cl_int res;
 	size_t num_threads = ceil( (float)(mm_layerstep)/(float)local_work_size ) * local_work_size ;
@@ -245,7 +245,7 @@ void RunCL::updateG(int count, uint start, uint stop){
 }
 
 void RunCL::updateA(float lambda, float theta,  uint start, uint stop){
-	int local_verbosity_threshold = verbosity_mp["RunCL::updateA"];// -1;																										if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateA(..)_chk0 ."<<flush;}
+	int local_verbosity_threshold = V_RUNCL_UPDATEA;//verbosity_mp["RunCL::updateA"];// -1;																										if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateA(..)_chk0 ."<<flush;}
 	A_count++;
 
 	fp32_params[THETA]			=  theta;
@@ -295,7 +295,7 @@ void RunCL::updateA(float lambda, float theta,  uint start, uint stop){
 																																				DownloadAndSave(dmem,   ss.str(), paths.at("dmem"),    mm_size_bytes_C1,   mm_Image_size, CV_32FC1,  false , fp32_params[MAX_INV_DEPTH]);
 																																				DownloadAndSave(qmem,   ss.str(), paths.at("qmem"),  2*mm_size_bytes_C1,   q_size       , CV_32FC1,  false , -1*fp32_params[MAX_INV_DEPTH] ); //0.1
 
-																																				if ( verbosity > verbosity_mp["RunCL::updateA::dbg_databuf"] ){
+																																				if ( verbosity > V_RUNCL_UPDATEA_DBG_DATABUF ){
 																																					bool show = false;
 																																					bool exception_tiff = false;
 																																					DownloadAndSaveVolume(dbg_databuf, 	ss.str(), paths.at("dbg_databuf"), 	mm_size_bytes_C1,	mm_Image_size,   CV_32FC1,  show , 0 /*TODO count*/ , exception_tiff );
@@ -305,7 +305,7 @@ void RunCL::updateA(float lambda, float theta,  uint start, uint stop){
 }
 
 void RunCL::measureDepthFit(uint start, uint stop){
-	int local_verbosity_threshold = verbosity_mp["RunCL::measureDepthFit"];// -1;																										if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::measureDepthFit(..)_chk0 ."<<flush;}
+	int local_verbosity_threshold = V_RUNCL_MEASUREDEPTHFIT;//verbosity_mp["RunCL::measureDepthFit"];// -1;																										if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::measureDepthFit(..)_chk0 ."<<flush;}
 
 	cl_int 		status;
 	cl_int		res;
@@ -381,17 +381,17 @@ void RunCL::measureDepthFit(uint start, uint stop){
 
 
 void RunCL::SpatialCostFns(){
-	int local_verbosity_threshold = verbosity_mp["RunCL::SpatialCostFns"];
+	int local_verbosity_threshold = V_RUNCL_SPATIALCOSTFNS;//verbosity_mp["RunCL::SpatialCostFns"];
 
 }
 
 void RunCL::ParsimonyCostFns(){
-	int local_verbosity_threshold = verbosity_mp["RunCL::ParsimonyCostFns"];
+	int local_verbosity_threshold = V_RUNCL_PARSIMONYCOSTFNS;//verbosity_mp["RunCL::ParsimonyCostFns"];
 
 }
 
 void RunCL::ExhaustiveSearch(){
-	int local_verbosity_threshold = verbosity_mp["RunCL::ExhaustiveSearch"];
+	int local_verbosity_threshold = V_RUNCL_EXHAUSTIVESEARCH;//verbosity_mp["RunCL::ExhaustiveSearch"];
 
 }
 

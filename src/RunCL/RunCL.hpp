@@ -32,6 +32,7 @@ using namespace std::chrono;
 #include "../utils/print_functions.hpp"
 #include "../utils/CV_chk.hpp"
 #include "../utils/time_utils.hpp"
+#include "../utils/verbosity.hpp"
 
 #include "../kernels/kernels_macros.h"
 
@@ -48,9 +49,9 @@ public:
 	#include "opencl_utils.hpp"
 
 	//RunCL( conf_params j_params ); // map<string, Json::Value> obj_
-	RunCL( Json::Value obj_ , int_map verbosity_mp );
+	RunCL( Json::Value obj_ );//, int_map verbosity_mp );
 	Json::Value 		obj;
-	int_map 			verbosity_mp;
+	//int_map 			verbosity_mp;
 
 	cv::Mat 			resultsMat;						// used to insert images for multiple iterations, and variables for comparison. Size set in itialization, from cnf.json data.
 	int					verbosity;

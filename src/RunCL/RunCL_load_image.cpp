@@ -1,7 +1,7 @@
 #include "RunCL.hpp"
 
 void RunCL::loadFrame(cv::Mat image){ //getFrame();
-	int local_verbosity_threshold = verbosity_mp["RunCL::loadFrame"];//-2;
+	int local_verbosity_threshold = V_RUNCL_LOADFRAME;//verbosity_mp["RunCL::loadFrame"];//-2;
                                                                                                                                             if(verbosity>local_verbosity_threshold) {cout << "\n RunCL::loadFrame_chk 0\n" << flush;}
 	cl_int status;
 	cl_event writeEvt;																										               // WriteBuffer basemem #########
@@ -15,7 +15,7 @@ void RunCL::loadFrame(cv::Mat image){ //getFrame();
 }
 
 void RunCL::cvt_color_space(){ //getFrame(); basemem(CV_8UC3, RGB)->imgmem(CV16FC3, HSV), NB we will use basemem for image upload, and imgmem for the MipMap. RGB is default for .png standard.
-	int local_verbosity_threshold = verbosity_mp["RunCL::cvt_color_space"];// -1;
+	int local_verbosity_threshold = V_RUNCL_CVT_COLOR_SPACE;//verbosity_mp["RunCL::cvt_color_space"];// -1;
                                                                                                                                             if(verbosity>local_verbosity_threshold) {
                                                                                                                                                 cout<<"\n\nRunCL::cvt_color_space()_chk0"<<flush;
                                                                                                                                                 cout << "\n";
@@ -128,7 +128,7 @@ void RunCL::cvt_color_space(){ //getFrame(); basemem(CV_8UC3, RGB)->imgmem(CV16F
 }
 
 void RunCL::img_variance(){
-	int local_verbosity_threshold = verbosity_mp["RunCL::img_variance"];//-1;
+	int local_verbosity_threshold = V_RUNCL_IMG_VARIANCE;//verbosity_mp["RunCL::img_variance"];//-1;
 
 	// TODO ? create a class for data, holding buffer, CPU data, stats about the data object, functions for write, read, save, display, & set_kernel_arg ?
 
@@ -201,7 +201,7 @@ void RunCL::img_variance(){
 }
 
 void RunCL::blur_image(){
-	int local_verbosity_threshold = verbosity_mp["RunCL::blur_image"];// -1;
+	int local_verbosity_threshold = V_RUNCL_BLUR_IMAGE;//verbosity_mp["RunCL::blur_image"];// -1;
 
 	cl_int res, status;
 	cl_event ev, writeEvt;																																												// blur_image_kernel
@@ -260,7 +260,7 @@ void RunCL::blur_image(){
 
 
 void RunCL::mipmap_linear(){
-	int local_verbosity_threshold = verbosity_mp["RunCL::mipmap_linear"];// -1;																										if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_linear(..)_chk0"<<flush;}
+	int local_verbosity_threshold = V_RUNCL_MIPMAP_LINEAR;//verbosity_mp["RunCL::mipmap_linear"];// -1;																										if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_linear(..)_chk0"<<flush;}
 	cl_event 	writeEvt;//, ev;
 	cl_int 		res; //, status;
 	/*
@@ -303,7 +303,7 @@ void RunCL::mipmap_linear(){
 }
 
 void RunCL::img_gradients(){ //getFrame();
-	int local_verbosity_threshold = verbosity_mp["RunCL::img_gradients"];// -2;																										if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::img_gradients(..)_chk0"<<flush;}
+	int local_verbosity_threshold = V_RUNCL_IMG_GRADIENTS;//verbosity_mp["RunCL::img_gradients"];// -2;																										if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::img_gradients(..)_chk0"<<flush;}
 	cl_int res;
 	size_t num_threads = ceil( (float)(mm_layerstep)/(float)local_work_size ) * local_work_size ;
 																																			if(verbosity>local_verbosity_threshold) {cout << "\n num_threads = " << num_threads << ",   mm_layerstep = " << mm_layerstep << ",  local_work_size = " << local_work_size  <<endl << flush;}
@@ -340,7 +340,7 @@ void RunCL::img_gradients(){ //getFrame();
 }
 
 void RunCL::load_GT_depth(cv::Mat GT_depth, bool invert){ //getFrameData();, cv::Matx44f GT_K2K,   cv::Matx44f GT_pose2pose
-    int local_verbosity_threshold = verbosity_mp["RunCL::load_GT_depth"];// -4;
+    int local_verbosity_threshold = V_RUNCL_LOAD_GT_DEPTH;//verbosity_mp["RunCL::load_GT_depth"];// -4;
 	string fname = "RunCL::load_GT_depth";
 																																		if(verbosity>local_verbosity_threshold) cout << "\nRunCL::load_GT_depth(..)_chk_0:"<<flush;
 																																		if ( GT_depth.empty() ) {cerr << "\nRunCL::load_GT_depth(..)_chk_0:   Error  GT_depth.empty() "<<flush;  exit_(1); }
@@ -394,10 +394,11 @@ void RunCL::load_GT_depth(cv::Mat GT_depth, bool invert){ //getFrameData();, cv:
 }
 
 void RunCL::convert_depth(uint invert, float factor){
-	int local_verbosity_threshold = verbosity_mp["RunCL::convert_depth"];/* 0;*/															if(verbosity>local_verbosity_threshold) {
-																																					cout<<"\n\nRunCL::convert_depth(uint invert, float factor)_chk0"<<flush;
-																																					cout<<", invert="<<invert<<",  factor="<<factor<<flush;
-																																			}
+	int local_verbosity_threshold = V_RUNCL_CONVERT_DEPTH;//verbosity_mp["RunCL::convert_depth"];/* 0;*/
+																																		if(verbosity>local_verbosity_threshold) {
+																																			cout<<"\n\nRunCL::convert_depth(uint invert, float factor)_chk0"<<flush;
+																																			cout<<", invert="<<invert<<",  factor="<<factor<<flush;
+																																		}
 	cl_event 	ev;
 	cl_int 		res, status;
 
@@ -410,7 +411,7 @@ void RunCL::convert_depth(uint invert, float factor){
 
 	status = clFlush(m_queue); 				if (status != CL_SUCCESS)	{ cout << "\nclFlush(m_queue) status = " << checkerror(status) <<"\n"<<flush; exit_(status);}
 	status = clFinish(m_queue); 			if (status != CL_SUCCESS)	{ cout << "\nclFinish(m_queue)="<<status<<" "<<checkerror(status)<<"\n"<<flush; exit_(status);}
-																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::convert_depth()_chk1,  global_work_size="<< global_work_size <<flush;
+																																		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::convert_depth()_chk1,  global_work_size="<< global_work_size <<flush;
 
 	res 	= clEnqueueNDRangeKernel(m_queue, convert_depth_kernel, 1, 0,  &global_work_size, &local_work_size, 0, NULL, &ev); // run mipmap_float4_kernel, NB wait for own previous iteration.
 																						if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
@@ -419,7 +420,7 @@ void RunCL::convert_depth(uint invert, float factor){
 }
 
 void RunCL::mipmap_depthmap(cl_mem depthmap_){
-	int local_verbosity_threshold = verbosity_mp["RunCL::mipmap_depthmap"];/*2;	*/									if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_depthmap(..)_chk0"<<flush;}
+	int local_verbosity_threshold = V_RUNCL_MIPMAP_DEPTHMAP;//verbosity_mp["RunCL::mipmap_depthmap"];/*2;	*/									if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_depthmap(..)_chk0"<<flush;}
 	cl_event 	writeEvt;
 	cl_int 		res;
 
@@ -434,16 +435,16 @@ void RunCL::mipmap_depthmap(cl_mem depthmap_){
 
 	mipmap_call_kernel( mipmap_float_kernel, m_queue, mm_start, mm_stop, true);// TODO Start at first reduction, rehash __kernel void mipmap_linear_flt(..) and call only the num threads required. NB currently uses 4x as many threads as needed.
 
-																																			if(verbosity>local_verbosity_threshold) {
-																																				cout<<"\n\nRunCL::mipmap_depthmap(..)_chk3 Finished all loops."<<flush;
-																																				stringstream ss;	ss << dataset_frame_num << "_mipmap_depthmap";
-																																				cv::Size new_Image_size = cv::Size(mm_width, mm_height);
-																																				size_t   new_size_bytes = mm_width * mm_height * 4*4;
-																																				ss << "_raw_";
-																																				stringstream ss_path;	ss_path << "depth_GT";
-																																				DownloadAndSave( depthmap_,   	ss.str(),   paths.at(ss_path.str()),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , fp32_params[MAX_INV_DEPTH]);
+																																		if(verbosity>local_verbosity_threshold) {
+																																			cout<<"\n\nRunCL::mipmap_depthmap(..)_chk3 Finished all loops."<<flush;
+																																			stringstream ss;	ss << dataset_frame_num << "_mipmap_depthmap";
+																																			cv::Size new_Image_size = cv::Size(mm_width, mm_height);
+																																			size_t   new_size_bytes = mm_width * mm_height * 4*4;
+																																			ss << "_raw_";
+																																			stringstream ss_path;	ss_path << "depth_GT";
+																																			DownloadAndSave( depthmap_,   	ss.str(),   paths.at(ss_path.str()),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , fp32_params[MAX_INV_DEPTH]);
 
-																																				cout << "\n  (local_size+4) *5*4* sizeof(float) = "<<  (local_size+4) *5*4* sizeof(float) << " ,   (local_size+4) = " <<  (local_size+4) << endl << flush;
-																																			}
-																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_depthmap(..)_chk4 Finished"<<flush;}
+																																			cout << "\n  (local_size+4) *5*4* sizeof(float) = "<<  (local_size+4) *5*4* sizeof(float) << " ,   (local_size+4) = " <<  (local_size+4) << endl << flush;
+																																		}
+																																		if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_depthmap(..)_chk4 Finished"<<flush;}
 }

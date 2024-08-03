@@ -6,15 +6,16 @@
 #include <fstream>
 #include <string.h>
 #include <stdio.h>
+#include "../utils/verbosity.hpp"
 #include "convertAhandaPovRayToStandard.hpp"
 
 using namespace cv;
 using namespace std;
 Vec3f direction;
 Vec3f upvector;
-void convertAhandaPovRayToStandard(int_map verbosity_mp, const char *filepath,  Mat& R,  Mat& T, Mat& cameraMatrix){
-    int verbosity = verbosity_mp["verbosity"];//0;//  link to gobal verbosity
-    int local_verbosity_threshold = verbosity_mp["convertAhandaPovRayToStandard"];//2;
+void convertAhandaPovRayToStandard(Json::Value obj_ , const char *filepath,  Mat& R,  Mat& T, Mat& cameraMatrix){
+    int verbosity = obj_["verbosity"].asInt();//0;//  link to gobal verbosity
+    int local_verbosity_threshold = V_CONVERTAHANDAPOVRAYTOSTANDARD;//verbosity_mp["convertAhandaPovRayToStandard"];//2;
     																													if(verbosity>local_verbosity_threshold) cout << "\n convertAhandaPovRayToStandard_chk 0"<<flush;
 	
     char     text_file_name[600];                                               // open .txt file
@@ -111,9 +112,10 @@ void convertAhandaPovRayToStandard(int_map verbosity_mp, const char *filepath,  
 	
 }
 
-Mat loadDepthAhanda(int_map verbosity_mp, string filename, int r,int c,Mat cameraMatrix){
-    int verbosity = verbosity_mp["verbosity"];
-    int local_verbosity_threshold = verbosity_mp["loadDepthAhanda"];
+cv::Mat loadDepthAhanda(Json::Value obj_, std::string filename, int r, int c, cv::Mat cameraMatrix)
+{
+    int verbosity = obj_["verbosity"].asInt();
+    int local_verbosity_threshold = V_LOADDEPTHAHANDA;//verbosity_mp["loadDepthAhanda"];
 
     ifstream in(filename.c_str());
     int sz=r*c;

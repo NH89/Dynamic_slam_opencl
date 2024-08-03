@@ -6,7 +6,7 @@ using namespace cv;
 using namespace std;
 
 void Dynamic_slam::optimize_depth(){
-	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::optimize_depth"];
+	int local_verbosity_threshold = V_DYNAMIC_SLAM_OPTIMIZE_DEPTH;//verbosity_mp["Dynamic_slam::optimize_depth"];
 
 	bool doneOptimizing;
 	int  opt_count				= 0;
@@ -40,7 +40,7 @@ void Dynamic_slam::optimize_depth(){
 ///
 
 void Dynamic_slam::updateDepthCostVol(){																							// Built forwards. Updates keframe only when needed.
-	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::updateDepthCostVol"];// -1;
+	int local_verbosity_threshold = V_DYNAMIC_SLAM_UPDATEDEPTHCOSTVOL;//verbosity_mp["Dynamic_slam::updateDepthCostVol"];// -1;
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::buildDepthCostVol()_chk 0,  runcl.dataset_frame_num="<<runcl.dataset_frame_num << flush;}
 // # Build depth cost vol on current image, using image array[6] in MipMap buffer, plus RelVelMap,
 // with current camera params & DepthMap if bootstrapping, otherwise with params for each frame.
@@ -98,7 +98,7 @@ void Dynamic_slam::updateDepthCostVol(){																							// Built forwards
 }
 
 void Dynamic_slam::buildDepthCostVol_fast_peripheral(){																						// Higher levels only, built on current frame.
-	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::buildDepthCostVol_fast_peripheral"];// 1;
+	int local_verbosity_threshold = V_DYNAMIC_SLAM_BUILDDEPTHCOSTVOL_FAST_PERIPHERAL;//verbosity_mp["Dynamic_slam::buildDepthCostVol_fast_peripheral"];// 1;
 																																			if(verbosity>local_verbosity_threshold){ cout<<"\nDynamic_slam::buildDepthCostVol_fast_peripheral_chk0, " << flush;}
 
 
@@ -113,7 +113,7 @@ void Dynamic_slam::buildDepthCostVol_fast_peripheral(){																						// 
 */
 
 void Dynamic_slam::updateQD(){
-	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::updateQD"];// 1;
+	int local_verbosity_threshold = V_DYNAMIC_SLAM_UPDATEQD;//verbosity_mp["Dynamic_slam::updateQD"];// 1;
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDynamic_slam::updateQD_chk0, epsilon="<<runcl.fp32_params[EPSILON]<<" theta="<<runcl.fp32_params[THETA]<<flush;
 	runcl.computeSigmas(runcl.fp32_params[EPSILON], runcl.fp32_params[THETA], obj["L"].asFloat(), runcl.fp32_params[SIGMA_D], runcl.fp32_params[SIGMA_Q] );
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDynamic_slam::updateQD_chk1, epsilon="<<runcl.fp32_params[EPSILON]<<" theta="<<runcl.fp32_params[THETA]\
@@ -125,13 +125,13 @@ void Dynamic_slam::updateQD(){
 
 void Dynamic_slam::cacheGValues()
 {
-	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::cacheGValues"];// 1;
+	int local_verbosity_threshold = V_DYNAMIC_SLAM_CACHEGVALUES;//verbosity_mp["Dynamic_slam::cacheGValues"];// 1;
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\nDynamic_slam::cacheGValues()" <<flush;}
 	runcl.updateG(runcl.G_count, runcl.mm_start, runcl.mm_stop);
 }
 
 bool Dynamic_slam::updateA(){
-	int local_verbosity_threshold = verbosity_mp["Dynamic_slam::updateA"];// 1;
+	int local_verbosity_threshold = V_DYNAMIC_SLAM_UPDATEA;//verbosity_mp["Dynamic_slam::updateA"];// 1;
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDynamic_slam::updateA "<<flush;
 	if (theta < 0.001 && old_theta > 0.001){  cacheGValues(); old_theta=theta; }		// If theta falls below 0.001, then G must be recomputed.
 	// bool doneOptimizing = (theta <= thetaMin);

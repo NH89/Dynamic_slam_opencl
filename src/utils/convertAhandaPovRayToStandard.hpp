@@ -4,8 +4,8 @@
 #include <opencv2/opencv.hpp>
 #include "conf_params.hpp"
 
-void convertAhandaPovRayToStandard(int_map verbosity_mp, const char * filepath, cv::Mat& R,  cv::Mat& T,  cv::Mat& cameraMatrix);
+void convertAhandaPovRayToStandard(Json::Value obj_ , const char * filepath, cv::Mat& R,  cv::Mat& T,  cv::Mat& cameraMatrix);
 
-cv::Mat loadDepthAhanda(int_map verbosity_mp, std::string filename, int r,int c,cv::Mat cameraMatrix);
+cv::Mat loadDepthAhanda(Json::Value obj_ , std::string filename, int r,int c,cv::Mat cameraMatrix);
 
 #endif // CONVERTAHANDAPOVRAYTOSTANDARD_H_INCLUDED

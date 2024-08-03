@@ -25,9 +25,9 @@ class Dynamic_slam
 {
   public:
     ~Dynamic_slam();
-    Dynamic_slam(Json::Value obj_, int_map verbosity_mp);
+    Dynamic_slam(Json::Value obj_);//, int_map verbosity_mp);
     Json::Value             obj;
-    int_map                 verbosity_mp;
+    //int_map                 verbosity_mp;
     bool                    invert_GT_depth = false;
 
     RunCL                   runcl;
