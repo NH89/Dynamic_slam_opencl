@@ -9,18 +9,17 @@ Dynamic_slam::~Dynamic_slam(){ runcl.~RunCL(); };
 
 Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map verbosity_mp_
 	obj = obj_;																																// NB save obj_ to class member obj, so that it persists within this Dynamic_slam object.
-	//verbosity_mp = verbosity_mp_;
-	verbosity 					= obj["verbosity"].asInt();
-	int local_verbosity_threshold = V_DYNAMIC_SLAM_DYNAMIC_SLAM;//verbosity_mp["Dynamic_slam::Dynamic_slam"];
+	verbosity 						= obj["verbosity"].asInt();
+	int local_verbosity_threshold 	= V_DYNAMIC_SLAM_DYNAMIC_SLAM;//verbosity_mp["Dynamic_slam::Dynamic_slam"];
 
-	runcl.dataset_frame_num 	= obj["data_file_offset"].asUInt();
-	invert_GT_depth  			= obj["invert_GT_depth"].asBool();
+	runcl.dataset_frame_num 		= obj["data_file_offset"].asUInt();
+	invert_GT_depth  				= obj["invert_GT_depth"].asBool();
 
-	SE3_start_layer 			= obj["SE3_start_layer"].asUInt();
-    SE3_stop_layer 				= obj["SE3_stop_layer"].asUInt();
-	SE_iter_per_layer 			= obj["SE_iter_per_layer"].asUInt();
-    SE_iter 					= obj["SE_iter"].asUInt();
-	SE_factor					= obj["SE_factor"].asFloat();
+	SE3_start_layer 				= obj["SE3_start_layer"].asUInt();
+    SE3_stop_layer 					= obj["SE3_stop_layer"].asUInt();
+	SE_iter_per_layer 				= obj["SE_iter_per_layer"].asUInt();
+    SE_iter 						= obj["SE_iter"].asUInt();
+	SE_factor						= obj["SE_factor"].asFloat();
 
 	for (int layer=0; layer<MAX_LAYERS; layer++){for (int chan=0; chan<3; chan++)	SE3_Rho_sq_threshold[layer][chan]  	= obj["SE3_Rho_sq_threshold"][layer][chan].asFloat();  }	//j_params.float_vecvec_mp["SE3_Rho_sq_threshold"][layer][chan]; }		//
 	for (int se3=0; se3<8; se3++)													SE3_update_dof_weights[se3] 		= obj["SE3_update_dof_weights"][se3].asFloat();				//j_params.float_vec_mp["SE3_update_dof_weights"][se3];					//
@@ -79,7 +78,7 @@ void Dynamic_slam::initialize_camera_vec(){
 	T 								= cv::Mat::zeros(3,1 , CV_32FC1);
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 1:" <<flush;}
 	frame_datum 					datum = {};																								// default initialization, to values in header, or zero if not set in header.
-	datum.keyframe_index			= -1; 								// i.e. an invalid index that must be handled.
+	datum.keyframe_index			= -1; 								// i.e. Sets an invalid index (that must be handled), before the 1st keyframe has been created,
 	datum.frame_data.K 				= k;
 	datum.frame_data.inv_K 			= generate_invK_( k );
 
@@ -109,48 +108,7 @@ void Dynamic_slam::initialize_camera_vec(){
 	runcl.dataset_frame_num++;
 																																			if (verbosity>local_verbosity_threshold){ cout << "\nDynamic_slam::initialize_camera_vec Finished:" <<flush; }
 }
-/*
-void Dynamic_slam::initialize_camera(){
-	int local_verbosity_threshold = ;//verbosity_mp["Dynamic_slam::initialize_camera"];// verbosity_mp[""];//2;
-																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_chk 0:" <<flush;}
-	K = K.zeros();																															// NB In DTAM_opencl, "cameraMatrix" found by convertAhandPovRay, called by fileLoader
-	K.operator()(3,3) = 1;
-	for (int i=0; i<9; i++){K.operator()(i/3,i%3) = obj["cameraMatrix"][i].asFloat(); }		//j_params.float_vec_mp["cameraMatrix"][i];   //
-	old_K		= K;
-	generate_invK();
-																																			if(verbosity>local_verbosity_threshold) {
-																																				PRINT_MATX44F(K,);
-																																				print_json_float_9(obj, "cameraMatrix");
-																																			}
-	R 							= cv::Mat::eye(3,3 , CV_32FC1);																				// intialize ground truth extrinsic data, NB Mat (int rows, int cols, int type)
-	T 							= cv::Mat::zeros(3,1 , CV_32FC1);
 
-	keyframe_pose2pose 			= Matx44f_eye;
-	pose2pose					= Matx44f_eye;
-	K2K							= Matx44f_eye;
-																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_chk 1:" <<flush;
-																																				PRINT_MAT33F(R,);
-																																			}
-	// TODO Also initialize any lens distorsion, vignetting. etc
-	getFrameData();																															// Loads GT depth of the new frame. NB depends on image.size from getFrame().
-
-	K_start 					= K_GT; 																									// NB The same frame will be loaded to the opposite imgmem, on the first iteration of Dynamic_slam::nextFrame()
-	inv_K_start 				= inv_K_GT;
-	pose_start 					= pose_GT;
-	inv_pose_start 				= inv_pose_GT;
-
-	K2K_GT 						= Matx44f_eye; 																								//  = cv::Matx44f::eye();
-	K2K_start 					= Matx44f_eye;
-	pose2pose_GT 				= Matx44f_eye;
-	pose2pose_start 			= Matx44f_eye;
-	pose2pose_accumulated 		= Matx44f_eye;
-	pose2pose_accumulated_GT 	= Matx44f_eye;
-																																			if (verbosity>local_verbosity_threshold){ cout << "\nDynamic_slam::initialize_camera_chk 5:" <<flush; PRINT_MATX44F(pose2pose_accumulated,); }
-	generate_SE3_k2k( SE3_k2k );
-	runcl.precom_param_maps( SE3_k2k );
-	getFrame();																																// Causes the first frame to be loaded into first imgmem, and prepared.
-}
-*/
 int Dynamic_slam::nextFrame() {
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_NEXTFRAME;//verbosity_mp["Dynamic_slam::nextFrame"];// -2;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::nextFrame_chk 0,  runcl.dataset_frame_num="<<runcl.dataset_frame_num<<" \n" << flush; //  runcl.frame_bool_idx="<<runcl.frame_bool_idx<<"
@@ -369,117 +327,6 @@ void Dynamic_slam::getFrameData_vec(){
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec_chk Finished ############################"<<flush;
 }
 
-/*
-void Dynamic_slam::getFrameData(){  // can load use separate CPU thread(s) ?
-	int local_verbosity_threshold = V_DYNAMIC_SLAM_GETFRAMEDATA;//verbosity_mp["Dynamic_slam::getFrameData"];// -2;
-																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_chk 0.  runcl.dataset_frame_num = "<< runcl.dataset_frame_num <<flush;
-	R.copyTo(old_R);																														// get ground truth frame to frame pose transform
-	T.copyTo(old_T);
-	old_pose_GT 		= pose_GT;
-	inv_old_pose_GT 	= inv_pose_GT;																										// NB Confirmed this copies the data  NOT just the pointer.
-	old_K_GT			= K_GT;
-	inv_old_K_GT		= inv_K_GT;
-																																			if(verbosity>local_verbosity_threshold){
-																																				cout << "\n Dynamic_slam::getFrameData_chk 0.5, data file = " << txt[runcl.dataset_frame_num].c_str() << "\t" << flush;
-																																			}
-	std::string str = txt[runcl.dataset_frame_num].c_str();																					// grab .txt file from array of files (e.g. "scene_00_0000.txt")
-    char        *ch = new char [str.length()+1];
-    std::strcpy (ch, str.c_str());
-	cv::Mat T_alt;
-    convertAhandaPovRayToStandard(verbosity_mp, ch,R,T,cameraMatrix);
-	free(ch);
-																																			if(verbosity>local_verbosity_threshold) {
-																																				cout << "\nR=";
-																																				for (int i=0; i<3; i++){
-																																					cout <<"\n(";
-																																					for (int j=0; j<3; j++){
-																																						cout << ", " << R.at<float>(i,j);
-																																					}cout << ")\n";
-																																				}cout<<endl<<flush;
-
-																																				cout << "\nT=(";
-																																				for (int i=0; i<3; i++) cout << ", " << T.at<float>(i);
-																																				cout << ")\n"<<endl<<flush;
-																																			}
-	pose_GT 		= getPose(R, T);
-	inv_pose_GT 	= getInvPose(pose_GT);
-																																			if(verbosity>local_verbosity_threshold) { cout << "\n Dynamic_slam::getFrameData_chk 0.1.2"<<flush;
-																																				PRINT_MATX44F(pose_GT,);
-																																				PRINT_MATX44F(inv_pose_GT,);
-																																			}
-																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_chk 0.2"<<flush;
-	K_GT = K_GT.zeros();
-	for (int i=0; i<3; i++){
-		for (int j=0; j<3; j++){
-			K_GT.operator()(i,j) = cameraMatrix.at<float>(i,j);
-		}
-	}K_GT.operator()(3,3) = 1;
-	K = K_GT;
-	generate_invK();
-	inv_K_GT = inv_K; 																														// TODO change this when we autocalibrate K.
-																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_chk 0.4"<<flush; // K2K
-	K2K_GT 					= old_K_GT * old_pose_GT * inv_pose_GT * inv_K_GT;
-	//   wrong way around :   old_K_GT * old_pose_GT * inv_pose_GT * inv_K_GT;																// TODO  Issue, not valid for first frame, pose  should be identty, Also what would estimate SE3 do ?
-
-	pose2pose_GT 			= old_pose_GT * inv_pose_GT;
-	keyframe_pose2pose_GT 	= pose_GT * keyframe_inv_pose_GT;
-	keyframe_K2K_GT 		= K_GT * pose_GT * keyframe_inv_pose_GT * keyframe_inv_K_GT;
-																																			if(verbosity>local_verbosity_threshold) { cout << "\n Dynamic_slam::getFrameData_chk 0.1.2"<<flush;
-																																				cout << "\truncl.costvol_frame_num = " << runcl.costvol_frame_num << flush;
-																																				PRINT_MATX44F(K_GT,);
-																																				PRINT_MATX44F(pose_GT,);
-																																				PRINT_MATX44F(keyframe_pose_GT,);
-																																				PRINT_MATX44F(keyframe_inv_pose_GT,);
-																																				PRINT_MATX44F(keyframe_inv_K_GT,);
-																																				PRINT_MATX44F(keyframe_K2K_GT,);
-																																			}
-
-	if (runcl.dataset_frame_num > 0 ) {  pose2pose_accumulated_GT = pose2pose_accumulated_GT * pose2pose_GT;	}							// Tracks pose tranform from first frame.
-																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::getFrameData_chk 1,"<<flush;
-																																				PRINT_MATX44F(old_K_GT,);
-																																				PRINT_MATX44F(old_pose_GT,);
-																																				PRINT_MATX44F(inv_pose_GT,);
-																																				PRINT_MATX44F(inv_K_GT,);
-																																				PRINT_MATX44F(K_GT,);
-																																				PRINT_MATX44F(K2K_GT,);
-																																				PRINT_MATX44F(pose2pose_GT,);
-																																				PRINT_MAT33F(cameraMatrix,);
-																																			}
-																																			// get ground truth depth map
-																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::getFrameData_chk 2,"<<flush;}
-	int r = runcl.baseImage.rows;  //image.rows;
-    int c = runcl.baseImage.cols;  //image.cols;
-	depth_GT = loadDepthAhanda(verbosity_mp, depth[runcl.dataset_frame_num].string(), r,c,cameraMatrix);
-																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::getFrameData_chk 3,"<<flush;//}
-																																				stringstream ss;
-																																				stringstream png_ss;
-																																				boost::filesystem::path folder_tiff = runcl.paths.at("depth_GT");
-																																				string type_string = checkCVtype(depth_GT.type() );
-																																				ss << "/" << folder_tiff.filename().string() << "_original_" << runcl.dataset_frame_num <<"type_"<<type_string;
-																																				png_ss << "/" << folder_tiff.filename().string() << "_original_" << runcl.dataset_frame_num;
-																																				boost::filesystem::path folder_png = folder_tiff;
-																																				folder_tiff += "/tiff/";
-																																				folder_tiff += ss.str();
-																																				folder_tiff += ".tiff";
-																																				//folder_png  += "/png/";
-
-																																				folder_png  += png_ss.str();
-																																				folder_png  += ".png";
-
-																																			//if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::getFrameData_chk 4,"<<flush;
-																																				cout << "\n runcl.frame_num = " << runcl.dataset_frame_num << ",  depth[runcl.frame_num].string() = " << depth[runcl.dataset_frame_num].string() << flush;
-																																				cout << "\n depth_GT.size() = " << depth_GT.size() << ",  depth_GT.type() = "<< type_string << ",  depth_GT.empty() = " <<  depth_GT.empty()   << flush;
-																																				cout << "\n " << folder_png.string() << flush;
-
-																																				cv::imwrite(folder_png.string(), depth_GT );
-																																				cv::imwrite(folder_tiff.string(), depth_GT );
-																																			}
-
-	//runcl.loadFrameData(depth_GT, K2K, pose2pose);
-	runcl.load_GT_depth(depth_GT, invert_GT_depth);																							// loads to depth_mem_GT buffer.
-																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData finished,#################################################################"<<flush;
-}
-*/
 void Dynamic_slam::use_GT_pose_vec(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_USE_GT_POSE;//verbosity_mp["Dynamic_slam::use_GT_pose"];// -1;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::use_GT_pose_chk_0,"<<flush;
@@ -492,32 +339,7 @@ void Dynamic_slam::use_GT_pose_vec(){
 																																				PRINT_FLOAT_16(runcl.fp32_k2keyframe,);
 																																			}
 }
-/*
-void Dynamic_slam::use_GT_pose(){
-	int local_verbosity_threshold = V_DYNAMIC_SLAM_USE_GT_POSE;//verbosity_mp["Dynamic_slam::use_GT_pose"];// -1;
-																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::use_GT_pose_chk_0,"<<flush;
-	old_K				= old_K_GT;
-	inv_K				= inv_K_GT;
-	old_pose			= old_pose_GT;
-	inv_pose			= inv_pose_GT;
 
-	pose 				= pose_GT;
-	inv_pose			= inv_pose_GT;
-	keyframe_K2K 		= keyframe_K2K_GT;
-
-	keyframe_pose2pose 	= keyframe_pose2pose_GT;
-	// pose2pose = keyframe_pose2pose_GT;
-
-	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] = keyframe_K2K.operator()(i/4, i%4);}
-																																			if(verbosity>local_verbosity_threshold){
-																																				PRINT_MATX44F(K,);
-																																				PRINT_MATX44F(inv_K,);
-																																				PRINT_MATX44F(keyframe_pose2pose,);
-																																				PRINT_FLOAT_16(runcl.fp32_k2keyframe,);
-																																			}
-																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::use_GT_pose finished,"<<flush;
-}
-*/
 
 //////
 

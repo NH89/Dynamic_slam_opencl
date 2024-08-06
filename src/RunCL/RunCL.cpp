@@ -573,15 +573,6 @@ void RunCL::mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_
 	}if (layers_sequential==false) status 	= clWaitForEvents (1, &ev);										if (status != CL_SUCCESS)	{ cout << "\nRunCL::mipmap_call_kernel( cl_kernel "<<kernel_to_call<<") final,  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 }
 
-int RunCL::waitForEventAndRelease(cl_event *event){
-	int local_verbosity_threshold = V_RUNCL_WAITFOREVENTANDRELEASE;//verbosity_mp["RunCL::waitForEventAndRelease"];
-
-											if(verbosity>local_verbosity_threshold) cout << "\nwaitForEventAndRelease_chk0, event="<<event<<" *event="<<*event << flush;
-		cl_int status = CL_SUCCESS;
-		status = clWaitForEvents(1, event); if (status != CL_SUCCESS) { cout << "\nclWaitForEvents status=" << status << ", " <<  checkerror(status) <<"\n" << flush; exit_(status); }
-		status = clReleaseEvent(*event); 	if (status != CL_SUCCESS) { cout << "\nclReleaseEvent status="  << status << ", " <<  checkerror(status) <<"\n" << flush; exit_(status); }
-		return status;
-}
 
 void RunCL::allocatemem(){
 	int local_verbosity_threshold = V_RUNCL_ALLOCATEMEM;//verbosity_mp["RunCL::allocatemem"];// 0;

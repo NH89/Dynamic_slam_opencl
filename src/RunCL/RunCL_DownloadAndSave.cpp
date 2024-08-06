@@ -1,7 +1,7 @@
 #include "RunCL.hpp"
 
 void RunCL::createFolders(){
-	int local_verbosity_threshold = V_RUNCL_CREATEFOLDERS;//verbosity_mp["RunCL::createFolders"];
+	int local_verbosity_threshold = V_RUNCL_CREATEFOLDERS;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n createFolders_chk 0\n" << flush;
 	std::string   out_dir = date_time_string();
 
@@ -112,6 +112,7 @@ void RunCL::ReadOutput(uchar* outmat) {
 }
 
 void RunCL::ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/) {
+	string fname = "RunCL::ReadOutput(..)";
 	int local_verbosity_threshold = V_RUNCL_READOUTPUT;//verbosity_mp["RunCL::ReadOutput"];
 																																			if(verbosity>local_verbosity_threshold) cout << "\nRunCL::ReadOutput chk_0"<<flush;
 																																			if(verbosity>local_verbosity_threshold) cout << "\noutmat:"<< outmat <<",  buf_mem:"<<buf_mem <<",  data_size:"<<  data_size <<",  offset:"<<  offset <<","<<flush;
@@ -130,8 +131,7 @@ void RunCL::ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t o
 											&readEvt);		// event
 														if (status != CL_SUCCESS) { cout << "\nclEnqueueReadBuffer(..) status=" << checkerror(status) <<"\n"<<flush; exit_(status);}
 														else 																				if(verbosity>local_verbosity_threshold) cout << "\nRunCL::ReadOutput chk_1"<<flush;
-		status = clFlush(dload_queue);					if (status != CL_SUCCESS) { cout << "\nclFlush(m_queue) status = " 		<< checkerror(status) <<"\n"<<flush; exit_(status);}
-		status = clFinish(dload_queue);					if (status != CL_SUCCESS) { cout << "\nclFinish(m_queue) status = " 	<< checkerror(status) <<"\n"<<flush; exit_(status);}
+		_cl_flush_finish(dload_queue, fname);
 		clReleaseEvent(readEvt);
 																																			if(verbosity>local_verbosity_threshold) cout << "\nRunCL::ReadOutput finish"<<flush;
 }

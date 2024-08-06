@@ -1,5 +1,50 @@
 #include "RunCL.hpp"
 
+void RunCL::_clEnqueueNDRangeKernel(
+	cl_command_queue _queue,
+	cl_kernel        kernel,
+	cl_uint          work_dim,
+	const size_t *   global_work_offset,
+	const size_t *   global_work_size,
+	const size_t *   local_work_size,
+	string           fname
+){
+	_cl_flush_finish(_queue, fname);
+	cl_event ev;
+	cl_int res;
+	res = clEnqueueNDRangeKernel(
+		_queue,
+		kernel,
+		work_dim,
+		global_work_offset,
+		global_work_size,
+		local_work_size,
+		0,
+		NULL,
+		&ev
+	);
+	if (res != CL_SUCCESS)	{ cout << "\n"<<fname<<"  res = " << checkerror(res) <<"\n"<<flush; exit_(res);}
+
+	_cl_flush_finish(_queue,  fname);
+}
+
+
+void RunCL::_cl_flush_finish(cl_command_queue	_queue,  string fname){
+	cl_int status;
+	status = clFlush(_queue); 				if (status != CL_SUCCESS)	{ cout << "\n"<<fname<<"  clFlush(m_queue) status = " << checkerror(status) <<"\n"<<flush; 	exit_(status);}
+	status = clFinish(_queue); 				if (status != CL_SUCCESS)	{ cout << "\n"<<fname<<"  clFinish(m_queue)="<<status<<" "<<checkerror(status)<<"\n"<<flush; exit_(status);}
+}
+
+
+int RunCL::waitForEventAndRelease(cl_event *event){
+	int local_verbosity_threshold = V_RUNCL_WAITFOREVENTANDRELEASE;//verbosity_mp["RunCL::waitForEventAndRelease"];
+											if(verbosity>local_verbosity_threshold) cout << "\nwaitForEventAndRelease_chk0, event="<<event<<" *event="<<*event << flush;
+	cl_int status = CL_SUCCESS;
+	status	= clWaitForEvents(1, event); 	if (status != CL_SUCCESS) { cout << "\nclWaitForEvents status=" << status << ", " <<  checkerror(status) <<"\n" << flush; exit_(status); }
+	status	= clReleaseEvent(*event); 		if (status != CL_SUCCESS) { cout << "\nclReleaseEvent status="  << status << ", " <<  checkerror(status) <<"\n" << flush; exit_(status); }
+	return status;
+}
+
 
 void RunCL::cl_mem_swap_ptr(cl_mem buf1, cl_mem buf2){
     cl_mem temp_mem = buf1;
@@ -11,10 +56,7 @@ void RunCL::cl_mem_swap_ptr(cl_mem buf1, cl_mem buf2){
 void RunCL::_clSetKernelArg(cl_kernel kernel,  cl_uint arg_index,  size_t arg_size, const void* arg_value, string fname){
 	cl_int  res;
 	res 	= clSetKernelArg( kernel, arg_index,  arg_size, arg_value);
-	if(res	!=CL_SUCCESS){	
-		std::cout<< "\n"<<fname << "_clSetKernelArg  "<<kernel<<",   arg_index="<<arg_index<<"   res = "<<checkerror(res)<<"\n"<<flush;
-		exit_(res);
-	}
+											if(res	!=CL_SUCCESS){	std::cout<< "\n"<<fname << "_clSetKernelArg  "<<kernel<<",   arg_index="<<arg_index<<"   res = "<<checkerror(res)<<"\n"<<flush;	exit_(res); }
 }
 
 
@@ -25,24 +67,13 @@ void RunCL::_clEnqueueWriteBuffer(
 	size_t 				offset,
 	size_t 				size,
 	const void* 		ptr,
-	cl_uint 			num_events_in_wait_list,
-	const cl_event* 	event_wait_list,
-	cl_event* 			event,
 	string 				fname
-)
-{
+){
 	cl_int 		status;
-	status 		= clEnqueueWriteBuffer( command_queue, buffer, blocking_write, offset, size, ptr, num_events_in_wait_list, event_wait_list, event);
-	if (status 	!= CL_SUCCESS)	{ 
-		cout << "\n"<<fname << "_clEnqueueWriteBuffer  buffer="<<buffer<<",  status = " << checkerror(status) << "Error1: failed to enqueue\n" << endl;
-		exit_(status);
-	}	
-	clFlush(command_queue);
-	status = clFinish(command_queue);
-	if (status 	!= CL_SUCCESS)	{ 
-		cout << "\n"<<fname << "_clEnqueueWriteBuffer  buffer="<<buffer<<",  status = " << checkerror(status) << "Error2: failed to finish\n" << endl;
-		exit_(status);
-	}	
+	cl_event 	event;
+	status 		= clEnqueueWriteBuffer( command_queue, buffer, blocking_write, offset, size, ptr,  0, NULL, &event);
+											if (status 	!= CL_SUCCESS)	{ cout << "\n"<<fname << "_clEnqueueWriteBuffer  buffer="<<buffer<<",  status = " << checkerror(status) << "Error1: failed to enqueue\n" << endl; exit_(status); }
+	_cl_flush_finish( command_queue,  fname);
 }
 
 
@@ -53,24 +84,52 @@ void RunCL::_clEnqueueFillBuffer(
 	size_t 				pattern_size,
 	size_t 				offset,
 	size_t 				size,
-	cl_uint 			num_events_in_wait_list,
-	const cl_event* 	event_wait_list,
-	cl_event* 			event,
 	string 				fname
-)
-{
+){
 	cl_int 		status;
-	status = clEnqueueFillBuffer( command_queue, buffer, pattern, pattern_size, offset, size, num_events_in_wait_list, event_wait_list, event);	
-	if (status != CL_SUCCESS)	{ 
-		cout << "\n"<<fname << "_clEnqueueFillBuffer    buffer="<<buffer<<",  status = " << checkerror(status) << "Error1: failed to enqueue\n" << endl;
+	cl_event 	event;
+	status 		= clEnqueueFillBuffer( command_queue, buffer, pattern, pattern_size, offset, size, 0, NULL, &event);
+											if (status != CL_SUCCESS)	{ cout << "\n"<<fname << "_clEnqueueFillBuffer    buffer="<<buffer<<",  status = " << checkerror(status) << "Error1: failed to enqueue\n" << endl;  exit_(status); }
+	_cl_flush_finish(command_queue, fname);
+}
+
+
+void RunCL::_clEnqueueCopyBuffer(
+		cl_command_queue command_queue,
+		cl_mem src_buffer,
+		cl_mem dst_buffer,
+		size_t src_offset,
+		size_t dst_offset,
+		size_t size,
+		string fname
+){
+	cl_int 		status;
+	cl_event 	event;
+	status = clEnqueueCopyBuffer(
+		command_queue,
+		src_buffer,
+		dst_buffer,
+		src_offset,
+		dst_offset,
+		size,
+		0,
+		NULL,
+		&event
+	);
+
+	if (status 	!= CL_SUCCESS)	{
+		cout << "\n"<<fname << ":_clEnqueueCopyBuffer(..)"
+		<<"  src_buffer="		<<src_buffer
+		<<",  dst_buffer="		<<dst_buffer
+		<<",  src_offset="		<<src_offset
+		<<",  dst_offset="		<<dst_offset
+		<<",  size="			<<size
+		<<",  status = " 		<< checkerror(status)
+		<< "Error1: failed to enqueue\n" << endl;
 		exit_(status);
-	}	
-	clFlush(uload_queue); 
-	status = clFinish(uload_queue);
-	if (status != CL_SUCCESS)	{ 
-		cout << "\n"<<fname << "_clEnqueueFillBuffer    buffer="<<buffer<<",  status = " << checkerror(status) << "Error2: failed to finish\n" << endl;
-		exit_(status);
-	}	
+	}
+
+	_cl_flush_finish( command_queue,  fname);
 }
 
 
@@ -82,37 +141,26 @@ void RunCL::_clCreateBuffer(
     cl_int*             errcode_ret,
 	cl_mem 				memobj,
 	string 				fname
-)
-{
-	cl_int 		 res;
-	memobj = clCreateBuffer(m_context, CL_MEM_READ_ONLY  						, mm_size_bytes_C4,  		0, &res);			
-	
-	if(res!=CL_SUCCESS){
-		cout<<"\n"<<fname << "_clCreateBuffer  buffer="<<memobj<<",   error="<<checkerror(res)<<"\n"<<flush;
-		exit_(res);
-	}
+){
+	cl_int		res;
+	memobj		= clCreateBuffer( m_context, CL_MEM_READ_ONLY, mm_size_bytes_C4,	0, &res );
+											if(res!=CL_SUCCESS){ cout<<"\n"<<fname << "_clCreateBuffer  buffer="<<memobj<<",   error="<<checkerror(res)<<"\n"<<flush; exit_(res); }
 }
 
 
 void RunCL::_clReleaseMemObject(cl_mem 	memobj)
 {
-	cl_int 			status;
-	status 			= clReleaseMemObject( memobj );
-	
-	if (status != CL_SUCCESS)	{ 
-		cout << "\n_clReleaseMemObject("<< memobj <<",   status = " << checkerror(status) <<"\n"<<flush; 
-	}
+	cl_int 		status;
+	status 		= clReleaseMemObject( memobj );
+											if (status != CL_SUCCESS)	{ cout << "\n_clReleaseMemObject("<< memobj <<",   status = " << checkerror(status) <<"\n"<<flush; }
 }
 
 
 void RunCL::_clReleaseKerne(cl_kernel kernel)
 {
-	cl_int 			status;
-	status = clReleaseKernel(cvt_color_space_linear_kernel);	
-	
-	if (status != CL_SUCCESS)	{ 
-		cout << "\n_clReleaseKerne("<<kernel<<") 	status = " << checkerror(status) <<"\n"<<flush; 
-	}
+	cl_int 		status;
+	status 		= clReleaseKernel(cvt_color_space_linear_kernel);
+											if (status != CL_SUCCESS)	{ cout << "\n_clReleaseKerne("<<kernel<<") 	status = " << checkerror(status) <<"\n"<<flush; }
 }
 
 // TODO

@@ -1,12 +1,12 @@
 {
-     "verbosity": 1,									// -1= none, 0=errors only, 1=basic, 2=lots.
+     "verbosity": 3,									// -1= none, 0=errors only, 1=basic, 2=lots.
     ////// Initial startup verbosity //////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //////"conf_params::conf_params":1,
 
 
     // Debug options ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     "tiff":false,//true,//false
-    "png":false,
+    "png":true,
     "vtp":false, // NB depends on saving keyframe.   NB very slow. To examine depth maps for debugging only.
 
     // Setup openCL /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -31,7 +31,7 @@
     // Mapping parameters - DTAM ////////////////////////////////////////////////////////////////////////////////////////////////////
     "regularizer_outer_iter":1,//30,
     "regularizer_inner_iter":1,//10,
-    "layers":2,//64,                //7;//32;//64;//128;//256//255;         // Layers of CostVol. Coarse to fine warping may allow few layers to be selected. Need to store the range.
+    "layers":64,                //7;//32;//64;//128;//256//255;         // Layers of CostVol. Coarse to fine warping may allow few layers to be selected. Need to store the range.
                                                                         // Also keep layers for for depths across edge boundaries.
     "invert_GT_depth":true,                                             // 'true' if ground truth depth needs to be inverted.  
     "max_depth_infinity":true,
@@ -61,7 +61,7 @@
     // Tracking parameters //////////////////////////////////////////////////////////////////////////////////////////////////////////
     "SE3_LM_A":0.1,                                                     // LM damped least squares parameters for SE3 tracking  - currently not in use.
     "SE3_LM_B":0.1,
-    "SE3_start_layer":5,
+    "SE3_start_layer":4,
     "SE3_stop_layer":1,
     "SE_iter_per_layer":1,//10 //5
     "SE_iter":1,//10//50//25,               //1 //10

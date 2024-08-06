@@ -7,7 +7,6 @@
 #define CL_HPP_TARGET_OPENCL_VERSION		300  // OpenCL 2.0
 
 #include <CL/opencl.hpp>
-//#include <stdint.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
@@ -25,7 +24,7 @@
 #include <chrono>								// For measuring time of execution.
 using namespace std::chrono;
 
-#include "opencl_utils.hpp"
+//#include "opencl_utils.hpp"
 
 #include "../utils/conf_params.hpp"
 #include "../utils/convertTransforms.hpp"
@@ -46,14 +45,12 @@ using namespace std;
 class RunCL
 {
 public:
-	#include "opencl_utils.hpp"
+	//#include "opencl_utils.hpp"
 
-	//RunCL( conf_params j_params ); // map<string, Json::Value> obj_
-	RunCL( Json::Value obj_ );//, int_map verbosity_mp );
+	RunCL( Json::Value obj_ );
 	Json::Value 		obj;
-	//int_map 			verbosity_mp;
 
-	cv::Mat 			resultsMat;						// used to insert images for multiple iterations, and variables for comparison. Size set in itialization, from cnf.json data.
+	cv::Mat 			resultsMat;																																// used to insert images for multiple iterations, and variables for comparison. Size set in itialization, from cnf.json data.
 	int					verbosity;
 	bool				tiff, png, vtp;
 	std::vector<cl_platform_id> 	m_platform_ids;
@@ -61,26 +58,35 @@ public:
 	cl_device_id		m_device_id;
 	cl_command_queue	m_queue, uload_queue, dload_queue, track_queue;
 	cl_program			m_program;
-	cl_kernel			convert_depth_kernel, invert_depth_kernel, transform_depthmap_kernel, transform_costvolume_kernel, depth_cost_vol_kernel, cost_kernel, cache3_kernel, cache4_kernel, updateQD_kernel, updateG_kernel, updateA_kernel, measureDepthFit_kernel;
-	cl_kernel			cvt_color_space_kernel, cvt_color_space_linear_kernel, img_variance_kernel, blur_image_kernel, reduce_kernel, mipmap_float4_kernel, mipmap_float_kernel, img_grad_kernel, se3_rho_sq_kernel, comp_param_maps_kernel;
+
+	// Kernels
+	cl_kernel			convert_depth_kernel, invert_depth_kernel, transform_depthmap_kernel, transform_costvolume_kernel;
+	cl_kernel 			depth_cost_vol_kernel, cost_kernel, cache3_kernel, cache4_kernel, updateQD_kernel, updateG_kernel, updateA_kernel, measureDepthFit_kernel;
+	cl_kernel			cvt_color_space_kernel, cvt_color_space_linear_kernel, img_variance_kernel, blur_image_kernel;
+	cl_kernel 			reduce_kernel, mipmap_float4_kernel, mipmap_float_kernel, img_grad_kernel, se3_rho_sq_kernel, comp_param_maps_kernel;
 	cl_kernel			se3_lk_grad_kernel, atomic_test1_kernel, atomic_test2_kernel;
 	
-	//bool 				frame_bool_idx=0;
+	// GPU Buffers
 	cl_mem 				basemem, imgmem,  imgmem_blurred, gxmem, gymem, g1mem,  k_map_mem, dist_map_mem, SE3_grad_map_mem, SE3_incr_map_mem;
 	cl_mem				cdatabuf, temp_cdatabuf, cdatabuf_8chan, hdatabuf, temp_hdatabuf, dbg_databuf;
-	cl_mem 				dmem, amem, qmem, qmem2, lomem, himem, mean_mem, img_sum_buf, depth_mem, depth_mem_GT;											// NB 'depth_mem' is that used by tracking & auto-calibration.
+	cl_mem 				dmem, amem, qmem, qmem2, lomem, himem, mean_mem, img_sum_buf, depth_mem, depth_mem_GT;													// NB 'depth_mem' is that used by tracking & auto-calibration.
 	
-	cl_mem				k2kbuf, invk2kbuf, SO3_k2kbuf, SE3_k2kbuf, fp32_param_buf, uint_param_buf, mipmap_buf, gaussian_buf, img_stats_buf, SE3_map_mem, SE3_rho_map_mem, se3_sum_rho_sq_mem, SE3_weight_map_mem;	// param_map_mem,
-	cl_mem 				pix_sum_mem, var_sum_mem, se3_sum_mem, se3_sum2_mem, se3_weight_sum_mem;																										// reduce_param_buf;
-	cl_mem 				keyframe_imgmem, keyframe_imgmem_HSV_grad, keyframe_depth_mem, keyframe_g1mem, keyframe_SE3_grad_map_mem, keyframe_depth_mem_GT;							// keyframe_gxmem, keyframe_gymem, keyframe_basemem,
+	cl_mem				k2kbuf, invk2kbuf, SO3_k2kbuf, SE3_k2kbuf, fp32_param_buf, uint_param_buf, mipmap_buf, gaussian_buf, img_stats_buf;
+	cl_mem 				SE3_map_mem, SE3_rho_map_mem, se3_sum_rho_sq_mem, SE3_weight_map_mem;
+	cl_mem 				pix_sum_mem, var_sum_mem, se3_sum_mem, se3_sum2_mem, se3_weight_sum_mem;
+	cl_mem 				keyframe_imgmem, keyframe_imgmem_HSV_grad, keyframe_depth_mem, keyframe_g1mem, keyframe_SE3_grad_map_mem, keyframe_depth_mem_GT;
 	cl_mem				HSV_grad_mem, dmem_disparity, dmem_disparity_sum;
 	cl_mem				atomic_test1_buf, atomic_test2_buf;
 	
+	//
 	cv::Mat 			baseImage, key_frame;
-	size_t  			global_work_size, mm_global_work_size, local_work_size, image_size_bytes, image_size_bytes_C1, mm_size_bytes_C1, mm_size_bytes_C3, mm_size_bytes_C4, mm_size_bytes_C8, mm_size_bytes_half4, mm_vol_size_bytes;
+
+
+	size_t  			global_work_size, mm_global_work_size, local_work_size, image_size_bytes, image_size_bytes_C1, mm_size_bytes_C1;
+	size_t 				mm_size_bytes_C3, mm_size_bytes_C4, mm_size_bytes_C8, mm_size_bytes_half4, mm_vol_size_bytes;
 	size_t 				so3_sum_size, so3_sum_size_bytes, mm_se3_sum_size, se3_sum_size, se3_sum_size_bytes, se3_sum2_size_bytes, pix_sum_size, pix_sum_size_bytes;
 	size_t 				d_disp_sum_size, d_disp_sum_size_bytes;
-	bool 				gpu, amdPlatform;
+
 	cl_device_id 		deviceId;
 	
 	size_t				img_stats_size_bytes = sizeof(float)*8*4*2;
@@ -91,7 +97,6 @@ public:
 	
 	float				fp32_params[16]		= {0};
 	float				fp32_so3_k2k[9]		= {0};
-	//float				fp32_k2k[16]		= {0};
 	float 				fp32_k2keyframe[16]	= {0};
 	
 	uint	 			mm_num_reductions;				//	
@@ -132,14 +137,12 @@ public:
 	void createAndBulidProgramFromSource(cl_device_id *devices);
 	void createKernels();
 
-	int  waitForEventAndRelease(cl_event *event);
+
 	void mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_to_call, uint start, uint stop, bool layers_sequential, const size_t local_work_size);						// Call kernels on mipmap: start,stop allow running specific layers.
 
 	void mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_to_call, uint start, uint stop, bool layers_sequential=false){ mipmap_call_kernel( kernel_to_call,  queue_to_call, mm_start, mm_stop, layers_sequential, local_work_size); }
 
 	void mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_to_call){ mipmap_call_kernel( kernel_to_call,  queue_to_call, mm_start, mm_stop, false, local_work_size); } // , true
-
-	// 	mipmap_call_kernel( 	depth_cost_vol_kernel, 		m_queue, 	start, 	stop );
 
 	void initialize_fp32_params();
 	void initialize_RunCL( cv::Mat baseImage_ );																						// Setting up buffers & mipmap parameters
@@ -149,11 +152,6 @@ public:
 	void exit_(int res);
 	~RunCL();
 
-	/////////////////////////////////////// RunCL_macro_conversion.cpp
-
-	//string 	checkerror(int input);
-	//string 	checkCVtype(int input);
-
 	/////////////////////////////////////// RunCL_DownloadAndSave.cpp
 
 	void createFolders();																												// Called by RunCL(..) constructor, above.
@@ -161,7 +159,7 @@ public:
 	void ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset=0) ;
 	void saveCostVols(float max_range);
 
-	void Store_keyframe();	// Required for Save_vtk(..), used for amem, demem etc.
+	void Store_keyframe();																												// Required for Save_vtk(..), used for amem, demem etc.
 	void Save_vtk(cv::Mat mat, cv::Mat keyframe, boost::filesystem::path folder );
 
 	void DownloadAndSave(cl_mem buffer, std::string count, boost::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range=1 );
@@ -188,24 +186,7 @@ public:
 	void SaveMat(cv::Mat temp_mat, int type_mat, boost::filesystem::path folder_tiff, bool show, float max_range, std::string mat_name, std::string count);
 	void SaveMat_1chan(cv::Mat temp_mat, int type_mat, boost::filesystem::path folder_tiff, bool show, float max_range, std::string mat_name, std::string count);
 	void DownloadAndSaveVolume(cl_mem buffer, std::string count, boost::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, bool exception_tiff=false );
-/*
-	void DownloadAndSave_buffer (																										// Shelve linearMipMap for now. It will not make kernels simpler or faster.
-		cl_mem 		buffer,
-		std::string count,
-		std::map< std::string, boost::filesystem::path > folder_tiff,
-		size_t      image_size_bytes,
-		cv::Size    size_mat,
-		int 		type_mat_out,		// (data size and channels)
-		int 		num_channels_out,
-		int 		num_channels_in,
-		int 		maps_in_vol,
-		int 		start_layer,
-		int 		stop_layer,
-		float 		max_range,
-		bool 		exception_tiff,
-		bool 		show
-	);
-*/
+
 	////////////////////////////////////// RunCL_load_image.cpp
 
 	void precom_param_maps(float SO3_k2k[6*16]);																						// Image loading & preparation
@@ -258,6 +239,20 @@ public:
 	void ExhaustiveSearch();
 
 	//////////////////////////////////////
+	void _clEnqueueNDRangeKernel(
+	cl_command_queue _queue,
+	cl_kernel        kernel,
+	cl_uint          work_dim,
+	const size_t *   global_work_offset,
+	const size_t *   global_work_size,
+	const size_t *   local_work_size,
+	string 			fname
+	);
+
+	void _cl_flush_finish(cl_command_queue	_queue,  string fname);
+
+	int  waitForEventAndRelease(cl_event *event);
+
 	void cl_mem_swap_ptr(cl_mem buf1, cl_mem buf2);
 
 	void _clSetKernelArg(cl_kernel kernel,  cl_uint arg_index,  size_t arg_size, const void* arg_value, string fname);
@@ -269,9 +264,6 @@ public:
 		size_t              offset,
 		size_t              size,
 		const void*         ptr,
-		cl_uint             num_events_in_wait_list,
-		const cl_event*     event_wait_list,
-		cl_event*           event,
 		string 				fname
 	);
 
@@ -282,10 +274,17 @@ public:
 		size_t              pattern_size,
 		size_t              offset,
 		size_t              size,
-		cl_uint             num_events_in_wait_list,
-		const cl_event*     event_wait_list,
-		cl_event*           event,
 		string 				fname
+	);
+
+	void _clEnqueueCopyBuffer(
+		cl_command_queue command_queue,
+		cl_mem src_buffer,
+		cl_mem dst_buffer,
+		size_t src_offset,
+		size_t dst_offset,
+		size_t size,
+		string fname
 	);
 
 	void _clCreateBuffer(

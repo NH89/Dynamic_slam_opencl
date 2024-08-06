@@ -84,7 +84,7 @@ add_executable(Dynamic_slam
          src/RunCL/RunCL_setup_keyframe.cpp
          src/RunCL/RunCL_tracking.cpp
          #src/RunCL/opencl_utils.hpp
-         src/RunCL/opencl_utils.cpp
+         src/RunCL/RunCL_utils.cpp
 
          src/utils/CV_chk.hpp
          src/utils/CV_chk.cpp
