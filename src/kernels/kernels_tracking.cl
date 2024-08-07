@@ -129,8 +129,8 @@ __kernel void se3_Rho_sq(
 		//read_index_new[sample] = read_offset_ + v2 * mm_cols  + u2; // read_cols_
 
 																	if(global_id_u == 1  ){
-																		printf("\n\n\n\n__kernel void se3_Rho_sq chk 0  (global_id_u == 1 ) : sample=%u,  local_size=%u,  reduction=%u,  layer=%u, read_offset_=%u, read_cols_=%u, read_rows_=%u, layer_pixels=%u, read_index=%u,  \nk2k_pvt=[\n%f,%f,%f,%f,   \n%f,%f,%f,%f,    \n%f,%f,%f,%f,   \n%f,%f,%f,%f   ]\n", \
-																		sample, local_size, reduction, layer, read_offset_, read_cols_, read_rows_, layer_pixels, read_index,   k2k_pvt[0],k2k_pvt[1],k2k_pvt[2],k2k_pvt[3],  k2k_pvt[4],k2k_pvt[5],k2k_pvt[6],k2k_pvt[7],    k2k_pvt[8],k2k_pvt[9],k2k_pvt[10],k2k_pvt[11],   k2k_pvt[12],k2k_pvt[13],k2k_pvt[14],k2k_pvt[15]  );
+																		printf("\n\n\n\n__kernel void se3_Rho_sq chk 0  (global_id_u == 1 ) : sample=%u,  local_num_samples=%u, local_size=%u,  reduction=%u,  layer=%u, read_offset_=%u, read_cols_=%u, read_rows_=%u, layer_pixels=%u, read_index=%u,  \nk2k_pvt=[\n%f,%f,%f,%f,   \n%f,%f,%f,%f,    \n%f,%f,%f,%f,   \n%f,%f,%f,%f   ]\n", \
+																		sample, local_num_samples, local_size, reduction, layer, read_offset_, read_cols_, read_rows_, layer_pixels, read_index,   k2k_pvt[0],k2k_pvt[1],k2k_pvt[2],k2k_pvt[3],  k2k_pvt[4],k2k_pvt[5],k2k_pvt[6],k2k_pvt[7],    k2k_pvt[8],k2k_pvt[9],k2k_pvt[10],k2k_pvt[11],   k2k_pvt[12],k2k_pvt[13],k2k_pvt[14],k2k_pvt[15]  );
 																	}
 																	if((u==read_cols_-1) && (v== read_rows_-1 )){
 																		printf("\n\n__kernel void se3_Rho_sq chk 1  (u==read_cols_-1) && (v== read_rows_-1 ) :  local_size=%u,  reduction=%u,  layer=%u, read_offset_=%u, read_cols_=%u, read_rows_=%u, layer_pixels=%u, read_index=%u, ", \
@@ -144,7 +144,7 @@ __kernel void se3_Rho_sq(
 		local_sum_rho_sq[sample_lid] = 0;																// Essential to zero local mem.
 	 /*
 		if ( u==5 && v==5  ){ // (global_id_u==1)
-			printf("\nkernel se3_Rho_sq(..)_0: sample=%u,  layer=%i,  global_id_u=%i,  u=%i,  v=%i,   inv_depth=%f, u2=%f,  v2=%f,  u2_flt=%f,  v2_flt=%f,  u2=%i,  v2=%i,    k2k_pvt=(%f,%f,%f,%f    ,%f,%f,%f,%f    ,%f,%f,%f,%f    ,%f,%f,%f,%f)"\
+			printf("\n__kernel se3_Rho_sq(..)_0: sample=%u,  layer=%i,  global_id_u=%i,  u=%i,  v=%i,   inv_depth=%f, u2=%f,  v2=%f,  u2_flt=%f,  v2_flt=%f,  u2=%i,  v2=%i,    k2k_pvt=(%f,%f,%f,%f    ,%f,%f,%f,%f    ,%f,%f,%f,%f    ,%f,%f,%f,%f)"\
 			,sample,  layer, global_id_u, u, v, inv_depth, u_flt, v_flt, u2_flt, v2_flt, u2, v2,      k2k_pvt[0],k2k_pvt[1],k2k_pvt[2],k2k_pvt[3],    k2k_pvt[4],k2k_pvt[5],k2k_pvt[6],k2k_pvt[7],    k2k_pvt[8],k2k_pvt[9],k2k_pvt[10],k2k_pvt[11],    k2k_pvt[12],k2k_pvt[13],k2k_pvt[14],k2k_pvt[15]   )  ;
 		}
 	// */
@@ -163,7 +163,7 @@ __kernel void se3_Rho_sq(
 
 	/*
 		if ( u==5 && v==5  ){ // (global_id_u==1)
-			printf("\nkernel se3_Rho_sq(..)_1: sample=%u,  layer=%i,  global_id_u=%i,  u=%i,  v=%i,   se3_sum_size=%i,  intersection=%i, (u>2)=%i,  (u<=read_cols_-2)=%i,  (v>2)=%i,  (v<=read_rows_-2)=%i,  (u2>2)=%i,  (u2<=read_cols_-2)=%i,  (v2>2)=%i,  (v2<=read_rows_-2)=%i,  (global_id_u<=layer_pixels)=%i" \
+			printf("\n__kernel se3_Rho_sq(..)_1: sample=%u,  layer=%i,  global_id_u=%i,  u=%i,  v=%i,   se3_sum_size=%i,  intersection=%i, (u>2)=%i,  (u<=read_cols_-2)=%i,  (v>2)=%i,  (v<=read_rows_-2)=%i,  (u2>2)=%i,  (u2<=read_cols_-2)=%i,  (v2>2)=%i,  (v2<=read_rows_-2)=%i,  (global_id_u<=layer_pixels)=%i" \
 			, sample,  layer,  global_id_u,  u,  v,  se3_sum_size,  intersection, (u>2),  (u<=read_cols_-2),  (v>2),  (v<=read_rows_-2),  (u2>2),  (u2<=read_cols_-2),  (v2>2),  (v2<=read_rows_-2),  (global_id_u<=layer_pixels) );
 		}
 	// */
@@ -188,7 +188,7 @@ __kernel void se3_Rho_sq(
 		barrier(CLK_LOCAL_MEM_FENCE);																	// No 'if->return' before fence between write & read local mem
 		group_size   										/= 2;
 		if (lid<group_size){
-			for (int sample=0; sample<TRACKING_NUM_SAMPLES; sample++){
+			for (int sample=0; sample<local_num_samples; sample++){
 				int sample_lid 					= lid + sample * local_size;
 				local_sum_rho_sq[ sample_lid ] += local_sum_rho_sq[ sample_lid + group_size ];			// Also compute global Rho^2.
 			}
@@ -201,24 +201,24 @@ __kernel void se3_Rho_sq(
 		uint rho_global_sum_offset 							= (read_offset_ / local_size);
 		uint num_groups 									= get_num_groups(0);
 		float4 layer_data 									= {num_groups, reduction, rho_global_sum_offset, 0.0f };		// Write layer data to first entry
-																										//	printf("\nse3_Rho_sq(..): layer=%i, u=%i, v=%i, group_id=%i,  rho_global_sum_offset=%i,  (float)read_offset_/local_size=%f,  local_size=%u, read_offset_=%u,  local_sum_rho_sq[lid]=(%f,%f,%f,%f), local_sum_rho_sq[lid][3]=%f ",
-																										//	   layer, u, v, group_id, rho_global_sum_offset, ((float)read_offset_)/((float)local_size),  local_size, read_offset_, local_sum_rho_sq[lid].x, local_sum_rho_sq[lid].y, local_sum_rho_sq[lid].z, local_sum_rho_sq[lid].w, local_sum_rho_sq[lid][3] );
-		for (int sample=0; sample<TRACKING_NUM_SAMPLES; sample++){
+																										printf("\n__kernel se3_Rho_sq(..) chk 3: layer=%i, u=%i, v=%i, group_id=%i,  rho_global_sum_offset=%i,  (float)read_offset_/local_size=%f,  local_size=%u, read_offset_=%u,  local_sum_rho_sq[lid]=(%f,%f,%f,%f), local_sum_rho_sq[lid][3]=%f ",
+																										layer, u, v, group_id, rho_global_sum_offset, ((float)read_offset_)/((float)local_size),  local_size, read_offset_, local_sum_rho_sq[lid].x, local_sum_rho_sq[lid].y, local_sum_rho_sq[lid].z, local_sum_rho_sq[lid].w, local_sum_rho_sq[lid][3] );
+		for (int sample=0; sample<local_num_samples; sample++){
 			uint sample_offset								= sample * se3_sum_size;
 			uint rho_global_sum_offset_						= rho_global_sum_offset + (sample * se3_sum_size);
 			int  sample_lid 								= lid + sample * local_size;
 
 			if (global_id_u == 0) {
 				global_sum_rho_sq[layer +  sample_offset] 	= layer_data;
-// 																										printf("\nkernel se3_Rho_sq(..)_2: sample=%i,  layer=%i,  [layer+sample_offset]=%i,  rho_global_sum_offset=%i,   group_id=%i,   global_id_u=%i,  layer_data=( %f,  %f,  %f,  %f )", \
-// 																										sample,  layer,  layer+sample_offset,  rho_global_sum_offset,   group_id,   global_id_u,  layer_data.x,  layer_data.y,  layer_data.z,  layer_data.w );
+ 																										printf("\n__kernel se3_Rho_sq(..)  chk 4: sample=%i,  layer=%i,  [layer+sample_offset]=%i,  rho_global_sum_offset=%i,   group_id=%i,   global_id_u=%i,  layer_data=( %f,  %f,  %f,  %f )", \
+ 																										sample,  layer,  layer+sample_offset,  rho_global_sum_offset,   group_id,   global_id_u,  layer_data.x,  layer_data.y,  layer_data.z,  layer_data.w );
 			}
 			rho_global_sum_offset_ 							+= group_id;
 
 			if (local_sum_rho_sq[lid][3] >0){															// Using last channel rho[3], to count valid pixels being summed.
 				global_sum_rho_sq[rho_global_sum_offset_] 	= local_sum_rho_sq[sample_lid];
-// 																										printf("\nkernel se3_Rho_sq(..)_3: sample=%i,  layer=%i,  rho_global_sum_offset_=%i,  group_id=%i,   local_sum_rho_sq[lid]=( %f,  %f,  %f,  %f )", \
-// 																										sample,  layer, rho_global_sum_offset_, group_id,  local_sum_rho_sq[lid].x, local_sum_rho_sq[lid].y, local_sum_rho_sq[lid].z, local_sum_rho_sq[lid].w );
+ 																										printf("\n__kernel se3_Rho_sq(..)  chk 5: sample=%i,  layer=%i,  rho_global_sum_offset_=%i,  group_id=%i,   local_sum_rho_sq[lid]=( %f,  %f,  %f,  %f )", \
+ 																										sample,  layer, rho_global_sum_offset_, group_id,  local_sum_rho_sq[lid].x, local_sum_rho_sq[lid].y, local_sum_rho_sq[lid].z, local_sum_rho_sq[lid].w );
 			}else {																						// If no matching pixels in this group, set values to zero.
 				global_sum_rho_sq[rho_global_sum_offset_] 	= 0;
 			}
@@ -523,7 +523,7 @@ __kernel void se3_LK_grad(
 																														// Better to divide by local size, preserve information wrt number of valid pixels.
 				global_sum_grads[se3_global_sum_offset + i] 	= temp_float4 ;						// local_sum_grads
 
-				//printf("\nkernel se3_grad_d(..)_2: layer=%i,  group_id=%i,   local_sum_grads[i*local_size + lid]=(%f,%f,%f,%f )", layer, group_id,   temp_float4.x,temp_float4.y,temp_float4.z,temp_float4.w );
+				printf("\n__kernel se3_LK_grad chk_12    layer=%i,  group_id=%i,   local_sum_grads[i*local_size + lid]=(%f,%f,%f,%f )", layer, group_id,   temp_float4.x,temp_float4.y,temp_float4.z,temp_float4.w );
 			}																						// Save to global_sum_grads // Count hits, and divide group by num hits, without using atomics!
 		}else {																						// If no matching pixels in this group, set values to zero.
 			global_sum_rho_sq[rho_global_sum_offset]			= 0;

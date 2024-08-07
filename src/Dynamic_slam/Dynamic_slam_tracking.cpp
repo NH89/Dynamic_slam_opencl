@@ -432,16 +432,20 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 				runcl.exit_(1);
 			}
 		}
-		//update_k2k_4( steps, update*stepsize, K, keyframe2pose, inv_K,  keyframe_k2k,   k2k_4_16 );																				// Generate two sample steps
 
-		Matx44f sample_1_k2k = K * keyframe2pose * LieToP_Matx( update * stepsize ) * inv_K;
+		Matx44f sample_1_k2k = K * keyframe2pose * LieToP_Matx( update * stepsize ) * inv_K;											// Generate two sample steps
 		Matx44f_To_float16arry( sample_1_k2k,  k2k_4_16[1] );
 
 		Matx44f sample_2_k2k = K * keyframe2pose * LieToP_Matx( update * stepsize * 3 ) * inv_K;
 		Matx44f_To_float16arry( sample_2_k2k,  k2k_4_16[2] );
 
 																																		if(verbosity>local_verbosity_threshold) {
-																																			for (int pose_idx=0; pose_idx<4; pose_idx++){  PRINT_FLOAT_16(k2k_4_16[pose_idx],);  }
+																																			for (int pose_idx=0; pose_idx<4; pose_idx++){
+																																				PRINT_FLOAT_16(k2k_4_16[pose_idx],);
+																																			}
+																																			PRINT_MATX44F(keyframe2pose , );
+																																			PRINT_MATX44F(keyframe2pose * LieToP_Matx( update * stepsize ) , );
+																																			PRINT_MATX44F(keyframe2pose * LieToP_Matx( update * stepsize * 3 )  , );
 																																		}
 		local_num_samples	= 2;
 		start_sample_idx	= 1;
@@ -472,6 +476,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 		Matx44f sample_k2k   =   K  *  keyframe2pose  *  LieToP_Matx(optimum1*update*stepsize )  *  inv_K;
 		Matx44f_To_float16arry( sample_k2k,  k2k_4_16[3] );
 																																		if(verbosity>local_verbosity_threshold) {
+																																			PRINT_MATX44F(keyframe2pose * LieToP_Matx(optimum1*update*stepsize ), );
 																																			PRINT_MATX44F(sample_k2k, );
 																																			PRINT_FLOAT_16(k2k_4_16[3],);
 																																		}
@@ -540,6 +545,9 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 				runcl.exit_(1);
 			}
 		}
+																																		if(verbosity>local_verbosity_threshold) {
+																																			PRINT_MATX44F(keyframe2pose, final);
+																																		}
 		if ( lowest/Rho_sq_results[0][layer][3] < 0.00005 ) layer--;
 	}
 																																		//  TODO Update all variables in frame_data.back()
