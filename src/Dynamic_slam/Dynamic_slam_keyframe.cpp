@@ -8,6 +8,7 @@ using namespace cv;
 using namespace std;
 
 void Dynamic_slam::initialize_keyframe_vec(){
+	string fname = "Dynamic_slam::initialize_keyframe_vec()";
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_INITIALIZE_KEYFRAME;//verbosity_mp["Dynamic_slam::initialize_new_keyframe"];// -1;
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::initialize_keyframe_vec()_chk 0,  runcl.dataset_frame_num = "<< runcl.dataset_frame_num << flush;}
 	keyframe_datum 							new_keyframe;
@@ -35,9 +36,10 @@ void Dynamic_slam::initialize_keyframe_vec(){
 		runcl.transform_costvolume( 		forward_keyframe2K );
 
 	}else{																																	// IF starting a new vector<keframe_datum>, i.e. begining of program.
-		runcl.initializeDepthCostVol( 		runcl.amem );																					// Zeros  	amem, cdatabuf, hdatabuf etc..
+		float default_depth = runcl.fp32_params[MAX_INV_DEPTH] / 2.0f;
+		runcl.initializeDepthCostVol( 		default_depth );																				// Zeros  	amem, cdatabuf, hdatabuf etc..
 		runcl.swap_costvol_pointers();																										// Swaps	cdatabuf<->temp_cdatabuf ,  hdatabuf<->temp_hdatabuf.
-		runcl.initializeDepthCostVol( 		runcl.amem );																					// Copies	amem	=	key_frame_depth_map_src -> keyframe_depth_mem
+		runcl.initializeDepthCostVol( 		default_depth );																				// Copies	amem	=	key_frame_depth_map_src -> keyframe_depth_mem
 		float initial_depth  = (runcl.fp32_params[MAX_INV_DEPTH] + runcl.fp32_params[MIN_INV_DEPTH])/2.0;									// Fills depth_mem buffer with mid depth.
 		runcl.initialize_tracking_depthmap(initial_depth);
 	}

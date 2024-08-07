@@ -225,7 +225,8 @@ public:
 	void transform_depthmap(cv::Matx44f K2K_ , cl_mem depthmap_);																		// Cost volume
 	void transform_costvolume(cv::Matx44f K2K_ );						//, cl_mem old_cdata_mem =cdatabuf,  cl_mem new_cdata_mem =new_cdatabuf, cl_mem old_hdata_mem =hdatabuf,  cl_mem new_hdata_mem =new_hdatabuf );
 	
-	void initializeDepthCostVol(cl_mem key_frame_depth_map_src);		// Depth costvol functions
+	void initializeDepthCostVol( float default_depth );
+	void initializeDepthCostVol( cl_mem key_frame_depth_map_src);		// Depth costvol functions
 	void updateDepthCostVol(cv::Matx44f K2K_, int count, uint start, uint stop);
 	void updateQD(float epsilon, float theta, float sigma_q, float sigma_d, uint start, uint stop);
 	void updateG(int count, uint start, uint stop);

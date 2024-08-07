@@ -377,6 +377,9 @@ __kernel void se3_LK_grad(
 			grad_v4.w												= 1.0f;
 			local_sum_weight[se3_dim*local_size + lid] 				= grad_v4;											// save the SE3_grad^2, to use as divisor for this SE3 DoF, after summing.
 
+			if( (u==10) && (v==10) ){ printf("\n\n__kernel void se3_LK_grad chk 4  (u==10) && (v==10) : inv_depth=%f,  fp32_params[MAX_INV_DEPTH]=%f,  multiplier=%f,  incr_v4=%f,%f,%f,%f ",
+				inv_depth,   fp32_params[MAX_INV_DEPTH],  multiplier, incr_v4.x, incr_v4.y, incr_v4.z, incr_v4.w    ); }
+
 			/*
 			float SE3_grad_cur_px[8];
 			float SE3_grad_new_px[8];

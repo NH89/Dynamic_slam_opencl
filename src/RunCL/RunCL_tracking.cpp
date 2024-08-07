@@ -181,7 +181,7 @@ void RunCL::estimateSE3_LK( float local_k2k[16], float SE3_results[max_mipmap_la
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK( ..)_chk_5 ."<<flush;}
 	read_Rho_sq( Rho_sq_results);
 	read_se3_weights( SE3_weights_results);
-	read_se3_incr( SE3_results);																												if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK( ..)_finished ."<<flush;}
+	read_se3_incr( SE3_results);																											if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK( ..)_finished ."<<flush;}
 }
 
 void RunCL::read_Rho_sq( float Rho_sq_results[max_mipmap_layers][4],  int offset/*=0*/ ){
