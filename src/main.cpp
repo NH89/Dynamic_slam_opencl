@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 																														cout << "Dynamic_slam started. Objects created. Initializing.\n\n" << flush;
 																														// Copy conf files to output.
 																														copy_conf( obj["source_filepath"].asString(),  obj["params_conf"].asString(),		outfile.str().c_str()  );
-																														copy_conf( obj["source_filepath"].asString(),  obj["verbosity_conf"].asString(),	outfile.str().c_str()  );
+																														//copy_conf( obj["source_filepath"].asString(),  obj["verbosity_conf"].asString(),	outfile.str().c_str()  );
 																														copy_conf( ""								,  argv[1],    							outfile.str().c_str()  );
 
 																														if(verbosity_>0) cout << "\n main_chk 1\n" << flush;

@@ -152,7 +152,7 @@ class Dynamic_slam
 
     void generate_SE3_k2k_vec( float _SE3_k2k[6*16] );
 
-    void update_k2k(int case_idx, Matx16f update_, float 	k2k_4_16[tracking_tot_samples][16]  );
+    void update_k2k(int case_idx, float k2k_4_16[tracking_tot_samples][16]  );
     void update_k2k(Matx16f update_);
     void update_k2k(Matx16f update_,  Matx44f local_keyframe_pose2pose);
 

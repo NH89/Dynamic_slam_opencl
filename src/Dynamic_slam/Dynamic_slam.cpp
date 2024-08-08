@@ -133,10 +133,10 @@ int Dynamic_slam::nextFrame() {
 	estimateSE3();
 																						auto step_6 = high_resolution_clock::now();			// own thread ? num iter ?
 	//estimateCalibration(); 																												// own thread, one iter.
-	if(verbosity>local_verbosity_threshold){
-		report_GT_pose_error();
-		//display_frame_resluts();
-	}
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 1, Pose error:" << flush;
+																																				report_GT_pose_error();
+																																				//display_frame_resluts();
+																																			}
 	////////////////////////////////// Test kernels
 	//runcl.atomic_test1();
 	//runcl.atomic_test2();

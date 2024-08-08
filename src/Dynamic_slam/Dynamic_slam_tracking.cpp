@@ -6,6 +6,7 @@ using namespace cv;
 using namespace std;
 
 void Dynamic_slam::report_GT_pose_error(){ 																									// TODO this could be done in Max44f, without back and forth coversion.
+	string fname="Dynamic_slam::report_GT_pose_error()";
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_REPORT_GT_POSE_ERROR;//verbosity_mp["Dynamic_slam::report_GT_pose_error"];// -2;
 	frame_data.back().frame_data.keyframe2pose_algebra		=		PToLie( frame_data.back().frame_data.keyframe2pose );
 	frame_data.back().frame_data_GT.keyframe2pose_algebra	=		PToLie( frame_data.back().frame_data_GT.keyframe2pose );
@@ -13,10 +14,10 @@ void Dynamic_slam::report_GT_pose_error(){ 																									// TODO this
 	frame_data.back().error_data.keyframe2pose				=		frame_data.back().frame_data.keyframe2pose		*    getInvPose( frame_data.back().frame_data_GT.keyframe2pose  ) ;
 	frame_data.back().error_data.keyframe2pose_algebra		=		LieSub(		PToLie( frame_data.back().frame_data.keyframe2pose ),		PToLie( frame_data.back().frame_data_GT.keyframe2pose )		);
 
-	PRINT_MATX16F(frame_data.back().frame_data.keyframe2pose_algebra,);
-	PRINT_MATX16F(frame_data.back().frame_data_GT.keyframe2pose_algebra,);
-	PRINT_MATX16F(frame_data.back().error_data.keyframe2pose_algebra,);
-	PRINT_MATX44F(frame_data.back().error_data.keyframe2pose,);
+	PRINT_MATX16F(frame_data.back().frame_data.keyframe2pose_algebra, 		Dynamic_slam::report_GT_pose_error()	);
+	PRINT_MATX16F(frame_data.back().frame_data_GT.keyframe2pose_algebra,	Dynamic_slam::report_GT_pose_error()	);
+	PRINT_MATX16F(frame_data.back().error_data.keyframe2pose_algebra,		Dynamic_slam::report_GT_pose_error()	);
+	PRINT_MATX44F(frame_data.back().error_data.keyframe2pose,				Dynamic_slam::report_GT_pose_error()	);
 }
 
 
@@ -230,7 +231,7 @@ void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {															
 }
 
 
-void Dynamic_slam::update_k2k(  int case_idx,  Matx16f update_,  float k2k_4_16[tracking_tot_samples][16]  ){
+void Dynamic_slam::update_k2k(  int case_idx,  float k2k_4_16[tracking_tot_samples][16]  ){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_UPDATE_K2K;//verbosity_mp["Dynamic_slam::update_k2k"];// -3;
 																																			if(verbosity>local_verbosity_threshold) { cout << "\n\n Dynamic_slam::update_k2k()_chk 1, compute idealSE3Incr_algebra :" << flush; }
 	for (int i=0; i<16; i++) {
@@ -507,7 +508,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\n\nDynamic_slam::estimateSE3() : Rho_sq_results index="<<index;
 																																		}
-		update_k2k( index, update, k2k_4_16);
+		update_k2k( index, k2k_4_16);										// Sets k2k_4_16[0] = k2k_4_16[index],   zeros k2k_4_16[1-3].
 		switch (index){														// Set the best sample as the step for the next iteration
 			case 0:{														// The original sample is best, reduce step and repeat, or change level.
 				if ( stepsize > 1 / pow(2,(5-layer))  ){					// Reduce stepsize, unless already minimum for layer

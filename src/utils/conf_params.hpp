@@ -22,7 +22,7 @@ class conf_params {
     public:
 
 	conf_params(char * arg, Json::Value &val);
-	void read_verbosity(	Json::Value verbosity_obj);
+	//void read_verbosity(	Json::Value verbosity_obj);
 	void read_paths(		Json::Value paths_obj);
 	void read_jparams(		Json::Value params_obj);
 

@@ -19,7 +19,9 @@ conf_params::conf_params(char * arg, Json::Value &val){							// "arg" contains 
 																															cerr << flush;
 																															exit(1);
 																													}
+	b = reader.parse(ifs_params, 	params_obj); 								if (!b) { cout << "Error: " << reader.getFormattedErrorMessages()<< flush;; cerr << flush; exit(1) ;}   else {cout << "\nconf_params::conf_params(..) chk_3: \tNB lists .json file entries alphabetically: \nparams_obj = \n" << params_obj ;}
 
+/*
 	ifstream ifs_verbosity( paths_obj["source_filepath"].asString()	 +  paths_obj["verbosity_conf"].asString()	);
 																													if (!ifs_verbosity.is_open()) {
 																															cout << "\njson_params::json_params(char * arg):  ifs_verbosity  is NOT open !"<< flush;
@@ -27,10 +29,8 @@ conf_params::conf_params(char * arg, Json::Value &val){							// "arg" contains 
 																															cerr << flush;
 																															exit(1);
 																													}
-
-	b = reader.parse(ifs_params, 	params_obj); 								if (!b) { cout << "Error: " << reader.getFormattedErrorMessages()<< flush;; cerr << flush; exit(1) ;}   else {cout << "\nconf_params::conf_params(..) chk_3: \tNB lists .json file entries alphabetically: \nparams_obj = \n" << params_obj ;}
-
 	b = reader.parse(ifs_verbosity, verbosity_obj); 							if (!b) { cout << "Error: " << reader.getFormattedErrorMessages()<< flush;; cerr << flush; exit(1) ;}   else {cout << "\nconf_params::conf_params(..) chk_4: \tNB lists .json file entries alphabetically: \nverbosity_obj = \n" << verbosity_obj ;}
+*/
 
 	val = params_obj ;																								// Copies the local "params_obj" to "val" passed by reference to this function.
     Json::Value::ArrayIndex 	size 	= paths_obj.size();
