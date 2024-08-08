@@ -51,6 +51,8 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 
 	initialize_camera_vec();
 
+
+
 	initialize_keyframe_vec();																												// First keyframe
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_ finished\n" << flush;
 };
@@ -111,7 +113,8 @@ void Dynamic_slam::initialize_camera_vec(){
 
 int Dynamic_slam::nextFrame() {
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_NEXTFRAME;//verbosity_mp["Dynamic_slam::nextFrame"];// -2;
-																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::nextFrame_chk 0,  runcl.dataset_frame_num="<<runcl.dataset_frame_num<<" \n" << flush; //  runcl.frame_bool_idx="<<runcl.frame_bool_idx<<"
+																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::nextFrame_chk 0,  runcl.dataset_frame_num="<<runcl.dataset_frame_num
+																																				<<",\t depth = runcl.amem  \n" << flush; //  runcl.frame_bool_idx="<<runcl.frame_bool_idx<<"
 																						auto step_0 = high_resolution_clock::now();
 	frame_datum new_frame;
 	new_frame.keyframe_index		= keyframe_data.size();																					// i.e. the new frame will be tracked from the current keyframe.

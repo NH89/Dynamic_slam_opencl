@@ -180,43 +180,43 @@ void RunCL::initializeDepthCostVol( cl_mem key_frame_depth_map_src){			 								
 }
 
 
-void RunCL::initializeDepthCostVol( float default_depth ){			 															// Uses the current frame as the keyframe for a new depth cost volume.
-	string fname = "RunCL::initializeDepthCostVol( )";																						// Dynamic_slam::initialize_from_GT( ), Dynamic_slam::initialize_new_keyframe( );
+void RunCL::initializeFirstDepthCostVol( float default_depth ){			 																	// Uses the current frame as the keyframe for a new depth cost volume.
+	string fname = "RunCL::initializeFirstDepthDepthCostVol( )";																						// Dynamic_slam::initialize_from_GT( ), Dynamic_slam::initialize_new_keyframe( );
 	int local_verbosity_threshold = V_RUNCL_INITIALIZEDEPTHCOSTVOL;
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk0 ."<<flush;}
-	//runcl._clEnqueueFillBuffer( runcl.uload_queue, runcl.amem, 			&default_depth, sizeof( float),   0, runcl.mm_size_bytes_C1, 	fname);
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initializeFirstDepthDepthCostVol( ..)_chk0, default_depth="<<default_depth<<flush;}
+	_clEnqueueFillBuffer( uload_queue,	depth_mem,				&default_depth, 			sizeof( float), 0,		mm_size_bytes_C1, 		fname);			// TODO one of depth_mem, or keyframe_depth_mem is redundant.
+	_clEnqueueFillBuffer( uload_queue,	keyframe_depth_mem, 	&default_depth, 			sizeof( float), 0,		mm_size_bytes_C1, 		fname);
 
-	costvol_frame_num = 0;
-	_clEnqueueCopyBuffer( m_queue, imgmem, 			keyframe_imgmem, 			0, 0, mm_size_bytes_C4, 	fname);							// Load keyframe
-	_clEnqueueCopyBuffer( m_queue, HSV_grad_mem, 	keyframe_imgmem_HSV_grad, 	0, 0, mm_size_bytes_C8, 	fname);
+	_clEnqueueCopyBuffer( m_queue,		depth_mem_GT, 			keyframe_depth_mem_GT,		0, 				0,		mm_size_bytes_C1, 		fname);
+	_clEnqueueCopyBuffer( m_queue,		SE3_grad_map_mem, 		keyframe_SE3_grad_map_mem, 	0, 				0,		mm_size_bytes_C1*6*8, 	fname);
+	_clEnqueueCopyBuffer( m_queue,		imgmem,					keyframe_imgmem, 			0, 				0,		mm_size_bytes_C4, 		fname);			// Load keyframe
+	_clEnqueueCopyBuffer( m_queue,		HSV_grad_mem,			keyframe_imgmem_HSV_grad, 	0, 				0,		mm_size_bytes_C8, 		fname);
 
-	/*if( vtp==true)*/ Store_keyframe( );
+	Store_keyframe( );																														// if( vtp==true)
 
 	stringstream ss;
 	ss << "__buildDepthCostVol";
+	costvol_frame_num = 0;
 	save_index = keyFrameCount*1000 + costvol_frame_num;
 	ss << save_index;
-
-	//DownloadAndSave( 		 	key_frame_depth_map_src,   	ss.str( ),   paths.at( "key_frame_depth_map_src"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , fp32_params[MAX_INV_DEPTH]);
-																																			if( verbosity>local_verbosity_threshold)	cout << "\nDownloadAndSave ( .. key_frame_depth_map_src ..) finished\n"<<flush;
-	_clEnqueueFillBuffer( uload_queue, keyframe_depth_mem, 	&default_depth, sizeof( float), 0, 		mm_size_bytes_C1, 		fname);
-	_clEnqueueCopyBuffer( m_queue, depth_mem_GT, 			keyframe_depth_mem_GT,			0, 0, 	mm_size_bytes_C1, 		fname);
-	_clEnqueueCopyBuffer( m_queue, SE3_grad_map_mem, 		keyframe_SE3_grad_map_mem, 		0, 0, 	mm_size_bytes_C1*6*8, 	fname);
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk1 ."<<flush;}
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initializeFirstDepthDepthCostVol( ..)_chk1 ."<<flush;}
 	float zero  = 0;
-	_clEnqueueFillBuffer( uload_queue, dbg_databuf, 	&zero, sizeof( float),   0, mm_vol_size_bytes, 	fname);
-	_clEnqueueFillBuffer( uload_queue, cdatabuf, 		&zero, sizeof( float),   0, mm_vol_size_bytes, 	fname);
-	_clEnqueueFillBuffer( uload_queue, hdatabuf, 		&zero, sizeof( float),   0, mm_vol_size_bytes, 	fname);
-	_clEnqueueFillBuffer( uload_queue, img_sum_buf, 	&zero, sizeof( float),   0, mm_vol_size_bytes, 	fname);
+	_clEnqueueFillBuffer( uload_queue, dbg_databuf, 			&zero, 						sizeof( float),   0, 	mm_vol_size_bytes, 		fname);
+	_clEnqueueFillBuffer( uload_queue, cdatabuf, 				&zero, 						sizeof( float),   0, 	mm_vol_size_bytes, 		fname);
+	_clEnqueueFillBuffer( uload_queue, hdatabuf, 				&zero, 						sizeof( float),   0, 	mm_vol_size_bytes, 		fname);
+	_clEnqueueFillBuffer( uload_queue, temp_cdatabuf,			&zero, 						sizeof( float),   0, 	mm_vol_size_bytes, 		fname);
+	_clEnqueueFillBuffer( uload_queue, temp_hdatabuf,			&zero, 						sizeof( float),   0, 	mm_vol_size_bytes, 		fname);
 
-	_clEnqueueFillBuffer( uload_queue, dmem, 			&zero, sizeof( float),   0, mm_size_bytes_C1, 	fname);
-	_clEnqueueFillBuffer( uload_queue, amem, 			&zero, sizeof( float),   0, mm_size_bytes_C1, 	fname);
-	_clEnqueueFillBuffer( uload_queue, qmem, 			&zero, sizeof( float),   0, mm_size_bytes_C1, 	fname);
-	_clEnqueueFillBuffer( uload_queue, qmem2, 			&zero, sizeof( float),   0, mm_size_bytes_C1, 	fname);
+	_clEnqueueFillBuffer( uload_queue, img_sum_buf, 			&zero, 						sizeof( float),   0, 	mm_vol_size_bytes, 		fname);
 
-	_clEnqueueFillBuffer( uload_queue, lomem, 			&zero, sizeof( float),   0, mm_size_bytes_C1, 	fname);
-	_clEnqueueFillBuffer( uload_queue, himem, 			&zero, sizeof( float),   0, mm_size_bytes_C1, 	fname);
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk1.5 ."<<flush;
+	_clEnqueueFillBuffer( uload_queue, dmem, 					&default_depth, 			sizeof( float),   0, 	mm_size_bytes_C1, 		fname);
+	_clEnqueueFillBuffer( uload_queue, amem, 					&default_depth, 			sizeof( float),   0, 	mm_size_bytes_C1, 		fname);
+	_clEnqueueFillBuffer( uload_queue, qmem, 					&zero, 						sizeof( float),   0, 	mm_size_bytes_C1, 		fname);
+	_clEnqueueFillBuffer( uload_queue, qmem2, 					&zero, 						sizeof( float),   0, 	mm_size_bytes_C1, 		fname);
+
+	_clEnqueueFillBuffer( uload_queue, lomem, 					&zero, 						sizeof( float),   0, 	mm_size_bytes_C1, 		fname);
+	_clEnqueueFillBuffer( uload_queue, himem, 					&zero, 						sizeof( float),   0, 	mm_size_bytes_C1, 		fname);
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initializeFirstDepthDepthCostVol( ..)_chk1.5 ."<<flush;
 																																				ss << "initializeDepthCostVol";
 																																				ss << save_index;													// Save buffers to file ###########
 																																				cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk1.5.1 ."<<flush;
@@ -238,5 +238,5 @@ void RunCL::initializeDepthCostVol( float default_depth ){			 															// 
 
 																																				DownloadAndSave_6Channel_volume(  keyframe_SE3_grad_map_mem, ss.str( ), paths.at( "keyframe_SE3_grad_map_mem"), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, -1, 6 );
 																																			}
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initializeDepthCostVol( ..)_Finished ########################################## ."<<flush;}
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initializeFirstDepthDepthCostVol( ..)_Finished ########################################## ."<<flush;}
 }

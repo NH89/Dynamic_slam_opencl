@@ -37,14 +37,15 @@ void RunCL::update_tracking_depthmap( cl_mem depthmap_){
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_tracking_depthmap( ..)_finished ."<<flush;}
 }
 
-
-void RunCL::initialize_tracking_depthmap( float initial_depth){
-	string fname = "RunCL::initialize_tracking_depthmap( float initial_depth)";
-	int local_verbosity_threshold = V_RUNCL_INITIALIZE_TRACKING_DEPTHMAP;
-
-	_clEnqueueFillBuffer( uload_queue, depth_mem, 	&initial_depth, sizeof( float), 0, mm_size_bytes_C1, 	fname);
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initialize_tracking_depthmap( ..)_finished ."<<flush;}
-}
+/*
+// void RunCL::initialize_tracking_depthmap( float initial_depth){
+// 	string fname = "RunCL::initialize_tracking_depthmap( float initial_depth)";
+// 	int local_verbosity_threshold = V_RUNCL_INITIALIZE_TRACKING_DEPTHMAP;
+//
+// 	_clEnqueueFillBuffer( uload_queue, depth_mem, 	&initial_depth, sizeof( float), 0, mm_size_bytes_C1, 	fname);
+// 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initialize_tracking_depthmap( ..)_finished ."<<flush;}
+// }
+*/
 
 void RunCL::se3_rho_sq( const uint local_num_samples,  const uint start_sample_idx,  float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels], const float count[4], uint start, uint stop,  float k2k_3_16_[tracking_tot_samples][16]   ){
 	string fname = "RunCL::se3_rho_sq( ..)";
@@ -121,6 +122,8 @@ void RunCL::estimateSE3_LK( float local_k2k[16], float SE3_results[max_mipmap_la
 																																				PRINT_FLOAT_16( local_k2k,);
 																																				cout<<"\n dataset_frame_num="	<<dataset_frame_num
 																																				<<",      count="				<<count				<<flush;
+																																				stringstream ss;	ss << fname << "_" << dataset_frame_num << "_iter_"<< count << "_estimateSE3_LK_";
+																																				DownloadAndSave( 	keyframe_depth_mem,   	ss.str( ), 	paths.at( "keyframe_depth_mem"), mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , fp32_params[MAX_INV_DEPTH]);
 																																			}
 	_clEnqueueWriteBuffer( uload_queue, k2kbuf,	CL_FALSE, 0,  16 * sizeof( float), local_k2k, 				fname);
 	float zero  = 0;
