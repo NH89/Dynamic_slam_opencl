@@ -353,7 +353,6 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																				<<" runcl.baseImage.type() = " << baseImage.type() << "\t"<< checkCVtype(baseImage.type()) <<flush;
 																																			}
 																																			if(verbosity>1) { imshow("runcl.baseImage",baseImage); cv::waitKey(-1); }
-
 	image_size_bytes	= baseImage.total() * baseImage.elemSize();																			// Constant parameters of the base image
 	image_size_bytes_C1	= baseImage.total() * sizeof(float);
 	costVolLayers 		=( 1 + obj["layers"].asUInt() ); // TODO  2*
@@ -442,7 +441,6 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																				cout << "\nfp32_params[10 SCALE_EAUX]="		<<fp32_params[SCALE_EAUX]			<<"\t\tobj[\"scale_E_aux\"].asFloat()="	<<obj["scale_E_aux"].asFloat();
 																																				cout << "\n" << flush;
 																																			}
-
 	for (int i=0; i<3; i++){ fp32_so3_k2k[i+ i*3]		=1.0; }																				// initialize fp32_so3_k2k & fp32_k2k as 'unity' transform, i.e. zero rotation & zero translation.
 	//for (int i=0; i<4; i++){ fp32_k2k[i+ i*4]    		=1.0; }																				// NB instantiated as {{0}}.
 	for (int i=0; i<4; i++){ fp32_k2keyframe[i+ i*4]    =1.0; }																				// NB instantiated as {{0}}.
@@ -479,7 +477,6 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																				cout <<"	#define MiM_WRITE_ROWS		7"<<endl;
 																																				cout <<"	"<<endl;
 																																			}
-
 	uint 							mipmap[8];
 	mipmap[MiM_READ_ROWS] 			= baseImage_height;
 	uint write_rows 				= mipmap[MiM_READ_ROWS] /2;
@@ -530,7 +527,6 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																			#define MiM_READ_ROWS		6	// rows without margins
 																																			#define MiM_WRITE_ROWS		7
 																																			*/
-
 																																			// Summation buffer sizes
 	se3_sum_size 			= 1 + ceil( (float)(MipMap[(mm_num_reductions+1)*8 + MiM_READ_OFFSET]) / (float)local_work_size ) ;				// i.e. num workgroups used = MiM_READ_OFFSET for 1 layer more than used / local_work_size,   will give one row of vector per group.
 	se3_sum_size 			*= 2;  																											// *2 incr num grps for reduced groupsize

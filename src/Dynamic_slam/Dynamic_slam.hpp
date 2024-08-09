@@ -5,6 +5,8 @@
 #include <fstream>
 #include <set>
 #include "../utils/convertAhandaPovRayToStandard.hpp"
+#include "../utils/print_functions.hpp"
+#include "../utils/convertTransforms.hpp"
 #include "../RunCL/RunCL.hpp"
 
 #define BOOST_FILESYSTEM_VERSION          3
@@ -25,9 +27,8 @@ class Dynamic_slam
 {
   public:
     ~Dynamic_slam();
-    Dynamic_slam(Json::Value obj_);//, int_map verbosity_mp);
+    Dynamic_slam(Json::Value obj_);
     Json::Value             obj;
-    //int_map                 verbosity_mp;
     bool                    invert_GT_depth = false;
 
     RunCL                   runcl;
@@ -93,23 +94,17 @@ class Dynamic_slam
     cv::Mat R,     T;
     cv::Mat old_R, old_T;
 
-    float SE3_k2k[6*16];
+    float SE3_k2k[6*16];                          // used for param_maps, minimal steps in SE3
 
     // functions ////////////////////////////////////////
     /////////////////////////////////////// Dynamic_slam_class.cpp
     void initialize_resultsMat();
     void initialize_camera_vec();
-    //void initialize_camera();
 
     int  nextFrame();
     void use_GT_pose_vec();
-    //void use_GT_pose();
     void getFrame();
-    //void getFrameData();
     void getFrameData_vec();
-
-    cv::Matx44f getPose(cv::Mat R, cv::Mat T);
-    cv::Matx44f getInvPose(cv::Matx44f pose);
 
     // Code profiling
     typedef std::chrono::_V2::system_clock::time_point time_pt;
@@ -123,6 +118,7 @@ class Dynamic_slam
 
     // Result
     void getResult();                         // called at end of main(). Currentlyshows mapping params and saves amem & dmem depth maps.
+    void print_pose_vectors(uint start, uint stop);
 
     /////////////////////////////////////// Dynamic_slam_keyframe.cpp
     void initialize_keyframe_vec();
@@ -146,9 +142,6 @@ class Dynamic_slam
 
     void artificial_pose_error_vec();
     void predictFrame_vec();
-
-    cv::Matx44f generate_invK_(cv::Matx44f K_);
-    void generate_invK();
 
     void generate_SE3_k2k_vec( float _SE3_k2k[6*16] );
 
@@ -185,6 +178,15 @@ class Dynamic_slam
         }
       }
     }
+
+    ///////////////////////////////////// Dynamic_slam_pose_vec_print_fns.cpp
+    void print_pose_datum(      Dynamic_slam::pose_datum datum );
+    void print_frame_datum(     Dynamic_slam::frame_datum datum );
+    void print_keyframe_datum(  Dynamic_slam::keyframe_datum datum );
+
+    void print_frame_data_vector(       uint start,     uint stop,  vector<Dynamic_slam::frame_datum>       frame_data_vector,      string vector_name );
+    void print_keyframe_data_vector(    uint start,     uint stop,  vector<Dynamic_slam::keyframe_datum>    keyframe_data_vector,   string vector_name );
+
 
   private:
     float old_theta, theta, thetaStart, thetaStep, thetaMin, epsilon, lambda, sigma_d, sigma_q;     // DTAM depthmap smoothing & optimization parameters

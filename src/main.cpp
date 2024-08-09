@@ -88,8 +88,8 @@ int main(int argc, char *argv[])
 	}while(!ds_error && ((frame_count<max_frame_count) || (max_frame_count==-1)) );										// #########################################################################################################
 																														if(verbosity_>0) cout << "\n main_chk 3\n" << flush;
 																														cerr << "\n\nmain() starting  dynamic_slam.getResult();"<<flush;
+	dynamic_slam.print_pose_vectors( 0, 4);
 	dynamic_slam.getResult();																							// also calls RunCL::CleanUp()
-
 																														cerr << "\n\nmain() Dynamic_slam finished. Exiting."<<flush;
 																														cout << "\n\nDynamic_slam finished. Exiting."<<flush;
 	fflush (stdout);

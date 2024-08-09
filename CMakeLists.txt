@@ -75,6 +75,9 @@ add_executable(Dynamic_slam
          src/Dynamic_slam/Dynamic_slam_mapping.cpp
          src/Dynamic_slam/Dynamic_slam_tracking.cpp
 
+         src/Dynamic_slam/testing/Dynamic_slam_ground_truth.cpp
+         src/Dynamic_slam/testing/Dynamic_slam_results.cpp
+
          src/kernels/kernels_macros.h
          src/RunCL/RunCL.hpp
          src/RunCL/RunCL.cpp

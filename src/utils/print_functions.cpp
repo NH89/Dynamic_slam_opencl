@@ -108,6 +108,8 @@ void print_matf(cv::Mat mat, int rows, int cols){
 }
 
 
+
+
 /*
 void print_float_4_16(float float_4_16[4*16]){
     for(int chan=0;chan<4;chan++){

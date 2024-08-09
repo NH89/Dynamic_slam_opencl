@@ -6,6 +6,8 @@
 #include <opencv2/imgproc/imgproc_c.h> // req for types e.g. CV_BGR2GRAY
 #include <opencv2/calib3d/calib3d.hpp>
 #include "print_functions.hpp"
+#include "verbosity.hpp"
+
 using namespace cv;
 
 struct m33 {
@@ -177,6 +179,92 @@ static void Matx44f_To_float16arry(Matx44f matx, float arry[16]){
 
 static void float16arry_To_Matx44f(float arry[16], Matx44f matx){
     for (int i=0; i<16; i++){ matx.operator()(i/4, i%4) = arry[i] ;}
+}
+
+
+
+//Dynamic_slam::
+cv::Matx44f getPose(Mat R, Mat T, int verbosity){																							// Mat R, Mat T, Matx44f& pose  // NB Matx::operator()() does not copy, but creates a submatrix. => would be updated when R & T are updated.
+	int local_verbosity_threshold = V_DYNAMIC_SLAM_GETPOSE;//verbosity_mp["Dynamic_slam::getPose"];// 1;
+																																			if(verbosity>local_verbosity_threshold) { cout << "\n getPose chk_0"<<flush;}
+	cv::Matx44f pose;
+	for (int i=0; i<9; i++) pose.operator()(i/3,i%3) = 1 * R.at<float>(i/3,i%3);															if(verbosity>local_verbosity_threshold) { PRINT_MAT33F(R,);  PRINT_MATX44F(pose,); }
+	for (int i=0; i<3; i++) pose.operator()(i,3)      = T.at<float>(i);
+	for (int i=0; i<3; i++) pose.operator()(3,i)      = 0.0f;
+	pose.operator()(3,3) = 1.0f;
+	return pose;
+}
+
+//Dynamic_slam::
+cv::Matx44f getInvPose(cv::Matx44f pose, int verbosity) {	// Matx44f pose, Matx44f& inv_pose
+	int local_verbosity_threshold = V_DYNAMIC_SLAM_GETINVPOSE;//verbosity_mp["Dynamic_slam::getInvPose"];
+
+	cv::Matx44f local_inv_pose;
+	cv::Matx33f local_rotation;
+	cv::Matx31f local_translation;
+	cv::Matx31f inv_local_translation;
+
+	for (int i=0; i<3; i++) { for (int j=0; j<3; j++)	{    local_inv_pose.operator()(i,j) = pose.operator()(j,i); } }
+	for (int i=0; i<3; i++) { for (int j=0; j<3; j++)	{    local_rotation.operator()(i,j) = pose.operator()(i,j); } }
+	for (int i=0; i<3; i++) 							{ local_translation.operator()(i,0) = pose.operator()(i,3); }
+
+	inv_local_translation = - local_rotation.t() * local_translation;
+	for (int i=0; i<3; i++) local_inv_pose.operator()(i,3) = inv_local_translation.operator()(i,0);
+	for (int i=0; i<4; i++) local_inv_pose.operator()(3,i) =                  pose.operator()(3,i);
+																																			if(verbosity>local_verbosity_threshold){
+																																				PRINT_MATX31F(local_translation,        "getInvPose(cv::Matx44f pose)" );
+																																				PRINT_MATX31F(inv_local_translation,    "getInvPose(cv::Matx44f pose)" );
+																																				PRINT_MATX44F(local_inv_pose,           "getInvPose(cv::Matx44f pose)" );
+																																			}
+	return local_inv_pose;
+																																			/*
+																																			*  Inverse of a transformation matrix:
+																																			*  http://www.info.hiroshima-cu.ac.jp/~miyazaki/knowledge/teche0053
+																																			*
+																																			*   {     |   }-1       {       |        }
+																																			*   {  R  | t }     =   {  R^T  |-R^T .t }
+																																			*   {_____|___}         {_______|________}
+																																			*   {0 0 0| 1 }         {0  0  0|    1   }
+																																			*
+																																			*/
+}
+
+//Dynamic_slam::
+cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){
+	int local_verbosity_threshold = V_DYNAMIC_SLAM_GENERATE_INVK_;//verbosity_mp["Dynamic_slam::generate_invK_"];// 0;
+	cv::Matx44f inv_K_;
+
+	float fx   =  K_.operator()(0,0);
+	float fy   =  K_.operator()(1,1);
+	float skew =  K_.operator()(0,1);
+	float cx   =  K_.operator()(0,2);
+	float cy   =  K_.operator()(1,2);
+																																			if(verbosity>local_verbosity_threshold) {
+																																				cout << "\ngenerate_invK_chk 1\n";
+																																				cout<<"\nfx="<<fx <<"\nfy="<<fy <<"\nskew="<<skew <<"\ncx="<<cx <<"\ncy= "<<cy;
+																																				cout << flush;
+																																			}
+	///////////////////////////////////////////////////////////////////// Inverse camera intrinsic matrix, see:
+	// https://www.imatest.com/support/docs/pre-5-2/geometric-calibration-deprecated/projective-camera/#:~:text=Inverse,lines%20from%20the%20camera%20center.
+	inv_K_ = inv_K_.zeros();
+	inv_K_.operator()(0,0)  = 1.0/fx;  																										if(verbosity>local_verbosity_threshold) cout<<"\n1.0/fx="<<1.0/fx;
+	inv_K_.operator()(1,1)  = 1.0/fy;  																										if(verbosity>local_verbosity_threshold) cout<<"\n1.0/fy="<<1.0/fy;
+	inv_K_.operator()(2,2)  = 1.0;
+	inv_K_.operator()(3,3)  = 1.0;
+
+	inv_K_.operator()(0,1)  = -skew/(fx*fy);
+	inv_K_.operator()(0,2)  = (cy*skew - cx*fy)/(fx*fy);
+	inv_K_.operator()(1,2)  = -cy/fy;
+																																			if(verbosity>local_verbosity_threshold) {
+																																				cv::Matx44f test_K_ = inv_K_ * K_;
+																																				PRINT_MATX44F(test_K_,test_camera_intrinsic_matrix inversion);
+																																				//PRINT_MATX44F(pose,);
+																																				//PRINT_MATX44F(inv_old_pose,);
+																																				PRINT_MATX44F(K_,);
+																																				PRINT_MATX44F(inv_K_,);
+																																				cout << "\nDynamic_slam::generate_invK_ Finished ####################"<<endl<<flush;
+																																			}
+	return inv_K_;
 }
 
 
