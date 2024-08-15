@@ -1,16 +1,33 @@
 #pragma once
 
-#include <string>
-#include <boost/filesystem.hpp>
-#include <fstream>
-#include <set>
-#include "../utils/convertAhandaPovRayToStandard.hpp"
-#include "../utils/print_functions.hpp"
-#include "../utils/convertTransforms.hpp"
+// #include <string>
+// #include <boost/filesystem.hpp>
+// #include <fstream>
+// #include <set>
+// #include "../utils/convertAhandaPovRayToStandard.hpp"
+// #include "../utils/print_functions.hpp"
+// #include "../utils/convertTransforms.hpp"
+// #include "../RunCL/RunCL.hpp"
+
+//#include <boost/filesystem.hpp>
+
+//#define BOOST_FILESYSTEM_VERSION          3
+//#define BOOST_FILESYSTEM_NO_DEPRECATED
+
+
 #include "../RunCL/RunCL.hpp"
 
-#define BOOST_FILESYSTEM_VERSION          3
-#define BOOST_FILESYSTEM_NO_DEPRECATED 
+
+
+#include <vector>
+#include <string>
+#include <fstream>
+#include <filesystem>
+#include <set>
+
+#include "../utils/convertTransforms.hpp"
+#include "../utils/convertAhandaPovRayToStandard.hpp"
+
 
 #define Rx	0
 #define Ry  1
@@ -21,7 +38,8 @@
 
 #define MAX_LAYERS  6
 
-namespace fs = ::boost::filesystem;
+namespace fs = std::filesystem;  //::std::filesystem;
+
 
 class Dynamic_slam
 {
@@ -50,9 +68,9 @@ class Dynamic_slam
     // data files
     std::string             rootpath;
     fs::path                root;
-    vector<fs::path>        txt;
-    vector<fs::path>        png;
-    vector<fs::path>        depth;
+    std::vector<fs::path>   txt;
+    std::vector<fs::path>   png;
+    std::vector<fs::path>   depth;
 
     // camera & pose params
     const cv::Matx44f       Matx44f_zero = {0,0,0,0,  0,0,0,0,  0,0,0,0,  0,0,0,0};   //  = cv::Matx44f::zeros();//
@@ -86,8 +104,8 @@ class Dynamic_slam
       frame_datum           frame_data              = {};
     };
 
-    vector<frame_datum>     frame_data;           // (frame_data start, old, current, key_frame) are now indices of elements in the vector.
-    vector<keyframe_datum>  keyframe_data;
+    std::vector<frame_datum>     frame_data;           // (frame_data start, old, current, key_frame) are now indices of elements in the vector.
+    std::vector<keyframe_datum>  keyframe_data;
 
     // GT data loading ?
     cv::Mat image, depth_GT, cameraMatrix;        // TODO should these be Matx ?   , projection   NB cameraMatrix => K_GT
@@ -160,7 +178,7 @@ class Dynamic_slam
     void get_all(const fs::path& root , const string& ext, vector<fs::path>& ret ) {  
       if (!fs::exists(root))        return;
       if (fs::is_directory(root))   {
-        typedef std::set<boost::filesystem::path> Files;
+        typedef std::set<std::filesystem::path> Files;
         Files files;
         fs::recursive_directory_iterator it0(root);
         fs::recursive_directory_iterator endit0;

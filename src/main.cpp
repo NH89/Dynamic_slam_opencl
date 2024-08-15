@@ -1,35 +1,46 @@
 //#include "Dynamic_slam/Dynamic_slam.hpp"
 //#include "utils/fileLoader.hpp"
 
-#include <filesystem>
-#include <iostream>
-#include <iomanip>
-#include <cstdio>
-#include <ctime>
-#include <fstream>
-#include <iostream>
+// #include <filesystem>
+// #include <iostream>
+// #include <iomanip>
+// #include <cstdio>
+// #include <ctime>
+// #include <fstream>
+// #include <iostream>
+//
+// #include <map>
+// #include <string>
+// #include <string_view>
+//
+// #include <string>
+// #include <sstream>
+// #include "Dynamic_slam/Dynamic_slam.hpp"
+// #include "utils/conf_params.hpp"
+// #include "utils/verbosity.hpp"
 
-#include <map>
-#include <string>
-#include <string_view>
+#include <jsoncpp/json/json.h>
 
-#include <string>
-#include <sstream>
 #include "Dynamic_slam/Dynamic_slam.hpp"
 #include "utils/conf_params.hpp"
-#include "utils/verbosity.hpp"
+
+#include <iomanip>
+#include <ctime>
+#include <map>
+#include <string_view>
+#include <sstream>
+#include <string>
 
 using namespace cv;
 using namespace std;
 
-
-void copy_conf(Json::String source_filepath,  Json::String infile,  string outfile   ){
-	filesystem::path in_path_verbosity(  source_filepath  +  infile  );
-	filesystem::path out_path_verbosity( outfile   );
-	out_path_verbosity.replace_filename( in_path_verbosity.filename() );
-																														cerr << "\nin_path="<<in_path_verbosity<<",  out_path="<<out_path_verbosity<<endl<<flush;
-	filesystem::copy( in_path_verbosity , out_path_verbosity );															// Used to save a copy of each .conf file to the output folder.
-}
+// void copy_conf(Json::String source_filepath,  Json::String infile,  string outfile   ){
+// 	filesystem::path in_path_verbosity(   source_filepath + infile      );
+// 	filesystem::path out_path_verbosity( outfile   );
+// 	out_path_verbosity.replace_filename( in_path_verbosity.filename() );
+// 																														cerr << "\nin_path="<<in_path_verbosity<<",  out_path="<<out_path_verbosity<<endl<<flush;
+// 	filesystem::copy( in_path_verbosity , out_path_verbosity );															// Used to save a copy of each .conf file to the output folder.
+// }
 
 int main(int argc, char *argv[])
 {

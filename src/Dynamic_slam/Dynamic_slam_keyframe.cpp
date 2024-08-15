@@ -23,7 +23,10 @@ void Dynamic_slam::initialize_keyframe_vec(){
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::initialize_keyframe_vec()_chk 1.1,  depth=runcl.amem"<< flush; }
 		cv::Matx44f inv_pose2pose 			=  getInvPose( frame_data.back().frame_data.keyframe2pose, verbosity); //    keyframe_pose2pose );		// cv::Matx44f Dynamic_slam::getInvPose(cv::Matx44f pose)
 		cv::Matx44f forward_keyframe2K  	=  frame_data.back().frame_data.K * inv_pose2pose * frame_data.back().frame_data.inv_K;			// Projects new keyframe pixel to previous keyframe
-		runcl.transform_depthmap( 			forward_keyframe2K, runcl.amem );																// Sets new depth_mem used in tracking.
+		float forward_keyframe2K_f16[16];
+		Matx44f_To_float16arry( forward_keyframe2K, forward_keyframe2K_f16 );
+
+		runcl.transform_depthmap( 			forward_keyframe2K_f16, runcl.amem );																// Sets new depth_mem used in tracking.
 		runcl.swap_costvol_pointers();																										// Swaps   cdatabuf<->temp_cdatabuf ,  hdatabuf<->temp_hdatabuf.
 		runcl.initializeDepthCostVol( 		runcl.amem );																					// Also copies  	imgmem 						-> keyframe_imgmem
 																																			//					HSV_grad_mem 				-> keyframe_imgmem_HSV_grad
@@ -34,7 +37,7 @@ void Dynamic_slam::initialize_keyframe_vec(){
 
 																																			// Zeros buffers: 	dbg_databuf, cdatabuf, hdatabuf, img_sum_buf,
 																																			// 					dmem, amem, qmem, qmem2, lomem, himem.
-		runcl.transform_costvolume( 		forward_keyframe2K );
+		runcl.transform_costvolume( 		forward_keyframe2K_f16 );
 
 	}else{																																	// IF starting a new vector<keframe_datum>, i.e. begining of program.
 		float default_depth 				= (runcl.fp32_params[MAX_INV_DEPTH] + runcl.fp32_params[MIN_INV_DEPTH])/2.0;

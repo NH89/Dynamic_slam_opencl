@@ -1,11 +1,15 @@
+
 #include "Dynamic_slam.hpp"
+
 #include <fstream>
 #include <iomanip>   // for std::setprecision, std::setw
 
 using namespace cv;
 using namespace std;
 
+
 Dynamic_slam::~Dynamic_slam(){ runcl.~RunCL(); };
+
 
 Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map verbosity_mp_
 	obj = obj_;																																// NB save obj_ to class member obj, so that it persists within this Dynamic_slam object.
@@ -26,7 +30,16 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
     for (int layer=0; layer<MAX_LAYERS; layer++) 									SE3_update_layer_weights[layer] 	= obj["SE3_float update_layer_weights"][layer].asFloat();	//j_params.float_vec_mp["SE3_float update_layer_weights"][layer];		//
 
 																																			if(verbosity>local_verbosity_threshold) {cout << "\n Dynamic_slam::Dynamic_slam_chk 0,  SE3_Rho_sq_threshold[i][j] = ";
-																																				for (int i=0; i<5; i++){cout << "( "; for (int j=0; j<3; j++) {cout << ", ["<<i<<"]["<<j<<"]" << SE3_Rho_sq_threshold[i][j]; }   cout << " )";}
+																																				for (int i=0; i<5; i++){cout << "( "; for (int j=0; j<3; j++) {
+
+																																					std::cout << "dummy text" << 2 ;
+
+
+
+
+																																					cout << ", [" << i <<"]["<<j<<"]" << SE3_Rho_sq_threshold[i][j]; }   cout << " )";
+
+																																				}
 																																				cout << ",\t SE_factor = "<<SE_factor;
 																																				cout << endl << flush;
 																																			}

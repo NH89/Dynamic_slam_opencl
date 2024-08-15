@@ -6,12 +6,12 @@ void RunCL::estimateCalibration( ){ //estimateCalibration( ); 		// own thread, o
 
 }
 
-void RunCL::transform_depthmap( cv::Matx44f K2K_ , cl_mem depthmap_ ){																		// NB must be used _before_ initializing the new cost_volume, because it uses keyframe_imgmem.
+void RunCL::transform_depthmap( /*cv::Matx44f K2K_*/ float K2K_arry[16] , cl_mem depthmap_ ){																		// NB must be used _before_ initializing the new cost_volume, because it uses keyframe_imgmem.
 	string fname = "RunCL::transform_depthmap( )";
 	int local_verbosity_threshold = V_RUNCL_TRANSFORM_DEPTHMAP;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::transform_depthmap( ..)_chk0 .   runcl.dataset_frame_num="<< dataset_frame_num<<flush;}
 	cl_int status;
-	float K2K_arry[16];Matx44f_To_float16arry( K2K_, K2K_arry );
+	//float K2K_arry[16];Matx44f_To_float16arry( K2K_, K2K_arry );
 																																			if( verbosity>local_verbosity_threshold) { PRINT_FLOAT_16( K2K_arry, RunCL::transform_depthmap( ..) ); }
 	const float zero  = 0;
 	_clEnqueueFillBuffer ( uload_queue, 	depth_mem, &zero,    sizeof( float),  0,     mm_size_bytes_C1, 	fname);
@@ -64,12 +64,12 @@ void RunCL::swap_costvol_pointers( )
 }
 
 
-void RunCL::transform_costvolume( cv::Matx44f K2K_)																							// NB must be used _after_ initializing the new cost_volume.
+void RunCL::transform_costvolume( /*cv::Matx44f K2K_*/ float K2K_arry[16])																							// NB must be used _after_ initializing the new cost_volume.
 {
 	string fname = "RunCL::transform_costvolume( )";
 	int local_verbosity_threshold = V_RUNCL_TRANSFORM_COSTVOLUME;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::transform_costvolume( ..)_chk0 .    runcl.dataset_frame_num="<< dataset_frame_num<<flush;}
-	float K2K_arry[16];Matx44f_To_float16arry( K2K_, K2K_arry );
+	//float K2K_arry[16];Matx44f_To_float16arry( K2K_, K2K_arry );
 
 	_clEnqueueWriteBuffer( uload_queue, invk2kbuf,	CL_FALSE, 0, 16 * sizeof( float), K2K_arry, 	fname);
 																																			if( verbosity>local_verbosity_threshold) { PRINT_FLOAT_16( K2K_arry, RunCL::transform_costvolume( ..) ); }

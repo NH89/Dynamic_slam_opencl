@@ -5,6 +5,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/imgproc_c.h> // req for types e.g. CV_BGR2GRAY
 #include <opencv2/calib3d/calib3d.hpp>
+
 #include "print_functions.hpp"
 #include "verbosity.hpp"
 
@@ -177,6 +178,7 @@ static void Matx44f_To_float16arry(Matx44f matx, float arry[16]){
     for (int i=0; i<16; i++){ arry[i] = matx.operator()(i/4, i%4);}
 }
 
+
 static void float16arry_To_Matx44f(float arry[16], Matx44f matx){
     for (int i=0; i<16; i++){ matx.operator()(i/4, i%4) = arry[i] ;}
 }
@@ -194,6 +196,7 @@ cv::Matx44f getPose(Mat R, Mat T, int verbosity){																							// Mat R
 	pose.operator()(3,3) = 1.0f;
 	return pose;
 }
+
 
 //Dynamic_slam::
 cv::Matx44f getInvPose(cv::Matx44f pose, int verbosity) {	// Matx44f pose, Matx44f& inv_pose
@@ -231,7 +234,7 @@ cv::Matx44f getInvPose(cv::Matx44f pose, int verbosity) {	// Matx44f pose, Matx4
 
 //Dynamic_slam::
 cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){
-	int local_verbosity_threshold = V_DYNAMIC_SLAM_GENERATE_INVK_;//verbosity_mp["Dynamic_slam::generate_invK_"];// 0;
+	int local_verbosity_threshold = V_DYNAMIC_SLAM_GENERATE_INVK_; //verbosity_mp["Dynamic_slam::generate_invK_"];// 0;
 	cv::Matx44f inv_K_;
 
 	float fx   =  K_.operator()(0,0);
@@ -266,9 +269,6 @@ cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){
 																																			}
 	return inv_K_;
 }
-
-
-
 
 
 #endif 

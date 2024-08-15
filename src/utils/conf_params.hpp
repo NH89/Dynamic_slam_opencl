@@ -1,6 +1,8 @@
 #ifndef CONF_PARAMS
 #define CONF_PARAMS
 
+#include <jsoncpp/json/json.h>
+
 #include <iostream>
 #include <iomanip>
 #include <cstdio>
@@ -14,9 +16,13 @@
 
 #include <vector>
 #include <sstream>
-#include <jsoncpp/json/json.h>
+
+#include <filesystem>
 
 using namespace std;
+
+
+void copy_conf(Json::String source_filepath,  Json::String infile,  string outfile   );
 
 class conf_params {
     public:
@@ -32,5 +38,7 @@ class conf_params {
 
 	void display_params();
 };
+
+
 
 #endif

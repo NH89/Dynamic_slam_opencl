@@ -6,7 +6,59 @@
 #define CL_TARGET_OPENCL_VERSION			300  // defined as 120, ie OpenCL 1.2 in CMakeLists.txt
 #define CL_HPP_TARGET_OPENCL_VERSION		300  // OpenCL 2.0
 
+// #include <CL/opencl.hpp>
+// #include <cstdio>
+// #include <cstdlib>
+// #include <cassert>
+// #include <cstring>
+// #include <string>
+// #include <fstream>
+// #include <iostream>
+// #include <opencv2/core.hpp>
+// #include <opencv2/imgproc.hpp>
+// #include <opencv2/highgui.hpp>
+// #include <boost/filesystem.hpp>
+// #include <boost/format.hpp>
+// #include <filesystem>							// C++17 TODO <replace boost/filesystem>
+// #include <jsoncpp/json/json.h>
+// #include <chrono>								// For measuring time of execution.
+// using namespace std::chrono;
+//
+// //#include "opencl_utils.hpp"
+//
+// #include "../utils/conf_params.hpp"
+// #include "../utils/convertTransforms.hpp"
+// #include "../utils/print_functions.hpp"
+// #include "../utils/CV_chk.hpp"
+// #include "../utils/time_utils.hpp"
+ #include "../utils/verbosity.hpp"
+//
+// #include "../kernels/kernels_macros.h"
+
+
+#include <jsoncpp/json/json.h>
+
+#include "../utils/conf_params.hpp"
+//#include "../utils/convertTransforms.hpp"			// Matx44f_To_float16arry(..) req in  RunCL_setup_keyframe.cpp  to convert k2k
+#include "../utils/print_functions.hpp"
+#include "../utils/CV_chk.hpp"
+#include "../utils/time_utils.hpp"
+
+#include "../kernels/kernels_macros.h"
+
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/core/utility.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc/imgproc_c.h> 				// req for types e.g. CV_BGR2GRAY
+#include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/highgui.hpp>
+
+//#include <boost/filesystem.hpp>
+#include <boost/format.hpp>
+
 #include <CL/opencl.hpp>
+
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
@@ -14,27 +66,11 @@
 #include <string>
 #include <fstream>
 #include <iostream>
-#include <opencv2/core.hpp>
-#include <opencv2/imgproc.hpp>
-#include <opencv2/highgui.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/format.hpp>
 #include <filesystem>							// C++17 TODO <replace boost/filesystem>
-#include <jsoncpp/json/json.h>
 #include <chrono>								// For measuring time of execution.
+
+
 using namespace std::chrono;
-
-//#include "opencl_utils.hpp"
-
-#include "../utils/conf_params.hpp"
-#include "../utils/convertTransforms.hpp"
-#include "../utils/print_functions.hpp"
-#include "../utils/CV_chk.hpp"
-#include "../utils/time_utils.hpp"
-#include "../utils/verbosity.hpp"
-
-#include "../kernels/kernels_macros.h"
-
 const uint tracking_num_colour_channels = TRACKING_NUM_COLOR_CHANNELS;
 const uint tracking_num_samples 		= TRACKING_NUM_SAMPLES;			// One more on host, for original Rho sample.
 const uint tracking_tot_samples 		= 4;
@@ -125,7 +161,7 @@ public:
 	int 				G_count					= 0;	//	Incremented in RunCL::updateG(..), ditto
 	
 	cv::Size 			baseImage_size, mm_Image_size;
-	std::map< std::string, boost::filesystem::path > paths;
+	std::map< std::string, std::filesystem::path > paths;
 
 	///////////////////////////////////// RunCL_class.cpp
 
@@ -160,32 +196,32 @@ public:
 	void saveCostVols(float max_range);
 
 	void Store_keyframe();																												// Required for Save_vtk(..), used for amem, demem etc.
-	void Save_vtk(cv::Mat mat, cv::Mat keyframe, boost::filesystem::path folder );
+	void Save_vtk(cv::Mat mat, cv::Mat keyframe, std::filesystem::path folder );
 
-	void DownloadAndSave(cl_mem buffer, std::string count, boost::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range=1 );
-	void DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, boost::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers );
+	void DownloadAndSave(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range=1 );
+	void DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers );
 	
-	void DownloadAndSave_3Channel(cl_mem buffer, std::string count, boost::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range=1, uint offset=0, bool exception_tiff=false ){
+	void DownloadAndSave_3Channel(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range=1, uint offset=0, bool exception_tiff=false ){
 		cv::Mat bufImg;
 		DownloadAndSave_3Channel(buffer, count, folder_tiff, image_size_bytes,  size_mat,  type_mat,  show,  &bufImg,  max_range, offset, exception_tiff );
 	}
-	void DownloadAndSave_3Channel(cl_mem buffer, std::string count, boost::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, cv::Mat *bufImg, float max_range=1, uint offset=0, bool exception_tiff=false );
-	void DownloadAndSave_3Channel_volume(cl_mem buffer, std::string count, boost::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers,  bool exception_tiff=false, float iter=0, bool display=false );
+	void DownloadAndSave_3Channel(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, cv::Mat *bufImg, float max_range=1, uint offset=0, bool exception_tiff=false );
+	void DownloadAndSave_3Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers,  bool exception_tiff=false, float iter=0, bool display=false );
 
 	void PrepareResults_3Channel(cl_mem buffer, size_t image_size_bytes, cv::Size size_mat, int type_mat, cv::Mat *bufImg, float max_range /*=1*/, uint offset /*=0*/ );
 	void PrepareResults_3Channel_volume(cl_mem buffer, size_t image_size_bytes, cv::Size size_mat, int type_mat, float max_range, uint vol_layers,  float iter);
 
-	void DownloadAndSave_6Channel(cl_mem buffer, std::string count, boost::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint offset=0);
-	void DownloadAndSave_6Channel_volume(cl_mem buffer, std::string count, boost::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers );
+	void DownloadAndSave_6Channel(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint offset=0);
+	void DownloadAndSave_6Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers );
 	
-	void DownloadAndSave_8Channel(cl_mem buffer, std::string count, std::map< std::string, boost::filesystem::path > folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range /*=1*/, uint offset /*=0*/);
-	void DownloadAndSave_8Channel_volume(cl_mem buffer, std::string count, boost::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers );
+	void DownloadAndSave_8Channel(cl_mem buffer, std::string count, std::map< std::string, std::filesystem::path > folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range /*=1*/, uint offset /*=0*/);
+	void DownloadAndSave_8Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers );
 	
-	void DownloadAndSave_HSV_grad(cl_mem buffer, std::string count, boost::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint offset=0 );
+	void DownloadAndSave_HSV_grad(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint offset=0 );
 	
-	void SaveMat(cv::Mat temp_mat, int type_mat, boost::filesystem::path folder_tiff, bool show, float max_range, std::string mat_name, std::string count);
-	void SaveMat_1chan(cv::Mat temp_mat, int type_mat, boost::filesystem::path folder_tiff, bool show, float max_range, std::string mat_name, std::string count);
-	void DownloadAndSaveVolume(cl_mem buffer, std::string count, boost::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, bool exception_tiff=false );
+	void SaveMat(cv::Mat temp_mat, int type_mat, std::filesystem::path folder_tiff, bool show, float max_range, std::string mat_name, std::string count);
+	void SaveMat_1chan(cv::Mat temp_mat, int type_mat, std::filesystem::path folder_tiff, bool show, float max_range, std::string mat_name, std::string count);
+	void DownloadAndSaveVolume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, bool exception_tiff=false );
 
 	////////////////////////////////////// RunCL_load_image.cpp
 
@@ -222,8 +258,8 @@ public:
 
 	/////////////////////////////////////// RunCL_mapping.cpp
 	void swap_costvol_pointers();
-	void transform_depthmap(cv::Matx44f K2K_ , cl_mem depthmap_);																		// Cost volume
-	void transform_costvolume(cv::Matx44f K2K_ );						//, cl_mem old_cdata_mem =cdatabuf,  cl_mem new_cdata_mem =new_cdatabuf, cl_mem old_hdata_mem =hdatabuf,  cl_mem new_hdata_mem =new_hdatabuf );
+	void transform_depthmap( /*cv::Matx44f K2K_*/ float K2K_arry[16], cl_mem depthmap_);																		// Cost volume
+	void transform_costvolume(/*cv::Matx44f K2K_*/ float K2K_arry[16]);						//, cl_mem old_cdata_mem =cdatabuf,  cl_mem new_cdata_mem =new_cdatabuf, cl_mem old_hdata_mem =hdatabuf,  cl_mem new_hdata_mem =new_hdatabuf );
 	
 	void initializeFirstDepthCostVol( float default_depth );
 	void initializeDepthCostVol( cl_mem key_frame_depth_map_src);		// Depth costvol functions

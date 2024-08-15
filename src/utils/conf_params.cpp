@@ -2,6 +2,15 @@
 #include "../utils/verbosity.hpp"
 
 
+void copy_conf(Json::String source_filepath,  Json::String infile,  string outfile   ){
+	filesystem::path in_path_verbosity(   source_filepath + infile    );
+	filesystem::path out_path_verbosity( outfile   );
+	out_path_verbosity.replace_filename( in_path_verbosity.filename() );
+																														cerr << "\nin_path="<<in_path_verbosity<<",  out_path="<<out_path_verbosity<<endl<<flush;
+	filesystem::copy( in_path_verbosity , out_path_verbosity );															// Used to save a copy of each .conf file to the output folder.
+}
+
+
 conf_params::conf_params(char * arg, Json::Value &val){							// "arg" contains the path to the "local_conf/filepaths_<computer name>.json" file, which includes "conf.json" and "verbosity.json".
 	int local_verbosity_threshold = V_CONF_PARAMS_CONF_PARAMS;
                                                                                 cout << "\nconf_params::conf_params(char * \""<<arg<<"\", arg, Json::Value &val) chk 1"<<flush;
