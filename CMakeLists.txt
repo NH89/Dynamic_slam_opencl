@@ -98,6 +98,7 @@ add_executable(Dynamic_slam
          src/utils/print_functions.hpp
          src/utils/print_functions.cpp
          src/utils/convertTransforms.hpp
+         src/utils/convertTransforms.cpp
          src/utils/convertAhandaPovRayToStandard.hpp
          src/utils/convertAhandaPovRayToStandard.cpp
 
@@ -108,6 +109,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         ${OpenCV_LIBS} 
         Boost::filesystem
         jsoncpp_lib
+
 
         )
 
