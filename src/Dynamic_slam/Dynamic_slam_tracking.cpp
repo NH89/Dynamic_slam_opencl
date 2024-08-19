@@ -8,6 +8,8 @@ using namespace std;
 void Dynamic_slam::report_GT_pose_error(){ 																									// TODO this could be done in Max44f, without back and forth coversion.
 	string fname="Dynamic_slam::report_GT_pose_error()";
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_REPORT_GT_POSE_ERROR;//verbosity_mp["Dynamic_slam::report_GT_pose_error"];// -2;
+
+	cout << "\n void Dynamic_slam::report_GT_pose_error() ###################################################################### " << flush;
 	frame_data.back().frame_data.keyframe2pose_algebra		=		PToLie( frame_data.back().frame_data.keyframe2pose );
 	frame_data.back().frame_data_GT.keyframe2pose_algebra	=		PToLie( frame_data.back().frame_data_GT.keyframe2pose );
 
@@ -30,22 +32,22 @@ void Dynamic_slam::report_GT_pose_error(){ 																									// TODO this
 	cout << endl;
 	PRINT_MATX44F(keyframe_data.back().frame_data.frame_data.pose_from_start, 			Dynamic_slam::report_GT_pose_error()	);
 	PRINT_MATX44F(keyframe_data.back().frame_data.frame_data_GT.pose_from_start,		Dynamic_slam::report_GT_pose_error()	);
+	cout << "\n void Dynamic_slam::report_GT_pose_error() Finished ###################################################################### " << flush;
+
 }
-
-
 
 
 void Dynamic_slam::predictFrame_vec(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_PREDICTFRAME;//verbosity_mp["Dynamic_slam::predictFrame"];
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::predictFrame_vec_chk 0. "<<flush; }
 	vector<frame_datum>::iterator frame_minus_one 		= 	frame_data.end();
-	frame_minus_one--;
+	frame_minus_one--;																														// current frame
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::predictFrame_vec_chk 1. "<<flush;					// verify the new frame is clean
 																																				PRINT_MATX44F( frame_minus_one->frame_data.K , )
 																																				PRINT_MATX44F( frame_minus_one->frame_data_GT.K , )
 																																				cout << endl;
 																																			}
-	frame_minus_one--;
+	frame_minus_one--;																														// previous frame
 	vector<frame_datum>::iterator frame_minus_two 		= 	frame_minus_one;																// if (frame_data.size() <= 2) frame_minus_one is the first frame,  therefore duplicate data for zero motion prediction.
 	if (frame_data.size() > 2)	{frame_minus_two--;																							cout << "\n Dynamic_slam::predictFrame_vec_chk 1.1 (frame_data.size() > 2),   frame_data.size()="<< frame_data.size() <<flush;  }
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::predictFrame_vec_chk 2. "<<flush;					// verify the previous two frames have valid data
@@ -93,8 +95,7 @@ void Dynamic_slam::predictFrame_vec(){
 }
 
 
-
-void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {																				// Generates a set of 6 k2k to be used to compute the SE3 maps for the current camera intrinsic matrix.
+void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {																			// Generates a set of 6 k2k to be used to compute the SE3 maps for the current camera intrinsic matrix.
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_GENERATE_SE3_K2K;//verbosity_mp["Dynamic_slam::generate_SE3_k2k"];// -2;
 																																			if(verbosity>local_verbosity_threshold) cout << "\nDynamic_slam::generate_SE3_k2k( float _SE3_k2k[6*16] ) chk_0" << endl << flush;
 	// SE3

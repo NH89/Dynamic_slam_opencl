@@ -14,9 +14,9 @@ void Dynamic_slam::print_pose_datum( Dynamic_slam::pose_datum datum ){
 
 void Dynamic_slam::print_frame_datum( Dynamic_slam::frame_datum datum ){
     cout << "\n keyframe_index = " << datum.keyframe_index ;
-    cout << "\n frame_data: ";      print_pose_datum( datum.frame_data  );
-    cout << "\n frame_data_GT ";    print_pose_datum( datum.frame_data_GT );
-    cout << "\n error_data ";       print_pose_datum( datum.error_data );
+    cout << "\n frame_data: ++++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.frame_data		);
+    cout << "\n frame_data_GT ++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.frame_data_GT	);
+    cout << "\n error_data +++++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.error_data		);
 }
 
 void Dynamic_slam::print_keyframe_datum( Dynamic_slam::keyframe_datum datum ){
@@ -25,19 +25,25 @@ void Dynamic_slam::print_keyframe_datum( Dynamic_slam::keyframe_datum datum ){
 }
 
 void Dynamic_slam::print_frame_data_vector(       uint start,     uint stop,  vector<Dynamic_slam::frame_datum>       frame_data_vector,  string vector_name ){
-    cout << "\n\n vector<Dynamic_slam::frame_datum> " << vector_name << " : ##############################################################################";
+    cout << "\n\n Dynamic_slam::print_frame_data_vector :  vector<Dynamic_slam::frame_datum> " << vector_name << " : ##############################################################################";
+    if (stop > frame_data_vector.size() ) stop = frame_data_vector.size();
+
     for (int i = start; i<stop; i++){
-        cout << "\n  Element = " << i;
+        cout << "\n  Element = " << i << "  ##############################################################";
         print_frame_datum( frame_data_vector[i] );
     }
+    cout << "\n\n Dynamic_slam::print_frame_data_vector :  vector<Dynamic_slam::frame_datum> Finished " << vector_name << " : ##############################################################################";
 }
 
 void Dynamic_slam::print_keyframe_data_vector(    uint start,     uint stop,  vector<Dynamic_slam::keyframe_datum>    keyframe_data_vector,  string vector_name  ){
-    cout << "\n\n vector<Dynamic_slam::keyframe_datum> " << vector_name << " : ###########################################################################";
+    cout << "\n\n Dynamic_slam::print_keyframe_data_vector():  vector<Dynamic_slam::keyframe_datum> " << vector_name << " : ###########################################################################";
+    if (stop > keyframe_data_vector.size() ) stop = keyframe_data_vector.size();
+
     for (int i = start; i<stop; i++){
-        cout << "\n  Element = " << i;
+        cout << "\n  Element = " << i << "  ##############################################################";
         print_keyframe_datum( keyframe_data_vector[i] );
     }
+    cout << "\n\n Dynamic_slam::print_keyframe_data_vector():  vector<Dynamic_slam::keyframe_datum> Finished " << vector_name << " : ###########################################################################";
 }
 
 void Dynamic_slam::print_pose_vectors(uint start, uint stop){
@@ -59,6 +65,8 @@ void Dynamic_slam::initialize_resultsMat(){	// need to take img pyramid layer 2 
 void Dynamic_slam::getResult(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_GETRESULT;//verbosity_mp["Dynamic_slam::getResult"];
 	if(verbosity>local_verbosity_threshold){
+		cout<<"\nDynamic_slam::getResult()  ################################################\n"<<flush;
+
 		stringstream ss;
 		ss << "getResult"<< runcl.save_index << "_QD_count_" << runcl.QD_count <<"_epsilon_"<<epsilon<<"_sigmaQ_"<<sigma_q<<"_D_"<<sigma_d<<"_theta_"<<theta;
 																																				//int this_count = save_index * 1000 + QD_count;
@@ -69,7 +77,7 @@ void Dynamic_slam::getResult(){
 
 		//DownloadAndSave(qmem,   ss.str(), paths.at("qmem"),  2*mm_size_bytes_C1 , q_size        , CV_32FC1, false , -1*fp32_params[MAX_INV_DEPTH]  );
 		//DownloadAndSave(qmem2,   ss.str(), paths.at("qmem2"),2*mm_size_bytes_C1 , q_size        , CV_32FC1, false , -1*fp32_params[MAX_INV_DEPTH]  );  // 1/uint_params[MM_PIXELS]
-		cout<<"\nRunCL::updateQD_chk3_finished\n"<<flush;
+		cout<<"\nDynamic_slam::getResult()_finished ################################################\n"<<flush;
 	}
 };
 

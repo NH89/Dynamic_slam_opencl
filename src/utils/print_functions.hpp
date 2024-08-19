@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstring>
 #include <iostream>
+#include <iomanip>
 #include <string>
 #include <fstream>
 #include <opencv2/core.hpp>

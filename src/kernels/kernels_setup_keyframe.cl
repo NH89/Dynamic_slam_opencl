@@ -149,10 +149,12 @@ __kernel void transform_cost_volume(
 			new_cdata[ write_index] += voxel_c;
 			new_hdata[ write_index] += voxel_h;
 		}
+		/*
 		//else{
 			//new_cdata[ write_index] = 1.0f; //layer_flt; //u3_flt; //0; 								// NB If new_hdata is zero, then new_cdata should be read as NULL.
 			//new_hdata[ write_index] += 0; //wh3;       //v3_flt; //0;
 		//}
+		*/
 	}
 																									// set hi_mem, lo_mem for new cost_vol
 	mean 				/= count;

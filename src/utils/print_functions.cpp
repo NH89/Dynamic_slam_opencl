@@ -5,7 +5,7 @@ void print_matx33f(cv::Matx33f matx){
      for(int row=0;row<3;row++){
          cout<<"  \n";
          for(int col=0; col<3;col++){
-             cout << matx.operator()(row,col) << ", \t";
+             cout << setw(9) << matx.operator()(row,col) << ", \t";
          }
     }
     cout<<flush;
@@ -15,17 +15,19 @@ void print_matx44_32f(cv::Matx44f matx){
      for(int row=0;row<3;row++){
          cout<<"  \n";
          for(int col=0; col<3;col++){
-             cout << matx.operator()(row,col) << ", \t";
+             cout << setw(9) << matx.operator()(row,col) << ", \t";
          }
     }
     cout<<flush;
 }
 
 void print_matx44f(cv::Matx44f matx){
-     for(int row=0;row<4;row++){
+    cout << fixed << setprecision(6) ;
+    for(int row=0;row<4;row++){
+
          cout<<"  \n";
          for(int col=0; col<4;col++){
-             cout << matx.operator()(row,col) << ", \t";
+             cout << setw(9)<< matx.operator()(row,col) << ", \t";
          }
     }
     cout<<endl<<flush;
@@ -70,38 +72,42 @@ void print_float_6(float float_6[6]){
 }
 
 void print_float_9(float float_9[9]){
+    cout << fixed << setprecision(6) ;
      for(int row=0;row<3;row++){
          cout<<"  \n";
          for(int col=0; col<3;col++){
-             cout << float_9[row*3 + col] << ", \t";
+             cout  << setw(9) << float_9[row*3 + col] << ", \t";
          }
     }
     cout<<flush;
 }
 
 void print_float_16(float float_16[16]){
+    cout << fixed << setprecision(6) ;
      for(int row=0;row<4;row++){
          cout<<"  \n";
          for(int col=0; col<4;col++){
-             cout << float_16[row*4 + col] << ", \t";
+             cout  << setw(9) << float_16[row*4 + col] << ", \t";
          }
     }
     cout<<flush;
 }
 
 void print_json_float_9(Json::Value obj, std::string name){
+    cout << fixed << setprecision(6) ;
     cout << "\n\nobj["<<name<<"] ="<<flush;
     for (int row=0; row<3; row++){
         cout << "\n";
-        for (int col=0; col<3; col++) cout<<"\t"<< obj[name][row*3 + col].asFloat() <<","<<flush;
+        for (int col=0; col<3; col++) cout << setw(9) <<"\t"<< obj[name][row*3 + col].asFloat() <<","<<flush;
     }
 }
 
 void print_matf(cv::Mat mat, int rows, int cols){
+    cout << fixed << setprecision(6) ;
     for(int row=0;row<rows;row++){
          cout<<"  \n";
          for(int col=0; col<cols;col++){
-             cout << mat.at<float>(row,col) << ", \t";
+             cout << setw(9) << mat.at<float>(row,col) << ", \t";
          }
     }
     cout<<flush;
