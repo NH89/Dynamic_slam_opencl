@@ -1,5 +1,7 @@
 #include "RunCL.hpp"
 
+using namespace cv;
+
 void RunCL::createFolders(){
 	int local_verbosity_threshold = V_RUNCL_CREATEFOLDERS;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n createFolders_chk 0\n" << flush;
