@@ -224,7 +224,7 @@ cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){
 	float cx   =  K_.operator()(0,2);
 	float cy   =  K_.operator()(1,2);
 																																			if(verbosity>local_verbosity_threshold) {
-																																				cout << "\ngenerate_invK_chk 1\n";
+																																				cout << "\ngenerate_invK_chk 1 ####################\n";
 																																				cout<<"\nfx="<<fx <<"\nfy="<<fy <<"\nskew="<<skew <<"\ncx="<<cx <<"\ncy= "<<cy;
 																																				cout << flush;
 																																			}
@@ -234,8 +234,12 @@ cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){
 	inv_K_.operator()(0,0)  = 1.0/fx;  																										if(verbosity>local_verbosity_threshold) cout<<"\n1.0/fx="<<1.0/fx;
 	inv_K_.operator()(1,1)  = 1.0/fy;  																										if(verbosity>local_verbosity_threshold) cout<<"\n1.0/fy="<<1.0/fy;
 	inv_K_.operator()(2,2)  = 1.0;
-	inv_K_.operator()(3,3)  = 1.0;
-
+	inv_K_.operator()(3,3)  = 1.0;                                                                                                          // NB This would be an orthographic projection,
+                                                                                                                                            // but in the kernels we divide by Z to produce perspective projecton.
+                                                                                                                                            // The pure perpective transform is not ivertable for distances at infinity.
+                                                                                                                                            // See
+                                                                                                                                            // https://learnwebgl.brown37.net/08_projections/projections_perspective.html
+                                                                                                                                            // https://learnwebgl.brown37.net/08_projections/projections_ortho.html
 	inv_K_.operator()(0,1)  = -skew/(fx*fy);
 	inv_K_.operator()(0,2)  = (cy*skew - cx*fy)/(fx*fy);
 	inv_K_.operator()(1,2)  = -cy/fy;
@@ -246,6 +250,8 @@ cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){
 																																				//PRINT_MATX44F(inv_old_pose,);
 																																				PRINT_MATX44F(K_,);
 																																				PRINT_MATX44F(inv_K_,);
+																																				PRINT_MATX44F( K_ * inv_K_,);
+                                                                                                                                                PRINT_MATX44F( inv_K_ * K_,);
 																																				cout << "\nDynamic_slam::generate_invK_ Finished ####################"<<endl<<flush;
 																																			}
 	return inv_K_;

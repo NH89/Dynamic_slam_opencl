@@ -3,7 +3,8 @@
 
 void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec(),  Dynmaic_slam::nextFrame()
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_GETFRAMEDATA;//verbosity_mp["Dynamic_slam::getFrameData"];
-																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec_chk 0.  runcl.dataset_frame_num = "<< runcl.dataset_frame_num <<flush;
+																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec_chk 0.  runcl.dataset_frame_num = "<< runcl.dataset_frame_num
+																																				<< "\t###################################" << flush;
 	std::string str = txt[runcl.dataset_frame_num].c_str();																					// grab .txt file from array of files (e.g. "scene_00_0000.txt")
     char        *ch = new char [str.length()+1];
     std::strcpy (ch, str.c_str());
@@ -24,16 +25,16 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 			K_GT.operator()(i,j) 			= cameraMatrix.at<float>(i,j);
 																																			cout << ", " <<  cameraMatrix.at<float>(i,j);
 		}
-	}K_GT.operator()(3,3) = 1;
-
+	}K_GT.operator()(3,3) = 1;																												// Orthographic camera, See notes in convertTransforms.cpp , cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){..}
+																																			// 4x4 perspective matrix is not invertable for points at infinity. We correct ortho->perspective in the kernel by dividing by Z.
 	pose_datum datum = {};					// default initialization.
 	datum.K									= K_GT;
     datum.inv_K								= generate_invK_(K_GT, verbosity);
     datum.pose								= getPose(R,T, verbosity);
     datum.inv_pose							= getInvPose(datum.pose, verbosity);
 																																			if(verbosity>local_verbosity_threshold) {cout << "\n Dynamic_slam::getFrameData_vec_chk 2, "
-																																				<<"runcl.dataset_frame_num="<<runcl.dataset_frame_num
-																																				<<"frame_data.size()="<<frame_data.size()
+																																				<<"\truncl.dataset_frame_num="<<runcl.dataset_frame_num
+																																				<<"\tframe_data.size()="<<frame_data.size()
 																																				<<endl<<flush;}
 	if (runcl.dataset_frame_num > 0){
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec_chk 2.1,  (runcl.dataset_frame_num > 0)"<<flush;
@@ -66,6 +67,10 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 																																				PRINT_MATX44F(K_GT,);
 																																				PRINT_MATX44F(frame_data.back().frame_data_GT.K,);
 																																				PRINT_MATX44F(frame_data.back().frame_data_GT.inv_K,);
+
+																																				PRINT_MATX44F(	datum.K	* datum.inv_K	,);
+																																				PRINT_MATX44F(	datum.inv_K	* datum.K	,);
+
 																																				PRINT_MATX44F(frame_data.back().frame_data_GT.pose,);
 																																				PRINT_MATX44F(frame_data.back().frame_data_GT.inv_pose,);
 
@@ -82,7 +87,7 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 																																					PRINT_MATX44F(ptr->frame_data_GT.inv_K,);
 																																				}
 																																			}
-																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec_chk Finished ############################"<<flush;
+																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec_chk Finished ######################################"<<flush;
 }
 
 void Dynamic_slam::use_GT_pose_vec(){

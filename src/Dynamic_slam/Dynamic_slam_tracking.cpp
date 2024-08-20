@@ -142,13 +142,19 @@ void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {															
 																																				PRINT_MATX44F(frame_data.back().frame_data_GT.inv_K,);
 																																			}
 
-	for (int i=0; i<6; i++) {  cam2cam[i] = frame_data.back().frame_data_GT.K  *  transform[i]  *  frame_data.back().frame_data_GT.inv_K; 	if(verbosity>local_verbosity_threshold) { PRINT_MATX44F(transform[i],);  PRINT_MATX44F(cam2cam[i],); }   	}
+	for (int i=0; i<6; i++) {  cam2cam[i] = frame_data.back().frame_data_GT.K  *  transform[i]  *  frame_data.back().frame_data_GT.inv_K;
+																																			if(verbosity>local_verbosity_threshold) {
+																																				cout << "\ni=" << i << endl;
+																																				PRINT_MATX44F(transform[i],);
+																																				PRINT_MATX44F(cam2cam[i],);
+																																			}
+	}
 
 	for (int i=0; i<6; i++) {
 		cam2cam[i] = frame_data.back().frame_data_GT.K  *  transform[i] *  frame_data.back().frame_data_GT.inv_K;
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\ncam2cam["<<i<<"]=";
-																																				for (int j=0; j<16; j++) cout << ", "<<cam2cam[i].operator()(j/4,j%4);
+																																				for (int j=0; j<16; j++) cout << setw(12) << ", "<<cam2cam[i].operator()(j/4,j%4);
 																																				cout << flush;
 																																			}
 		for (uint row=0; row<4; row++) {
@@ -158,12 +164,12 @@ void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {															
 		}
 	}
 																																			if(verbosity>local_verbosity_threshold) {
-																																				cout << setprecision(9);
+																																				cout << endl << setprecision(9);
 																																				for (int i=0; i<6; i++) {
 																																					cout << "\n _SE3_k2k ["<<i<<"*16 + row*4 + col]=\n";
 																																					for (int row=0; row<4; row++) {
 																																						for (int col=0; col<4; col++){
-																																							cout << _SE3_k2k[i*16 + row*4 + col] <<"\t  ";
+																																							cout << setw(6) << _SE3_k2k[i*16 + row*4 + col] <<"\t  ";
 																																						}cout<<endl;
 																																					}cout<<endl;
 																																				}

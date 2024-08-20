@@ -6,40 +6,11 @@
 #define CL_TARGET_OPENCL_VERSION			300  // defined as 120, ie OpenCL 1.2 in CMakeLists.txt
 #define CL_HPP_TARGET_OPENCL_VERSION		300  // OpenCL 2.0
 
-// #include <CL/opencl.hpp>
-// #include <cstdio>
-// #include <cstdlib>
-// #include <cassert>
-// #include <cstring>
-// #include <string>
-// #include <fstream>
-// #include <iostream>
-// #include <opencv2/core.hpp>
-// #include <opencv2/imgproc.hpp>
-// #include <opencv2/highgui.hpp>
-// #include <boost/filesystem.hpp>
-// #include <boost/format.hpp>
-// #include <filesystem>							// C++17 TODO <replace boost/filesystem>
-// #include <jsoncpp/json/json.h>
-// #include <chrono>								// For measuring time of execution.
-// using namespace std::chrono;
-//
-// //#include "opencl_utils.hpp"
-//
-// #include "../utils/conf_params.hpp"
-// #include "../utils/convertTransforms.hpp"
-// #include "../utils/print_functions.hpp"
-// #include "../utils/CV_chk.hpp"
-// #include "../utils/time_utils.hpp"
- #include "../utils/verbosity.hpp"
-//
-// #include "../kernels/kernels_macros.h"
-
+#include "../utils/verbosity.hpp"
 
 #include <jsoncpp/json/json.h>
 
 #include "../utils/conf_params.hpp"
-//#include "../utils/convertTransforms.hpp"			// Matx44f_To_float16arry(..) req in  RunCL_setup_keyframe.cpp  to convert k2k
 #include "../utils/print_functions.hpp"
 #include "../utils/CV_chk.hpp"
 #include "../utils/time_utils.hpp"
@@ -54,7 +25,6 @@
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/highgui.hpp>
 
-//#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 
 #include <CL/opencl.hpp>

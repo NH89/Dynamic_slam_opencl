@@ -5,27 +5,9 @@ using namespace cv;
 void RunCL::createFolders(){
 	int local_verbosity_threshold = V_RUNCL_CREATEFOLDERS;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n createFolders_chk 0\n" << flush;
-	std::string   out_dir = date_time_string();
-
-	std::filesystem::path 	out_path(std::filesystem::current_path());
-	std::filesystem::path 	conf_outpath( obj["out_path"].asString() );
-																																			//cout << "\nconf_outpath = " << conf_outpath ;
-	if (conf_outpath.empty()  ) {
-		out_path = out_path.parent_path().parent_path();																					// move "out_path" up two levels in the directory tree.
-		out_path += conf_outpath;
-																																			//cout << "  conf_outpath.empty()==true" ;
-	}else {out_path = conf_outpath;}
-	out_path += "/output/";
-																																			if(verbosity>-2) cout << "\n\n  out_path = " << out_path << "\n\n" << flush;
-
-	if(std::filesystem::create_directory(out_path)) { if(verbosity>-2) std::cerr<< "Directory Created: "<<out_path<<std::endl;}
-	else{ 												if(verbosity>-2) std::cerr<< "Output directory previously created: "<<out_path<<std::endl;}
-
-	out_path +=  out_dir;																													if(verbosity>local_verbosity_threshold) cout <<"Creating output sub-directories: "<< out_path <<std::endl;
-	std::filesystem::create_directory(out_path);
-	out_path += "/";																														if(verbosity>local_verbosity_threshold) cout << "\n createFolders_chk 1\n" << flush;
-
-	std::filesystem::path temp_path = out_path;																							// Vector of device buffer names
+	std::filesystem::path 	out_path( obj["out_path"].asString() );																			// Created with timestamp by conf_params::create_out_folder(Json::Value& val){..}
+																																			if(verbosity>local_verbosity_threshold) cout << "\n createFolders_chk 1\n" << flush;
+	std::filesystem::path temp_path = out_path;																								// Vector of device buffer names
 																																			// imgmem[2],  gxmem[2], gymem[2], g1mem[2],  k_map_mem[2], SE3_map_mem[2], dist_map_mem[2];
 	/*
 		 "imgmem",						mm_size_bytes_C4,  		.HSV 3chan image. Also receives HSV_grad (2chan per image, 4 images per map) from buildDepthCostVol

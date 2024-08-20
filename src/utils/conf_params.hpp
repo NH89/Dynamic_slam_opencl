@@ -28,7 +28,10 @@ class conf_params {
     public:
 
 	conf_params(char * arg, Json::Value &val);
-	//void read_verbosity(	Json::Value verbosity_obj);
+
+	void create_out_folder(	Json::Value &val);
+	void save_stdout(Json::Value& val,  string outfile);
+
 	void read_paths(		Json::Value paths_obj);
 	void read_jparams(		Json::Value params_obj);
 

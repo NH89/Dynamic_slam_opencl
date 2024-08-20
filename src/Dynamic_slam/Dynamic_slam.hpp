@@ -1,23 +1,6 @@
 #pragma once
 
-// #include <string>
-// #include <boost/filesystem.hpp>
-// #include <fstream>
-// #include <set>
-// #include "../utils/convertAhandaPovRayToStandard.hpp"
-// #include "../utils/print_functions.hpp"
-// #include "../utils/convertTransforms.hpp"
-// #include "../RunCL/RunCL.hpp"
-
-//#include <boost/filesystem.hpp>
-
-//#define BOOST_FILESYSTEM_VERSION          3
-//#define BOOST_FILESYSTEM_NO_DEPRECATED
-
-
 #include "../RunCL/RunCL.hpp"
-
-
 
 #include <vector>
 #include <string>

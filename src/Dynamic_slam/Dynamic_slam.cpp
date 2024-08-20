@@ -90,6 +90,7 @@ void Dynamic_slam::initialize_camera_vec(){
 																																			}
 	getFrameData_vec();													// TODO if( GT available )
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 3:" <<flush;
+																																				PRINT_MATX44F(frame_data.back().frame_data_GT.keyframe2pose,);
 																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);
 																																			}
 	frame_data.back().frame_data 	= frame_data.back().frame_data_GT;  // TODO if( use_GT )
@@ -100,6 +101,7 @@ void Dynamic_slam::initialize_camera_vec(){
 																																				PRINT_MATX44F(frame_data.back().frame_data.K,);
 																																				PRINT_MATX44F(frame_data.back().frame_data.inv_K,);
 
+																																				PRINT_MATX44F(frame_data.back().frame_data_GT.keyframe2pose,);
 																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);
 																																				PRINT_MATX16F(frame_data.back().frame_data.keyframe2pose_algebra,);
 																																			}
