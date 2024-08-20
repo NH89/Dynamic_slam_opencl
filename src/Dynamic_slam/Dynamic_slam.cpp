@@ -15,7 +15,7 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 	obj = obj_;																																// NB save obj_ to class member obj, so that it persists within this Dynamic_slam object.
 	verbosity 						= obj["verbosity"].asInt();
 	int local_verbosity_threshold 	= V_DYNAMIC_SLAM_DYNAMIC_SLAM;//verbosity_mp["Dynamic_slam::Dynamic_slam"];
-
+																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_chk -1\n" << flush;
 	runcl.dataset_frame_num 		= obj["data_file_offset"].asUInt();
 	invert_GT_depth  				= obj["invert_GT_depth"].asBool();
 
@@ -24,18 +24,28 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 	SE_iter_per_layer 				= obj["SE_iter_per_layer"].asUInt();
     SE_iter 						= obj["SE_iter"].asUInt();
 	SE_factor						= obj["SE_factor"].asFloat();
+																																			if(verbosity>local_verbosity_threshold) cout << "\n  Dynamic_slam::Dynamic_slam_chk -0.5\n" << flush;
 
-	for (int layer=0; layer<MAX_LAYERS; layer++){for (int chan=0; chan<3; chan++)	SE3_Rho_sq_threshold[layer][chan]  	= obj["SE3_Rho_sq_threshold"][layer][chan].asFloat();  }	//j_params.float_vecvec_mp["SE3_Rho_sq_threshold"][layer][chan]; }		//
-	for (int se3=0; se3<8; se3++)													SE3_update_dof_weights[se3] 		= obj["SE3_update_dof_weights"][se3].asFloat();				//j_params.float_vec_mp["SE3_update_dof_weights"][se3];					//
-    for (int layer=0; layer<MAX_LAYERS; layer++) 									SE3_update_layer_weights[layer] 	= obj["SE3_float update_layer_weights"][layer].asFloat();	//j_params.float_vec_mp["SE3_float update_layer_weights"][layer];		//
+	for (int layer=0; layer<MAX_LAYERS; layer++){for (int chan=0; chan<3; chan++)	SE3_Rho_sq_threshold[layer][chan]  	= obj["SE3_Rho_sq_threshold"][layer][chan].asFloat();  }
+																																			if(verbosity>local_verbosity_threshold) cout << "\n  Dynamic_slam::Dynamic_slam_chk -0.4\n" << flush;
 
+	for (int se3=0; se3<6; se3++)													SE3_update_dof_weights[se3] 		= obj["SE3_update_dof_weights"][se3].asFloat();
+																																			if(verbosity>local_verbosity_threshold) cout << "\n  Dynamic_slam::Dynamic_slam_chk -0.3\n" << flush;
+
+    for (int layer2 = 0; layer2 < 5 ; layer2++) {
+		SE3_update_layer_weights[layer2] 	= obj["SE3_float update_layer_weights"][layer2].asFloat();
+
+		cout << "\nMAX_LAYERS = " << MAX_LAYERS << ",\t layer2 = " << layer2 << "\t  SE3_update_layer_weights[layer2] = " <<  SE3_update_layer_weights[layer2]  <<flush;
+
+		if (layer2 > 6) {
+			cout << "\t (layer2 > 5)" << flush;
+			break;
+		}
+	}
 																																			if(verbosity>local_verbosity_threshold) {cout << "\n Dynamic_slam::Dynamic_slam_chk 0,  SE3_Rho_sq_threshold[i][j] = ";
 																																				for (int i=0; i<5; i++){cout << "( "; for (int j=0; j<3; j++) {
 
 																																					std::cout << "dummy text" << 2 ;
-
-
-
 
 																																					cout << ", [" << i <<"]["<<j<<"]" << SE3_Rho_sq_threshold[i][j]; }   cout << " )";
 

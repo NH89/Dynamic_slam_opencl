@@ -20,16 +20,18 @@ conf_params::conf_params(char * arg, Json::Value &val){							// "arg" contains 
 	Json::Value 	paths_obj, 		params_obj, 	verbosity_obj;
 
     bool b;
-	b = reader.parse(ifs, paths_obj); 											if (!b) { cout << "Error: " << reader.getFormattedErrorMessages()<<flush; cerr << flush;  exit(1) ;}   else {cout << "\nconf_params::conf_params(..) chk_2: \tNB lists .json file entries alphabetically: \npaths_obj = \n" << paths_obj ;}
+	b = reader.parse(ifs, paths_obj); 											if (!b) { cout << "Error: " << reader.getFormattedErrorMessages()<<flush; cerr << flush;  exit(1) ;}
+																				else {cout << "\nconf_params::conf_params(..) chk_2: \tNB lists .json file entries alphabetically: \npaths_obj = \n" << paths_obj ;}
 
 	ifstream ifs_params(	paths_obj["source_filepath"].asString()	 +  paths_obj["params_conf"].asString() 	);
 																													if (!ifs_params.is_open()) {
 																															cout << "\njson_params::json_params(char * arg):  ifs_params  is NOT open !"<< flush;
-																															cout << "\nfilepath + "<< paths_obj["source_filepath"].asString()	 +  paths_obj["params_conf"].asString() << endl<<flush;
+																															cout << "\nfilepath = "<< paths_obj["source_filepath"].asString()	 +  paths_obj["params_conf"].asString() << endl<<flush;
 																															cerr << flush;
 																															exit(1);
 																													}
-	b = reader.parse(ifs_params, 	params_obj); 								if (!b) { cout << "Error: " << reader.getFormattedErrorMessages()<< flush;; cerr << flush; exit(1) ;}   else {cout << "\nconf_params::conf_params(..) chk_3: \tNB lists .json file entries alphabetically: \nparams_obj = \n" << params_obj ;}
+	b = reader.parse(ifs_params, 	params_obj); 								if (!b) { cout << "Error: " << reader.getFormattedErrorMessages()<< flush;; cerr << flush; exit(1) ;}
+																				else {cout << "\nconf_params::conf_params(..) chk_3: \tNB lists .json file entries alphabetically: \nparams_obj = \n" << params_obj ;}
 
 	val = params_obj ;																								// Copies the local "params_obj" to "val" passed by reference to this function.
     Json::Value::ArrayIndex 	size 	= paths_obj.size();
