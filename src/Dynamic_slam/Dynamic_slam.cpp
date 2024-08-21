@@ -75,7 +75,8 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 	initialize_camera_vec();
 
 	initialize_keyframe_vec();																												// First keyframe
-																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_ finished\n" << flush;
+																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_ finished "
+																																				<< "#####################################################################################\n" << flush;
 };
 
 void Dynamic_slam::initialize_camera_vec(){
@@ -120,7 +121,8 @@ void Dynamic_slam::initialize_camera_vec(){
 	getFrame();
 	runcl.costvol_frame_num++;
 	runcl.dataset_frame_num++;
-																																			if (verbosity>local_verbosity_threshold){ cout << "\nDynamic_slam::initialize_camera_vec Finished:" <<flush; }
+																																			if (verbosity>local_verbosity_threshold){ cout << "\nDynamic_slam::initialize_camera_vec Finished:"
+																																				<<"##############################################################################" <<flush; }
 }
 
 int Dynamic_slam::nextFrame() {
@@ -159,6 +161,8 @@ int Dynamic_slam::nextFrame() {
 	getNextFrameProfile(step_0, step_1, step_2, step_3, step_4, step_5, step_6, step_7, step_8);											// A previous depth map can be transfered, and the updated depth map after each frame, can be used to track the next frame.
 	runcl.costvol_frame_num++;
 	runcl.dataset_frame_num++;
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame Finished "
+																																				<<"##################################################################################" << flush; }
 	return(0);																																// NB option to return an error that stops the main loop.
 };
 
@@ -199,7 +203,8 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 	runcl.img_gradients();
 																																			// # Get 1st & 2nd order image gradients of MipMap
 																																			// see CostVol::cacheGValues(), RunCL::cacheGValue2 & __kernel void CacheG3
-																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::getFrame_chk 1  Finished #######################################################################\n" << flush;}
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::getFrame_chk 1  Finished "
+																																				<<"###########################################################################\n" << flush;}
 }
 
 

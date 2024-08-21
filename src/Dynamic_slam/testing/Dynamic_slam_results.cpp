@@ -14,9 +14,9 @@ void Dynamic_slam::print_pose_datum( Dynamic_slam::pose_datum datum ){
 
 void Dynamic_slam::print_frame_datum( Dynamic_slam::frame_datum datum ){
     cout << "\n keyframe_index = " << datum.keyframe_index ;
-    cout << "\n frame_data: ++++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.frame_data		);
-    cout << "\n frame_data_GT ++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.frame_data_GT	);
-    cout << "\n error_data +++++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.error_data		);
+    cout << "\n\n\n frame_data: ++++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.frame_data		);
+    cout << "\n\n\n frame_data_GT ++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.frame_data_GT	);
+    cout << "\n\n\n error_data +++++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.error_data		);
 }
 
 void Dynamic_slam::print_keyframe_datum( Dynamic_slam::keyframe_datum datum ){
@@ -25,22 +25,22 @@ void Dynamic_slam::print_keyframe_datum( Dynamic_slam::keyframe_datum datum ){
 }
 
 void Dynamic_slam::print_frame_data_vector(       uint start,     uint stop,  vector<Dynamic_slam::frame_datum>       frame_data_vector,  string vector_name ){
-    cout << "\n\n Dynamic_slam::print_frame_data_vector :  vector<Dynamic_slam::frame_datum> " << vector_name << " : ##############################################################################";
+    cout << "\n\n\n Dynamic_slam::print_frame_data_vector :  vector<Dynamic_slam::frame_datum> " << vector_name << " : ##############################################################################";
     if (stop > frame_data_vector.size() ) stop = frame_data_vector.size();
 
     for (int i = start; i<stop; i++){
-        cout << "\n  Element = " << i << "  ##############################################################";
+        cout << "\n\n\n\n  Element = " << i << "  ##############################################################";
         print_frame_datum( frame_data_vector[i] );
     }
     cout << "\n\n Dynamic_slam::print_frame_data_vector :  vector<Dynamic_slam::frame_datum> Finished " << vector_name << " : ##############################################################################";
 }
 
 void Dynamic_slam::print_keyframe_data_vector(    uint start,     uint stop,  vector<Dynamic_slam::keyframe_datum>    keyframe_data_vector,  string vector_name  ){
-    cout << "\n\n Dynamic_slam::print_keyframe_data_vector():  vector<Dynamic_slam::keyframe_datum> " << vector_name << " : ###########################################################################";
+    cout << "\n\n\n Dynamic_slam::print_keyframe_data_vector():  vector<Dynamic_slam::keyframe_datum> " << vector_name << " : ###########################################################################";
     if (stop > keyframe_data_vector.size() ) stop = keyframe_data_vector.size();
 
     for (int i = start; i<stop; i++){
-        cout << "\n  Element = " << i << "  ##############################################################";
+        cout << "\n\n\n\n  Element = " << i << "  ##############################################################";
         print_keyframe_datum( keyframe_data_vector[i] );
     }
     cout << "\n\n Dynamic_slam::print_keyframe_data_vector():  vector<Dynamic_slam::keyframe_datum> Finished " << vector_name << " : ###########################################################################";
