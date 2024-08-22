@@ -27,7 +27,8 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 		}
 	}K_GT.operator()(3,3) = 1;																												// Orthographic camera, See notes in convertTransforms.cpp , cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){..}
 																																			// 4x4 perspective matrix is not invertable for points at infinity. We correct ortho->perspective in the kernel by dividing by Z.
-	pose_datum datum = {};					// default initialization.
+
+	pose_datum datum 						= {};																							// default initialization.
 	datum.K									= K_GT;
     datum.inv_K								= generate_invK_(K_GT, verbosity);
     datum.pose								= getPose(R,T, verbosity);
@@ -40,17 +41,13 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec_chk 2.1,  (runcl.dataset_frame_num > 0)"<<flush;
 		uint 			index 				= frame_data.back().keyframe_index;
 		cv::Matx44f		invPose_index		= getInvPose( frame_data[index].frame_data_GT.keyframe2pose, verbosity);
-		cv::Matx44f		inv_pose_start		= getInvPose( frame_data[0].frame_data_GT.keyframe2pose, verbosity );
-
 		datum.keyframe2pose					= datum.pose 	* invPose_index;
-		datum.pose_from_start				= datum.pose 	* inv_pose_start;
 		datum.K2K							= datum.K 		* datum.keyframe2pose 	* frame_data[index].frame_data_GT.inv_K;
 		datum.keyframe2pose_algebra			= PToLie(datum.keyframe2pose);
 	}else{																																	if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec_chk 2.2,  (runcl.dataset_frame_num <= 0)"<<flush;
 		datum.keyframe2pose					= MATX44F_EYE;
-		datum.pose_from_start				= datum.pose;		// TODO is this correct ?
 		datum.K2K							= MATX44F_EYE;
-		datum.keyframe2pose_algebra			= {0} ;
+		datum.keyframe2pose_algebra			= {0,0,0,  0,0,0} ;
 	}
 	frame_data.back().keyframe_index		= runcl.dataset_frame_num;
 	frame_data.back().frame_data_GT			= datum;
@@ -63,29 +60,7 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 	runcl.load_GT_depth(depth_GT, invert_GT_depth);
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\n### Dynamic_slam::getFrameData_vec_chk 2.3";
-																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);		// wrong here
-																																				PRINT_MATX44F(K_GT,);
-																																				PRINT_MATX44F(frame_data.back().frame_data_GT.K,);
-																																				PRINT_MATX44F(frame_data.back().frame_data_GT.inv_K,);
-
-																																				PRINT_MATX44F(	datum.K	* datum.inv_K	,);
-																																				PRINT_MATX44F(	datum.inv_K	* datum.K	,);
-
-																																				PRINT_MATX44F(frame_data.back().frame_data_GT.pose,);
-																																				PRINT_MATX44F(frame_data.back().frame_data_GT.inv_pose,);
-
-																																				cout << "\n### Dynamic_slam::getFrameData_vec_chk 3 ;  frame_data.size()="<<frame_data.size()<<flush;
-																																				vector<frame_datum>::iterator ptr;
-																																				int iteration=0;
-
-																																				cout << "\n### for (ptr = frame_data.begin(); ptr < frame_data.end(); ptr++, iteration++)" << flush;
-																																				for (ptr = frame_data.begin(); ptr < frame_data.end(); ptr++, iteration++) {
-																																					cout<<"\n\n### iteration="<< iteration  << flush;
-																																					PRINT_MATX44F(frame_data[iteration].frame_data_GT.pose ,);
-																																					PRINT_MATX44F(ptr->frame_data_GT.pose ,);
-																																					PRINT_MATX44F(ptr->frame_data_GT.K,);
-																																					PRINT_MATX44F(ptr->frame_data_GT.inv_K,);
-																																				}
+																																				print_pose_datum( frame_data.back().frame_data_GT );
 																																			}
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec_chk Finished ######################################"<<flush;
 }
@@ -96,8 +71,6 @@ void Dynamic_slam::use_GT_pose_vec(){
 	frame_data.back().frame_data = frame_data.back().frame_data_GT;
 	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] = frame_data.back().frame_data.K2K.operator()(i/4, i%4);}
 																																			if(verbosity>local_verbosity_threshold){
-																																				PRINT_MATX44F(frame_data.back().frame_data.K,);
-																																				PRINT_MATX44F(frame_data.back().frame_data.inv_K,);
 																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);
 																																				PRINT_FLOAT_16(runcl.fp32_k2keyframe,);
 																																			}

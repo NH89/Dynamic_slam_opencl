@@ -1,19 +1,17 @@
 #include "../Dynamic_slam.hpp"
 
 void Dynamic_slam::print_pose_datum( Dynamic_slam::pose_datum datum ){
-     cout << "\nkey_frame_index = " << datum.key_frame_index;                                   // Index within this vector< >, of the keyframe for this frame.
       PRINT_MATX44F(    datum.K                       ,K                        );              // camera intrinsic matrix
       PRINT_MATX44F(    datum.inv_K                   ,inv_k                    );
       PRINT_MATX44F(    datum.pose                    ,pose                     );              // pose in abs coords. (not pose2pose from prev_frame, nor from keyframe) ?
       PRINT_MATX44F(    datum.inv_pose                ,inv_pose                 );
       PRINT_MATX44F(    datum.keyframe2pose           ,keyframe2pose            );
-      PRINT_MATX16F(    datum.keyframe2pose_algebra   ,keyframe2pose_algebra    );
-      PRINT_MATX44F(    datum.pose_from_start         ,pose_from_start          );              // pose2pose_accumulated
+      PRINT_MATX16F(    datum.keyframe2pose_algebra   ,keyframe2pose_algebra    );				// SE(3) algebra.
       PRINT_MATX44F(    datum.K2K                     ,K2K                      );
 }
 
 void Dynamic_slam::print_frame_datum( Dynamic_slam::frame_datum datum ){
-    cout << "\n keyframe_index = " << datum.keyframe_index ;
+    cout << "\n keyframe_index = " << datum.keyframe_index ;									// Index within this vector< >, of the keyframe for this frame.
     cout << "\n\n\n frame_data: ++++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.frame_data		);
     cout << "\n\n\n frame_data_GT ++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.frame_data_GT	);
     cout << "\n\n\n error_data +++++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.error_data		);
@@ -51,6 +49,26 @@ void Dynamic_slam::print_pose_vectors(uint start, uint stop){
 	print_keyframe_data_vector(	start, stop, keyframe_data, 	"dynamic_slam.keyframe_data" 	);
 }
 
+
+void Dynamic_slam::report_GT_pose_error(){																																	// An expensive function, use only for debugging.
+	string fname="Dynamic_slam::report_GT_pose_error()";
+	int local_verbosity_threshold = V_DYNAMIC_SLAM_REPORT_GT_POSE_ERROR;
+
+	cout << "\n void Dynamic_slam::report_GT_pose_error() ###################################################################### " << flush;
+	frame_data.back().error_data.K							=		frame_data.back().frame_data.K				*    frame_data.back().frame_data_GT.K.inv();				// NB we use the more expensive general matrix inverse from opencv,
+	frame_data.back().error_data.inv_K						=		frame_data.back().frame_data.inv_K			*    frame_data.back().frame_data_GT.inv_K.inv();			// to verify that the specialist pose and intrinsic matrix inverses are correct.
+	frame_data.back().error_data.pose						=		frame_data.back().frame_data.pose			*    frame_data.back().frame_data_GT.pose.inv();
+	frame_data.back().error_data.inv_pose					=		frame_data.back().frame_data.inv_pose		*    frame_data.back().frame_data_GT.inv_pose.inv();
+	frame_data.back().error_data.keyframe2pose				=		frame_data.back().frame_data.keyframe2pose	*    frame_data.back().frame_data_GT.keyframe2pose.inv();
+	frame_data.back().error_data.K2K						=		frame_data.back().frame_data.K2K			*    frame_data.back().frame_data_GT.K2K.inv();
+	frame_data.back().error_data.keyframe2pose_algebra		=		LieSub( frame_data.back().frame_data.keyframe2pose_algebra,		frame_data.back().frame_data_GT.keyframe2pose_algebra );   // Verify correctness of algebras, and Lie functions.
+
+	print_frame_datum( frame_data.back()   );																																// Print the whole set for frame_data, frame_data_GT, and error_data.
+
+	cout << "\n void Dynamic_slam::report_GT_pose_error() Finished ###################################################################### " << flush;
+}
+
+
 void Dynamic_slam::initialize_resultsMat(){	// need to take img pyramid layer 2 of output, or read layer num from .json .
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_INITIALIZE_RESULTSMAT;//verbosity_mp["Dynamic_slam::initialize_resultsMat"];
 																																			if(verbosity>local_verbosity_threshold) cout << "\n\n Dynamic_slam::initialize_resultsMat()_chk 1" << flush;
@@ -84,8 +102,8 @@ void Dynamic_slam::getResult(){
 void Dynamic_slam::getNextFrameProfile(time_pt step_0, time_pt step_1, time_pt step_2, time_pt step_3, time_pt step_4, time_pt step_5, time_pt step_6, time_pt step_7, time_pt step_8){
 	stringstream ss;
 	ss 	<<"\nExecution times:(microseconds)####################################################"
-		<<"\npredictFrame()                                    "	<<  duration_cast<microseconds>(step_1 - step_0).count()
-		<<"\ngetFrameData()...................................."	<<  duration_cast<microseconds>(step_2 - step_1).count()
+		<<"\ngetFrameData()                                    "	<<  duration_cast<microseconds>(step_1 - step_0).count()
+		<<"\npredictFrame()...................................."	<<  duration_cast<microseconds>(step_2 - step_1).count()
 		<<"\nuse_GT_pose()                                     "	<<  duration_cast<microseconds>(step_3 - step_2).count()
 		<<"\ngetFrame()........................................"	<<  duration_cast<microseconds>(step_4 - step_3).count()
 		<<"\nartificial_pose_error()                           "	<<  duration_cast<microseconds>(step_5 - step_4).count()

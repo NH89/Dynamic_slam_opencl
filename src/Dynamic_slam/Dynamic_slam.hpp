@@ -60,21 +60,30 @@ class Dynamic_slam
     const cv::Matx44f       Matx44f_eye  = {1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1};
     #define                 MATX44F_EYE    {1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1}
 
+    #define D_K             0
+    #define D_inv_K         1
+    #define D_pose          2
+    #define D_inv_pose      3
+    #define D_keyframe2pose 4
+    #define D_K2K           5
+
+    std::vector<cv::Matx44f > Mat_pose_vec;
+
     struct pose_datum{      // default intitialization, if instatiated with " ... = {}; "
-      uint                  key_frame_index         = 0 ;                       // Index within this vector< >, of the keyframe for this frame.
+      cv::Matx16f           keyframe2pose_algebra   = {0} ;
+
       cv::Matx44f           K                       = MATX44F_EYE ;             // camera intrinsic matrix
       cv::Matx44f           inv_K                   = MATX44F_EYE ;
-      cv::Matx44f           pose                    = MATX44F_EYE ;             // pose in abs coords. (not pose2pose from prev_frame, nor from keyframe) ?
+      cv::Matx44f           pose                    = MATX44F_EYE ;             // pose in global coords. (not pose2pose from prev_frame, nor from keyframe) ?
       cv::Matx44f           inv_pose                = MATX44F_EYE ;
       cv::Matx44f           keyframe2pose           = MATX44F_EYE ;
-      cv::Matx16f           keyframe2pose_algebra   = {0} ;
-      cv::Matx44f           pose_from_start         = MATX44F_EYE ;             // pose2pose_accumulated
       cv::Matx44f           K2K                     = MATX44F_EYE ;             //
+                                                                                //cv::Matx44f           pose_from_start         = MATX44F_EYE ;             // pose2pose_accumulated
       // lens distortion params
     };
 
     struct frame_datum{     // default intitialization, if instatiated with " ... = {}; "
-      uint                  keyframe_index          = 0 ;
+      uint                  keyframe_index          = 0 ;                       // Index within this vector< >, of the keyframe for this frame.
       pose_datum            frame_data              = {};
       pose_datum            frame_data_GT           = {};
       pose_datum            error_data              = {};

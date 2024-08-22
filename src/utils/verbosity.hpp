@@ -56,7 +56,6 @@
 	#define	V_DYNAMIC_SLAM_UPDATEA   -1
 
     /////////////////////////////////////// DYNAMIC_SLAM_TRACKING.CPP
-	#define	V_DYNAMIC_SLAM_REPORT_GT_POSE_ERROR   -2
 	#define	V_DYNAMIC_SLAM_ARTIFICIAL_POSE_ERROR   -1
 	#define	V_DYNAMIC_SLAM_PREDICTFRAME   -1
 	#define	V_DYNAMIC_SLAM_GENERATE_INVK_   0
@@ -64,6 +63,12 @@
 	#define	V_DYNAMIC_SLAM_UPDATE_K2K   -2
 	#define	V_DYNAMIC_SLAM_COMPUTE_OPTIMUM   -2
 	#define	V_DYNAMIC_SLAM_ESTIMATESE3   -2
+
+	// DYNAIC_SLAM/testing/ ##############################################
+	/////////////////////////////////////// DYNAMIC_SLAM_GROUND_TRUTH.CPP
+
+	/////////////////////////////////////// DYNAMIC_SLAM_RESULTS.CPP
+	#define	V_DYNAMIC_SLAM_REPORT_GT_POSE_ERROR   -2
 
 	// RUNCL/ ##############################################
 	/////////////////////////////////////// RUNCL_CLASS.CPP
