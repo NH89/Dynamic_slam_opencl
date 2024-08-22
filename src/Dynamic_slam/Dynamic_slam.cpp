@@ -93,7 +93,7 @@ void Dynamic_slam::initialize_camera_vec(){
 	frame_datum 			datum 	= {};																									// default initialization, to values in header, or zero if not set in header.
 	datum.keyframe_index			= keyframe_data.size()  ;//-1; 								// i.e. Sets an invalid index (that must be handled), before the 1st keyframe has been created,
 	datum.frame_data.K 				= k;
-	datum.frame_data.inv_K 			= generate_invK_( k , verbosity);
+	datum.frame_data.inv_K 			= generate_invK_( k , verbosity);																		// Current frame must be set as the new keyframe.
 
 	frame_data.push_back( datum );																											// pushback a pose_datum, ready for getFrameData_vec() to write to.
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 2:" <<flush;
