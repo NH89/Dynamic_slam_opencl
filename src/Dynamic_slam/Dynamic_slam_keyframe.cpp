@@ -12,9 +12,17 @@ void Dynamic_slam::initialize_keyframe_vec(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_INITIALIZE_KEYFRAME;//verbosity_mp["Dynamic_slam::initialize_new_keyframe"];// -1;
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::initialize_keyframe_vec()_chk 0,  runcl.dataset_frame_num = "<< runcl.dataset_frame_num << flush;}
 	keyframe_datum 							new_keyframe;
+
+	frame_data.back().frame_data_GT.keyframe2pose 				= Matx44f_eye ;																// Set current frame to be its own keyframe. TODO These variables should be redundant in keyframe. Rather copy only the valid variables. ? Reduce the keyframe struct ?
+	frame_data.back().frame_data.keyframe2pose 					= Matx44f_eye ;
+	frame_data.back().frame_data_GT.keyframe2pose_algebra		= PToLie( frame_data.back().frame_data_GT.keyframe2pose );
+	frame_data.back().frame_data.keyframe2pose_algebra			= PToLie( frame_data.back().frame_data.keyframe2pose );
+																																			PRINT_MATX44F( frame_data.back().frame_data.inv_pose , );
 	new_keyframe.frame_data  				=	frame_data.back();																			// Copy current tracking frame to the new keyframe.
 	keyframe_data.push_back( 				new_keyframe );
 	keyframe_data.back().first_frame_index	=	frame_data.size();
+																																			PRINT_MATX44F( keyframe_data.back().frame_data.frame_data.inv_pose , );
+
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::initialize_keyframe_vec()_chk 1, "
 																																				<< "keyframe_data.back().first_frame_index = "<< keyframe_data.back().first_frame_index
 																																				<< ",\t keyframe_data.size()="<<keyframe_data.size()<< flush;

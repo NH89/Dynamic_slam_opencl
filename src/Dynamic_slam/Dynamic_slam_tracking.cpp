@@ -9,8 +9,9 @@ void Dynamic_slam::predictFrame_vec(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_PREDICTFRAME;//verbosity_mp["Dynamic_slam::predictFrame"];
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n\n Dynamic_slam::predictFrame_vec_chk 0. "<<flush; }
 	vector<frame_datum>::iterator frame_minus_one 		= 	frame_data.end();
-	frame_minus_one--;																														// current frame
-	frame_minus_one--;																														// previous frame
+	//frame_minus_one--;																													// current frame
+	frame_minus_one -=2;																													// previous frame
+	if (frame_minus_one < frame_data.begin() ) frame_minus_one = frame_data.begin();														// Prevent out of range read.
 	vector<frame_datum>::iterator frame_minus_two 		= 	frame_minus_one;																// if (frame_data.size() <= 2) frame_minus_one is the first frame,  therefore duplicate data for zero motion prediction.
 	if (frame_data.size() > 2)	{frame_minus_two--;																							cout << "\n Dynamic_slam::predictFrame_vec_chk 1.1 (frame_data.size() > 2),   frame_data.size()="<< frame_data.size() <<flush;
 	}
@@ -26,11 +27,17 @@ void Dynamic_slam::predictFrame_vec(){
 	frame_data.back().frame_data.inv_K 					= 	frame_minus_one->frame_data.inv_K;
 																																			// Assume linear velocity in SE3. NB Using poses from start to avoid conflict when starting new keyframe.
 	frame_data.back().frame_data.pose					=	frame_minus_one->frame_data.pose  *  frame_minus_one->frame_data.pose  *  getInvPose( frame_minus_two->frame_data.pose, verbosity) ;
+																																				PRINT_MATX44F( frame_data.back().frame_data.pose , );
+	frame_data.back().frame_data.inv_pose				=	getInvPose(frame_data.back().frame_data.pose, verbosity);
+																																				PRINT_MATX44F( frame_data.back().frame_data.inv_pose , );
 
+																																				print_keyframe_data_vector(   0,     10, keyframe_data,  "keyframe_data" );
 	uint 				keyframe_index					=	frame_data.back().keyframe_index;												// frame_data.key_frame_index;
-	cv::Matx44f			keyframe_pose 					=	keyframe_data[keyframe_index].frame_data.frame_data.pose ;
-	frame_data.back().frame_data.keyframe2pose    		= 	getInvPose( keyframe_pose, verbosity) 	*  frame_data.back().frame_data.pose;
-
+																																				cout << "\n\n keyframe_index="<<keyframe_index<<", frame_data.size()="<<frame_data.size()<<flush;
+	cv::Matx44f			keyframe_inv_pose 				=	keyframe_data[keyframe_index].frame_data.frame_data.inv_pose ;
+																																				PRINT_MATX44F( keyframe_inv_pose , );
+	frame_data.back().frame_data.keyframe2pose    		= 	keyframe_inv_pose 	*  frame_data.back().frame_data.pose;
+																																				PRINT_MATX44F( frame_data.back().frame_data.keyframe2pose , );
 	frame_data.back().frame_data.keyframe2pose_algebra	=	PToLie(frame_data.back().frame_data.keyframe2pose );
 
 	frame_data.back().frame_data.K2K					=	frame_data.back().frame_data.K  *  frame_data.back().frame_data.keyframe2pose  	*  frame_data.back().frame_data.inv_K;
