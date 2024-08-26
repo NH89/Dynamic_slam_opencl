@@ -131,7 +131,7 @@ class Dynamic_slam
     void print_pose_vectors(uint start, uint stop);
 
     /////////////////////////////////////// Dynamic_slam_keyframe.cpp
-    void initialize_keyframe_vec();
+    void initialize_keyframe_vec(  );
 
     void initialize_keyframe();
     void initialize_keyframe_from_GT();

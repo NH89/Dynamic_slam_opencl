@@ -7,7 +7,7 @@
 using namespace cv;
 using namespace std;
 
-void Dynamic_slam::initialize_keyframe_vec(){
+void Dynamic_slam::initialize_keyframe_vec(  ){
 	string fname = "Dynamic_slam::initialize_keyframe_vec()";
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_INITIALIZE_KEYFRAME;//verbosity_mp["Dynamic_slam::initialize_new_keyframe"];// -1;
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::initialize_keyframe_vec()_chk 0,  runcl.dataset_frame_num = "<< runcl.dataset_frame_num << flush;}

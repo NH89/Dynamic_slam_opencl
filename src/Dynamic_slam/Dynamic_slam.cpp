@@ -105,6 +105,8 @@ void Dynamic_slam::initialize_camera_vec(){
 																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);
 																																			}
 	frame_data.back().frame_data 	= frame_data.back().frame_data_GT;  // TODO if( use_GT )
+	frame_data.push_back( frame_data.back() );																								// Propagate the initialization over the first three entries in the "frame_data" vector.
+	frame_data.push_back( frame_data.back() );																								// Required because predictFrame_vec() samples previous pose and inverse pose.
 																																			if(verbosity>local_verbosity_threshold) {
 																																				PRINT_MATX44F(frame_data.back().frame_data_GT.K,);
 																																				PRINT_MATX44F(frame_data.back().frame_data_GT.inv_K,);
@@ -115,6 +117,16 @@ void Dynamic_slam::initialize_camera_vec(){
 																																				PRINT_MATX44F(frame_data.back().frame_data_GT.keyframe2pose,);
 																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);
 																																				PRINT_MATX16F(frame_data.back().frame_data.keyframe2pose_algebra,);
+
+																																				cout << "/n/nPrevious frames :  ############################################" << flush;
+																																				vector<frame_datum>::iterator frame_minus_one			= 	frame_data.end();
+																																				frame_minus_one 										-=	2;
+																																				PRINT_MATX44F( frame_minus_one->frame_data.pose, );
+
+																																				vector<frame_datum>::iterator frame_minus_two			=	frame_minus_one;
+																																				frame_minus_two --;
+																																				PRINT_MATX44F( frame_minus_two->frame_data.inv_pose, );
+
 																																			}
 	generate_SE3_k2k_vec( SE3_k2k );																										// fills float[96] ie 6xfloat[16] from conf.json intrinsic camera matrix + SE3 increments.
 	runcl.precom_param_maps( SE3_k2k );																										// GPU computes J(u,v/SE3) Jacobian of optical flow wrt SE3.
@@ -130,9 +142,11 @@ int Dynamic_slam::nextFrame() {
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::nextFrame_chk 0,  runcl.dataset_frame_num="<<runcl.dataset_frame_num
 																																				<<",\t depth = runcl.amem  \n" << flush; //  runcl.frame_bool_idx="<<runcl.frame_bool_idx<<"
 																						auto step_0 = high_resolution_clock::now();
-	frame_datum new_frame;
-	new_frame.keyframe_index		= keyframe_data.size();																					// i.e. the new frame will be tracked from the current keyframe.
-	frame_data.push_back(new_frame); //////////////////////////////////////////
+/*
+	//frame_datum new_frame;
+	//new_frame.keyframe_index		= keyframe_data.size() -1;																					// i.e. the new frame will be tracked from the current keyframe.
+*/
+	frame_data.push_back( frame_data.back() ); //////////////////////////////////////////   new_frame										// duplicate last frame, as basis for new frame.
 
 	if ( obj["initialize_tracking_from_GT_depth"].asBool() == false  ){ runcl.update_tracking_depthmap( runcl.amem   );	}					// copies buffer: amem to keyframe_depth_mem.  NB amem initialization will affect 1st tracking.
 																																			// This would update keyframe_depth_mem ith the raw amem, every frame.
