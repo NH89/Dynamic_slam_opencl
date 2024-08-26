@@ -40,7 +40,7 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 	if (runcl.dataset_frame_num > 0){
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec_chk 2.1,  (runcl.dataset_frame_num > 0)"<<flush;
 		uint 			index 				= frame_data.back().keyframe_index;
-		cv::Matx44f		invPose_index		= getInvPose( frame_data[index].frame_data_GT.keyframe2pose, verbosity);
+		cv::Matx44f		invPose_index		= getInvPose( keyframe_data[index].frame_data.frame_data_GT.keyframe2pose, verbosity);
 		datum.keyframe2pose					= datum.pose 	* invPose_index;
 		datum.K2K							= datum.K 		* datum.keyframe2pose 	* frame_data[index].frame_data_GT.inv_K;
 		datum.keyframe2pose_algebra			= PToLie(datum.keyframe2pose);

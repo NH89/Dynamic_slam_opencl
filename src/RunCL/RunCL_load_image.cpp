@@ -278,15 +278,15 @@ void RunCL::img_gradients(){ //getFrame();
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::img_gradients(..)_chk4 Finished."<<flush;}
 }
 
-void RunCL::load_GT_depth(cv::Mat GT_depth, bool invert){ //getFrameData();, cv::Matx44f GT_K2K,   cv::Matx44f GT_pose2pose
+void RunCL::load_GT_depth(cv::Mat GT_depth, bool invert){ //getFrameData();,  cv::Matx44f GT_K2K,   cv::Matx44f GT_pose2pose
     string fname = "RunCL::load_GT_depth(..)";
-	int local_verbosity_threshold = V_RUNCL_LOAD_GT_DEPTH;//verbosity_mp["RunCL::load_GT_depth"];// -4;
+	int local_verbosity_threshold = V_RUNCL_LOAD_GT_DEPTH;
 																																		if(verbosity>local_verbosity_threshold) cout << "\nRunCL::load_GT_depth(..)_chk_0:"<<flush;
 																																		if ( GT_depth.empty() ) {cerr << "\nRunCL::load_GT_depth(..)_chk_0:   Error  GT_depth.empty() "<<flush;  exit_(1); }
 	stringstream 	ss;
 	ss << "__load_GT_depth" << (keyFrameCount*1000 + costvol_frame_num);
 
-	float default_depth  = (fp32_params[MAX_INV_DEPTH] + fp32_params[MIN_INV_DEPTH])/2.0; // 0;
+	float default_depth  = (fp32_params[MAX_INV_DEPTH] + fp32_params[MIN_INV_DEPTH])/2.0;
 
 	_clEnqueueFillBuffer(uload_queue, depth_mem, 	&default_depth, sizeof(float), 0, mm_size_bytes_C1,  fname);
 	_clEnqueueFillBuffer(uload_queue, depth_mem_GT, &default_depth, sizeof(float), 0, mm_size_bytes_C1,  fname);
@@ -305,12 +305,19 @@ void RunCL::load_GT_depth(cv::Mat GT_depth, bool invert){ //getFrameData();, cv:
 	float factor = 1; //obj["min_depth"].asFloat(); // 1;//256;  // normalize depthmap as per conf.json file. Adjust for dataset.
 	convert_depth( invert, factor);
 	ss << "__1";
-																																		if(verbosity>local_verbosity_threshold+1)
-																																			{ DownloadAndSave( depth_mem_GT,   	ss.str(),   paths.at("depth_GT"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;}
+																																		if(verbosity>local_verbosity_threshold+1){
+																																			DownloadAndSave( depth_mem_GT,	ss.str(),   paths.at("depth_GT"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
+																																			DownloadAndSave( depth_mem,   	ss.str(),   paths.at("depth_mem"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
+																																		}
 																																		if(verbosity>local_verbosity_threshold) cout << "\nRunCL::load_GT_depth(..)_chk_1:"<<flush;
 	mipmap_depthmap(depth_mem_GT);
-																																		if(verbosity>local_verbosity_threshold) cout << "\nRunCL::load_GT_depth(..)_chk_2:"<<flush;
 	ss << "__2";
+																																		if(verbosity>local_verbosity_threshold+1){
+																																			DownloadAndSave( depth_mem_GT,  ss.str(),   paths.at("depth_GT"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
+																																			DownloadAndSave( depth_mem,   	ss.str(),   paths.at("depth_mem"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
+																																		}
+																																		if(verbosity>local_verbosity_threshold) cout << "\nRunCL::load_GT_depth(..)_chk_2:"<<flush;
+	ss << "__3";
 																																		if(costvol_frame_num > 0){
 																																			bool old_vtp = vtp;
 																																			vtp = true;

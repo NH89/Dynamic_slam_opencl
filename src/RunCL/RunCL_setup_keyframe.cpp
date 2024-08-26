@@ -64,20 +64,18 @@ void RunCL::swap_costvol_pointers( )
 }
 
 
-void RunCL::transform_costvolume( /*cv::Matx44f K2K_*/ float K2K_arry[16])																							// NB must be used _after_ initializing the new cost_volume.
-{
+void RunCL::transform_costvolume( float K2K_arry[16]){																						// NB must be used _after_ initializing the new cost_volume.
 	string fname = "RunCL::transform_costvolume( )";
 	int local_verbosity_threshold = V_RUNCL_TRANSFORM_COSTVOLUME;
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::transform_costvolume( ..)_chk0 .    runcl.dataset_frame_num="<< dataset_frame_num<<flush;}
-	//float K2K_arry[16];Matx44f_To_float16arry( K2K_, K2K_arry );
-
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::transform_costvolume( ..)_chk0 .   runcl.dataset_frame_num="<< dataset_frame_num<<flush;
+																																				PRINT_FLOAT_16( K2K_arry, RunCL::transform_costvolume( ..) );
+																																			}
 	_clEnqueueWriteBuffer( uload_queue, invk2kbuf,	CL_FALSE, 0, 16 * sizeof( float), K2K_arry, 	fname);
-																																			if( verbosity>local_verbosity_threshold) { PRINT_FLOAT_16( K2K_arry, RunCL::transform_costvolume( ..) ); }
 	// inputs
 	//     __private	 uint layer, set in mipmap_call_kernel( ..) below																	//__private	    uint	    layer,				//0
-	_clSetKernelArg( transform_costvolume_kernel,  1, sizeof( cl_mem), &mipmap_buf, 		fname);												//__constant    uint*	    mipmap_params,		//1
-	_clSetKernelArg( transform_costvolume_kernel,  2, sizeof( cl_mem), &uint_param_buf, 	fname);												//__constant	uint*		uint_params,		//2
-	_clSetKernelArg( transform_costvolume_kernel,  3, sizeof( cl_mem), &fp32_param_buf, 	fname);												//__constant	uint*		fp32_params,		//3
+	_clSetKernelArg( transform_costvolume_kernel,  1, sizeof( cl_mem), &mipmap_buf, 	fname);												//__constant    uint*	    mipmap_params,		//1
+	_clSetKernelArg( transform_costvolume_kernel,  2, sizeof( cl_mem), &uint_param_buf, fname);												//__constant	uint*		uint_params,		//2
+	_clSetKernelArg( transform_costvolume_kernel,  3, sizeof( cl_mem), &fp32_param_buf, fname);												//__constant	uint*		fp32_params,		//3
 	_clSetKernelArg( transform_costvolume_kernel,  4, sizeof( cl_mem), &invk2kbuf, 		fname);												//__global		float16* 	k2k,				//4
 	_clSetKernelArg( transform_costvolume_kernel,  5, sizeof( cl_mem), &temp_cdatabuf, 	fname);												//__global		float*		old_cdata,			//5		photometric cost volume
 	_clSetKernelArg( transform_costvolume_kernel,  6, sizeof( cl_mem), &temp_hdatabuf, 	fname);												//__global		float*		old_hdata,			//7		hit count volume

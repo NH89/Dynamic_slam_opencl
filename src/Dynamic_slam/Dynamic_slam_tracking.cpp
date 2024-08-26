@@ -293,7 +293,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 	uint 	local_num_samples, start_sample_idx;
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nDynamic_slam::estimateSE3() chk_0.5 ########################"<<flush;
-																																			print_pose_vectors(0,10);
+																																			//print_pose_vectors(0,10);
 																																			cout << "\n\nDynamic_slam::estimateSE3() chk_0.6 ########################"<<flush;
 																																			PRINT_MATX44F(K,);
 																																			PRINT_MATX44F(inv_K,);
