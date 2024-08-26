@@ -154,6 +154,7 @@ double median(const Mat& M) {                                                   
 
 void Matx44f_To_float16arry(Matx44f matx, float arry[16]){
     for (int i=0; i<16; i++){ arry[i] = matx.operator()(i/4, i%4);}
+                                                                                                                                            // PRINT_FLOAT_16( arry , Matx44f_To_float16arry );
 }
 
 

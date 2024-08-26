@@ -49,7 +49,7 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 		datum.K2K							= MATX44F_EYE;
 		datum.keyframe2pose_algebra			= {0,0,0,  0,0,0} ;
 	}
-	frame_data.back().keyframe_index		= runcl.dataset_frame_num;
+	//frame_data.back().keyframe_index		= runcl.dataset_frame_num;
 	frame_data.back().frame_data_GT			= datum;
 	// frame_data.back().frame_data			= datum;						// TODO if(use GT),  but move it out to Dynamic_slam::next_frame()
 																																			if ( runcl.baseImage.empty() ) {cerr << "\nDynamic_slam::getFrameData_vec():   Error runcl.baseImage.empty() "<<flush;  runcl.exit_(1); }

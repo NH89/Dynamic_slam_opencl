@@ -26,17 +26,16 @@ void Dynamic_slam::predictFrame_vec(){
 	frame_data.back().frame_data.K 						= 	frame_minus_one->frame_data.K;
 	frame_data.back().frame_data.inv_K 					= 	frame_minus_one->frame_data.inv_K;
 																																			// Assume linear velocity in SE3. NB Using poses from start to avoid conflict when starting new keyframe.
-	frame_data.back().frame_data.pose					=	frame_minus_one->frame_data.pose  *  frame_minus_one->frame_data.pose  *  frame_minus_two->frame_data.inv_pose
-	;			//  TODO problem on 1st iteration when inv pose is not correctly set yet
+	frame_data.back().frame_data.pose					=	frame_minus_one->frame_data.pose  *  frame_minus_one->frame_data.pose  *  frame_minus_two->frame_data.inv_pose;			//  TODO problem on 1st iteration when inv pose is not correctly set yet
 																																				PRINT_MATX44F( frame_data.back().frame_data.pose ,  			"predicted pose of the current frame"  );
 	frame_data.back().frame_data.inv_pose				=	getInvPose(frame_data.back().frame_data.pose, verbosity);
 																																				PRINT_MATX44F( frame_data.back().frame_data.inv_pose , );
-
-																																				print_keyframe_data_vector(   0,     10, keyframe_data,  "keyframe_data" );
+																																				print_frame_data_vector(	0, 10, frame_data,		"frame_data  vector"	);
+																																				print_keyframe_data_vector( 0, 10, keyframe_data,	"keyframe_data  vector" );
 	uint 				keyframe_index					=	frame_data.back().keyframe_index;												// frame_data.key_frame_index;
 																																				cout << "\n\n keyframe_index="<<keyframe_index<<", frame_data.size()="<<frame_data.size()<<flush;
 	cv::Matx44f			keyframe_inv_pose 				=	keyframe_data[keyframe_index].frame_data.frame_data.inv_pose ;
-																																				PRINT_MATX44F( keyframe_inv_pose ,  							"inverse pose of the current key_frame"  );
+																																				PRINT_MATX44F( keyframe_inv_pose ,  							"inverse pose of the current key_frame"  ); // FIXME uninitialized data
 	frame_data.back().frame_data.keyframe2pose    		= 	keyframe_inv_pose 	*  frame_data.back().frame_data.pose;
 																																				PRINT_MATX44F( frame_data.back().frame_data.keyframe2pose ,  	"predicted transform from key_frame to current frame"  );
 	frame_data.back().frame_data.keyframe2pose_algebra	=	PToLie(frame_data.back().frame_data.keyframe2pose );
