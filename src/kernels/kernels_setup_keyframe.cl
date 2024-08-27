@@ -6,7 +6,7 @@ __kernel void convert_depth(
 	__private	float 	factor,					//1
 	__constant 	uint*	mipmap_params,			//2		// NB uses ony mipmap_params[layer=0]
 	__constant	uint*	uint_params,			//3
-	__global	float* 	depth_mem,				//4
+	__global	float* 	depth_mem_temp,			//4
 	__global	float* 	depth_mem_GT			//5
 		)
 {
@@ -27,7 +27,7 @@ __kernel void convert_depth(
 	uint global_id_u 	= get_global_id(0);
 
 	if (global_id_u    >= mipmap_params[MiM_PIXELS]) return;
-	float depth 		= depth_mem[global_id_u]/factor;
+	float depth 		= depth_mem_temp[global_id_u]/factor;
 
 	//if (global_id_u == 0)printf("\n__kernel void convert_depth(..) invert=%u, factor=%f, depth_mem[global_id_u]=%f,  depth=%f,  1/depth=%f   ", invert, factor, depth_mem[global_id_u], depth, 1/depth  );
 
@@ -38,11 +38,7 @@ __kernel void convert_depth(
 }
 
 
-__kernel void mean_inv_depth(
-
-
-			  )
-{
+__kernel void mean_inv_depth(  ){
 
 
 
@@ -50,12 +46,7 @@ __kernel void mean_inv_depth(
 }
 
 
-__kernel void normalize_inv_depth(
-
-
-
-			  )
-{
+__kernel void normalize_inv_depth(){
 
 
 

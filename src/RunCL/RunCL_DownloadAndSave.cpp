@@ -61,9 +61,8 @@ void RunCL::createFolders(){
 										"SE3_map_mem", \
 										"SE3_weight_map_mem",\
 										"SE3_incr_map_mem", "SE3_rho_map_mem", \
-										/*"SO3_incr_map_mem", "SO3_rho_map_mem", \*/
 										\
-										"basemem", "keyframe_basemem", "depth_mem", "keyframe_depth_mem", \
+										"basemem", "keyframe_basemem", "depth_mem_temp", "keyframe_depth_mem", \
 										"key_frame_depth_map_src", "depth_GT", \
 										"dmem","amem","lomem","himem","qmem","qmem2","cdatabuf","cdatabuf_8chan","hdatabuf","dbg_databuf","img_sum_buf", \
 										"HSV_grad_mem", "dmem_disparity" \

@@ -75,8 +75,8 @@ public:
 	// GPU Buffers
 	cl_mem 				basemem, imgmem,  imgmem_blurred, gxmem, gymem, g1mem,  k_map_mem, dist_map_mem, SE3_grad_map_mem, SE3_incr_map_mem;
 	cl_mem				cdatabuf, temp_cdatabuf, cdatabuf_8chan, hdatabuf, temp_hdatabuf, dbg_databuf;
-	cl_mem 				dmem, amem, qmem, qmem2, lomem, himem, mean_mem, img_sum_buf, depth_mem, depth_mem_GT;													// NB 'depth_mem' is that used by tracking & auto-calibration.
-	
+	cl_mem 				dmem, amem, qmem, qmem2, lomem, himem, mean_mem, img_sum_buf, depth_mem_temp, depth_mem_GT;												// 'depth_mem_temp' is use to load & prepare data for depth_mem_GT and transform_depthmap
+
 	cl_mem				k2kbuf, invk2kbuf, SO3_k2kbuf, SE3_k2kbuf, fp32_param_buf, uint_param_buf, mipmap_buf, gaussian_buf, img_stats_buf;
 	cl_mem 				SE3_map_mem, SE3_rho_map_mem, se3_sum_rho_sq_mem, SE3_weight_map_mem;
 	cl_mem 				pix_sum_mem, var_sum_mem, se3_sum_mem, se3_sum2_mem, se3_weight_sum_mem;

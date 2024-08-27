@@ -14,14 +14,14 @@ void RunCL::transform_depthmap( /*cv::Matx44f K2K_*/ float K2K_arry[16] , cl_mem
 	//float K2K_arry[16];Matx44f_To_float16arry( K2K_, K2K_arry );
 																																			if( verbosity>local_verbosity_threshold) { PRINT_FLOAT_16( K2K_arry, RunCL::transform_depthmap( ..) ); }
 	const float zero  = 0;
-	_clEnqueueFillBuffer ( uload_queue, 	depth_mem, &zero,    sizeof( float),  0,     mm_size_bytes_C1, 	fname);
+	_clEnqueueFillBuffer ( uload_queue, 	depth_mem_temp, &zero,    sizeof( float),  0,     mm_size_bytes_C1, 	fname);
 	_clEnqueueWriteBuffer( uload_queue, 	k2kbuf,	   CL_FALSE, 0, 16 * sizeof( float), K2K_arry, 			fname);
 
 	stringstream ss1;
 	ss1 << "_transform_depthmap_1_";
 	ss1 << save_index;
 	DownloadAndSave( 	keyframe_depth_mem,   	ss1.str( ), 	paths.at( "keyframe_depth_mem"), mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , fp32_params[MAX_INV_DEPTH]); 	cout<<"\n\nRunCL::transform_depthmap( ..)_chk0.1 ."	<<flush;
-	DownloadAndSave( 	depth_mem,   			ss1.str( ), 	paths.at( "depth_mem"),   		mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , fp32_params[MAX_INV_DEPTH]); 	cout<<"\n\nRunCL::transform_depthmap( ..)_chk4 ."	<<flush;   // ### corrupted !
+	DownloadAndSave( 	depth_mem_temp,   		ss1.str( ), 	paths.at( "depth_mem_temp"),	 mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , fp32_params[MAX_INV_DEPTH]); 	cout<<"\n\nRunCL::transform_depthmap( ..)_chk4 ."	<<flush;   // ### corrupted !
 
 	// inputs
 	// __private	 uint layer, set in mipmap_call_kernel( ..) below																		//__private	    uint	    layer,							//0
@@ -31,7 +31,7 @@ void RunCL::transform_depthmap( /*cv::Matx44f K2K_*/ float K2K_arry[16] , cl_mem
 	_clSetKernelArg( transform_depthmap_kernel,  4, sizeof( cl_mem), &keyframe_imgmem, 	fname);												//__global		float4* 	keyframe_imgmem,				//4		// uses alpha channel to check bounds
 	_clSetKernelArg( transform_depthmap_kernel,  5, sizeof( cl_mem), &depthmap_, 			fname);												//__global		float* 		keyframe_depth_mem,				//5
 	// output
-	_clSetKernelArg( transform_depthmap_kernel,  6, sizeof( cl_mem), &depth_mem, 			fname);												//__global		float* 		depth_mem,						//6
+	_clSetKernelArg( transform_depthmap_kernel,  6, sizeof( cl_mem), &depth_mem_temp, 			fname);												//__global		float* 		depth_mem,						//6
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::transform_depthmap( ..)_chk1 ."<<flush;}
 	mipmap_call_kernel( transform_depthmap_kernel, m_queue );
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::transform_depthmap( ..)_chk3 ."<<flush;}
@@ -39,9 +39,9 @@ void RunCL::transform_depthmap( /*cv::Matx44f K2K_*/ float K2K_arry[16] , cl_mem
 	ss << "_transform_depthmap_";
 	ss << save_index;
 	DownloadAndSave( 	keyframe_depth_mem,   	ss.str( ), 	paths.at( "keyframe_depth_mem"), mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , fp32_params[MAX_INV_DEPTH]); 	cout<<"\n\nRunCL::transform_depthmap( ..)_chk0.1 ."	<<flush;
-	DownloadAndSave( 	depth_mem,   			ss.str( ), 	paths.at( "depth_mem"),   		mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , fp32_params[MAX_INV_DEPTH]); 	cout<<"\n\nRunCL::transform_depthmap( ..)_chk4 ."	<<flush;   // ### corrupted !
+	DownloadAndSave( 	depth_mem_temp,   		ss.str( ), 	paths.at( "depth_mem_temp"),   	 mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , fp32_params[MAX_INV_DEPTH]); 	cout<<"\n\nRunCL::transform_depthmap( ..)_chk4 ."	<<flush;   // ### corrupted !
 
-	cl_mem_swap_ptr( keyframe_depth_mem, depth_mem);
+	cl_mem_swap_ptr( keyframe_depth_mem, depth_mem_temp);
 	clFlush( m_queue); status = clFinish( m_queue);																							if( status!= CL_SUCCESS){cout << " status = " << checkerror( status) <<", Error: RunCL::transform_depthmap( ..)_clfinish_clEnqueueCopyBuffer\n" << flush;exit_( status);}
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::transform_depthmap( ..)_finished ."<<flush;}
 }
@@ -182,7 +182,7 @@ void RunCL::initializeFirstDepthCostVol( float default_depth ){			 													
 	string fname = "RunCL::initializeFirstDepthDepthCostVol( )";																						// Dynamic_slam::initialize_from_GT( ), Dynamic_slam::initialize_new_keyframe( );
 	int local_verbosity_threshold = V_RUNCL_INITIALIZEDEPTHCOSTVOL;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initializeFirstDepthDepthCostVol( ..)_chk0, default_depth="<<default_depth<<flush;}
-	_clEnqueueFillBuffer( uload_queue,	depth_mem,				&default_depth, 			sizeof( float), 0,		mm_size_bytes_C1, 		fname);			// TODO one of depth_mem, or keyframe_depth_mem is redundant.
+	_clEnqueueFillBuffer( uload_queue,	depth_mem_temp,				&default_depth, 			sizeof( float), 0,		mm_size_bytes_C1, 		fname);			// TODO one of depth_mem, or keyframe_depth_mem is redundant.
 	_clEnqueueFillBuffer( uload_queue,	keyframe_depth_mem, 	&default_depth, 			sizeof( float), 0,		mm_size_bytes_C1, 		fname);
 
 	_clEnqueueCopyBuffer( m_queue,		depth_mem_GT, 			keyframe_depth_mem_GT,		0, 				0,		mm_size_bytes_C1, 		fname);

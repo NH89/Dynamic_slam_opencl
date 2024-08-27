@@ -9,7 +9,7 @@ void RunCL::precom_param_maps( float SE3_k2k[6*16]){ //  Compute maps of pixel m
 	depth 				*= mid_depth;
 
 	_clEnqueueWriteBuffer( uload_queue, SE3_k2kbuf,	CL_FALSE, 0, 6*16*sizeof( float), SE3_k2k,		fname);
-	_clEnqueueWriteBuffer( uload_queue, depth_mem,	CL_FALSE, 0, mm_size_bytes_C1,	 depth.data,	fname);
+	_clEnqueueWriteBuffer( uload_queue, depth_mem_temp,	CL_FALSE, 0, mm_size_bytes_C1,	 depth.data,	fname);
 
 	//      __private	 uint layer, set in mipmap_call_kernel( ..) below                                                                      __private	 uint	    layer,		//0
     _clSetKernelArg( comp_param_maps_kernel, 1, sizeof( cl_mem),	&mipmap_buf, fname);														//__constant uint*	mipmap_params,	//1
