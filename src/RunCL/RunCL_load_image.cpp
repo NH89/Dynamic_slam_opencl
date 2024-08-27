@@ -288,8 +288,8 @@ void RunCL::load_GT_depth(cv::Mat GT_depth, bool invert){ //getFrameData();,  cv
 
 	float default_depth  = (fp32_params[MAX_INV_DEPTH] + fp32_params[MIN_INV_DEPTH])/2.0;
 
-	_clEnqueueFillBuffer(uload_queue, depth_mem_temp, 	&default_depth, sizeof(float), 0, mm_size_bytes_C1,  fname);
-	_clEnqueueFillBuffer(uload_queue, depth_mem_GT, &default_depth, sizeof(float), 0, mm_size_bytes_C1,  fname);
+	_clEnqueueFillBuffer(  uload_queue, depth_mem_temp, &default_depth, sizeof(float), 0, mm_size_bytes_C1,  fname );
+	_clEnqueueFillBuffer(  uload_queue, depth_mem_GT, 	&default_depth, sizeof(float), 0, mm_size_bytes_C1,  fname );
 
 	float max_range_ = 0.0f;																											// 0.0f => (temp_mat / maxVal) * 256*256 for .png; TODO move this to conf.json
 																																		if(verbosity>local_verbosity_threshold+1){

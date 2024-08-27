@@ -158,18 +158,18 @@ void RunCL::initializeDepthCostVol( cl_mem key_frame_depth_map_src){			 								
 																																				cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk1.5.1 ."<<flush;
 
 																																				DownloadAndSave_3Channel( 	keyframe_imgmem, 			ss.str( ), paths.at( "keyframe_imgmem"),  mm_size_bytes_C4, mm_Image_size,  CV_32FC4, 	false );
-																																				DownloadAndSave_HSV_grad(  keyframe_imgmem_HSV_grad, 	ss.str( ), paths.at( "keyframe_imgmem_HSV_grad"),2*mm_size_bytes_C4, mm_Image_size, CV_32FC( 8),	false, -1, 0 );
+																																				DownloadAndSave_HSV_grad(	keyframe_imgmem_HSV_grad, 	ss.str( ), paths.at( "keyframe_imgmem_HSV_grad"),2*mm_size_bytes_C4, mm_Image_size, CV_32FC( 8),	false, -1, 0 );
 																																				cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk1.6 ."<<flush;
 
 																																				DownloadAndSave( 		 	keyframe_depth_mem,   		ss.str( ), paths.at( "keyframe_depth_mem"),   		mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , fp32_params[MAX_INV_DEPTH]);
 																																				cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk1.7 ."<<flush;
 
-																																				//DownloadAndSave_3Channel( 	keyframe_g1mem, ss.str( ), paths.at( "keyframe_g1mem"),  mm_size_bytes_C4, mm_Image_size,  CV_32FC4, 	false );
-																																				//DownloadAndSave_HSV_grad(  keyframe_g1mem,	ss.str( ), paths.at( "keyframe_g1mem"), 	mm_size_bytes_C8, mm_Image_size,  CV_32FC( 8),false, -1, 0 ); //  keyframe_g1mem is initialzed vu cacheGValues( ) at start of optimize depth.
+																																				//DownloadAndSave_3Channel(  keyframe_g1mem, ss.str( ), paths.at( "keyframe_g1mem"),  mm_size_bytes_C4, mm_Image_size,  CV_32FC4, 	false );
+																																				//DownloadAndSave_HSV_grad(  keyframe_g1mem, ss.str( ), paths.at( "keyframe_g1mem"), 	mm_size_bytes_C8, mm_Image_size,  CV_32FC( 8),false, -1, 0 ); 	// keyframe_g1mem is initialzed vu cacheGValues( ) at start of optimize depth.
 																																				cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk1.8 ."<<flush;
 
-																																				//DownloadAndSave_3Channel( 	g1mem, 	ss.str( ), paths.at( "g1mem"),  mm_size_bytes_C4, mm_Image_size,  CV_32FC4, 	false );
-																																				//DownloadAndSave_HSV_grad(  g1mem,	ss.str( ), paths.at( "g1mem"),  mm_size_bytes_C8, mm_Image_size,  CV_32FC( 8), false, -1, 0 ); 					 // NB g1mem not used, remains zero
+																																				//DownloadAndSave_3Channel(  g1mem, ss.str( ), paths.at( "g1mem"),  mm_size_bytes_C4, mm_Image_size,  CV_32FC4, 	false );
+																																				//DownloadAndSave_HSV_grad(  g1mem,	ss.str( ), paths.at( "g1mem"),  mm_size_bytes_C8, mm_Image_size,  CV_32FC( 8),  false, -1, 0 ); 					// NB g1mem not used, remains zero
 																																				cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk1.9 ."<<flush;
 
 																																				DownloadAndSave_6Channel_volume(  keyframe_SE3_grad_map_mem, ss.str( ), paths.at( "keyframe_SE3_grad_map_mem"), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, -1, 6 );
@@ -182,7 +182,7 @@ void RunCL::initializeFirstDepthCostVol( float default_depth ){			 													
 	string fname = "RunCL::initializeFirstDepthDepthCostVol( )";																						// Dynamic_slam::initialize_from_GT( ), Dynamic_slam::initialize_new_keyframe( );
 	int local_verbosity_threshold = V_RUNCL_INITIALIZEDEPTHCOSTVOL;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initializeFirstDepthDepthCostVol( ..)_chk0, default_depth="<<default_depth<<flush;}
-	_clEnqueueFillBuffer( uload_queue,	depth_mem_temp,				&default_depth, 			sizeof( float), 0,		mm_size_bytes_C1, 		fname);			// TODO one of depth_mem, or keyframe_depth_mem is redundant.
+	_clEnqueueFillBuffer( uload_queue,	depth_mem_temp,			&default_depth, 			sizeof( float), 0,		mm_size_bytes_C1, 		fname);			// TODO one of depth_mem, or keyframe_depth_mem is redundant.
 	_clEnqueueFillBuffer( uload_queue,	keyframe_depth_mem, 	&default_depth, 			sizeof( float), 0,		mm_size_bytes_C1, 		fname);
 
 	_clEnqueueCopyBuffer( m_queue,		depth_mem_GT, 			keyframe_depth_mem_GT,		0, 				0,		mm_size_bytes_C1, 		fname);
