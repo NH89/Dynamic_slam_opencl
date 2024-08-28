@@ -47,8 +47,7 @@ void RunCL::transform_depthmap( /*cv::Matx44f K2K_*/ float K2K_arry[16] , cl_mem
 }
 
 
-void RunCL::swap_costvol_pointers( )
-{
+void RunCL::swap_costvol_pointers(){
 	string fname = "RunCL::swap_costvol_pointers( )";
 	int local_verbosity_threshold = V_RUNCL_SWAP_COSTVOL_POINTERS;
 																																			if( verbosity>local_verbosity_threshold){ cout << "\n\nRunCL::swap_costvol_pointers( )_chk 0,  "<< flush; }
@@ -164,14 +163,6 @@ void RunCL::initializeDepthCostVol( cl_mem key_frame_depth_map_src){			 								
 																																				DownloadAndSave( 		 	keyframe_depth_mem,   		ss.str( ), paths.at( "keyframe_depth_mem"),   		mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , fp32_params[MAX_INV_DEPTH]);
 																																				cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk1.7 ."<<flush;
 
-																																				//DownloadAndSave_3Channel(  keyframe_g1mem, ss.str( ), paths.at( "keyframe_g1mem"),  mm_size_bytes_C4, mm_Image_size,  CV_32FC4, 	false );
-																																				//DownloadAndSave_HSV_grad(  keyframe_g1mem, ss.str( ), paths.at( "keyframe_g1mem"), 	mm_size_bytes_C8, mm_Image_size,  CV_32FC( 8),false, -1, 0 ); 	// keyframe_g1mem is initialzed vu cacheGValues( ) at start of optimize depth.
-																																				cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk1.8 ."<<flush;
-
-																																				//DownloadAndSave_3Channel(  g1mem, ss.str( ), paths.at( "g1mem"),  mm_size_bytes_C4, mm_Image_size,  CV_32FC4, 	false );
-																																				//DownloadAndSave_HSV_grad(  g1mem,	ss.str( ), paths.at( "g1mem"),  mm_size_bytes_C8, mm_Image_size,  CV_32FC( 8),  false, -1, 0 ); 					// NB g1mem not used, remains zero
-																																				cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk1.9 ."<<flush;
-
 																																				DownloadAndSave_6Channel_volume(  keyframe_SE3_grad_map_mem, ss.str( ), paths.at( "keyframe_SE3_grad_map_mem"), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, -1, 6 );
 																																			}
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initializeDepthCostVol( ..)_Finished ########################################## ."<<flush;}
@@ -179,7 +170,7 @@ void RunCL::initializeDepthCostVol( cl_mem key_frame_depth_map_src){			 								
 
 
 void RunCL::initializeFirstDepthCostVol( float default_depth ){			 																	// Uses the current frame as the keyframe for a new depth cost volume.
-	string fname = "RunCL::initializeFirstDepthDepthCostVol( )";																						// Dynamic_slam::initialize_from_GT( ), Dynamic_slam::initialize_new_keyframe( );
+	string fname = "RunCL::initializeFirstDepthDepthCostVol( )";																			// Dynamic_slam::initialize_from_GT( ), Dynamic_slam::initialize_new_keyframe( );
 	int local_verbosity_threshold = V_RUNCL_INITIALIZEDEPTHCOSTVOL;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initializeFirstDepthDepthCostVol( ..)_chk0, default_depth="<<default_depth<<flush;}
 	_clEnqueueFillBuffer( uload_queue,	depth_mem_temp,			&default_depth, 			sizeof( float), 0,		mm_size_bytes_C1, 		fname);			// TODO one of depth_mem, or keyframe_depth_mem is redundant.
@@ -225,14 +216,6 @@ void RunCL::initializeFirstDepthCostVol( float default_depth ){			 													
 
 																																				DownloadAndSave( 		 	keyframe_depth_mem,   		ss.str( ), paths.at( "keyframe_depth_mem"),   		mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , fp32_params[MAX_INV_DEPTH]);
 																																				cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk1.7 ."<<flush;
-
-																																				//DownloadAndSave_3Channel( 	keyframe_g1mem, ss.str( ), paths.at( "keyframe_g1mem"),  mm_size_bytes_C4, mm_Image_size,  CV_32FC4, 	false );
-																																				//DownloadAndSave_HSV_grad(  keyframe_g1mem,	ss.str( ), paths.at( "keyframe_g1mem"), 	mm_size_bytes_C8, mm_Image_size,  CV_32FC( 8),false, -1, 0 ); //  keyframe_g1mem is initialzed vu cacheGValues( ) at start of optimize depth.
-																																				cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk1.8 ."<<flush;
-
-																																				//DownloadAndSave_3Channel( 	g1mem, 	ss.str( ), paths.at( "g1mem"),  mm_size_bytes_C4, mm_Image_size,  CV_32FC4, 	false );
-																																				//DownloadAndSave_HSV_grad(  g1mem,	ss.str( ), paths.at( "g1mem"),  mm_size_bytes_C8, mm_Image_size,  CV_32FC( 8), false, -1, 0 ); 					 // NB g1mem not used, remains zero
-																																				cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk1.9 ."<<flush;
 
 																																				DownloadAndSave_6Channel_volume(  keyframe_SE3_grad_map_mem, ss.str( ), paths.at( "keyframe_SE3_grad_map_mem"), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, -1, 6 );
 																																			}

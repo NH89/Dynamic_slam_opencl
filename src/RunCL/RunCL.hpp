@@ -73,7 +73,7 @@ public:
 	cl_kernel			se3_lk_grad_kernel, atomic_test1_kernel, atomic_test2_kernel;
 	
 	// GPU Buffers
-	cl_mem 				basemem, imgmem,  imgmem_blurred, gxmem, gymem, g1mem,  k_map_mem, dist_map_mem, SE3_grad_map_mem, SE3_incr_map_mem;
+	cl_mem 				basemem, imgmem,  imgmem_blurred, gxmem, gymem, k_map_mem, dist_map_mem, SE3_grad_map_mem, SE3_incr_map_mem;
 	cl_mem				cdatabuf, temp_cdatabuf, cdatabuf_8chan, hdatabuf, temp_hdatabuf, dbg_databuf;
 	cl_mem 				dmem, amem, qmem, qmem2, lomem, himem, mean_mem, img_sum_buf, depth_mem_temp, depth_mem_GT;												// 'depth_mem_temp' is use to load & prepare data for depth_mem_GT and transform_depthmap
 

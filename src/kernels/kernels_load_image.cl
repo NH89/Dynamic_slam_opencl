@@ -92,7 +92,7 @@ __kernel void image_variance(
 	__constant 	uint8*	mipmap_params,	//3
 	__local		float4*	local_sum_var,	//4
 	__global	float4*	global_sum_var	//5
-			  )
+		)
 {
 	int global_id 	= (int)get_global_id(0);
 	uint pixels 	= uint_params[PIXELS];
@@ -155,7 +155,7 @@ __kernel void blur_image(
 	__global 	float4*	img,			//3
 	__global	float4* img_blurred,	//4
 	__local	 	float4*	local_img_patch //5
-			  )
+		)
 {
 	int global_id_u 		= (int)get_global_id(0);
 	float global_id_flt 	= global_id_u;

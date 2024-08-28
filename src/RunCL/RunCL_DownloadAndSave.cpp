@@ -16,7 +16,7 @@ void RunCL::createFolders(){
 
 		 "gxmem",						mm_size_bytes_C4, 		.rgba 4chan
 		 "gymem",						.""
-		 "g1mem",						.""
+
 		 "keyframe_g1mem",				.""
 
 		 "SE3_grad_map_mem",			mm_size_bytes_C1*6*8	.rgba 4chan, 6 gradient maps,
@@ -56,7 +56,7 @@ void RunCL::createFolders(){
 
 		 "dmem_disparity"				rgb image ?
 		 */
-	std::vector<std::string> names = {"imgmem", "imgmem_blurred", "keyframe_imgmem", "keyframe_imgmem_HSV_grad", "gxmem", "gymem", "g1mem", "keyframe_g1mem", \
+	std::vector<std::string> names = {"imgmem", "imgmem_blurred", "keyframe_imgmem", "keyframe_imgmem_HSV_grad", "gxmem", "gymem", "keyframe_g1mem", \
 										"SE3_grad_map_mem", "keyframe_SE3_grad_map_mem", \
 										"SE3_map_mem", \
 										"SE3_weight_map_mem",\
@@ -261,8 +261,8 @@ void RunCL::DownloadAndSave(cl_mem buffer, std::string count, std::filesystem::p
 		stringstream png_ss;
 		std::string  date_time_str = date_time_string();
 
-		ss << "/" << folder_tiff.filename().string() << "_" << count <<"_sum"<<sum<<"type_"<<type_string<<"min"<<minVal<<"max"<<maxVal<<"maxRange"<<max_range;
-		png_ss << "/" << folder_tiff.filename().string() << "_" << count << date_time_str;
+		ss 		<< "/" << folder_tiff.filename().string() << "_" << count <<"_sum"<<sum<<"type_"<<type_string<<"min"<<minVal<<"max"<<maxVal<<"maxRange"<<max_range;
+		png_ss 	<< "/" << folder_tiff.filename().string() << "_" << count << date_time_str;
 																																		//	if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave chk1.3 finished ReadOutput\n\n"<<flush;
 		std::filesystem::path folder_png = folder_tiff;
 																																		//	if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave chk1.4 finished ReadOutput\n\n"<<flush;
@@ -753,8 +753,11 @@ void RunCL::SaveMat(cv::Mat temp_mat, int type_mat, std::filesystem::path folder
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nSaveMat_Chk_2, "<<flush;
 		stringstream ss;
 		stringstream png_ss;
-		ss<<"/"<<folder_tiff.filename().string()<<"_"<<mat_name<<"_"<<count<<"__sum"<<sum<<"type_"<<type_string<<"min("<<minVal[0]<<","<<minVal[1]<<","<<minVal[2]<<")_max("<<maxVal[0]<<","<<maxVal[1]<<","<<maxVal[2]<<")";
-		png_ss<< "/" << folder_tiff.filename().string() <<"_"<<mat_name<< "_" << count;
+		std::string  date_time_str = date_time_string();
+
+		ss		<<"/"<<folder_tiff.filename().string()<<"_"<<mat_name<<"_"<<count<<"__sum"<<sum<<"type_"<<type_string<<"min("<<minVal[0]<<","<<minVal[1]<<","<<minVal[2]<<")_max("<<maxVal[0]<<","<<maxVal[1]<<","<<maxVal[2]<<")";
+		png_ss	<<"/"<<folder_tiff.filename().string()<<"_"<<mat_name<<"_"<<count<<date_time_str;
+
 		if(show){
 			cv::Mat temp;
 			temp_mat.convertTo(temp, CV_8U);																								// NB need CV_U8 for imshow(..)
@@ -808,8 +811,11 @@ void RunCL::SaveMat_1chan(cv::Mat temp_mat, int type_mat, std::filesystem::path 
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nSaveMat_1chan_Chk_2, "<<flush;
 		stringstream ss;
 		stringstream png_ss;
-		ss<<"/" << mat_name<<"__sum"<<sum<<"type_"<<type_string<<"min("<<minVal<<")_max("<<maxVal<<")";
-		png_ss<< "/" << mat_name;
+		std::string  date_time_str = date_time_string();
+
+		ss		<<"/" << mat_name<<"__sum"<<sum<<"type_"<<type_string<<"min("<<minVal<<")_max("<<maxVal<<")";
+		png_ss	<<"/" << mat_name<<date_time_str;
+
 		if(show){
 			cv::Mat temp;
 			temp_mat.convertTo(temp, CV_8U);																								// NB need CV_U8 for imshow(..)
@@ -1153,7 +1159,7 @@ void RunCL::DownloadAndSaveVolume(cl_mem buffer, std::string count, std::filesys
 # 2Channel: 3or4 channels_out,
 
 	void DownloadAndSave_3Channel(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range=1, uint offset=0, bool exception_tiff=false );
-	basemem, imgmem, imgmem_blurred, gxmem, gymem, g1mem, keyframe_g1mem, dmem_disparity, buffer in DownloadAndSave_3Channel_volume,
+	basemem, imgmem, imgmem_blurred, gxmem, gymem, keyframe_g1mem, dmem_disparity, buffer in DownloadAndSave_3Channel_volume,
 # 3Channel: 4 channels_out (inc alpha), 4 channels_in, 1 map
 
 	void DownloadAndSave_3Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers );

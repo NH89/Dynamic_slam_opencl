@@ -12,9 +12,9 @@ void Dynamic_slam::print_pose_datum( Dynamic_slam::pose_datum datum ){
 
 void Dynamic_slam::print_frame_datum( Dynamic_slam::frame_datum datum ){
     cout << "\n keyframe_index = " << datum.keyframe_index ;									// Index within this vector< >, of the keyframe for this frame.
-    cout << "\n\n\n frame_data: ++++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.frame_data		);
-    cout << "\n\n\n frame_data_GT ++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.frame_data_GT	);
-    cout << "\n\n\n error_data +++++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.error_data		);
+    cout << "\f frame_data: ++++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.frame_data		);
+    cout << "\f frame_data_GT ++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.frame_data_GT	);
+    cout << "\f error_data +++++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.error_data		);
 }
 
 void Dynamic_slam::print_keyframe_datum( Dynamic_slam::keyframe_datum datum ){
@@ -23,25 +23,27 @@ void Dynamic_slam::print_keyframe_datum( Dynamic_slam::keyframe_datum datum ){
 }
 
 void Dynamic_slam::print_frame_data_vector(       uint start,     uint stop,  vector<Dynamic_slam::frame_datum>       frame_data_vector,  string vector_name ){
-    cout << "\n\n\n Dynamic_slam::print_frame_data_vector :  vector<Dynamic_slam::frame_datum> " << vector_name << " : ##############################################################################";
+    cout << "\f Dynamic_slam::print_frame_data_vector :  vector<Dynamic_slam::frame_datum> " << vector_name << " : ##############################################################################";
     if (stop > frame_data_vector.size() ) stop = frame_data_vector.size();
 
     for (int i = start; i<stop; i++){
+		if (i>start)cout << "\f";
         cout << "\n\n\n\n  Element = " << i << "  ##############################################################";
         print_frame_datum( frame_data_vector[i] );
     }
-    cout << "\n\n Dynamic_slam::print_frame_data_vector :  vector<Dynamic_slam::frame_datum> Finished " << vector_name << " : ##############################################################################";
+    cout << "\n\n Dynamic_slam::print_frame_data_vector :  vector<Dynamic_slam::frame_datum> Finished " << vector_name << " : ##############################################################################\f";
 }
 
 void Dynamic_slam::print_keyframe_data_vector(    uint start,     uint stop,  vector<Dynamic_slam::keyframe_datum>    keyframe_data_vector,  string vector_name  ){
-    cout << "\n\n\n Dynamic_slam::print_keyframe_data_vector():  vector<Dynamic_slam::keyframe_datum> " << vector_name << " : ###########################################################################";
+    cout << "\f Dynamic_slam::print_keyframe_data_vector():  vector<Dynamic_slam::keyframe_datum> " << vector_name << " : ###########################################################################";
     if (stop > keyframe_data_vector.size() ) stop = keyframe_data_vector.size();
 
     for (int i = start; i<stop; i++){
+		if (i>start)cout << "\f";
         cout << "\n\n\n\n  Element = " << i << "  ##############################################################";
         print_keyframe_datum( keyframe_data_vector[i] );
     }
-    cout << "\n\n Dynamic_slam::print_keyframe_data_vector():  vector<Dynamic_slam::keyframe_datum> Finished " << vector_name << " : ###########################################################################";
+    cout << "\n\n Dynamic_slam::print_keyframe_data_vector():  vector<Dynamic_slam::keyframe_datum> Finished " << vector_name << " : ###########################################################################\f";
 }
 
 void Dynamic_slam::print_pose_vectors(uint start, uint stop){
@@ -54,7 +56,7 @@ void Dynamic_slam::report_GT_pose_error(){																																	// An
 	string fname="Dynamic_slam::report_GT_pose_error()";
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_REPORT_GT_POSE_ERROR;
 
-	cout << "\n void Dynamic_slam::report_GT_pose_error() ###################################################################### " << flush;
+	cout << "\f void Dynamic_slam::report_GT_pose_error() ###################################################################### " << flush;
 	frame_data.back().error_data.K							=		frame_data.back().frame_data.K				*    frame_data.back().frame_data_GT.K.inv();				// NB we use the more expensive general matrix inverse from opencv,
 	frame_data.back().error_data.inv_K						=		frame_data.back().frame_data.inv_K			*    frame_data.back().frame_data_GT.inv_K.inv();			// to verify that the specialist pose and intrinsic matrix inverses are correct.
 	frame_data.back().error_data.pose						=		frame_data.back().frame_data.pose			*    frame_data.back().frame_data_GT.pose.inv();
@@ -65,7 +67,7 @@ void Dynamic_slam::report_GT_pose_error(){																																	// An
 
 	print_frame_datum( frame_data.back()   );																																// Print the whole set for frame_data, frame_data_GT, and error_data.
 
-	cout << "\n void Dynamic_slam::report_GT_pose_error() Finished ###################################################################### " << flush;
+	cout << "\n void Dynamic_slam::report_GT_pose_error() Finished ######################################################################\f" << flush;
 }
 
 

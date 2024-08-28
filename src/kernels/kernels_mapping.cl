@@ -1,70 +1,25 @@
 #include "kernels_macros.h"
 #include "kernels.h"
 
-/*  Moved to "kernels_photometric_cost.cl"
-///////////////////// Photometrc cost ///////////////////
-
-// Tau_HSV_grad(I) := distance in 8D space [ sin(Hue ), cos(Hue ), Saturation , (Saturation)/dx , (Saturation)/dy , Value , (Value)/dx , (Vallue)/dy ]
-float Tau_HSV_grad (float8 B, float8 c){ // Poss also weight vector.
-	float Tau_sq = 0;
-	float8 Tau8 = B - c;
-	for (int i = 0; i<8; i++){ Tau_sq += pown( Tau8[i], 2); }
-	return sqrt(Tau_sq);
-}
-
-float8 Tau_HSV_grad_8chan (float8 B, float8 c){ // Poss also weight vector.
-	float8 Tau8 = B - c;
-	float8 absTau8;
-	for (int i = 0; i<8; i++){ absTau8[i] = sqrt( pown( Tau8[i], 2) ); }  //      Tau_sq += pown( Tau8[i], 2);
-	return Tau8;
-}
-
-///////////////////// Interpolation /////////////////////
-
-float8 nearest_neigbour (float8* img, float u_flt, float v_flt, int cols, int read_offset_, uint reduction){
-	float8 	c;
-	int int_u2 = ceil(u_flt/reduction-0.5f);									// nearest neighbour interpolation
-	int int_v2 = ceil(v_flt/reduction-0.5f);									// NB this corrects the sparse sampling to the redued scales.
-	uint read_index_new = read_offset_ + int_v2 * cols  + int_u2;  			// uint read_index_new = (int_v2*cols + int_u2)*3;  // NB float4 c; float4* img now float8* for HSV_grad_mem
-	c = img[read_index_new];
-	return c;
-}
-
-float8 bilinear (__global float8* img, float u_flt, float v_flt, int cols, int read_offset_, uint reduction){
-	float8 	c, c_00, c_01, c_10, c_11;
-	int coff_00, coff_01, coff_10, coff_11;
-	int int_u2 = ceil(u_flt);
-	int int_v2 = ceil(v_flt);
-																			// compute adjacent pixel indices & sample adjacent pixels
-	c_11 = img[ read_offset_ + int_v2     * cols +  int_u2     ];
-	c_10 = img[ read_offset_ + (int_v2-1) * cols +  int_u2     ];
-	c_01 = img[ read_offset_ + int_v2     * cols + (int_u2 -1) ];
-	c_00 = img[ read_offset_ + (int_v2-1) * cols + (int_u2 -1) ];
-																			// weighting for bi-linear interpolation
-	float factor_x = fmod(u_flt,1);
-	float factor_y = fmod(v_flt,1);
-	c = factor_y * (c_11*factor_x  +  c_01*(1-factor_x))   +   (1-factor_y) * (c_10*factor_x  + c_00*(1-factor_x));
-	return c;
-}
-*/
 ////////////////////////////////////////////////////////////////////////////////////////////////// Depth mapping //////////////////////////////////////////
 
 __kernel void DepthCostVol(
 	__private	uint	mipmap_layer,		//0
-	__constant 	uint8*	mipmap_params,		//1
-	__constant 	uint*	uint_params,		//2
-	__global 	float*  fp32_params,		//3
-	__global 	float16*k2k,				//4
-	__global 	float8* base,				//5		keyframe_basemem
-	__global 	float8* img,				//6		HSV_grad_mem/*imgmem*/ now float8
-	__global 	float*  cdata,				//7
-	__global 	float*  hdata,				//8
-	__global 	float*  lo,					//9
-	__global 	float*  hi,					//10
-	__global 	float*  a,					//11
-	__global 	float*  d,					//12
-	__global 	float*  img_sum,			//13
-	__global 	float8* cdata_8chan			//14
+	__private	uint	k_verbosity,		//1
+	__constant 	uint8*	mipmap_params,		//2
+	__constant 	uint*	uint_params,		//3
+	__global 	float*  fp32_params,		//4
+	__global 	float16*k2k,				//5
+	__global 	float8* base,				//6		keyframe_basemem
+	__global 	float8* img,				//7		HSV_grad_mem/*imgmem*/ now float8
+	__global 	float*  cdata,				//8
+	__global 	float*  hdata,				//9
+	__global 	float*  lo,					//10
+	__global 	float*  hi,					//11
+	__global 	float*  a,					//12
+	__global 	float*  d,					//13
+	__global 	float*  img_sum,			//14
+	__global 	float8* cdata_8chan			//15
 		 )
 {
 	uint global_id_u 	= get_global_id(0);
@@ -117,11 +72,12 @@ __kernel void DepthCostVol(
 	bool miss = false;
 	bool in_image = false;
 	if ( global_id_u  < mipmap_params_[MiM_PIXELS] ) in_image = true;
-
-																		if(global_id_u == 1  ){
+																	VK_MAPPING(\
+																	 if(k_verbosity>0 && global_id_u == 1  )   {
 																		printf("\n\n\n\n__kernel void DepthCostVol chk 0  (global_id_u == 1 ) :  reduction=%u,  layer=%u, read_offset_=%u, read_cols_=%u, read_rows_=%u,  read_index=%u,  \nk2k_pvt=[\n%f, %f, %f, %f,    \n%f, %f, %f, %f,    \n%f, %f, %f, %f,   \n%f, %f, %f, %f   ]\n", \
-																		reduction, layer, read_offset_, read_cols_, read_rows_,  read_index,   k2k_pvt[0],k2k_pvt[1],k2k_pvt[2],k2k_pvt[3],  k2k_pvt[4],k2k_pvt[5],k2k_pvt[6],k2k_pvt[7],    k2k_pvt[8],k2k_pvt[9],k2k_pvt[10],k2k_pvt[11],   k2k_pvt[12],k2k_pvt[13],k2k_pvt[14],k2k_pvt[15]  );
-																	}
+																		reduction, layer, read_offset_, read_cols_, read_rows_,  read_index,   k2k_pvt[0],k2k_pvt[1],k2k_pvt[2],k2k_pvt[3],  k2k_pvt[4],k2k_pvt[5],k2k_pvt[6],k2k_pvt[7],    k2k_pvt[8],k2k_pvt[9],k2k_pvt[10],k2k_pvt[11],   k2k_pvt[12],k2k_pvt[13],k2k_pvt[14],k2k_pvt[15]  );\
+																	}\
+																	)
 
 	for( layer=0;  layer<=costvol_layers; layer++ ){
 		inv_depth = (layer * inv_d_step) + min_inv_depth;								// locate pixel to sample from  new image. Depth dependent part.
@@ -171,14 +127,14 @@ __kernel void DepthCostVol(
 
 __kernel void UpdateQD(
 	__private	uint	mipmap_layer,		//0
-	__constant 	uint8*	mipmap_params,		//1
-	__constant 	uint*	uint_params,		//2
-	__global 	float*  fp32_params,		//3
-	__global 	float4* g1pt,				//4		// keyframe_g1mem
-	__global 	float* 	qpt,				//5		// qmem,						//	2 * mm_size_bytes_C1
-	__global 	float*  apt,				//6		// amem,     auxilliary A
-	__global 	float*  dpt					//7		// dmem,     depth D
-	//__global 	float* 	qpt2				//8		// qmem,						//	2 * mm_size_bytes_C1
+	__private	uint	k_verbosity,		//1
+	__constant 	uint8*	mipmap_params,		//2
+	__constant 	uint*	uint_params,		//3
+	__global 	float*  fp32_params,		//4
+	__global 	float4* g1pt,				//5		// keyframe_g1mem
+	__global 	float* 	qpt,				//6		// qmem,						//	2 * mm_size_bytes_C1
+	__global 	float*  apt,				//7		// amem,     auxilliary A
+	__global 	float*  dpt					//8		// dmem,     depth D
 		 )
 {
 	uint global_id_u 	= get_global_id(0);
@@ -242,7 +198,7 @@ __kernel void UpdateQD(
 		qy = (qy + sigma_q*g1*dd_y) / (1.0f + sigma_q*epsilon);				// sigma_q=0.0559017,  epsilon=0.1,  g1=0.999.. if white, less if visible edge.
 		maxq = fmax(1.0f, sqrt(qx*qx + qy*qy));
 
-		//if (x==100 && y==100) printf("\nKernel UpdateQD_1 mipmap_layer=%u, mim_pixels=%u, mm_cols=%u, wh=%u, pt=%u, d=%f, sigma_q=%f, epsilon=%f, g1=%f, , a=%f, theta=%f, sigma_d=%f, qx=%f, qy=%f, maxq=%f, dd_x=%f, dd_y=%f m x=%i, y=%i", \
+		//if (k_verbosity>0 && x==100 && y==100) printf("\nKernel UpdateQD_1 mipmap_layer=%u, mim_pixels=%u, mm_cols=%u, wh=%u, pt=%u, d=%f, sigma_q=%f, epsilon=%f, g1=%f, , a=%f, theta=%f, sigma_d=%f, qx=%f, qy=%f, maxq=%f, dd_x=%f, dd_y=%f m x=%i, y=%i", \
 		//	mipmap_layer, mim_pixels, mm_cols, wh, pt, d, sigma_q, epsilon, g1,  a, theta, sigma_d, qx, qy, maxq, dd_x, dd_y, x, y );
 
 		qx 			= qx/maxq;
@@ -268,18 +224,19 @@ __kernel void UpdateQD(
 
 		dpt[pt] = (d + sigma_d * (g1*div_q + a/theta)) / (1.0f + sigma_d/theta);
 
-		//if (x==100 && y==100) printf("\nKernel UpdateQD_2 mipmap_layer=%u, mm_cols=%u, wh=%u, dpt[pt]=%f, d=%f, sigma_q=%f, epsilon=%f, g1=%f, div_q=%f, a=%f, theta=%f, sigma_d=%f, qx=%f, qy=%f, maxq=%f, dd_x=%f, dd_y=%f ", \
+		//if (k_verbosity>0 && x==100 && y==100) printf("\nKernel UpdateQD_2 mipmap_layer=%u, mm_cols=%u, wh=%u, dpt[pt]=%f, d=%f, sigma_q=%f, epsilon=%f, g1=%f, div_q=%f, a=%f, theta=%f, sigma_d=%f, qx=%f, qy=%f, maxq=%f, dd_x=%f, dd_y=%f ", \
 		//	mipmap_layer, mm_cols, wh, dpt[pt], d, sigma_q, epsilon, g1, div_q , a, theta, sigma_d, qx, qy, maxq, dd_x, dd_y );
 	}
 }
 
 __kernel void  UpdateG(
 	__private	uint		mipmap_layer,	//0
-	__constant	uint8*		mipmap_params,	//1
-	__constant 	uint*		uint_params,	//2
-	__constant 	float*		fp32_params,	//3
-	__global 	float8*		img,			//4		// keyframe_imgmem in "HSV_grad" colorspace
-	__global 	float8*		g1p				//5     // keyframe_g1mem
+	__private	uint		k_verbosity,	//1
+	__constant	uint8*		mipmap_params,	//2
+	__constant 	uint*		uint_params,	//3
+	__constant 	float*		fp32_params,	//4
+	__global 	float8*		img,			//5		// keyframe_imgmem in "HSV_grad" colorspace
+	__global 	float8*		g1p				//6     // keyframe_g1mem
 		 )
 {
 	uint global_id_u 	= get_global_id(0);
@@ -324,7 +281,7 @@ __kernel void  UpdateG(
 	if (global_id_u >= mipmap_params_[MiM_PIXELS]) return;
 	g1p[offset]= g1;
 
-	//if(offset%100000==0)printf("\n\nkenel UpdateG(..) offset=%u  g1=%f,%f, %f,%f, %f,%f, %f,%f,", offset,  g1.s0, g1.s1,   g1.s2, g1.s3,   g1.s4, g1.s5,   g1.s6, g1.s7 );
+																									//if(k_verbosity>0 && offset%100000==0)printf("\n\nkenel UpdateG(..) offset=%u  g1=%f,%f, %f,%f, %f,%f, %f,%f,", offset,  g1.s0, g1.s1,   g1.s2, g1.s3,   g1.s4, g1.s5,   g1.s6, g1.s7 );
 }
 
 int set_start_layer(float di, float r, float far, float depthStep, int layers, int x, int y){ //( inverse_depth, r , min_inv_depth, inv_depth_step, num_layers )
@@ -354,15 +311,16 @@ float get_Eaux(float theta, float di, float aIdx, float far, float depthStep, fl
 
 __kernel void UpdateA(						// pointwise exhaustive search
 	__private	uint	mipmap_layer,		//0
-	__constant 	uint8*	mipmap_params,		//1
-	__constant 	uint*	uint_params,		//2
-	__global 	float*  fp32_params,		//3
-	__global 	float*  cdata,				//4		// cdatabuf, cost volume
-	__global 	float*  lo,					//5
-	__global 	float*  hi,					//6
-	__global 	float*  apt,				//7		// amem,     auxilliary A
-	__global 	float*  dpt,				//8		// dmem,     depth D
-	__global 	float*  dbg_data			//9		// dbg_databuf
+	__private	uint	k_verbosity,		//1
+	__constant 	uint8*	mipmap_params,		//2
+	__constant 	uint*	uint_params,		//3
+	__global 	float*  fp32_params,		//4
+	__global 	float*  cdata,				//5		// cdatabuf, cost volume
+	__global 	float*  lo,					//6
+	__global 	float*  hi,					//7
+	__global 	float*  apt,				//8		// amem,     auxilliary A
+	__global 	float*  dpt,				//9		// dmem,     depth D
+	__global 	float*  dbg_data			//10	// dbg_databuf
 		 )
 {
 	uint global_id_u 	= get_global_id(0);
@@ -438,15 +396,16 @@ __kernel void UpdateA(						// pointwise exhaustive search
 __kernel void MeasureDepthFit(						// measure the fit of the depthmap against the groud truth.
 	// inputs
 	__private	uint	mipmap_layer,				//0
-	__constant 	uint8*	mipmap_params,				//1
-	__constant 	uint*	uint_params,				//2
-	__global 	float*  fp32_params,				//3
-	__global 	float*  dpt,						//4		// dmem,     depth D
-	__global 	float*  dpt_GT,						//5
+	__private	uint	k_verbosity,				//1
+	__constant 	uint8*	mipmap_params,				//2
+	__constant 	uint*	uint_params,				//3
+	__global 	float*  fp32_params,				//4
+	__global 	float*  dpt,						//5		// dmem,     depth D
+	__global 	float*  dpt_GT,						//6
 	// outputs
-	__global 	float4* dpt_disparity,				//6
-	__local		float4*	local_sum_dpt_disparity,	//7
-	__global	float4*	global_sum_dpt_disparity	//8
+	__global 	float4* dpt_disparity,				//7
+	__local		float4*	local_sum_dpt_disparity,	//8
+	__global	float4*	global_sum_dpt_disparity	//
 		 )
 {
 	uint global_id_u 	= get_global_id(0);

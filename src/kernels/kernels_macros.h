@@ -41,5 +41,22 @@
 #define TRACKING_NUM_SAMPLES         2                          // Just 2 _additional_ Rho samples
 
 
+// LOCAL VERBOSITY FOR EACH KERNEL FILE ##############################################
+// These remove the "txt" code before compilation, so it will not take time in execution.
+	/////////////////////////////////////// KERNELS_MAPPING.CL
+    #define VK_MAPPING(txt)					/*txt*/					// to comment out,  /*txt*/
+
+	/////////////////////////////////////// KERNELS_TRACKING.CL
+    #define VK_TRACKING(txt)				/*txt*/
+
+	/////////////////////////////////////// KERNELS_LOAD_IMAGE.CL
+    #define VK_LOAD_IMAGE(txt)				/*txt*/
+
+	/////////////////////////////////////// KERELS_PHOTOMETRIC_COST.CL
+    #define VK_PHOTOMETRIC_COST(txt)		/*txt*/
+
+	/////////////////////////////////////// KERNELS_SETUP_KEYFRAME.CL
+    #define VK_SETUP_KEYFRAME(txt)			/*txt*/
+
 
 #endif /*KERNEL_MACROS_H*/

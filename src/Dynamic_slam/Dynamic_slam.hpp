@@ -96,7 +96,7 @@ class Dynamic_slam
       frame_datum           frame_data              = {};
     };
 
-    std::vector<frame_datum>     frame_data;           // (frame_data start, old, current, key_frame) are now indices of elements in the vector.
+    std::vector<frame_datum>     frame_data;      // (frame_data start, old, current, key_frame) are now indices of elements in the vector.
     std::vector<keyframe_datum>  keyframe_data;
 
     // GT data loading ?

@@ -163,7 +163,7 @@ void RunCL::estimateSE3_LK( float local_k2k[16], float SE3_results[max_mipmap_la
 	_clSetKernelArg( se3_lk_grad_kernel,19, sizeof( cl_mem), 									&keyframe_g1mem, 		fname);					//__global 	 	float8*		g1p								//19
 
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK( ..)_chk_3 ."<<flush;}
-	mipmap_call_kernel( se3_lk_grad_kernel, m_queue, start, stop, false, local_work_size/wg_divisor); 										// reduced worksize to allow for local memory limit 4kb on rtx 3030
+	mipmap_call_kernel( se3_lk_grad_kernel, m_queue, start, stop, true, local_work_size/wg_divisor); 										// false // reduced worksize to allow for local memory limit 4kb on rtx 3030
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK( ..)_chk_4 ."<<flush;
 																																				stringstream ss;	ss << dataset_frame_num << "_iter_"<< count << "_estimateSE3_LK_";
                                                                                                                                                 stringstream ss_path;
@@ -174,7 +174,7 @@ void RunCL::estimateSE3_LK( float local_k2k[16], float SE3_results[max_mipmap_la
 																																				float max_range 		= -1; 		// i.e. gray = zero.
 
 																																				DownloadAndSave_3Channel_volume(  SE3_rho_map_mem,  	ss.str( ), paths.at( "SE3_rho_map_mem"),  	mm_size_bytes_C4, mm_Image_size, CV_32FC4, show, max_range, vol_layers, exception_tiff, count, display );
-																																				DownloadAndSave_3Channel_volume(  SE3_weight_map_mem, 	ss.str( ), paths.at( "SE3_weight_map_mem"), 	mm_size_bytes_C4, mm_Image_size, CV_32FC4, show, max_range, 6, 			exception_tiff, count, display );
+																																				DownloadAndSave_3Channel_volume(  SE3_weight_map_mem, 	ss.str( ), paths.at( "SE3_weight_map_mem"), mm_size_bytes_C4, mm_Image_size, CV_32FC4, show, max_range, 6, 			exception_tiff, count, display );
 																																				DownloadAndSave_3Channel_volume(  SE3_incr_map_mem, 	ss.str( ), paths.at( "SE3_incr_map_mem"), 	mm_size_bytes_C4, mm_Image_size, CV_32FC4, show, max_range, 6, 			exception_tiff, count, display );
 																																			}
 																																			if( obj["sample_se3_incr"].asBool( )==true) {

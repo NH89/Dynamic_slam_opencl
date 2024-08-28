@@ -7,7 +7,7 @@ using namespace std;
 
 void Dynamic_slam::optimize_depth(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_OPTIMIZE_DEPTH;//verbosity_mp["Dynamic_slam::optimize_depth"];
-
+																																			if(verbosity>local_verbosity_threshold){ cout << "\f Dynamic_slam::optimize_depth()"<<flush;}
 	bool doneOptimizing;
 	int  opt_count				= 0;
 	int  max_opt_count			= obj["max_opt_count"].asInt();
@@ -35,6 +35,7 @@ void Dynamic_slam::optimize_depth(){
 		}
 		ExhaustiveSearch();
 	}
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::optimize_depth() finished\f"<<flush;}
 }
 
 ///

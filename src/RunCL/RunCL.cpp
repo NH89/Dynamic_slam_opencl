@@ -94,7 +94,7 @@ RunCL::RunCL( Json::Value obj_  ){ //, int_map verbosity_mp_
 	==264229== ERROR SUMMARY: 11 errors from 11 contexts (suppressed: 0 from 0)
 	*/
 
-	basemem=imgmem=dbg_databuf=cdatabuf=hdatabuf=temp_cdatabuf=temp_hdatabuf=k2kbuf=dmem=amem=gxmem=gymem=g1mem=lomem=himem=mean_mem=0;		// Set device pointers to zero
+	basemem=imgmem=dbg_databuf=cdatabuf=hdatabuf=temp_cdatabuf=temp_hdatabuf=k2kbuf=dmem=amem=gxmem=gymem=lomem=himem=mean_mem=0;			// Set device pointers to zero
 	createFolders( );																														// Create the folders to which the output will be written.
 
 	free(devices);
@@ -555,7 +555,7 @@ void RunCL::mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_
 																																			}
 	cl_event						ev;
 	cl_int							res, status;
-	for(uint reduction = start; reduction <= stop; reduction++) {
+	for(uint reduction = start; reduction <= stop; reduction++) {																			// NB processes largest layer first.
 																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::mipmap_call_kernel(..)_chk1,  reduction="<<reduction<<",  num_threads[reduction]="<<num_threads[reduction]<<"  local_work_size="<<local_work_size<<flush; }
 		//if (reduction>=start && reduction<stop){																							// compute num threads to launch & num_pixels in reduction
 																																			//if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::mipmap_call_kernel(..)_chk2 :  num_threads[reduction]="<<num_threads[reduction]<<"  local_work_size="<<local_work_size<<flush; }
@@ -584,7 +584,7 @@ void RunCL::allocatemem(){
 
 	gxmem				= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C8, 		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 2= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	gymem				= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C8, 		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 3= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	g1mem				= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C8, 		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 4= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+
 	k_map_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C1*10,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 5= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // camera intrinsic map
 	dist_map_mem		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C1*28,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 6= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // distorsion map
 	SE3_grad_map_mem 	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C8*6*2,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 7= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // SE3_map * img grad, 6DoF*8channels=48     // 6DoF*3channels=18,but 4*6=24 because hsv img gradient is held in float4
@@ -661,7 +661,7 @@ void RunCL::allocatemem(){
 																																			cout << ",gxmem = " 		<< gxmem << endl;
 																																			cout << ",gymem = " 		<< gymem << endl;
 																																			cout << ",qmem = " 			<< qmem << endl;
-																																			cout << ",g1mem = " 		<< g1mem << endl;
+																																			//cout << ",g1mem = " 		<< g1mem << endl;
 																																			cout << ",lomem = " 		<< lomem << endl;
 																																			cout << ",himem = " 		<< himem << endl;
 																																			cout << ",cdatabuf = " 		<< cdatabuf << endl;
@@ -773,7 +773,7 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	status = clReleaseMemObject(imgmem_blurred);				if (status != CL_SUCCESS)	{ cout << "\nimgmem_blurred                 status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_02"<<flush;
 	status = clReleaseMemObject(gxmem);							if (status != CL_SUCCESS)	{ cout << "\ngxmem                          status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_03"<<flush;
 	status = clReleaseMemObject(gymem);							if (status != CL_SUCCESS)	{ cout << "\ngymem                          status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_04"<<flush;
-	status = clReleaseMemObject(g1mem);							if (status != CL_SUCCESS)	{ cout << "\ng1mem                          status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_05"<<flush;
+
 	status = clReleaseMemObject(k_map_mem);						if (status != CL_SUCCESS)	{ cout << "\nk_map_mem                      status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_06"<<flush;
 	status = clReleaseMemObject(dist_map_mem);					if (status != CL_SUCCESS)	{ cout << "\ndist_map_mem                   status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_07"<<flush;
 	status = clReleaseMemObject(SE3_grad_map_mem);				if (status != CL_SUCCESS)	{ cout << "\nSE3_grad_map_mem               status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_08"<<flush;

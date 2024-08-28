@@ -43,4 +43,5 @@ inline void atomic_minf(															  				// from https://ingowald.blog/2018/
 
 // __constant const int test_var = 1;
 
+
 #endif /*KERNELS_H*/

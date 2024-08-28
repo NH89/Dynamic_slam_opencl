@@ -18,22 +18,25 @@ void RunCL::updateDepthCostVol(cv::Matx44f K2K_, int count, uint start, uint sto
 
 	_clEnqueueWriteBuffer(uload_queue, k2kbuf,			CL_FALSE, 0, 16 * sizeof(float), K2K_arry, 		fname);
                                                                                                                                             if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateDepthCostVol(..)_chk0.7 \t" << "save_index_" <<save_index<<flush;}
-	//      __private	 uint layer, set in mipmap_call_kernel(..) below                                                                                                                        //__private	    uint	    layer,			//0
-	_clSetKernelArg(depth_cost_vol_kernel,  1, sizeof(cl_mem), &mipmap_buf, 					fname);										//__constant    uint*	    mipmap_params,	//1
-	_clSetKernelArg(depth_cost_vol_kernel,  2, sizeof(cl_mem), &uint_param_buf, 				fname);										//__constant	uint*		uint_params,	//2
-	_clSetKernelArg(depth_cost_vol_kernel,  3, sizeof(cl_mem), &fp32_param_buf, 				fname);										//__constant	float*		fp32_params,	//3
-	_clSetKernelArg(depth_cost_vol_kernel,  4, sizeof(cl_mem), &k2kbuf, 						fname);										//__global 		float16*	k2k,			//4
-	_clSetKernelArg(depth_cost_vol_kernel,  5, sizeof(cl_mem), &keyframe_imgmem_HSV_grad, 		fname);										//__global 		float8* 	base,			//5		keyframe_basemem
+	uint kernel_verbosity = (verbosity>local_verbosity_threshold+1)  ;
+	//  __private	 uint layer, set in mipmap_call_kernel(..) below                                                                        //__private	    uint	    layer,			//0
+	//clSetKernelArg(kernel_to_call, 0, sizeof(int), &reduction);
+	_clSetKernelArg(depth_cost_vol_kernel,  1, sizeof(int),    &kernel_verbosity,				fname);										//__private    	uint*	    k_verbosity,	//1
+	_clSetKernelArg(depth_cost_vol_kernel,  2, sizeof(cl_mem), &mipmap_buf, 					fname);										//__constant    uint*	    mipmap_params,	//2
+	_clSetKernelArg(depth_cost_vol_kernel,  3, sizeof(cl_mem), &uint_param_buf, 				fname);										//__constant	uint*		uint_params,	//3
+	_clSetKernelArg(depth_cost_vol_kernel,  4, sizeof(cl_mem), &fp32_param_buf, 				fname);										//__constant	float*		fp32_params,	//4
+	_clSetKernelArg(depth_cost_vol_kernel,  5, sizeof(cl_mem), &k2kbuf, 						fname);										//__global 		float16*	k2k,			//5
+	_clSetKernelArg(depth_cost_vol_kernel,  6, sizeof(cl_mem), &keyframe_imgmem_HSV_grad, 		fname);										//__global 		float8* 	base,			//6		keyframe_basemem
 
-	_clSetKernelArg(depth_cost_vol_kernel,  6, sizeof(cl_mem), &HSV_grad_mem/*imgmem*/, 		fname);										//__global 		float8* 	img,			//6		HSV_grad_mem/*imgmem*/ now float8
-	_clSetKernelArg(depth_cost_vol_kernel,  7, sizeof(cl_mem), &cdatabuf, 						fname);										//__global 		float*  	cdata,			//7
-	_clSetKernelArg(depth_cost_vol_kernel,  8, sizeof(cl_mem), &hdatabuf, 						fname);										//__global 		float*  	hdata,			//8
-	_clSetKernelArg(depth_cost_vol_kernel,  9, sizeof(cl_mem), &lomem,							fname);										//__global 		float*  	lo,				//9
-	_clSetKernelArg(depth_cost_vol_kernel, 10, sizeof(cl_mem), &himem,							fname);										//__global 		float*  	hi,				//10
-	_clSetKernelArg(depth_cost_vol_kernel, 11, sizeof(cl_mem), &amem, 							fname);										//__global 		float*  	a,				//11	amem, auxilliary A
-	_clSetKernelArg(depth_cost_vol_kernel, 12, sizeof(cl_mem), &dmem, 							fname);										//__global 		float*  	d,				//12	dmem, depth D
-	_clSetKernelArg(depth_cost_vol_kernel, 13, sizeof(cl_mem), &img_sum_buf, 					fname);										//__global 		float*  	img_sum,		//13
-	_clSetKernelArg(depth_cost_vol_kernel, 14, sizeof(cl_mem), &cdatabuf_8chan, 				fname);										//__global 		float8* 	cdata_8chan		//14
+	_clSetKernelArg(depth_cost_vol_kernel,  7, sizeof(cl_mem), &HSV_grad_mem/*imgmem*/, 		fname);										//__global 		float8* 	img,			//7		HSV_grad_mem/*imgmem*/ now float8
+	_clSetKernelArg(depth_cost_vol_kernel,  8, sizeof(cl_mem), &cdatabuf, 						fname);										//__global 		float*  	cdata,			//8
+	_clSetKernelArg(depth_cost_vol_kernel,  9, sizeof(cl_mem), &hdatabuf, 						fname);										//__global 		float*  	hdata,			//9
+	_clSetKernelArg(depth_cost_vol_kernel, 10, sizeof(cl_mem), &lomem,							fname);										//__global 		float*  	lo,				//10
+	_clSetKernelArg(depth_cost_vol_kernel, 11, sizeof(cl_mem), &himem,							fname);										//__global 		float*  	hi,				//11
+	_clSetKernelArg(depth_cost_vol_kernel, 12, sizeof(cl_mem), &amem, 							fname);										//__global 		float*  	a,				//12	amem, auxilliary A
+	_clSetKernelArg(depth_cost_vol_kernel, 13, sizeof(cl_mem), &dmem, 							fname);										//__global 		float*  	d,				//13	dmem, depth D
+	_clSetKernelArg(depth_cost_vol_kernel, 14, sizeof(cl_mem), &img_sum_buf, 					fname);										//__global 		float*  	img_sum,		//14
+	_clSetKernelArg(depth_cost_vol_kernel, 15, sizeof(cl_mem), &cdatabuf_8chan, 				fname);										//__global 		float8* 	cdata_8chan		//15
 
 	/*
 	#define MAX_INV_DEPTH		0	// fp32_params indices, 		for DTAM mapping algorithm.
@@ -132,15 +135,16 @@ void RunCL::updateQD(float epsilon, float theta, float sigma_q, float sigma_d, u
 	fp32_params[THETA]			=  theta;
 
 	_clEnqueueWriteBuffer(uload_queue, fp32_param_buf, CL_FALSE, 0, 16 * sizeof(float), fp32_params, fname); 								// WriteBuffer param_buf ##########
-
+	uint kernel_verbosity = (verbosity>local_verbosity_threshold+1)  ;
 	// __private	uint	layer	, set in mipmap_call_kernel(..) below																	//__private	uint	layer,				//0
-	_clSetKernelArg(updateQD_kernel, 1, sizeof(cl_mem), &mipmap_buf, 		fname);															//__constant 	uint*	mipmap_params,	//1
-	_clSetKernelArg(updateQD_kernel, 2, sizeof(cl_mem), &uint_param_buf, 	fname);															//__constant 	uint*	uint_params,	//2
-	_clSetKernelArg(updateQD_kernel, 3, sizeof(cl_mem), &fp32_param_buf, 	fname);															//__global 	float*  fp32_params,		//3
-	_clSetKernelArg(updateQD_kernel, 4, sizeof(cl_mem), &keyframe_g1mem, 	fname);															//__global 	float4* g1pt,				//4
-	_clSetKernelArg(updateQD_kernel, 5, sizeof(cl_mem), &qmem, 				fname);	 														//__global 	float* 	qpt,				//5		// qmem,						//	2 * mm_size_bytes_C1
-	_clSetKernelArg(updateQD_kernel, 6, sizeof(cl_mem), &amem, 				fname);	 														//__global 	float*  apt,				//6		// amem,     auxilliary A		//	mm_size_bytes_C1
-	_clSetKernelArg(updateQD_kernel, 7, sizeof(cl_mem), &dmem, 				fname);	 														//__global 	float*  dpt					//7		// dmem,     depth D			//	mm_size_bytes_C1
+	_clSetKernelArg(updateQD_kernel, 1, sizeof(int),    &kernel_verbosity,	fname);															//__private    	uint*	k_verbosity,	//1
+	_clSetKernelArg(updateQD_kernel, 2, sizeof(cl_mem), &mipmap_buf, 		fname);															//__constant 	uint*	mipmap_params,	//2
+	_clSetKernelArg(updateQD_kernel, 3, sizeof(cl_mem), &uint_param_buf, 	fname);															//__constant 	uint*	uint_params,	//3
+	_clSetKernelArg(updateQD_kernel, 4, sizeof(cl_mem), &fp32_param_buf, 	fname);															//__global 	float*  fp32_params,		//4
+	_clSetKernelArg(updateQD_kernel, 5, sizeof(cl_mem), &keyframe_g1mem, 	fname);															//__global 	float4* g1pt,				//5
+	_clSetKernelArg(updateQD_kernel, 6, sizeof(cl_mem), &qmem, 				fname);	 														//__global 	float* 	qpt,				//6		// qmem,						//	2 * mm_size_bytes_C1
+	_clSetKernelArg(updateQD_kernel, 7, sizeof(cl_mem), &amem, 				fname);	 														//__global 	float*  apt,				//7		// amem,     auxilliary A		//	mm_size_bytes_C1
+	_clSetKernelArg(updateQD_kernel, 8, sizeof(cl_mem), &dmem, 				fname);	 														//__global 	float*  dpt					//8		// dmem,     depth D			//	mm_size_bytes_C1
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateQD(..)_chk1 ."<<flush;}
 	mipmap_call_kernel( updateQD_kernel, m_queue, start, stop );
 																																			if(verbosity>local_verbosity_threshold) {
@@ -165,18 +169,20 @@ void RunCL::updateQD(float epsilon, float theta, float sigma_q, float sigma_d, u
 
 void RunCL::updateG(int count, uint start, uint stop){
 	string fname = "RunCL::updateG(..)";
-	int local_verbosity_threshold = V_RUNCL_UPDATEG;//verbosity_mp["RunCL::updateG"];// -1;																										if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateG(..)_chk0"<<flush;}
+	int local_verbosity_threshold = V_RUNCL_UPDATEG;																						if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateG(..)_chk0 ##########################"<<flush;}
 	G_count++;
 	cl_int res;
 	size_t num_threads = ceil( (float)(mm_layerstep)/(float)local_work_size ) * local_work_size ;
 																																			if(verbosity>local_verbosity_threshold) { cout<<"\n\nRunCL::updateG(..)_chk1"<<flush;
 																																				cout << ",   num_threads = " << num_threads << ",   mm_layerstep = " << mm_layerstep << ",  local_work_size = " << local_work_size  <<endl << flush;}
-	//      __private	 uint layer, set in mipmap_call_kernel(..) below                                                                                                            //__private	 uint	    layer,			//0
-    _clSetKernelArg(updateG_kernel, 1, sizeof(cl_mem), &mipmap_buf, 				fname);													//__constant uint*		mipmap_params,	//1
-	_clSetKernelArg(updateG_kernel, 2, sizeof(cl_mem), &uint_param_buf, 			fname);													//__constant uint*		uint_params		//2
-	_clSetKernelArg(updateG_kernel, 3, sizeof(cl_mem), &fp32_param_buf, 			fname);													//__constant float*		fp32_params		//3
-	_clSetKernelArg(updateG_kernel, 4, sizeof(cl_mem), &keyframe_imgmem_HSV_grad, 	fname);													//__global   float8*	img,			//4
-	_clSetKernelArg(updateG_kernel, 5, sizeof(cl_mem), &keyframe_g1mem, 			fname);													//__global 	 float8*	g1p				//5
+	uint kernel_verbosity = (verbosity>local_verbosity_threshold+1)  ;
+	// __private	 uint layer, set in mipmap_call_kernel(..) below																		//__private	 uint	    layer,			//0
+	_clSetKernelArg(updateG_kernel, 1, sizeof(int),    &kernel_verbosity,			fname);													//__private  uint*	    k_verbosity,	//1
+    _clSetKernelArg(updateG_kernel, 2, sizeof(cl_mem), &mipmap_buf, 				fname);													//__constant uint*		mipmap_params,	//2
+	_clSetKernelArg(updateG_kernel, 3, sizeof(cl_mem), &uint_param_buf, 			fname);													//__constant uint*		uint_params		//3
+	_clSetKernelArg(updateG_kernel, 4, sizeof(cl_mem), &fp32_param_buf, 			fname);													//__constant float*		fp32_params		//4
+	_clSetKernelArg(updateG_kernel, 5, sizeof(cl_mem), &keyframe_imgmem_HSV_grad, 	fname);													//__global   float8*	img,			//5
+	_clSetKernelArg(updateG_kernel, 6, sizeof(cl_mem), &keyframe_g1mem, 			fname);													//__global 	 float8*	g1p				//6
 
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateG(..)_chk2"<<flush;}
 	mipmap_call_kernel( updateG_kernel, m_queue, start, stop );
@@ -191,29 +197,30 @@ void RunCL::updateG(int count, uint start, uint stop){
 																																				float max_range = 1.0;   // produce tiff with exact float values from the buffer.
 																																				DownloadAndSave_HSV_grad(  keyframe_g1mem,	ss.str(), paths.at("keyframe_g1mem"), 	mm_size_bytes_C8, mm_Image_size,  CV_32FC(8),false, max_range, 0 );	//  /* paths.at(ss_path.str()) */// CV_32FC4, 	false );
 																																			}
-																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateG(..)_chk4 Finished."<<flush;}
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateG(..)_chk4 Finished.###############################"<<flush;}
 }
 
 void RunCL::updateA(float lambda, float theta,  uint start, uint stop){
 	string fname = "RunCL::updateA(..)";
-	int local_verbosity_threshold = V_RUNCL_UPDATEA;																						if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateA(..)_chk0 ."<<flush;}
+	int local_verbosity_threshold = V_RUNCL_UPDATEA;																						if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateA(..)_chk0 .####################################"<<flush;}
 	A_count++;
 
 	fp32_params[THETA]			=  theta;
 	fp32_params[LAMBDA]			=  lambda;
 	_clEnqueueWriteBuffer(uload_queue,  fp32_param_buf, CL_FALSE, 0, 16 * sizeof(float), fp32_params, fname);								// WriteBuffer param_buf ##########
 																																			if(verbosity>0) {cout << "\nRunCL::updateA_chk1\t\tlayers="<< fp32_params[COSTVOL_LAYERS] <<" \n" << flush;}
-
+	uint kernel_verbosity = (verbosity>local_verbosity_threshold+1)  ;
 	//__private	 uint layer, set in mipmap_call_kernel(..) below																			//__private	 uint	    layer,			//0
-	_clSetKernelArg(updateA_kernel, 1, sizeof(cl_mem), &mipmap_buf, 		fname); 														//__constant 	uint*	mipmap_params,	//1
-	_clSetKernelArg(updateA_kernel, 2, sizeof(cl_mem), &uint_param_buf, 	fname); 														//__constant 	uint*	uint_params,	//2
-	_clSetKernelArg(updateA_kernel, 3, sizeof(cl_mem), &fp32_param_buf, 	fname); 														//__global 	float*  fp32_params,		//3
-	_clSetKernelArg(updateA_kernel, 4, sizeof(cl_mem), &cdatabuf, 			fname); 														//__global 	float*  cdata,				//4		//           cost volume
-	_clSetKernelArg(updateA_kernel, 5, sizeof(cl_mem), &lomem, 				fname);															//__global 	float*  lo,					//5
-	_clSetKernelArg(updateA_kernel, 6, sizeof(cl_mem), &himem, 				fname);															//__global 	float*  hi,					//6
-	_clSetKernelArg(updateA_kernel, 7, sizeof(cl_mem), &amem, 				fname);															//__global 	float*  apt,				//7		// amem,     auxilliary A
-	_clSetKernelArg(updateA_kernel, 8, sizeof(cl_mem), &dmem, 				fname);															//__global 	float*  dpt					//8		// dmem,     depth D
-	_clSetKernelArg(updateA_kernel, 9, sizeof(cl_mem), &dbg_databuf, 		fname);															//__global 	float*  dbg_data			//9		// dbg_databuf,   debugging buffer
+	_clSetKernelArg(updateA_kernel, 1, sizeof(int),    &kernel_verbosity,	fname);															//__private    	uint*	k_verbosity,	//1
+	_clSetKernelArg(updateA_kernel, 2, sizeof(cl_mem), &mipmap_buf, 		fname); 														//__constant 	uint*	mipmap_params,	//2
+	_clSetKernelArg(updateA_kernel, 3, sizeof(cl_mem), &uint_param_buf, 	fname); 														//__constant 	uint*	uint_params,	//3
+	_clSetKernelArg(updateA_kernel, 4, sizeof(cl_mem), &fp32_param_buf, 	fname); 														//__global 	float*  fp32_params,		//4
+	_clSetKernelArg(updateA_kernel, 5, sizeof(cl_mem), &cdatabuf, 			fname); 														//__global 	float*  cdata,				//5		//           cost volume
+	_clSetKernelArg(updateA_kernel, 6, sizeof(cl_mem), &lomem, 				fname);															//__global 	float*  lo,					//6
+	_clSetKernelArg(updateA_kernel, 7, sizeof(cl_mem), &himem, 				fname);															//__global 	float*  hi,					//7
+	_clSetKernelArg(updateA_kernel, 8, sizeof(cl_mem), &amem, 				fname);															//__global 	float*  apt,				//8		// amem,     auxilliary A
+	_clSetKernelArg(updateA_kernel, 9, sizeof(cl_mem), &dmem, 				fname);															//__global 	float*  dpt					//9		// dmem,     depth D
+	_clSetKernelArg(updateA_kernel,10, sizeof(cl_mem), &dbg_databuf, 		fname);															//__global 	float*  dbg_data			//10	// dbg_databuf,   debugging buffer
 
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateA(..)_chk2 ."<<flush;}
 	mipmap_call_kernel( updateA_kernel, m_queue, start, stop );
@@ -234,22 +241,25 @@ void RunCL::updateA(float lambda, float theta,  uint start, uint stop){
 																																					DownloadAndSaveVolume(dbg_databuf, 	ss.str(), paths.at("dbg_databuf"), 	mm_size_bytes_C1,	mm_Image_size,   CV_32FC1,  show , 0 /*TODO count*/ , exception_tiff );
 																																				}
 																																			}
-																																			if(verbosity>0) cout<<"\nRunCL::updateA_chk2_finished,   fp32_params[MAX_INV_DEPTH]="<<fp32_params[MAX_INV_DEPTH]<<flush;
+																																			if(verbosity>0) cout<<"\nRunCL::updateA_chk2_finished,   fp32_params[MAX_INV_DEPTH]="<<fp32_params[MAX_INV_DEPTH]<<"#############################################"<<flush;
 }
 
 void RunCL::measureDepthFit(uint start, uint stop){
 	string fname = "RunCL::measureDepthFit(..)";
-	int local_verbosity_threshold = V_RUNCL_MEASUREDEPTHFIT;																				if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::measureDepthFit(..)_chk0 ."<<flush;}
-	_clSetKernelArg(measureDepthFit_kernel, 1, sizeof(cl_mem), &mipmap_buf, 			fname); 											//__constant 	uint*	mipmap_params,				//1
-	_clSetKernelArg(measureDepthFit_kernel, 2, sizeof(cl_mem), &uint_param_buf, 		fname); 											//__constant 	uint*	uint_params,				//2
-	_clSetKernelArg(measureDepthFit_kernel, 3, sizeof(cl_mem), &fp32_param_buf, 		fname); 											//__global 		float*  fp32_params,				//3
+	int local_verbosity_threshold = V_RUNCL_MEASUREDEPTHFIT;																				if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::measureDepthFit(..)_chk0 .##########################"<<flush;}
+	uint kernel_verbosity = (verbosity>local_verbosity_threshold+1)  ;
+	//__private	 uint layer, set in mipmap_call_kernel(..) below																			//__private	 	uint	layer,						//0
+	_clSetKernelArg(measureDepthFit_kernel, 1, sizeof(int),    &kernel_verbosity,		fname);												//__private    	uint	k_verbosity,				//1
+	_clSetKernelArg(measureDepthFit_kernel, 2, sizeof(cl_mem), &mipmap_buf, 			fname); 											//__constant 	uint*	mipmap_params,				//2
+	_clSetKernelArg(measureDepthFit_kernel, 3, sizeof(cl_mem), &uint_param_buf, 		fname); 											//__constant 	uint*	uint_params,				//3
+	_clSetKernelArg(measureDepthFit_kernel, 4, sizeof(cl_mem), &fp32_param_buf, 		fname); 											//__global 		float*  fp32_params,				//4
 
-	_clSetKernelArg(measureDepthFit_kernel, 4, sizeof(cl_mem), &dmem, 					fname);												//__global 		float*  dpt							//4		// dmem,     depth D
-	_clSetKernelArg(measureDepthFit_kernel, 5, sizeof(cl_mem), &keyframe_depth_mem_GT, 	fname);												//__global 		float*  dpt_GT						//5
-	_clSetKernelArg(measureDepthFit_kernel, 6, sizeof(cl_mem), &dmem_disparity, 		fname);												//__global 		float*  dpt_disparity				//6
+	_clSetKernelArg(measureDepthFit_kernel, 5, sizeof(cl_mem), &dmem, 					fname);												//__global 		float*  dpt							//5		// dmem,     depth D
+	_clSetKernelArg(measureDepthFit_kernel, 6, sizeof(cl_mem), &keyframe_depth_mem_GT, 	fname);												//__global 		float*  dpt_GT						//6
+	_clSetKernelArg(measureDepthFit_kernel, 7, sizeof(cl_mem), &dmem_disparity, 		fname);												//__global 		float*  dpt_disparity				//7
 
-	_clSetKernelArg(measureDepthFit_kernel, 7, local_work_size*4*sizeof(float), NULL, 	fname);												//__local		float*	local_sum_dpt_disparity		//7
-	_clSetKernelArg(measureDepthFit_kernel, 8, sizeof(cl_mem), &dmem_disparity_sum, 	fname);												//__global 		float*	global_sum_dpt_disparity,	//8
+	_clSetKernelArg(measureDepthFit_kernel, 8, local_work_size*4*sizeof(float), NULL, 	fname);												//__local		float*	local_sum_dpt_disparity		//8
+	_clSetKernelArg(measureDepthFit_kernel, 9, sizeof(cl_mem), &dmem_disparity_sum, 	fname);												//__global 		float*	global_sum_dpt_disparity,	//9
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::measureDepthFit(..)_chk1 ."<<flush;}
 	mipmap_call_kernel( measureDepthFit_kernel, m_queue, start, stop );
 																																			if(verbosity>local_verbosity_threshold) {
@@ -293,7 +303,7 @@ void RunCL::measureDepthFit(uint start, uint stop){
 																																				cout << endl;
 
 																																			}
-																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::measureDepthFit()_chk4_Finished"<<flush;
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::measureDepthFit()_chk4_Finished ##################################################"<<flush;
 }
 
 

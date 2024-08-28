@@ -274,7 +274,7 @@ void Dynamic_slam::compute_optimum( float steps[3], float Rho_sq_results_[tracki
 void Dynamic_slam::estimateSE3(){																										// Adaptive step size LM tracking and halting
 	int 	local_verbosity_threshold 		= V_DYNAMIC_SLAM_ESTIMATESE3;//verbosity_mp["Dynamic_slam::estimateSE3"];
 																																		if(verbosity>local_verbosity_threshold) {
-																																			cout << "\n\nDynamic_slam::estimateSE3() chk_0"
+																																			cout << "\fDynamic_slam::estimateSE3() chk_0"
 																																			<<"  ##############################################################"<< flush;
 																																		}
 	Matx16f update 							= {0,0,0, 0,0,0};																			// SE3 Lie Algebra holding the DoF of SE3.
@@ -321,13 +321,14 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 																																			cout << "\n Dynamic_slam::estimateSE3(): launching runcl.estimateSE3_LK(..),"
 																																			<<"   iter="<<iter
 																																			<<"   layer="<<layer
+																																			<<"   SE3_stop_layer="<<SE3_stop_layer
 																																			<<"   SE3_start_layer="<<SE3_start_layer
 																																			<<"   obj['SE3_start_layer'].asUInt()="<<obj["SE3_start_layer"].asUInt()
 																																			<<endl<<flush;
 																																			layer=obj["SE3_start_layer"].asUInt();
 																																			if (layer>6) runcl.exit_(1);
 																																		}
-		runcl.estimateSE3_LK( k2k_4_16[0], SE3_results, SE3_weights, Rho_sq_results[0], iter, layer, layer+1 );							// Find the gradient "update" wrt SE3
+		runcl.estimateSE3_LK( k2k_4_16[0], SE3_results, SE3_weights, Rho_sq_results[0], iter, layer-2, layer );		// NB processes largest layer first.		// Find the gradient "update" wrt SE3
 
 		for (int SE3=0; SE3<6; SE3++) {	update.operator()(SE3) = 	SE3_update_dof_weights[SE3] * SE3_update_layer_weights[layer] * factor * SE3_results[layer][SE3][channel] 	/ (SE3_weights[layer][SE3][channel] * runcl.img_stats[IMG_VAR+channel] ) ;  }
 
@@ -476,6 +477,6 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nDynamic_slam::estimateSE3() Results" << flush;
 																																			print_pose_datum( frame_data.back().frame_data );
-																																			cout << "\n\nDynamic_slam::estimateSE3() Finished  ##############################################################"<< flush;
+																																			cout << "\n\nDynamic_slam::estimateSE3() Finished  ##############################################################\f"<< flush;
 																																		}
 }
