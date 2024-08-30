@@ -24,6 +24,8 @@ void bilinear_SE3_grad_weight (float4 weights[6], __global float8* SE3_grad_map_
 
 float bilinear_grad_weight (__global float8* HSV_grad, int read_index, float u2_flt, float v2_flt, int cols, int read_offset_, uint reduction);
 
+float compute_optimum(__private float4 a, __private float4 b, __private float4 c);
+
 
 inline void atomic_maxf(															  				// from https://ingowald.blog/2018/06/24/float-atomics-in-opencl/
 	volatile 	__global 	float 	*g_val,

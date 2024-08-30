@@ -66,6 +66,7 @@ public:
 	cl_program			m_program;
 
 	// Kernels
+	cl_kernel			disparity_kernel;
 	cl_kernel			convert_depth_kernel, invert_depth_kernel, transform_depthmap_kernel, transform_costvolume_kernel;
 	cl_kernel 			depth_cost_vol_kernel, cost_kernel, cache3_kernel, cache4_kernel, updateQD_kernel, updateG_kernel, updateA_kernel, measureDepthFit_kernel;
 	cl_kernel			cvt_color_space_kernel, cvt_color_space_linear_kernel, img_variance_kernel, blur_image_kernel;
@@ -157,6 +158,10 @@ public:
 	void CleanUp();																														// Exit...
 	void exit_(int res);
 	~RunCL();
+
+	/////////////////////////////////////// RunCL_disparity.cpp
+
+	void disparity();
 
 	/////////////////////////////////////// RunCL_DownloadAndSave.cpp
 

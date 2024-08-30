@@ -88,6 +88,9 @@
 	#define	V__RUNCL   0
 	#define	V_EXIT_   0
 
+	/////////////////////////////////////// RUNCL_DISPARITY.CPP
+	#define	V_RUNCL_DISPARITY 0
+
 	/////////////////////////////////////// RUNCL_DOWNLOADANDSAVE.CPP
 	#define	V_RUNCL_CREATEFOLDERS   2
 	#define	V_RUNCL_READOUTPUT   2

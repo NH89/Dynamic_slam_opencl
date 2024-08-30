@@ -4,8 +4,6 @@
 __kernel void covariance(
 	// inputs
 	__private	uint	layer,					//0
-	__private	uint	local_num_samples,		//1
-	__private	uint	se3_sum_size,			//2
 
 	__constant 	uint8*	mipmap_params,			//3
 	__constant 	uint*	uint_params,			//4
@@ -15,21 +13,32 @@ __kernel void covariance(
 	__global	float2* warp,					//9		// NB keyframe GT_depth, now stored as inv_depth
 	__global	float8* g1p,					//10		// keyframe_g1mem
 
+	__local	 	float4*	local_img_cur, 			//11
+	__local	 	float4*	local_img_new, 			//12
+	__local	 	float4*	local_img_cur_sq, 		//13
+	__local	 	float4*	local_img_new_sq, 		//14
+
 	// outputs
-	__global	float4* Rho_,					//11
-	__local		float4*	local_rho,				//12
-	__global 	float4*	global_sum_rho_sq		//13
+	__global	float4* Rho_,					//15
+	__global 	float4*	disparity				//16
 	)
  {																									// find gradient wrt SE3 find global sum for each of the 6 DoF
-		uint  global_id_u 	= get_global_id(0);
-	float global_id_flt = global_id_u;
+	uint  global_id_u 	= get_global_id(0);
 	uint  lid 			= get_local_id(0);
+	uint  group_id 		= get_group_id(0);
 																														//if(global_id_u == 1  ){ printf("\n__kernel void se3_LK_grad (global_id_u == 1 )  chk_1"   ); }
-	uint local_size 	= get_local_size(0); // / wg_divisor;
+	const uint local_size 	= get_local_size(0); // / wg_divisor;
+	const uint patch_length	= local_size;
+
 	uint group_size 	= local_size;
 	uint num_groups		= get_num_groups(0); //size_t get_num_groups (uint dimindx)
 	uint work_dim 		= get_work_dim();
 	uint global_size	= get_global_size(0);
+
+
+	const uint halo_width	= 2;
+	global_id_u			= group_id * (local_size - 2*halo_width)  + lid;												// new global_id takes acount of halo on local memory.
+	float global_id_flt = global_id_u;
 
 	uint8 mipmap_params_ = mipmap_params[layer];
 	uint read_offset_ 	= mipmap_params_[MiM_READ_OFFSET];
@@ -70,80 +79,130 @@ __kernel void covariance(
                                                                                                                         // sample img_cur /////////////////////////////////
     float2 warp_        = warp[read_index];
 
-    for (int i=0; i<5; i++){                                                                                        // wrong, we will need to sample the whole NxN patch for each of these 5 maps.
-        uint read_index 	= read_offset_  +  v_sample[i]  * mm_cols  + u_sample[i] ;
-        img_cur_sample[i]   = img_cur[read_index];
-        img_cur_sample[i].w = alpha;
-    }
-                                                                                                                        // variance img_cur /////////////////////////////////
-    for (int i=0; i<5; i++){
+	for (int i=0; i<1+2*halo_width; i++){																				// Load local_img_patch_cur  /////////////////////////////////
+		local_img_cur[lid + i*patch_length] 	= img_cur[ read_index +i*mm_cols];
+	}
 
+	for (int i=0; i<1+2*halo_width; i++){																				// Square local_img_patch_cur  /////////////////////////////////
+		float4 pix_val 							= local_img_cur[lid + i*patch_length];
+		local_img_cur_sq[lid + i*patch_length] 	=  pix_val *  pix_val;
+	}
 
-        img_cur_sample[i] * img_cur_sample[i]
+	barrier(CLK_LOCAL_MEM_FENCE);////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	float W[9] = { 1,2,1,2,4,2,1,2,1 }; 																				// 3x3 discrete Gaussian kernel
+	int i_u[5] = {0,-1,0,1,0};
+	int i_v[5] = {1,0,0,0,-1};
 
-
-    }
-
-
-
-
+	float4 variance_curr 			= 0;
+	float4 variance_new[5] 			= {0};
+	float4 covariance[5] 			= {0};
+	float4 cross_correlation[5] 	= {0};
+	float  warp_u					= 0;
+	float  warp_v					= 0;
+	float  warp_incr_u 				= 0;
+	float  warp_incr_v 				= 0;
+																														// compute variance img_cur
+	if (lid>halo_width && lid<local_size - halo_width) {
+		for (int j=0, j_=-1; j<3; j++, j_++){
+			for (int k=0, k_=-1; k<3; k++, k_++){
+				variance_curr += local_img_cur_sq [lid + j_*patch_length + k] * W[j*3 + k];
+			}
+		}
+	}
                                                                                                                         // disparity loop /////////////////////////////////
     #define DISPARITY_ITERATIONS 7
-    for (int i=0; i< DISPARITY_ITERATIONS; i++){
+    for (int iter=0; iter< DISPARITY_ITERATIONS; iter++){
 
+		for (int i=0; i<1+4*halo_width; i++){																			// Square local_img_patch_new  // interpollate sampling of img_new  /////////////////////////////////
+			local_img_new[lid + i*patch_length] 	= bilinear_flt4 ( img_new, u + warp_u, v + warp_v,  mm_cols,  read_offset_);
+		}
+		for (int i=0; i<1+4*halo_width; i++){																			// Square local_img_patch_new  /////////////////////////////////
+		float4 pix_val 							= local_img_new[lid + i*patch_length];
+		local_img_new_sq[lid + i*patch_length] 	= pix_val *  pix_val;
+		}
 
-        for (int i=0; i<5; i++){
-            uint read_index 	= read_offset_  + ( warp_.y +  v_sample[i] )  *  mm_cols  +  warp_.x + u_sample[i] ;
-            img_cur_sample[i]   = img_new[read_index];
-            img_new_sample[i].w = alpha;
-        }
+        // variance img_new /////////////////////////////////
+        if (lid>halo_width && lid<local_size - halo_width) {
 
-
-                                                                                                                        // variance img_new /////////////////////////////////
-
-
-
-                                                                                                                        // covariance /////////////////////////////////
-
-
-
-                                                                                                                        // cross-correlation /////////////////////////////////
-
-
-
-                                                                                                                        // compute optimal warp /////////////////////////////////
-
-
-
-                                                                                                                        // clip the warp /////////////////////////////////
-
-
-
+			for (int i=0; i<5; i++){
+				for (int j=0, j_=-1; j<3; j++, j_++){
+					for (int k=0, k_=-1; k<3; k++, k_++){
+						variance_new[i] += local_img_new_sq [lid + (i_v[i] + j)*patch_length + i_u[i] + k ]    * W[j*3 + k];
+					}
+				}
+			}
+																															// covariance /////////////////////////////////
+			for (int i=0; i<5; i++){
+				for (int j=0, j_=-1; j<3; j++, j_++){
+					for (int k=0, k_=-1; k<3; k++, k_++){
+						covariance[i] +=  local_img_cur [lid + j_*patch_length + k]  *  local_img_new [ lid + (i_v[i] + j)*patch_length + i_u[i] + k ]    * W[j*3 + k];
+					}
+				}
+			}
+																															// cross-correlation /////////////////////////////////
+			for (int i=0; i<5; i++){
+				cross_correlation[i] = covariance[i] / ( variance_curr *  variance_new[i] ) ;
+			}
+																															// compute optimal warp /////////////////////////////////
+			warp_incr_u = compute_optimum( cross_correlation[1], cross_correlation[2], cross_correlation[3] );		// TODO  do I really want float4 OR should I reduce it to float ?
+			warp_incr_v = compute_optimum( cross_correlation[0], cross_correlation[2], cross_correlation[4] );
+																															// clip the warp /////////////////////////////////
+			if( iter > 5){
+				warp_incr_u = clamp( warp_incr_u, -1.0f, 1.0f );
+				warp_incr_v = clamp( warp_incr_v, -1.0f, 1.0f );
+			}
+		}
         barrier(CLK_LOCAL_MEM_FENCE);
                                                                                                                         // smooth/refine warp /////////////////////////////////
-
+																														// TODO determine confidence based, edge preserving smoothing.
 
         barrier(CLK_LOCAL_MEM_FENCE);
                                                                                                                         // warp img new /////////////////////////////////
-
-
-
-                                                                                                                        // save img new to global /////////////////////////////////
-        barrier(CLK_LOCAL_MEM_FENCE);
+		warp_u += warp_incr_u;
+		warp_v += warp_incr_v;
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                                                                                                                        // save img new to global /////////////////////////////////
+	Rho_[read_index]		= local_img_cur[lid + (1+halo_width)*patch_length]  -  bilinear_flt4 ( img_new, u + warp_u, v + warp_v,  mm_cols,  read_offset_);
+	float4 disparity_pvt 	= {warp_u, warp_v, 0, alpha};
+	disparity[read_index]	= disparity_pvt;
  }
+
+
+float compute_optimum(__private float4 A, __private float4 B, __private float4 C){
+	float 	steps[3]  = {-1, 0, 1};
+	float a, b, c,   d, e,   f, g,   h, i,   j, k, d2, f2, h2, prediction, optimum;																		// compute x value of the optimum of parabola, y= a*x*x + b*x + c
+																																			// given samples at x=1,2,4
+	d = steps[0];	e = A.x ;		// TODO  which combination of color channels ?
+	f = steps[1];	g = B.x ;
+	h = steps[2];	i = C.x ;
+
+	d2 = d * d;
+	f2 = f * f;
+	h2 = h * h;
+
+	j = (f2 - d2)*(f-h) - (h2 - f2)*(d-f);
+	k = (g-i)*(d-f) - (e-g)*(f-h);
+	a = k/j;
+	b = (e-g +a*(f2-d2))  /  (d-f);
+	c = e - a*d2 - b*d;
+
+	if (a>0){																																// IF concavity leads to a minimum, use it.
+		float x 		= -b /(2*a);
+		prediction 		= a*(x*x) + b*x + c;
+		optimum 		= x;
+	}else{																																	// IF concavity leads to a maximum, pick the best sample so far.
+		if (e>=i){
+			prediction 	= i;
+			optimum 	= h;
+		}else{
+			prediction 	= e;
+			optimum 	= d;
+		}
+	}
+	return optimum;
+}
+
+
+
+
