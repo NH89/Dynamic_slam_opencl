@@ -1,26 +1,27 @@
 #include "kernels_macros.h"
 #include "kernels.h"
 
-__kernel void covariance(
+__kernel void disparity(
 	// inputs
 	__private	uint	layer,					//0
 
-	__constant 	uint8*	mipmap_params,			//3
-	__constant 	uint*	uint_params,			//4
-	__constant  float*  fp32_params,			//5
-	__global 	float4*	img_cur,				//7		// keyframe
-	__global 	float4*	img_new,				//8
-	__global	float2* warp,					//9		// NB keyframe GT_depth, now stored as inv_depth
-	__global	float8* g1p,					//10		// keyframe_g1mem
+	__constant 	uint8*	mipmap_params,			//1
+	__constant 	uint*	uint_params,			//2
+	__constant  float*  fp32_params,			//3
 
-	__local	 	float4*	local_img_cur, 			//11
-	__local	 	float4*	local_img_new, 			//12
-	__local	 	float4*	local_img_cur_sq, 		//13
-	__local	 	float4*	local_img_new_sq, 		//14
+	__global 	float4*	img_cur,				//4		// keyframe
+	__global 	float4*	img_new,				//5
+	__global	float2* warp,					//6
+	__global	float8* g1p,					//7		// keyframe_g1mem
+
+	__local	 	float4*	local_img_cur, 			//8
+	__local	 	float4*	local_img_new, 			//9
+	__local	 	float4*	local_img_cur_sq, 		//10
+	__local	 	float4*	local_img_new_sq, 		//11
 
 	// outputs
-	__global	float4* Rho_,					//15
-	__global 	float4*	disparity				//16
+	__global	float4* Rho_,					//12
+	__global 	float4*	disparity				//13
 	)
  {																									// find gradient wrt SE3 find global sum for each of the 6 DoF
 	uint  global_id_u 	= get_global_id(0);
