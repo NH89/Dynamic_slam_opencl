@@ -71,6 +71,7 @@ add_executable(Dynamic_slam
 
          src/Dynamic_slam/Dynamic_slam.hpp
          src/Dynamic_slam/Dynamic_slam.cpp
+         src/Dynamic_slam/Dynamic_slam_disparity.cpp
          src/Dynamic_slam/Dynamic_slam_keyframe.cpp
          src/Dynamic_slam/Dynamic_slam_mapping.cpp
          src/Dynamic_slam/Dynamic_slam_tracking.cpp
@@ -81,12 +82,12 @@ add_executable(Dynamic_slam
          src/kernels/kernels_macros.h
          src/RunCL/RunCL.hpp
          src/RunCL/RunCL.cpp
+         src/RunCL/RunCL_disparity.cpp
          src/RunCL/RunCL_DownloadAndSave.cpp
          src/RunCL/RunCL_load_image.cpp
          src/RunCL/RunCL_mapping.cpp
          src/RunCL/RunCL_setup_keyframe.cpp
          src/RunCL/RunCL_tracking.cpp
-         #src/RunCL/opencl_utils.hpp
          src/RunCL/RunCL_utils.cpp
 
          src/utils/CV_chk.hpp

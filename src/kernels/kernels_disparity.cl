@@ -11,20 +11,20 @@ __kernel void disparity(
 
 	__global 	float4*	img_cur,				//4		// keyframe
 	__global 	float4*	img_new,				//5
-	__global	float2* warp,					//6
-	__global	float8* g1p,					//7		// keyframe_g1mem
+	//__global	float2* warp,					//6
+	__global	float8* g1p,					//6		// keyframe_g1mem
 
-	__local	 	float4*	local_img_cur, 			//8
-	__local	 	float4*	local_img_new, 			//9
-	__local	 	float4*	local_img_cur_sq, 		//10
-	__local	 	float4*	local_img_new_sq, 		//11
+	__local	 	float4*	local_img_cur, 			//7
+	__local	 	float4*	local_img_new, 			//8
+	__local	 	float4*	local_img_cur_sq, 		//9
+	__local	 	float4*	local_img_new_sq, 		//10
 
 	// outputs
-	__global	float4* Rho_,					//12
-	__global 	float4*	disparity				//13
+	__global	float4* Rho_,					//11
+	__global 	float4*	disparity				//12
 	)
  {																									// find gradient wrt SE3 find global sum for each of the 6 DoF
-	uint  global_id_u 	= get_global_id(0);
+	uint  global_id_orig	= get_global_id(0);
 	uint  lid 			= get_local_id(0);
 	uint  group_id 		= get_group_id(0);
 																														//if(global_id_u == 1  ){ printf("\n__kernel void se3_LK_grad (global_id_u == 1 )  chk_1"   ); }
@@ -38,7 +38,7 @@ __kernel void disparity(
 
 
 	const uint halo_width	= 2;
-	global_id_u			= group_id * (local_size - 2*halo_width)  + lid;												// new global_id takes acount of halo on local memory.
+	uint  global_id_u			= group_id * (local_size - 2*halo_width)  + lid;												// new global_id takes acount of halo on local memory.
 	float global_id_flt = global_id_u;
 
 	uint8 mipmap_params_ = mipmap_params[layer];
@@ -78,7 +78,12 @@ __kernel void disparity(
     float4 img_cur_sample[5];
     float4 img_new_sample[5];
                                                                                                                         // sample img_cur /////////////////////////////////
-    float2 warp_        = warp[read_index];
+    //float2 warp_        = warp[read_index];
+	//float4 temp_flt4 = { global_id_u, lid, u, v };
+	if (global_id_u == 50){
+		printf ("\n__kernel disparity(..) layer=%u, global_id=%u, u=%u, v=%u, read_index=%u, read_offset_=%u, mm_cols=%u, img_cur[read_index].x=%f, global_id_orig=%u", \
+		layer, global_id_u, u, v, read_index, read_offset_, mm_cols, img_cur[read_index].x, global_id_orig   );
+	}
 
 	for (int i=0; i<1+2*halo_width; i++){																				// Load local_img_patch_cur  /////////////////////////////////
 		local_img_cur[lid + i*patch_length] 	= img_cur[ read_index +i*mm_cols];
@@ -104,24 +109,56 @@ __kernel void disparity(
 	float  warp_incr_u 				= 0;
 	float  warp_incr_v 				= 0;
 																														// compute variance img_cur
-	if (lid>halo_width && lid<local_size - halo_width) {
-		for (int j=0, j_=-1; j<3; j++, j_++){
-			for (int k=0, k_=-1; k<3; k++, k_++){
-				variance_curr += local_img_cur_sq [lid + j_*patch_length + k] * W[j*3 + k];
+	if (lid>halo_width && lid<local_size - halo_width) {	// NB original image local mem has a 1 pixel margin around it, for 3x3 samples.
+		for (int j=-1; j<2; j++){
+			for (int k=-1; k<2; k++){
+				variance_curr += local_img_cur_sq [lid + j*patch_length + k] * W[(j+1)*3 + k+1];
 			}
 		}
 	}
-                                                                                                                        // disparity loop /////////////////////////////////
-    #define DISPARITY_ITERATIONS 7
+
+	barrier(CLK_LOCAL_MEM_FENCE);
+	//if (lid>halo_width  && lid=<local_size - halo_width) {
+// 		if (read_index< mm_pixels) {
+// 			uint j = 2, k=0;
+// 			Rho_[read_index]		= local_img_cur_sq [lid + j*patch_length + k];
+// 			 j=3; k=1;
+// 			disparity[read_index]	= local_img_cur_sq [lid + j*patch_length + k];
+//
+// 			 j=4; k=-1;
+// 			Rho_[read_index - (650*480) ]		= local_img_cur_sq [lid + j*patch_length + k];
+// 			 j=5;
+// 			disparity[read_index - (650*480)]	= local_img_cur_sq [lid + j*patch_length + k];
+// 		}
+	//}
+                                 // 7                                                                                       // disparity loop /////////////////////////////////
+    #define DISPARITY_ITERATIONS 1
     for (int iter=0; iter< DISPARITY_ITERATIONS; iter++){
 
 		for (int i=0; i<1+4*halo_width; i++){																			// Square local_img_patch_new  // interpollate sampling of img_new  /////////////////////////////////
-			local_img_new[lid + i*patch_length] 	= bilinear_flt4 ( img_new, u + warp_u, v + warp_v,  mm_cols,  read_offset_);
+			local_img_new[lid + i*patch_length] = bilinear_flt4 ( img_new, u_flt + warp_u, v_flt + warp_v,  mm_cols,  read_offset_);
 		}
 		for (int i=0; i<1+4*halo_width; i++){																			// Square local_img_patch_new  /////////////////////////////////
 		float4 pix_val 							= local_img_new[lid + i*patch_length];
 		local_img_new_sq[lid + i*patch_length] 	= pix_val *  pix_val;
 		}
+
+
+		if (read_index< mm_pixels) {
+			uint j = 0, k=0;
+			Rho_[read_index]					= local_img_new [lid + j*patch_length + k];
+			 j=2; k=2;
+			disparity[read_index]				= local_img_new [lid + j*patch_length + k];
+
+			 j=4; k=4;
+			Rho_[read_index - (650*480) ]		= local_img_new [lid + j*patch_length + k];
+			 j=5; k=5;
+			disparity[read_index - (650*480)]	= local_img_new [lid + j*patch_length + k];
+		}
+
+
+
+
 
         // variance img_new /////////////////////////////////
         if (lid>halo_width && lid<local_size - halo_width) {
@@ -164,9 +201,11 @@ __kernel void disparity(
 		warp_v += warp_incr_v;
     }
                                                                                                                         // save img new to global /////////////////////////////////
-	Rho_[read_index]		= local_img_cur[lid + (1+halo_width)*patch_length]  -  bilinear_flt4 ( img_new, u + warp_u, v + warp_v,  mm_cols,  read_offset_);
-	float4 disparity_pvt 	= {warp_u, warp_v, 0, alpha};
-	disparity[read_index]	= disparity_pvt;
+// 	if (read_index< mm_pixels) {
+// 		Rho_[read_index]		= local_img_cur[lid + (1+halo_width)*patch_length]  -  bilinear_flt4 ( img_new, u + warp_u, v + warp_v,  mm_cols,  read_offset_);
+// 		float4 disparity_pvt 	= {warp_u, warp_v, 0, alpha};
+// 		disparity[read_index]	= disparity_pvt;
+// 	}
  }
 
 

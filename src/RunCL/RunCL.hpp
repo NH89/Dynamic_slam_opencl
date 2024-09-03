@@ -83,6 +83,7 @@ public:
 	cl_mem 				pix_sum_mem, var_sum_mem, se3_sum_mem, se3_sum2_mem, se3_weight_sum_mem;
 	cl_mem 				keyframe_imgmem, keyframe_imgmem_HSV_grad, keyframe_depth_mem, keyframe_g1mem, keyframe_SE3_grad_map_mem, keyframe_depth_mem_GT;
 	cl_mem				HSV_grad_mem, dmem_disparity, dmem_disparity_sum;
+	cl_mem				binocular_disparity, binocular_rho;
 	cl_mem				atomic_test1_buf, atomic_test2_buf;
 	
 	//
@@ -161,7 +162,7 @@ public:
 
 	/////////////////////////////////////// RunCL_disparity.cpp
 
-	void disparity();
+	void disparity(uint start, uint stop);
 
 	/////////////////////////////////////// RunCL_DownloadAndSave.cpp
 

@@ -65,7 +65,8 @@ void RunCL::createFolders(){
 										"basemem", "keyframe_basemem", "depth_mem_temp", "keyframe_depth_mem", \
 										"key_frame_depth_map_src", "depth_GT", \
 										"dmem","amem","lomem","himem","qmem","qmem2","cdatabuf","cdatabuf_8chan","hdatabuf","dbg_databuf","img_sum_buf", \
-										"HSV_grad_mem", "dmem_disparity" \
+										"HSV_grad_mem", "dmem_disparity", \
+										"binocular_disparity", "binocular_rho"\
 	};
 	std::pair<std::string, std::filesystem::path> tempPair;
 
@@ -245,8 +246,14 @@ void RunCL::DownloadAndSave(cl_mem buffer, std::string count, std::filesystem::p
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave chk0"<<flush;
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave filename = ["<<folder_tiff.filename().string()<<"] "<<flush;
 
+
 		cv::Mat temp_mat = cv::Mat::zeros (size_mat, type_mat);																				// (int rows, int cols, int type)
 		ReadOutput(temp_mat.data, buffer,  image_size_bytes); 																				// NB contains elements of type_mat, (CV_32FC1 for most buffers)
+
+		if (show==true){
+			cv::imshow( "temp_mat", temp_mat );
+			cv::waitKey(-1);
+		}
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave chk1 finished ReadOutput\n\n"<<flush;
 		cv::Mat tem_mat2;
 		if (temp_mat.type() == CV_16FC1)	temp_mat.convertTo(tem_mat2, CV_32FC1);															// NB conversion to FP32 req for cv::sum(..).

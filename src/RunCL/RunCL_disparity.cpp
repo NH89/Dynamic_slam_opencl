@@ -1,10 +1,13 @@
 #include "RunCL.hpp"
 
 
-void RunCL::disparity(){
+void RunCL::disparity(uint start, uint stop){
     string fname = "RunCL::disparity( )";
 	int local_verbosity_threshold = V_RUNCL_DISPARITY;
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::disparity( ..)_chk0 #############################################################"<<flush;}
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::disparity( ..)_chk0 #############################################################"<<flush;
+																																				cout << "\n local_work_size = " << local_work_size
+																																				<< ",  start = " << start << ",  stop = " << stop << flush;
+																																			}
 	// __private	 uint layer, set in mipmap_call_kernel( ..) below																		//__private	    uint		layer,				//0
 	// constant
 	_clSetKernelArg( disparity_kernel,  1, sizeof( cl_mem), &mipmap_buf,				fname);												//__constant	uint*		mipmap_params,		//1
@@ -15,22 +18,28 @@ void RunCL::disparity(){
 	_clSetKernelArg( disparity_kernel,  5, sizeof( cl_mem), &imgmem,					fname);												//__global		float4*		img_new,			//5
 	_clSetKernelArg( disparity_kernel,  6, sizeof( cl_mem), &keyframe_g1mem,			fname);												//__global		float8* 	g1p,				//6		// keyframe_g1mem
 	// local
-	_clSetKernelArg( disparity_kernel,  7, local_work_size*4*5*sizeof(float),	NULL, 	fname);												//__local	 	float4*		local_img_cur, 		//7
-	_clSetKernelArg( disparity_kernel,  8, local_work_size*4*5*sizeof(float),	NULL, 	fname);												//__local	 	float4*		local_img_new, 		//8
-	_clSetKernelArg( disparity_kernel,  9, local_work_size*4*5*sizeof(float),	NULL, 	fname);												//__local	 	float4*		local_img_cur_sq, 	//9
-	_clSetKernelArg( disparity_kernel, 10, local_work_size*4*5*sizeof(float),	NULL, 	fname);												//__local	 	float4*		local_img_new_sq, 	//10
+	const uint wg_divisor =4;	// 512 * 20 * 32 / 8 =  40,960 bytes																		//  Intel(R) Iris(R) Xe Graphics : Local memory size  65,536 (64KiB),  Max work item dimensions 3,   Max work item sizes 512x512x512,   Max work group size 512.
+	_clSetKernelArg( disparity_kernel,  7, local_work_size*4*5/wg_divisor*sizeof(float),	NULL, 	fname);									//__local	 	float4*		local_img_cur, 		//7
+	_clSetKernelArg( disparity_kernel,  8, local_work_size*4*5/wg_divisor*sizeof(float),	NULL, 	fname);									//__local	 	float4*		local_img_new, 		//8
+	_clSetKernelArg( disparity_kernel,  9, local_work_size*4*5/wg_divisor*sizeof(float),	NULL, 	fname);									//__local	 	float4*		local_img_cur_sq, 	//9
+	_clSetKernelArg( disparity_kernel, 10, local_work_size*4*5/wg_divisor*sizeof(float),	NULL, 	fname);									//__local	 	float4*		local_img_new_sq, 	//10
 	// outputs
-	_clSetKernelArg( disparity_kernel, 11, sizeof( cl_mem), &mean_mem,					fname);												//__global		float4*		Rho_,				//11
-	_clSetKernelArg( disparity_kernel, 12, sizeof( cl_mem), &mean_mem,					fname);												//__global		float4*		disparity			//12
+	_clSetKernelArg( disparity_kernel, 11, sizeof( cl_mem), &binocular_rho,				fname);												//__global		float4*		Rho_,				//11
+	_clSetKernelArg( disparity_kernel, 12, sizeof( cl_mem), &binocular_disparity,		fname);												//__global		float4*		disparity			//12
 
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::disparity( ..)_chk1 ."<<flush;}
-	mipmap_call_kernel( disparity_kernel, m_queue );
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::disparity( ..)_chk1 .   local_work_size/wg_divisor = " << local_work_size/wg_divisor <<flush;}
+	//uint start = 4, stop = 3;
+	mipmap_call_kernel( disparity_kernel, m_queue, start, stop, false, local_work_size/wg_divisor);
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::disparity( ..)_chk3 ."<<flush;
                                                                                                                                                 stringstream ss;
 																																				ss << "transform_costvolume" << save_index;													// Save buffers to file ###########
-																																				bool show = false;
-																																				DownloadAndSave( 	lomem,  ss.str( ), paths.at( "lomem"),  mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	show , 8);	// a little more than the num images in costvol.
-																																				DownloadAndSave( 	himem,  ss.str( ), paths.at( "himem"),  mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	show , 8);	//params[COSTVOL_LAYERS]
-                                                                                                                                            }
+																																				bool show 		= false;
+																																				bool old_tiff 	= tiff;
+																																				tiff 			= true;
+																																				_cl_flush_finish(m_queue, fname);
+																																				DownloadAndSave_3Channel( 	binocular_rho,  	  ss.str( ), paths.at( "binocular_rho"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , 1);
+																																				DownloadAndSave_3Channel( 	binocular_disparity,  ss.str( ), paths.at( "binocular_disparity"),  mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , 1);
+																																				tiff 			= old_tiff;
+                                                                                                                                              }
                                                                                                                                             if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::disparity( ..) Finished ###########################################################"<<flush;}
 }

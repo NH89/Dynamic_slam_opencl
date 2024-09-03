@@ -130,6 +130,9 @@ class Dynamic_slam
     void getResult();                         // called at end of main(). Currentlyshows mapping params and saves amem & dmem depth maps.
     void print_pose_vectors(uint start, uint stop);
 
+    /////////////////////////////////////// Dynamic_slam_disparity.cpp
+    void disparity();
+
     /////////////////////////////////////// Dynamic_slam_keyframe.cpp
     void initialize_keyframe_vec(  );
 
