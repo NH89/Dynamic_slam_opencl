@@ -23,7 +23,7 @@ __kernel void disparity(
 	__global	float4* Rho_,					//11
 	__global 	float4*	disparity				//12
 	)
- {																									// find gradient wrt SE3 find global sum for each of the 6 DoF
+ {																														// find gradient wrt SE3 find global sum for each of the 6 DoF
 	uint  global_id_orig	= get_global_id(0);
 	uint  lid 			= get_local_id(0);
 	uint  group_id 		= get_group_id(0);
@@ -36,9 +36,8 @@ __kernel void disparity(
 	uint work_dim 		= get_work_dim();
 	uint global_size	= get_global_size(0);
 
-
 	const uint halo_width	= 2;
-	uint  global_id_u			= group_id * (local_size - 2*halo_width)  + lid;												// new global_id takes acount of halo on local memory.
+	uint  global_id_u	= group_id * (local_size - 2*halo_width)  + lid;												// new global_id takes acount of halo on local memory.
 	float global_id_flt = global_id_u;
 
 	uint8 mipmap_params_ = mipmap_params[layer];
@@ -78,11 +77,9 @@ __kernel void disparity(
     float4 img_cur_sample[5];
     float4 img_new_sample[5];
                                                                                                                         // sample img_cur /////////////////////////////////
-    //float2 warp_        = warp[read_index];
-	//float4 temp_flt4 = { global_id_u, lid, u, v };
-	if (global_id_u == 50){
-		printf ("\n__kernel disparity(..) layer=%u, global_id=%u, u=%u, v=%u, read_index=%u, read_offset_=%u, mm_cols=%u, img_cur[read_index].x=%f, global_id_orig=%u", \
-		layer, global_id_u, u, v, read_index, read_offset_, mm_cols, img_cur[read_index].x, global_id_orig   );
+	if (global_id_u == 150){
+		printf ("\n__kernel disparity(..) layer=%u, global_id=%u, group_id=%u, lid=%u, u=%u, v=%u, read_index=%u, read_offset_=%u, mm_cols=%u, img_cur[read_index].x=%f, global_id_orig=%u, local_size=%u, halo_width=%u", \
+		layer, global_id_u, group_id, lid, u, v, read_index, read_offset_, mm_cols, img_cur[read_index].x, global_id_orig, local_size, halo_width  );
 	}
 
 	for (int i=0; i<1+2*halo_width; i++){																				// Load local_img_patch_cur  /////////////////////////////////
@@ -94,8 +91,6 @@ __kernel void disparity(
 		local_img_cur_sq[lid + i*patch_length] 	=  pix_val *  pix_val;
 	}
 
-	barrier(CLK_LOCAL_MEM_FENCE);////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 	float W[9] = { 1,2,1,2,4,2,1,2,1 }; 																				// 3x3 discrete Gaussian kernel
 	int i_u[5] = {0,-1,0,1,0};
 	int i_v[5] = {1,0,0,0,-1};
@@ -104,10 +99,14 @@ __kernel void disparity(
 	float4 variance_new[5] 			= {0};
 	float4 covariance[5] 			= {0};
 	float4 cross_correlation[5] 	= {0};
-	float  warp_u					= 0;
-	float  warp_v					= 0;
+	float4 disparity_pvt			= disparity[read_index];
+	float  warp_u					= disparity_pvt.x;
+	float  warp_v					= disparity_pvt.y;
 	float  warp_incr_u 				= 0;
 	float  warp_incr_v 				= 0;
+
+	barrier(CLK_LOCAL_MEM_FENCE);////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 																														// compute variance img_cur
 	//if (lid>halo_width && lid<local_size - halo_width) {	// NB original image local mem has a 1 pixel margin around it, for 3x3 samples.
 		for (int j=0; j<3; j++){
@@ -118,6 +117,7 @@ __kernel void disparity(
 	//}
 
 	barrier(CLK_LOCAL_MEM_FENCE);
+{
 	//if (lid>halo_width  && lid=<local_size - halo_width) {
 // 		if (read_index< mm_pixels) {
 // 			uint j = 0, k=0;
@@ -130,6 +130,7 @@ __kernel void disparity(
 // 			disparity[read_index - (650*480)]	= variance_curr;
 // 		}
 	//}
+ }
                                  // 7                                                                                       // disparity loop /////////////////////////////////
     #define DISPARITY_ITERATIONS 1
     for (int iter=0; iter< DISPARITY_ITERATIONS; iter++){
@@ -141,7 +142,7 @@ __kernel void disparity(
 		float4 pix_val 							= local_img_new[lid + i*patch_length];
 		local_img_new_sq[lid + i*patch_length] 	= pix_val *  pix_val;
 		}
-
+{
 // 		if (read_index< mm_pixels) {
 // 			uint j = 0, k=0;
 // 			Rho_[read_index]					= local_img_new_sq[lid ];
@@ -153,7 +154,7 @@ __kernel void disparity(
 // 			 j=5; k=5;
 // 			disparity[read_index - (650*480)]	= local_img_new_sq[lid + 5*patch_length];
 // 		}
-
+}
         // variance img_new /////////////////////////////////
         //if (lid>halo_width && lid<local_size - halo_width) {
 
@@ -180,10 +181,10 @@ __kernel void disparity(
 			warp_incr_u = compute_optimum( cross_correlation[1], cross_correlation[2], cross_correlation[3] );		// TODO  do I really want float4 OR should I reduce it to float ?
 			warp_incr_v = compute_optimum( cross_correlation[0], cross_correlation[2], cross_correlation[4] );
 																															// clip the warp /////////////////////////////////
-			if (read_index< mm_pixels) {
-				Rho_[		read_index]				= warp_incr_u;
-				disparity[	read_index]				= warp_incr_v;
-			}
+// 			if (read_index< mm_pixels) {
+// 				Rho_[		read_index]				= warp_incr_u;
+// 				disparity[	read_index]				= warp_incr_v;
+// 			}
 
 			if( iter > 5){
 				warp_incr_u = clamp( warp_incr_u, -1.0f, 1.0f );
@@ -191,7 +192,7 @@ __kernel void disparity(
 			}
 		//}
         barrier(CLK_LOCAL_MEM_FENCE);
-
+{
 // 		if (read_index< mm_pixels) {
 // 			uint j = 0, k=0;
 // 			Rho_[read_index]						= variance_new[1]; // local_img_new_sq [lid + j*patch_length + k];
@@ -212,24 +213,26 @@ __kernel void disparity(
 // 			disparity[	read_index - (650*480) ]	= cross_correlation[3]; // cross_correlation[4]; //warp_incr_u;
 // 		}
 
-		if (read_index< mm_pixels) {
-			Rho_[		read_index - (650*480) ]	= warp_incr_u;
-			disparity[	read_index - (650*480) ]	= warp_incr_v;
-		}
+// 		if (read_index< mm_pixels) {
+// 			Rho_[		read_index - (650*480) ]	= warp_incr_u;
+// 			disparity[	read_index - (650*480) ]	= warp_incr_v;
+// 		}
+}
                                                                                                                         // smooth/refine warp /////////////////////////////////
 																														// TODO determine confidence based, edge preserving smoothing.
-
         barrier(CLK_LOCAL_MEM_FENCE);
                                                                                                                         // warp img new /////////////////////////////////
-		warp_u += warp_incr_u;
-		warp_v += warp_incr_v;
+		warp_u -= warp_incr_u;	// TODO direcction? Why does it accumulate noise + atefacts ?
+		warp_v -= warp_incr_v;
     }
-                                                                                                                        // save img new to global /////////////////////////////////
-// 	if (read_index< mm_pixels) {
-// 		Rho_[read_index]		= local_img_cur[lid + (1+halo_width)*patch_length]  -  bilinear_flt4 ( img_new, u + warp_u, v + warp_v,  mm_cols,  read_offset_);
-// 		float4 disparity_pvt 	= {warp_u, warp_v, 0, alpha};
-// 		disparity[read_index]	= disparity_pvt;
-// 	}
+																														// save img new to global /////////////////////////////////
+	if ( ( global_id_u<layer_pixels) && (read_index< mm_pixels) && (lid>=halo_width) && (lid<local_size - halo_width) ) {
+		float4 Rho_pvt			= local_img_cur[lid + (1+halo_width)*patch_length]  -  bilinear_flt4 ( img_new, u + warp_u, v + warp_v,  mm_cols,  read_offset_); // img_cur[read_index] - img_new[read_index]; //
+		Rho_pvt.w				= 1.0f;
+		Rho_[read_index]		= Rho_pvt;
+		float4 disparity_pvt 	= {warp_u, warp_v, 0, alpha};
+		disparity[read_index]	= disparity_pvt;
+	}
  }
 
 
