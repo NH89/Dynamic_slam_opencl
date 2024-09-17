@@ -75,8 +75,8 @@ void RunCL::se3_rho_sq( const uint local_num_samples,  const uint start_sample_i
 	const uint wg_divisor =2;  // 1,2,4,8  reduction in workgroup size for this kernel.
 	//input integers
 	//      __private	 uint layer, set in mipmap_call_kernel( ..) below                                                                         __private	    uint	    layer,		                    //0
-	_clSetKernelArg( se3_rho_sq_kernel, 1, sizeof( size_t), &local_num_samples, 	fname);														//__private		uint		local_num_samples				//1
-	_clSetKernelArg( se3_rho_sq_kernel, 2, sizeof( size_t), &se3_sum_size, 			fname);														//__private		uint		pix_sum_size_bytes,				//2
+	_clSetKernelArg( se3_rho_sq_kernel, 1, sizeof( uint),   &local_num_samples, 	fname);														//__private		uint		local_num_samples				//1
+	_clSetKernelArg( se3_rho_sq_kernel, 2, sizeof( uint),   &se3_sum_size, 			fname);														//__private		uint		pix_sum_size_bytes,				//2
 	//input buffers
     _clSetKernelArg( se3_rho_sq_kernel, 3, sizeof( cl_mem), &mipmap_buf, 			fname);														//__constant    uint*	    mipmap_params,	                //3
 	_clSetKernelArg( se3_rho_sq_kernel, 4, sizeof( cl_mem), &uint_param_buf, 		fname);														//__constant	uint*		uint_params,					//4
