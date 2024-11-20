@@ -279,11 +279,11 @@ __kernel void se3_LK_grad(
 
 	__global	float8* g1p						//19	keyframe_g1mem
 	)
- {																														// find gradient wrt SE3 find global sum for each of the 6 DoF
+ {																										// find gradient wrt SE3 find global sum for each of the 6 DoF
 	uint  global_id_u 	= get_global_id(0);
 	float global_id_flt = global_id_u;
 	uint  lid 			= get_local_id(0);
-																														//if(global_id_u == 1  ){ printf("\n__kernel void se3_LK_grad (global_id_u == 1 )  chk_1"   ); }
+																										//if(global_id_u == 1  ){ printf("\n__kernel void se3_LK_grad (global_id_u == 1 )  chk_1"   ); }
 	uint local_size 	= get_local_size(0); // / wg_divisor;
 	uint group_size 	= local_size;
 	uint num_groups		= get_num_groups(0); //size_t get_num_groups (uint dimindx)
@@ -310,14 +310,14 @@ __kernel void se3_LK_grad(
 	float max_inv_depth = fp32_params[MAX_INV_DEPTH]; // - inv_d_step;
 
 	uint reduction		= mm_cols/read_cols_;
-	uint v 				= global_id_u / read_cols_;																		// read_row
-	uint u 				= fmod(global_id_flt, read_cols_);																// read_column
-	float u_flt			= u * reduction;																				// NB this causes sparse sampling of the original space, to use the same k2k at every scale.
+	uint v 				= global_id_u / read_cols_;														// read_row
+	uint u 				= fmod(global_id_flt, read_cols_);												// read_column
+	float u_flt			= u * reduction;																// NB this causes sparse sampling of the original space, to use the same k2k at every scale.
 	float v_flt			= v * reduction;
 	uint read_index 	= read_offset_  +  v  * mm_cols  + u ;
 	float alpha			= img_cur[read_index].w;
 
-	float inv_depth 	= depth_map[read_index]; 																		//1.0f;// mid point max-min inv depth	// Find new pixel position, h=homogeneous coords.//inv dept  //depth_index
+	float inv_depth 	= depth_map[read_index]; 														//1.0f;// mid point max-min inv depth	// Find new pixel position, h=homogeneous coords.//inv dept  //depth_index
 	float uh2 			= k2k_pvt[0]*u_flt 	+ k2k_pvt[1]*v_flt 	+ k2k_pvt[2]*1 	+ k2k_pvt[3]*inv_depth;
 	float vh2 			= k2k_pvt[4]*u_flt 	+ k2k_pvt[5]*v_flt 	+ k2k_pvt[6]*1 	+ k2k_pvt[7]*inv_depth;
 	float wh2 			= k2k_pvt[8]*u_flt 	+ k2k_pvt[9]*v_flt 	+ k2k_pvt[10]*1	+ k2k_pvt[11]*inv_depth;
@@ -325,8 +325,8 @@ __kernel void se3_LK_grad(
 
 	float u2_flt		= uh2/(wh2*reduction);
 	float v2_flt		= vh2/(wh2*reduction);
-	int  u2				= floor(u2_flt + 0.5f) ;																// nearest neighbour interpolation
-	int  v2				= floor(v2_flt + 0.5f) ;																// NB this corrects the sparse sampling to the redued scales.
+	int  u2				= floor(u2_flt + 0.5f) ;														// nearest neighbour interpolation
+	int  v2				= floor(v2_flt + 0.5f) ;														// NB this corrects the sparse sampling to the redued scales.
 	uint num_DoFs 		= 6;
 	float4 new_px;
 

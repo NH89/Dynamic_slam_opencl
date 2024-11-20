@@ -290,7 +290,7 @@ void RunCL::createKernels(){
 
 	measureDepthFit_kernel			= clCreateKernel(m_program, "MeasureDepthFit", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'MeasureDepthFit'  kernel not built.\n"			<<flush; exit_(0);   }
 
-	disparity_kernel				= clCreateKernel(m_program, "disparity", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'disparity'  kernel not built.\n"				<<flush; exit_(0);   }
+	disparity_kernel				= clCreateKernel(m_program, "disparity2", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'disparity'  kernel not built.\n"				<<flush; exit_(0);   }
 }
 
 int RunCL::convertToString(const char *filename, std::string& s){
@@ -598,7 +598,7 @@ void RunCL::allocatemem(){
 	SE3_incr_map_mem	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C1*24,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 9= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // For debugging before summation.
 	SE3_map_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C1*12,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 10= "<<checkerror(res)<<"\n"<<flush;exit_(res);}	// (row, col) increment fo each parameter.
 	basemem				= clCreateBuffer(m_context, CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR, image_size_bytes,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 11= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // Original image CV_8UC3
-	depth_mem_temp			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 12= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // Used to be : Copy used by tracing & auto-calib. Now spare buffer for upload & computations
+	depth_mem_temp		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 12= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // Used to be : Copy used by tracing & auto-calib. Now spare buffer for upload & computations
 	depth_mem_GT		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 13= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // Where depthmap GT mimpap is constructed.
 
 	keyframe_imgmem		= clCreateBuffer(m_context, CL_MEM_READ_ONLY  						, mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 14= "<<checkerror(res)<<"\n"<<flush;exit_(res);}

@@ -680,7 +680,8 @@ void RunCL::writeToResultsMat(cv::Mat *bufImg , uint column_of_images , uint row
 	int col_offset2			= mm_margin + column_of_images * ( mm_margin + patch_cols );													if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::writeToResultsMat(..)_chk5.1"<<flush;}
 
 																																			if(verbosity>local_verbosity_threshold) cout <<"\nresultsMat.size()="<<resultsMat.size()<<", bufImg->size()="<< bufImg->size()<<flush;
-	if ((resultsMat.size().width < patch_cols) || (resultsMat.size().height < patch_rows)) {cout<<"\nRunCL::writeToResultsMat: (2) ####  No resultsMat ####  ((resultsMat.size().width < patch_cols) || (resultsMat.size().height < patch_rows))  "<<flush; return;}
+	if ((resultsMat.size().width < patch_cols) || (resultsMat.size().height < patch_rows)) {cout<<"\nRunCL::writeToResultsMat: (2) ####  No resultsMat ####  ((resultsMat.size().width=" <<resultsMat.size().width <<" < patch_cols="<<patch_cols<<")"\
+																																						<<"|| (resultsMat.size().height="<<resultsMat.size().height<<" < patch_rows="<<patch_rows<<"))  "<<flush; return;}
 
 	for (int col = 0; col < patch_cols ; col++ ) {
 		for (int row = 0; row < patch_rows ; row ++) {

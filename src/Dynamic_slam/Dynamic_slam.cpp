@@ -74,6 +74,7 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 
 	initialize_camera_vec();
 	initialize_keyframe_vec();																												// First keyframe
+	initialize_resultsMat();
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_ finished "
 																																				<< "#####################################################################################\f" << flush;
 };

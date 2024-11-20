@@ -29,7 +29,6 @@
     /////////////////////////////////////// DYNAMIC_SLAM_CLASS.CPP
 	#define	V__DYNAMIC_SLAM  0
 	#define	V_DYNAMIC_SLAM_DYNAMIC_SLAM  0
-	#define	V_DYNAMIC_SLAM_INITIALIZE_RESULTSMAT  0
 	#define	V_DYNAMIC_SLAM_INITIALIZE_CAMERA  0
 	#define	V_DYNAMIC_SLAM_NEXTFRAME   -2
 	#define	V_DYNAMIC_SLAM_GETFRAME   0
@@ -70,6 +69,8 @@
 	/////////////////////////////////////// DYNAMIC_SLAM_RESULTS.CPP
 	#define	V_DYNAMIC_SLAM_REPORT_GT_POSE_ERROR   -2
 
+	#define	V_DYNAMIC_SLAM_INITIALIZE_RESULTSMAT  0
+
 	// RUNCL/ ##############################################
 	/////////////////////////////////////// RUNCL_CLASS.CPP
 	#define	V_RUNCL_RUNCL   0
@@ -82,14 +83,14 @@
 	#define	V_RUNCL_CONVERTTOSTRING   0
 	#define	V_RUNCL_INITIALIZE_FP32_PARAMS   0
 	#define	V_RUNCL_INITIALIZE_RUNCL   0
-	#define	V_RUNCL_MIPMAP_CALL_KERNEL   0
+	#define	V_RUNCL_MIPMAP_CALL_KERNEL   -1
 	#define	V_RUNCL_WAITFOREVENTANDRELEASE   0
 	#define	V_RUNCL_ALLOCATEMEM   0
 	#define	V__RUNCL   0
 	#define	V_EXIT_   0
 
 	/////////////////////////////////////// RUNCL_DISPARITY.CPP
-	#define	V_RUNCL_DISPARITY 0
+	#define	V_RUNCL_DISPARITY -1
 
 	/////////////////////////////////////// RUNCL_DOWNLOADANDSAVE.CPP
 	#define	V_RUNCL_CREATEFOLDERS   2
@@ -164,7 +165,7 @@
 	#define	V_RUNCL_SE3_RHO_SQ   -1
 
 	#define	V_RUNCL_ESTIMATESE3_LK   0
-	#define	V_RUNCL_READ_RHO_SQ   0
+	#define	V_RUNCL_READ_RHO_SQ   -0
 	#define	V_RUNCL_READ_SE3_WEIGHTS   0
 	#define	V_RUNCL_READ_SE3_INCR   0
 

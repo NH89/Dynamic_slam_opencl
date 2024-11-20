@@ -294,27 +294,27 @@ void RunCL::load_GT_depth(cv::Mat GT_depth, bool invert){ //getFrameData();,  cv
 	float max_range_ = 0.0f;																											// 0.0f => (temp_mat / maxVal) * 256*256 for .png; TODO move this to conf.json
 																																		if(verbosity>local_verbosity_threshold+1){
 																																			DownloadAndSave( depth_mem_GT,  ss.str(),   paths.at("depth_GT"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
-																																			DownloadAndSave( depth_mem_temp,   	ss.str(),   paths.at("depth_mem_temp"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
+																																			DownloadAndSave( depth_mem_temp,   	ss.str(),   paths.at("depth_mem_temp"),   	image_size_bytes_C1,   baseImage_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;						// NB depth_mem_temp is just the raw image, with no margins nor mipmapping.
 																																		}
     _clEnqueueWriteBuffer(uload_queue, depth_mem_temp, 		CL_FALSE, 0, image_size_bytes_C1,	 GT_depth.data,  fname);
 	ss << "__0";
 																																		if(verbosity>local_verbosity_threshold+1){
 																																			DownloadAndSave( depth_mem_GT,  ss.str(),   paths.at("depth_GT"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
-																																			DownloadAndSave( depth_mem_temp,   	ss.str(),   paths.at("depth_mem_temp"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
+																																			DownloadAndSave( depth_mem_temp,   	ss.str(),   paths.at("depth_mem_temp"),   	image_size_bytes_C1,   baseImage_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
 																																		}
 	float factor = 1; //obj["min_depth"].asFloat(); // 1;//256;  // normalize depthmap as per conf.json file. Adjust for dataset.
 	convert_depth( invert, factor);																										// calls convert_depth_kernel, reads depth_mem_temp, divides by "factor", takes inverse, then writes to depth_mem_GT
 	ss << "__1";
 																																		if(verbosity>local_verbosity_threshold+1){
 																																			DownloadAndSave( depth_mem_GT,	ss.str(),   paths.at("depth_GT"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
-																																			DownloadAndSave( depth_mem_temp,   	ss.str(),   paths.at("depth_mem_temp"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
+																																			DownloadAndSave( depth_mem_temp,   	ss.str(),   paths.at("depth_mem_temp"),   	image_size_bytes_C1,   baseImage_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
 																																		}
 																																		if(verbosity>local_verbosity_threshold) cout << "\nRunCL::load_GT_depth(..)_chk_1:"<<flush;
 	mipmap_depthmap(depth_mem_GT);
 	ss << "__2";
 																																		if(verbosity>local_verbosity_threshold+1){
 																																			DownloadAndSave( depth_mem_GT,  ss.str(),   paths.at("depth_GT"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
-																																			DownloadAndSave( depth_mem_temp,   	ss.str(),   paths.at("depth_mem_temp"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
+																																			DownloadAndSave( depth_mem_temp,   	ss.str(),   paths.at("depth_mem_temp"),   	image_size_bytes_C1,   baseImage_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
 																																		}
 																																		if(verbosity>local_verbosity_threshold) cout << "\nRunCL::load_GT_depth(..)_chk_2:"<<flush;
 	ss << "__3";
