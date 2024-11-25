@@ -4,9 +4,30 @@
 void RunCL::disparity(uint start, uint stop){
     string fname = "RunCL::disparity( )";
 	int local_verbosity_threshold = V_RUNCL_DISPARITY;
+	const uint wg_divisor = 8; //4;	// 512 * 20 * 32 / 8 =  40,960 bytes # TODO automate computation of wg_divisor .
+	//  Intel(R) Iris(R) Xe Graphics : Local memory size  65,536 (64KiB),  Max work item dimensions 3,   Max work item sizes 512x512x512,   Max work group size 512.
+/*
+														// const uint wg_divisor = 4;	//  512 * 20 * 32 / 8 =  40,960 bytes
+																						// 1024 * 20 * 32 /
+
+														// Intel(R) Iris(R) Xe Graphics :
+														// Local memory size  65,536 (64KiB),
+														// Max work item dimensions 3,
+														// Max work item sizes 512x512x512,
+														// Max work group size 512.
+
+														// NVIDIA GeForce GTX 970M
+														// Local memory size               49,152 (48KiB)
+														// Max work item dimensions        3
+														// Max work item sizes             1024x1024x64
+														// Max work group size             1024
+*/
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::disparity( ..)_chk0 #############################################################"<<flush;
 																																				cout << "\n local_work_size = " << local_work_size
-																																				<< ",  start = " << start << ",  stop = " << stop << flush;
+																																				<< ",  start = " << start << ",  stop = " << stop
+																																				<< ",  local_work_size*4*5/wg_divisor*sizeof(float) = " << local_work_size*4*5/wg_divisor*sizeof(float)
+																																				<< ",  local_work_size*4*5/wg_divisor = " << local_work_size*4*5/wg_divisor
+																																				<< flush;
 																																			}
 	// __private	 uint layer, set in mipmap_call_kernel( ..) below																		//__private	    uint		layer,				//0
 	// constant
@@ -18,7 +39,6 @@ void RunCL::disparity(uint start, uint stop){
 	_clSetKernelArg( disparity_kernel,  5, sizeof( cl_mem), &imgmem,					fname);												//__global		float4*		img_new,			//5
 	_clSetKernelArg( disparity_kernel,  6, sizeof( cl_mem), &keyframe_g1mem,			fname);												//__global		float8* 	g1p,				//6		// keyframe_g1mem
 	// local
-	const uint wg_divisor = 16; //4;	// 512 * 20 * 32 / 8 =  40,960 bytes																		//  Intel(R) Iris(R) Xe Graphics : Local memory size  65,536 (64KiB),  Max work item dimensions 3,   Max work item sizes 512x512x512,   Max work group size 512.
 	_clSetKernelArg( disparity_kernel,  7, local_work_size*4*5/wg_divisor*sizeof(float),	NULL, 	fname);									//__local	 	float4*		local_img_cur, 		//7
 	_clSetKernelArg( disparity_kernel,  8, local_work_size*4*5/wg_divisor*sizeof(float),	NULL, 	fname);									//__local	 	float4*		local_img_new, 		//8
 	_clSetKernelArg( disparity_kernel,  9, local_work_size*4*5/wg_divisor*sizeof(float),	NULL, 	fname);									//__local	 	float4*		local_img_cur_sq, 	//9
@@ -30,7 +50,7 @@ void RunCL::disparity(uint start, uint stop){
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::disparity( ..)_chk1 .   local_work_size/wg_divisor = " << local_work_size/wg_divisor <<flush;}
 	//uint start = 4, stop = 3;
 	for (int iter = 0; iter<4; iter++){
-		mipmap_call_kernel( disparity_kernel, m_queue, start, stop, false, local_work_size/wg_divisor);
+		mipmap_call_kernel( disparity_kernel, m_queue, start, stop, false, local_work_size/(wg_divisor*2) );
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::disparity( ..)_chk3 ."<<flush;								// Save buffers to file ###########
 																																				stringstream ss;
 																																				ss << "disparity_" << save_index << "_iter_" << iter;
