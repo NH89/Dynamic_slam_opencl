@@ -779,6 +779,9 @@ float compute_maximum(__private float4 A, __private float4 B, __private float4 C
 	warp[read_index]							= warp2_new;
 }
 
+// TODO  (i) confidence map, (ii) anisotropic diffusion, (iii) Inter-Scale Disparity Refinement
+
+
 
 ////////////////////////////////////////////////////////////////////////////
 //Buffers required: 10 new. (not counting curr_img and new_img)

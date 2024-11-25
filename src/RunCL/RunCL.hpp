@@ -163,7 +163,12 @@ public:
 
 	/////////////////////////////////////// RunCL_disparity.cpp
 
-	void disparity(uint start, uint stop);
+	//void disparity(uint start, uint stop);
+	void compute_lookup_table(uint start, uint stop);
+	void warp_image(uint start, uint stop);
+	void img_sq(uint start, uint stop);
+	void img_variance(uint start, uint stop);
+	void compute_warp(uint start, uint stop);
 
 	/////////////////////////////////////// RunCL_DownloadAndSave.cpp
 
