@@ -113,19 +113,19 @@ void RunCL::cvt_color_space(){ //getFrame(); basemem(CV_8UC3, RGB)->imgmem(CV16F
 	// Variance however must be computed for each layer, because blurring may reduce contrast &=> variance.
 }
 
-void RunCL::img_variance(){
+void RunCL::sum_image_variance(){
 	string fname = "RunCL::img_variance()";
-	int local_verbosity_threshold = V_RUNCL_IMG_VARIANCE;//verbosity_mp["RunCL::img_variance"];//-1;
+	int local_verbosity_threshold = V_RUNCL_SUM_IMAGE_VARIANCE;//verbosity_mp["RunCL::img_variance"];//-1;
 	// TODO ? create a class for data, holding buffer, CPU data, stats about the data object, functions for write, read, save, display, & set_kernel_arg ?
 																																			// cvt_color_space_kernel  or  img_variance_kernel
-	_clSetKernelArg(img_variance_kernel, 0, sizeof(cl_mem), &img_stats_buf, fname);															//__global uchar3*		img_stats,		//0
-	_clSetKernelArg(img_variance_kernel, 1, sizeof(cl_mem), &imgmem, fname);																//__global float4*		img,			//1
-	_clSetKernelArg(img_variance_kernel, 2, sizeof(cl_mem), &uint_param_buf, fname);														//__global uint*		uint_params		//2
-	_clSetKernelArg(img_variance_kernel, 3, sizeof(cl_mem), &mipmap_buf, fname);															//__constant uint*		mipmap_params,	//3 // NB layer = 0.
-	_clSetKernelArg(img_variance_kernel, 4, local_work_size*4*sizeof(float), 	NULL, fname);												//__local  float4*		local_sum_pix	//4
-	_clSetKernelArg(img_variance_kernel, 5, sizeof(cl_mem), &var_sum_mem, fname);															//__local  float4*		global_sum_pix	//5
+	_clSetKernelArg(sum_image_variance_kernel, 0, sizeof(cl_mem), &img_stats_buf, fname);															//__global uchar3*		img_stats,		//0
+	_clSetKernelArg(sum_image_variance_kernel, 1, sizeof(cl_mem), &imgmem, fname);																//__global float4*		img,			//1
+	_clSetKernelArg(sum_image_variance_kernel, 2, sizeof(cl_mem), &uint_param_buf, fname);														//__global uint*		uint_params		//2
+	_clSetKernelArg(sum_image_variance_kernel, 3, sizeof(cl_mem), &mipmap_buf, fname);															//__constant uint*		mipmap_params,	//3 // NB layer = 0.
+	_clSetKernelArg(sum_image_variance_kernel, 4, local_work_size*4*sizeof(float), 	NULL, fname);												//__local  float4*		local_sum_pix	//4
+	_clSetKernelArg(sum_image_variance_kernel, 5, sizeof(cl_mem), &var_sum_mem, fname);															//__local  float4*		global_sum_pix	//5
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_chk1,  global_work_size="<< global_work_size <<flush;
-	_clEnqueueNDRangeKernel(m_queue, img_variance_kernel, 1, 0, &global_work_size, &local_work_size, fname); 								// run img_variance _kernel  aka img_variance(..) ##### TODO which CommandQueue to use ? What events to check ?
+	_clEnqueueNDRangeKernel(m_queue, sum_image_variance_kernel, 1, 0, &global_work_size, &local_work_size, fname); 								// run img_variance _kernel  aka img_variance(..) ##### TODO which CommandQueue to use ? What events to check ?
                                                                                                                                             if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_chk2"<<flush;
 	cv::Mat var_sum_mat = cv::Mat::zeros (pix_sum_size, 1, CV_32FC4); // cv::Mat::zeros (int rows, int cols, int type)						// NB the data returned is one float4 per group, for the base image, holding hsv channels plus entry[3]=pixel count.
 	ReadOutput( var_sum_mat.data, var_sum_mem, pix_sum_size_bytes );                                                                        // se3_sum_size_bytes

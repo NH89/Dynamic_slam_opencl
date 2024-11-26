@@ -85,7 +85,7 @@ __kernel void cvt_color_space_linear(																// Writes the first entry i
 	}
 }
 
-__kernel void image_variance(
+__kernel void sum_image_variance(
 	__global	float4*	img_stats,		//0
 	__global	float4*	img,			//1
 	__constant	uint*	uint_params,	//2

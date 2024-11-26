@@ -69,9 +69,10 @@ public:
 	cl_kernel			disparity_kernel;
 	cl_kernel			convert_depth_kernel, invert_depth_kernel, transform_depthmap_kernel, transform_costvolume_kernel;
 	cl_kernel 			depth_cost_vol_kernel, cost_kernel, cache3_kernel, cache4_kernel, updateQD_kernel, updateG_kernel, updateA_kernel, measureDepthFit_kernel;
-	cl_kernel			cvt_color_space_kernel, cvt_color_space_linear_kernel, img_variance_kernel, blur_image_kernel;
+	cl_kernel			cvt_color_space_kernel, cvt_color_space_linear_kernel, sum_image_variance_kernel, blur_image_kernel;
 	cl_kernel 			reduce_kernel, mipmap_float4_kernel, mipmap_float_kernel, img_grad_kernel, se3_rho_sq_kernel, comp_param_maps_kernel;
 	cl_kernel			se3_lk_grad_kernel, atomic_test1_kernel, atomic_test2_kernel;
+	cl_kernel			compute_lookup_table_kernel, warp_image_kernel, img_sq_kernel, img_variance_kernel, compute_warp_kernel;
 	
 	// GPU Buffers
 	cl_mem 				basemem, imgmem,  imgmem_blurred, gxmem, gymem, k_map_mem, dist_map_mem, SE3_grad_map_mem, SE3_incr_map_mem;
@@ -85,6 +86,7 @@ public:
 	cl_mem				HSV_grad_mem, dmem_disparity, dmem_disparity_sum;
 	cl_mem				binocular_disparity, binocular_rho;
 	cl_mem				atomic_test1_buf, atomic_test2_buf;
+	cl_mem				lookup_table_buf,   curr_img_buf,  curr_img_sq_buf, curr_img_var_buf,    new_img_buf, new_img_warped_buf, new_img_sq_buf, new_img_var_buf,    img_covar_buf, img_corr_buf, warp_buf;
 	
 	//
 	cv::Mat 			baseImage, key_frame;
@@ -153,6 +155,8 @@ public:
 
 	void mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_to_call){ mipmap_call_kernel( kernel_to_call,  queue_to_call, mm_start, mm_stop, false, local_work_size); } // , true
 
+	void layer_call_kernel(cl_kernel kernel_to_call,  cl_command_queue queue_to_call, uint layer, const size_t local_work_size);
+
 	void initialize_fp32_params();
 	void initialize_RunCL( cv::Mat baseImage_ );																						// Setting up buffers & mipmap parameters
 	void allocatemem();
@@ -163,12 +167,12 @@ public:
 
 	/////////////////////////////////////// RunCL_disparity.cpp
 
-	//void disparity(uint start, uint stop);
 	void compute_lookup_table(uint start, uint stop);
-	void warp_image(uint start, uint stop);
-	void img_sq(uint start, uint stop);
-	void img_variance(uint start, uint stop);
+	void warp_image(uint start, uint stop, uint layer);
+	void img_sq(uint start, uint stop, cl_mem img_buf, cl_mem img_sq_buf);
+	void img_variance(uint start, uint stop, cl_mem img_sq_buf, cl_mem img_var_buf);
 	void compute_warp(uint start, uint stop);
+
 
 	/////////////////////////////////////// RunCL_DownloadAndSave.cpp
 
@@ -210,7 +214,7 @@ public:
 	void precom_param_maps(float SO3_k2k[6*16]);																						// Image loading & preparation
 	void loadFrame(cv::Mat image);
 	void cvt_color_space();
-	void img_variance();
+	void sum_image_variance();
 	void blur_image();
 	void mipmap_linear();
 	void img_gradients();
