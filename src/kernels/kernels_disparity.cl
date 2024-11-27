@@ -589,6 +589,7 @@
 	uint8 mipmap_params_			= mipmap_params[layer];
 	uint read_offset_ 				= mipmap_params_[MiM_READ_OFFSET];
 	uint read_cols_ 				= mipmap_params_[MiM_READ_COLS];
+	uint pixels_ 					= mipmap_params_[MiM_PIXELS];
 
 	uint mm_cols					= uint_params[MM_COLS];
 
@@ -599,7 +600,8 @@
 	uint alpha						= 255;	// img_cur[read_index].w;
 	uint4 lookup 					= {u,v,read_index,alpha};
 
-	lookup_table[global_id]			= lookup;																// centre pixel
+	if ( global_id > pixels_)		lookup = 0;																// NB 0 is an unused index on the mipmap.
+	lookup_table[global_id]			= lookup;																// pixel idex in mipmap
 }
 
 

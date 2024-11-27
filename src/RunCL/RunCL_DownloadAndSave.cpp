@@ -55,7 +55,26 @@ void RunCL::createFolders(){
 		 "HSV_grad_mem",				2*mm_size_bytes_C4,  	2chan per image, 4 images per map,
 
 		 "dmem_disparity"				rgb image ?
-		 */
+
+		 "binocular_disparity"			mm_size_bytes_C4,
+		 "binocular_rho"				mm_size_bytes_C4,
+
+		 "atomic_test1_buf"				4*local_work_size*sizeof(int),
+		 "atomic_test2_buf"				4*local_work_size*sizeof(float),
+
+		 "lookup_table_buf"				mm_size_bytes_C4,
+		 "curr_img_buf"					mm_size_bytes_C4,
+		 "curr_img_sq_buf"				mm_size_bytes_C4,
+		 "curr_img_var_buf"				mm_size_bytes_C4,
+		 "new_img_buf"					mm_size_bytes_C4,
+		 "new_img_warped_buf"			mm_size_bytes_C4,
+		 "new_img_sq_buf"				mm_size_bytes_C4,
+		 "new_img_var_buf"				mm_size_bytes_C4,
+
+		 "img_covar_buf"				5 * mm_size_bytes_C4,
+		 "img_corr_buf"					5 * mm_size_bytes_C4,
+		 "warp_buf"						2 * mm_size_bytes_C1,
+	*/
 	std::vector<std::string> names = {"imgmem", "imgmem_blurred", "keyframe_imgmem", "keyframe_imgmem_HSV_grad", "gxmem", "gymem", "keyframe_g1mem", \
 										"SE3_grad_map_mem", "keyframe_SE3_grad_map_mem", \
 										"SE3_map_mem", \
@@ -67,6 +86,11 @@ void RunCL::createFolders(){
 										"dmem","amem","lomem","himem","qmem","qmem2","cdatabuf","cdatabuf_8chan","hdatabuf","dbg_databuf","img_sum_buf", \
 										"HSV_grad_mem", "dmem_disparity", \
 										"binocular_disparity", "binocular_rho"\
+										//"atomic_test1_buf", "atomic_test2_buf"
+										\
+										"lookup_table_buf", "curr_img_buf", "curr_img_sq_buf",  "curr_img_var_buf", \
+										"new_img_buf", "new_img_warped_buf", "new_img_sq_buf", "new_img_var_buf",  \
+										"img_covar_buf", "img_corr_buf",  "warp_buf"\
 	};
 	std::pair<std::string, std::filesystem::path> tempPair;
 

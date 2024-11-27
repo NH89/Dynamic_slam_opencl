@@ -227,7 +227,9 @@ void RunCL::createAndBulidProgramFromSource(cl_device_id *devices){
 
         strings[i] = (char*)malloc(lengths[i]+1);																							// allocate inner array for this kernel file
         strings[i][lengths[i]] = '\0';
-        fread( strings[i], sizeof(char), lengths[i], program_handle );
+        const size_t ret_code = fread( strings[i], sizeof(char), lengths[i], program_handle );if (ret_code != lengths[i]){ perror("Couldn't read the program file");
+																															cout << "\tchar_filepath = "<< char_filepath << flush;
+																															exit_(1); }
         fclose(program_handle);
     }
     m_program 	= clCreateProgramWithSource( m_context, num_files, (const char**)strings, lengths, &status );								// Create program object /////////////
@@ -553,6 +555,8 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 
 	d_disp_sum_size			=  1 + ceil( (float)(MipMap[(mm_num_reductions+1) + MiM_READ_OFFSET]) / (float)local_work_size ) ;				// mm_size_bytes_C1 =	mm_size_bytes_C1	= temp2.total() * temp2.elemSize();
 	d_disp_sum_size_bytes	=  d_disp_sum_size * sizeof(float) * 4;
+
+	compute_lookup_table(mm_start, mm_stop);																								// Calls kernel. Used for disparity kernels now, maybe  more later...
 																																			if(verbosity>local_verbosity_threshold) cout <<"\nRunCL::initialize_RunCL_chk finished ############################################################\n"<<flush;
 }
 

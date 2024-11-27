@@ -100,15 +100,16 @@ public:
 
 	cl_device_id 		deviceId;
 	
-	size_t				img_stats_size_bytes = sizeof(float)*8*4*2;
-	float				img_stats[8*4*2]	= {0};		// 8 layers, 4 channels, 2 variables.
-	size_t 				num_threads[8]		= {0};
-	uint 				MipMap[8*8]			= {0};
-	uint				uint_params[8]		= {0};
+	size_t				img_stats_size_bytes 	= sizeof(float)*8*4*2;
+	float				img_stats[8*4*2]		= {0};		// 8 layers, 4 channels, 2 variables.
+	size_t 				num_threads[8]			= {0};
+	size_t 				lookup_table_offset[8] 	= {0};
+	uint 				MipMap[8*8]				= {0};
+	uint				uint_params[8]			= {0};
 	
-	float				fp32_params[16]		= {0};
-	float				fp32_so3_k2k[9]		= {0};
-	float 				fp32_k2keyframe[16]	= {0};
+	float				fp32_params[16]			= {0};
+	float				fp32_so3_k2k[9]			= {0};
+	float 				fp32_k2keyframe[16]		= {0};
 	
 	uint	 			mm_num_reductions;				//	
 	int 				mm_gaussian_size;				//	

@@ -18,8 +18,32 @@ void RunCL::compute_lookup_table(uint start, uint stop){
 	// output
 	_clSetKernelArg( compute_lookup_table_kernel,  4, sizeof( cl_mem), &lookup_table_buf,		fname);									//__global 		uint4*		lookup_table		//4
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_lookup_table( ..)_chk1 ."<<flush;}
-	mipmap_call_kernel( disparity_kernel, m_queue, start, stop, false, local_work_size );
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_lookup_table( ..)_chk2 ."<<flush;								// Save buffers to file ###########
+	//mipmap_call_kernel( disparity_kernel, m_queue, start, stop, false, local_work_size );
+
+	//void RunCL::mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_to_call, uint start, uint stop, bool layers_sequential, const size_t local_work_size){
+	//int local_verbosity_threshold = V_RUNCL_MIPMAP_CALL_KERNEL;//verbosity_mp["RunCL::mipmap_call_kernel"];// -2;
+																																			if(verbosity>local_verbosity_threshold) {
+																																				cout<<"\nRunCL::mipmap_call_kernel( cl_kernel: compute_lookup_table_kernel,  cl_command_queue: m_queue,   start="<<start<<",   stop="<<stop<<
+																																				 "local_work_size="<<local_work_size<<" )_chk0"<<flush;
+																																			}
+	cl_event		ev;
+	cl_int			res, status;
+
+	for(uint reduction = start; reduction <= stop; reduction++) {																			// NB processes largest layer first.
+																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::mipmap_call_kernel(..)_chk1,  reduction="<<reduction<<",  num_threads[reduction]="<<num_threads[reduction]<<"  local_work_size="<<local_work_size<<flush; }
+		//if (reduction>=start && reduction<stop){																							// compute num threads to launch & num_pixels in reduction
+																																			//if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::mipmap_call_kernel(..)_chk2 :  num_threads[reduction]="<<num_threads[reduction]<<"  local_work_size="<<local_work_size<<flush; }
+			res 	= clSetKernelArg(compute_lookup_table_kernel, 0, sizeof(int), &reduction);							if (res    !=CL_SUCCESS)	{ cout <<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}	;
+			res 	= clEnqueueNDRangeKernel(m_queue, compute_lookup_table_kernel, 1, &lookup_table_offset[reduction], &num_threads[reduction], &local_work_size, 0, NULL, &ev); // run mipmap_float4_kernel, NB wait for own previous iteration.
+																											if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
+			status 	= clFlush(m_queue);																if (status != CL_SUCCESS)	{ cout << "\nRunCL::mipmap_call_kernel( cl_kernel: compute_lookup_table_kernel,  clFlush(queue_to_call) status  = "		<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
+			status 	= clWaitForEvents (1, &ev);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::mipmap_call_kernel( cl_kernel: compute_lookup_table_kernel) for loop,  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
+
+			lookup_table_offset[reduction +1]=  lookup_table_offset[reduction] + num_threads[reduction];									// NB this pads the lookup table, so that local work groups will not be shared betwen layers.
+																																			// It also  means that this offset should be used to launch layers from the lookup table.
+	}
+
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_lookup_table( ..)_chk2 ."<<flush;	// Save buffers to file ###########
 																																				stringstream ss;
 																																				ss << "compute_lookup_table_" << save_index ;
 																																				bool show 		= false;
@@ -32,7 +56,7 @@ void RunCL::compute_lookup_table(uint start, uint stop){
 }
 
 
-void RunCL::warp_image(uint start, uint stop, uint layer ){																								// computed once each iteration of warping, for each layer of image pyramid
+void RunCL::warp_image(uint start, uint stop, uint layer ){																					// computed once each iteration of warping, for each layer of image pyramid
     string fname = "RunCL::disparity( )";
 	int local_verbosity_threshold = V_RUNCL_WARP_IMAGE;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::warp_image( ..)_chk0 #############################################################"<<flush;
