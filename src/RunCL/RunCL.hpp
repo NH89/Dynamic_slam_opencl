@@ -169,10 +169,10 @@ public:
 	/////////////////////////////////////// RunCL_disparity.cpp
 
 	void compute_lookup_table(uint start, uint stop);
-	void warp_image(uint start, uint stop, uint layer);
-	void img_sq(uint start, uint stop, cl_mem img_buf, cl_mem img_sq_buf);
-	void img_variance(uint start, uint stop, cl_mem img_sq_buf, cl_mem img_var_buf);
-	void compute_warp(uint start, uint stop);
+	void warp_image(   uint layer, uint iter);
+	void img_sq(       uint layer, uint iter, cl_mem img_buf,    cl_mem img_sq_buf);
+	void img_variance( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf);
+	void compute_warp( uint layer, uint iter);
 
 
 	/////////////////////////////////////// RunCL_DownloadAndSave.cpp

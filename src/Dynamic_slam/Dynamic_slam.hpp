@@ -131,7 +131,8 @@ class Dynamic_slam
     void print_pose_vectors(uint start, uint stop);
 
     /////////////////////////////////////// Dynamic_slam_disparity.cpp
-    //void disparity();
+    void binocular_reference_frame();
+    void binocular_disparity();
 
     /////////////////////////////////////// Dynamic_slam_keyframe.cpp
     void initialize_keyframe_vec(  );

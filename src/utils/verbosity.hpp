@@ -43,6 +43,9 @@
 	#define	V_DYNAMIC_SLAM_EXHAUSTIVESEARCH   0
 	#define	V_DYNAMIC_SLAM_GETRESULT   -1
 
+	/////////////////////////////////////// DYNAMIC_SLAM_BINOCULAR_DISPARITY.CPP
+	#define V_DYNAMIC_SLAM_BINOCULAR_DISPARITY	-1
+
     /////////////////////////////////////// DYNAMIC_SLAM_KEYFRAME.CPP
 	#define	V_DYNAMIC_SLAM_INITIALIZE_KEYFRAME  -2
 
