@@ -77,5 +77,5 @@ void conf_params::save_stdout(Json::Value& val,  string outfile){
 	out_path += outfile;
 																				cerr << "\nOutfile = " << out_path.string() << endl;
 	fflush (stdout);
-	freopen (out_path.string().c_str(), "w", stdout);
+	freopen (out_path.string().c_str(), "w", stdout);							// NB ignores return value. Also stdout is reset at end of main().
 }

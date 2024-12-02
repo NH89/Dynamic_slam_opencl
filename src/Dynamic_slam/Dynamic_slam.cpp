@@ -71,6 +71,7 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 																																			}
 	runcl.initialize_RunCL( imread(png[runcl.dataset_frame_num].string() ) );																// Set image params, ref for dimensions and data type. ########################################################################
 	runcl.allocatemem();																													// Allocate buffers on the GPU ######
+	runcl.compute_lookup_table(runcl.mm_start, runcl.mm_stop);																				// Calls kernel. Used for disparity kernels now, maybe  more later...
 
 	initialize_camera_vec();
 	initialize_keyframe_vec();																												// First keyframe
@@ -143,10 +144,6 @@ int Dynamic_slam::nextFrame() {
 																																			if(verbosity>local_verbosity_threshold) cout << "\f Dynamic_slam::nextFrame_chk 0,  runcl.dataset_frame_num="<<runcl.dataset_frame_num
 																																				<<",\t depth = runcl.amem  \n" << flush; //  runcl.frame_bool_idx="<<runcl.frame_bool_idx<<"
 																						auto step_0 = high_resolution_clock::now();
-/*
-	//frame_datum new_frame;
-	//new_frame.keyframe_index		= keyframe_data.size() -1;																					// i.e. the new frame will be tracked from the current keyframe.
-*/
 	frame_data.push_back( frame_data.back() ); //////////////////////////////////////////   new_frame										// duplicate last frame, as basis for new frame.
 
 	if ( obj["initialize_tracking_from_GT_depth"].asBool() == false  ){ runcl.update_tracking_depthmap( runcl.amem   );	}					// copies buffer: amem to keyframe_depth_mem.  NB amem initialization will affect 1st tracking.
@@ -162,6 +159,8 @@ int Dynamic_slam::nextFrame() {
 	estimateSE3();
 																						auto step_6 = high_resolution_clock::now();			// own thread ? num iter ?
 	//disparity();
+	binocular_reference_frame();
+	binocular_disparity();
 	//estimateCalibration(); 																												// own thread, one iter.
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 1, Pose error:" << flush;
 																																				report_GT_pose_error();

@@ -227,7 +227,7 @@ void RunCL::mipmap_linear(){
 	_clSetKernelArg(mipmap_float4_kernel, 3, sizeof(cl_mem), 						&imgmem, fname);										//__global   float4*	img,			//4
 	_clSetKernelArg(mipmap_float4_kernel, 4, (local_size+4) *5*4* sizeof(float), 	NULL, fname);											//__local    float4*	local_img_patch //5
 
-	mipmap_call_kernel( mipmap_float4_kernel, m_queue, mm_start, mm_stop, true );   // TODO Start at first reduction, rehash __kernel void mipmap_linear_flt(..) and call only the num threads required. NB currently uses 4x as many threads as needed.
+	mipmap_call_kernel( mipmap_float4_kernel, m_queue, true );   // TODO Start at first reduction, rehash __kernel void mipmap_linear_flt(..) and call only the num threads required. NB currently uses 4x as many threads as needed.
 
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout<<"\n\nRunCL::mipmap(..)_chk3 Finished all loops."<<flush;
@@ -357,7 +357,7 @@ void RunCL::mipmap_depthmap(cl_mem depthmap_){
 	_clSetKernelArg(mipmap_float_kernel, 3, sizeof(cl_mem), 					&depthmap_,			fname);								//__global   float*		img,			//4
 	_clSetKernelArg(mipmap_float_kernel, 4, (local_size+4) *5*sizeof(float), 	NULL,				fname);								//__local    float*		local_img_patch //5
 
-	mipmap_call_kernel( mipmap_float_kernel, m_queue, mm_start, mm_stop, true);// TODO Start at first reduction, rehash __kernel void mipmap_linear_flt(..) and call only the num threads required. NB currently uses 4x as many threads as needed.
+	mipmap_call_kernel( mipmap_float_kernel, m_queue, true);// TODO Start at first reduction, rehash __kernel void mipmap_linear_flt(..) and call only the num threads required. NB currently uses 4x as many threads as needed.
 
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout<<"\n\nRunCL::mipmap_depthmap(..)_chk3 Finished all loops."<<flush;

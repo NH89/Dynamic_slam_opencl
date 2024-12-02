@@ -152,9 +152,9 @@ public:
 
 	void mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_to_call, uint start, uint stop, bool layers_sequential, const size_t local_work_size);						// Call kernels on mipmap: start,stop allow running specific layers.
 
-	void mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_to_call, uint start, uint stop, bool layers_sequential=false){ mipmap_call_kernel( kernel_to_call,  queue_to_call, mm_start, mm_stop, layers_sequential, local_work_size); }
+	void mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_to_call, bool layers_sequential=false){ mipmap_call_kernel( kernel_to_call,  queue_to_call, mm_start, mm_stop, layers_sequential, local_work_size); }
 
-	void mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_to_call){ mipmap_call_kernel( kernel_to_call,  queue_to_call, mm_start, mm_stop, false, local_work_size); } // , true
+	//void mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_to_call){ mipmap_call_kernel( kernel_to_call,  queue_to_call, mm_start, mm_stop, false, local_work_size); } // , true
 
 	void layer_call_kernel(cl_kernel kernel_to_call,  cl_command_queue queue_to_call, uint layer, const size_t local_work_size);
 
@@ -170,8 +170,8 @@ public:
 
 	void compute_lookup_table(uint start, uint stop);
 	void warp_image(   uint layer, uint iter);
-	void img_sq(       uint layer, uint iter, cl_mem img_buf,    cl_mem img_sq_buf);
-	void img_variance( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf);
+	void img_sq(       uint layer, uint iter, cl_mem img_buf,    cl_mem img_sq_buf,  std::string folder);
+	void img_variance( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder);
 	void compute_warp( uint layer, uint iter);
 
 
@@ -250,13 +250,13 @@ public:
 	
 	void initializeFirstDepthCostVol( float default_depth );
 	void initializeDepthCostVol( cl_mem key_frame_depth_map_src);		// Depth costvol functions
-	void updateDepthCostVol(cv::Matx44f K2K_, int count, uint start, uint stop);
-	void updateQD(float epsilon, float theta, float sigma_q, float sigma_d, uint start, uint stop);
-	void updateG(int count, uint start, uint stop);
-	void updateA(float lambda, float theta, uint start, uint stop);
+	void updateDepthCostVol(cv::Matx44f K2K_, int count);
+	void updateQD(float epsilon, float theta, float sigma_q, float sigma_d);
+	void updateG(int count);
+	void updateA(float lambda, float theta);
 	void computeSigmas(float epsilon, float theta, float L, float &sigma_d, float &sigma_q);
 	
-	void measureDepthFit(uint start, uint stop);
+	void measureDepthFit();
 
 	void SpatialCostFns();																												// SIRFS cost functions
 	void ParsimonyCostFns();

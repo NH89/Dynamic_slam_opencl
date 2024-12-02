@@ -93,7 +93,7 @@ void Dynamic_slam::updateDepthCostVol(){																							// Built forwards
 	// keyframe_K2K_GT; 					//TODO K2K; 		// needs keyframe_K2K from keyframe. 						// camera-to-camera transform for this image to the keyframe of this cost vol.
 	//bool image_ = runcl.frame_bool_idx; 																									// Index to correct img pyramid buffer on device.
 
-	runcl.updateDepthCostVol( K2K_, runcl.costvol_frame_num, runcl.mm_start, runcl.mm_stop  ); 										// NB in DTAM_opencl : void RunCL::calcCostVol(float* k2k,  cv::Mat &image)
+	runcl.updateDepthCostVol( K2K_, runcl.costvol_frame_num ); 																				// NB in DTAM_opencl : void RunCL::calcCostVol(float* k2k,  cv::Mat &image)
 																																			// in  void Dynamic_slam::estimateSE3() above : runcl.estimateSE3(SE3_reults, Rho_sq_results, iter, 0, 8);
 																																			// -> mipmap_call_kernel( se3_grad_kernel, m_queue, start, stop );
 }
@@ -119,7 +119,7 @@ void Dynamic_slam::updateQD(){
 	runcl.computeSigmas(runcl.fp32_params[EPSILON], runcl.fp32_params[THETA], obj["L"].asFloat(), runcl.fp32_params[SIGMA_D], runcl.fp32_params[SIGMA_Q] );
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDynamic_slam::updateQD_chk1, epsilon="<<runcl.fp32_params[EPSILON]<<" theta="<<runcl.fp32_params[THETA]\
 																																								<<" sigma_q="<<runcl.fp32_params[SIGMA_Q]<<" sigma_d="<<runcl.fp32_params[SIGMA_D]<<flush;
-	runcl.updateQD(runcl.fp32_params[EPSILON], runcl.fp32_params[THETA], runcl.fp32_params[SIGMA_Q], runcl.fp32_params[SIGMA_D], runcl.mm_start, runcl.mm_stop);
+	runcl.updateQD(runcl.fp32_params[EPSILON], runcl.fp32_params[THETA], runcl.fp32_params[SIGMA_Q], runcl.fp32_params[SIGMA_D]);
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDynamic_slam::updateQD_chk3, epsilon="<<runcl.fp32_params[EPSILON]<<" theta="<<runcl.fp32_params[THETA]\
 																																								<<" sigma_q="<<runcl.fp32_params[SIGMA_Q]<<" sigma_d="<<runcl.fp32_params[SIGMA_D]<<flush;
 }
@@ -128,7 +128,7 @@ void Dynamic_slam::cacheGValues()
 {
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_CACHEGVALUES;//verbosity_mp["Dynamic_slam::cacheGValues"];// 1;
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\nDynamic_slam::cacheGValues()" <<flush;}
-	runcl.updateG(runcl.G_count, runcl.mm_start, runcl.mm_stop);
+	runcl.updateG(runcl.G_count);
 }
 
 bool Dynamic_slam::updateA(){
@@ -137,9 +137,9 @@ bool Dynamic_slam::updateA(){
 	if (theta < 0.001 && old_theta > 0.001){  cacheGValues(); old_theta=theta; }		// If theta falls below 0.001, then G must be recomputed.
 	// bool doneOptimizing = (theta <= thetaMin);
 
-	runcl.updateA( runcl.fp32_params[LAMBDA], runcl.fp32_params[THETA],  runcl.mm_start, runcl.mm_stop );
+	runcl.updateA( runcl.fp32_params[LAMBDA], runcl.fp32_params[THETA]/*,  runcl.mm_start, runcl.mm_stop*/ );
 
-	runcl.measureDepthFit(runcl.mm_start, runcl.mm_stop);
+	runcl.measureDepthFit();
 
 	runcl.fp32_params[THETA] *= obj["thetaStep"].asFloat();
 

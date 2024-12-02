@@ -85,13 +85,13 @@ void RunCL::createFolders(){
 										"key_frame_depth_map_src", "depth_GT", \
 										"dmem","amem","lomem","himem","qmem","qmem2","cdatabuf","cdatabuf_8chan","hdatabuf","dbg_databuf","img_sum_buf", \
 										"HSV_grad_mem", "dmem_disparity", \
-										"binocular_disparity", "binocular_rho"\
-										//"atomic_test1_buf", "atomic_test2_buf"
+										"binocular_disparity", "binocular_rho",\
 										\
 										"lookup_table_buf", "curr_img_buf", "curr_img_sq_buf",  "curr_img_var_buf", \
 										"new_img_buf", "new_img_warped_buf", "new_img_sq_buf", "new_img_var_buf",  \
 										"img_covar_buf", "img_corr_buf",  "warp_buf"\
 	};
+										//"atomic_test1_buf", "atomic_test2_buf"
 	std::pair<std::string, std::filesystem::path> tempPair;
 
 	tempPair = {"folder", out_path};																										// Top level output folder, used to std::out file.
@@ -433,6 +433,8 @@ void RunCL::DownloadAndSave_3Channel(cl_mem buffer, std::string count, std::file
 	int local_verbosity_threshold = V_RUNCL_DOWNLOADANDSAVE_3CHANNEL;//verbosity_mp["RunCL::DownloadAndSave_3Channel"];// 2;																										// bufImg will hold a pointer to the version written to .png
 	bool old_tiff = tiff;
 	if (exception_tiff == true) tiff = exception_tiff;
+																																			cout<<"\n\nDownloadAndSave_3Channel_Chk_0"<<flush;
+																																			cout<<"\nverbosity="<< verbosity <<",   = "<< local_verbosity_threshold <<flush;
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave_3Channel_Chk_0    filename = ["<<folder_tiff.filename()
 																																				<<"] folder="<<folder_tiff<<", image_size_bytes="<<image_size_bytes<<", size_mat="<<size_mat
 																																				<<", type_mat="<<type_mat<<" : "<<checkCVtype(type_mat)<<"\t"<<flush;
@@ -535,6 +537,13 @@ void RunCL::DownloadAndSave_3Channel(cl_mem buffer, std::string count, std::file
 			temp_mat2.convertTo(outMat, CV_8UC3);
 
 			if(png==true) cv::imwrite(folder_png.string(), (outMat) );
+			outMat.copyTo(*bufImg);
+		}else if (type_mat == CV_32SC4){
+			if(tiff==true) cv::imwrite(folder_tiff.string(), temp_mat );
+			temp_mat *=256;
+			temp_mat.convertTo(outMat, CV_8U);
+
+			if(png==true)  cv::imwrite(folder_png.string(), (outMat) );
 			outMat.copyTo(*bufImg);
 		}else {cout << "\n\nError RunCL::DownloadAndSave_3Channel(..)  needs new code for "<<checkCVtype(type_mat)<<endl<<flush; exit_(0);}
 																																			//if(verbosity>local_verbosity_threshold) cout << "\nDownloadAndSave_3Channel  bufImg->type() = "<<bufImg->type()<<"\t "<< checkCVtype(bufImg->type())  <<" \n" << flush;

@@ -581,7 +581,7 @@
 	__constant  float*  fp32_params,			//3
 
 	// output
-	__global 	uint4*	lookup_table			//4
+	__global 	int4*	lookup_table			//4
 ){
 	uint  global_id					= get_global_id(0);
 	float global_id_flt 			= global_id;
@@ -589,18 +589,24 @@
 	uint8 mipmap_params_			= mipmap_params[layer];
 	uint read_offset_ 				= mipmap_params_[MiM_READ_OFFSET];
 	uint read_cols_ 				= mipmap_params_[MiM_READ_COLS];
-	uint pixels_ 					= mipmap_params_[MiM_PIXELS];
+	//uint pixels_ 					= mipmap_params_[MiM_PIXELS];
 
 	uint mm_cols					= uint_params[MM_COLS];
+	//uint pixels						= uint_params[PIXELS];
+	uint mm_pixels					= uint_params[MM_PIXELS];
 
-	uint v 							= global_id / read_cols_;												// read_row
-	uint u 							= fmod(global_id_flt, read_cols_);										// read_column
+	int v 							= (global_id - read_offset_) / read_cols_;												// read_row
+	int u 							= fmod((global_id_flt - read_offset_), read_cols_);										// read_column
 
-	uint read_index 				= read_offset_  +  v  * mm_cols  + u ;
-	uint alpha						= 255;	// img_cur[read_index].w;
-	uint4 lookup 					= {u,v,read_index,alpha};
+	int read_index 				= read_offset_  +  v  * mm_cols  + u ;
+	int alpha						= 255;	// img_cur[read_index].w;
+	int4 lookup 					= {u,v,read_index,alpha};
 
-	if ( global_id > pixels_)		lookup = 0;																// NB 0 is an unused index on the mipmap.
+	if ( global_id > mm_pixels)		lookup = 0;																// NB 0 is an unused index on the mipmap.
+uint group_id = get_group_id(0);
+if (group_id<4 && global_id%500==0) printf("\n__kernel compute_lookup_table(..) layer = %u, group_id = %u, global_id = %u, lookup=%d,%d,%d,%d,  mm_pixels=%u, read_offset_=%u", \
+	layer, group_id, global_id, lookup.x, lookup.y, lookup.z, lookup.w,  mm_pixels, read_offset_); //  pixels_=%u, pixels=%u,  pixels_, pixels,
+
 	lookup_table[global_id]			= lookup;																// pixel idex in mipmap
 }
 

@@ -121,7 +121,7 @@ Matx16f LieAdd(Matx16f A, Matx16f B){
     PToLie(Pa*Pb,out);
     return out;
 }
-
+/*
 template<class tp>
 tp median_(const Mat& _M) {
     Mat M=_M.clone();
@@ -150,7 +150,7 @@ double median(const Mat& M) {                                                   
         return median_<unsigned int>(M);
     assert(!"Unsupported type");
 }
-
+*/
 
 void Matx44f_To_float16arry(Matx44f matx, float arry[16]){
     for (int i=0; i<16; i++){ arry[i] = matx.operator()(i/4, i%4);}

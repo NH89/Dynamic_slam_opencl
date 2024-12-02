@@ -555,8 +555,6 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 
 	d_disp_sum_size			=  1 + ceil( (float)(MipMap[(mm_num_reductions+1) + MiM_READ_OFFSET]) / (float)local_work_size ) ;				// mm_size_bytes_C1 =	mm_size_bytes_C1	= temp2.total() * temp2.elemSize();
 	d_disp_sum_size_bytes	=  d_disp_sum_size * sizeof(float) * 4;
-
-	compute_lookup_table(mm_start, mm_stop);																								// Calls kernel. Used for disparity kernels now, maybe  more later...
 																																			if(verbosity>local_verbosity_threshold) cout <<"\nRunCL::initialize_RunCL_chk finished ############################################################\n"<<flush;
 }
 

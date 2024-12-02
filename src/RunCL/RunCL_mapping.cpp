@@ -9,7 +9,7 @@ void RunCL::computeSigmas(float epsilon, float theta, float L, float &sigma_d, f
 																																			if(verbosity>local_verbosity_threshold) cout <<"\n\nRunCL::computeSigmas Finished\n\n" << flush;
 }
 
-void RunCL::updateDepthCostVol(cv::Matx44f K2K_, int count, uint start, uint stop){ //buildDepthCostVol();
+void RunCL::updateDepthCostVol(cv::Matx44f K2K_, int count){ //buildDepthCostVol();
 	string fname = "RunCL::updateDepthCostVol(..)";
 	int local_verbosity_threshold = V_RUNCL_UPDATEDEPTHCOSTVOL;//verbosity_mp["RunCL::updateDepthCostVol"];// -1;																										if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateDepthCostVol(..)_chk0 ."<<flush;}
 	save_index = keyFrameCount*1000 + costvol_frame_num;
@@ -93,7 +93,7 @@ void RunCL::updateDepthCostVol(cv::Matx44f K2K_, int count, uint start, uint sto
 	#define scale_Eaux_		14
 	*/
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateDepthCostVol(..)_chk1 ."<<flush;}
-	mipmap_call_kernel( depth_cost_vol_kernel, m_queue, start, stop ); // , true
+	mipmap_call_kernel( depth_cost_vol_kernel, m_queue ); // , true
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateDepthCostVol(..)_chk3 ."<<flush;}
 																																			if(verbosity>local_verbosity_threshold ) { // && count == costVolLayers - 1
 																																				cout << "\ncount = " << count << flush;
@@ -124,7 +124,7 @@ void RunCL::updateDepthCostVol(cv::Matx44f K2K_, int count, uint start, uint sto
 																																			}
 }
 
-void RunCL::updateQD(float epsilon, float theta, float sigma_q, float sigma_d, uint start, uint stop){
+void RunCL::updateQD(float epsilon, float theta, float sigma_q, float sigma_d ){
 	string fname = "RunCL::updateQD(..)";
 	int local_verbosity_threshold = V_RUNCL_UPDATEQD;																						if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateQD(..)_chk0 ."<<flush;}
 	QD_count++;
@@ -146,7 +146,7 @@ void RunCL::updateQD(float epsilon, float theta, float sigma_q, float sigma_d, u
 	_clSetKernelArg(updateQD_kernel, 7, sizeof(cl_mem), &amem, 				fname);	 														//__global 	float*  apt,				//7		// amem,     auxilliary A		//	mm_size_bytes_C1
 	_clSetKernelArg(updateQD_kernel, 8, sizeof(cl_mem), &dmem, 				fname);	 														//__global 	float*  dpt					//8		// dmem,     depth D			//	mm_size_bytes_C1
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateQD(..)_chk1 ."<<flush;}
-	mipmap_call_kernel( updateQD_kernel, m_queue, start, stop );
+	mipmap_call_kernel( updateQD_kernel, m_queue );
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout<<"\n\nRunCL::updateQD(..)_chk3, epsilon="<<epsilon<<"  , sigma_Q="<<sigma_q<<"  , sigma_D="<<sigma_d<<"  , theta="<<theta<<" ."<<flush;
 																																			}
@@ -167,7 +167,7 @@ void RunCL::updateQD(float epsilon, float theta, float sigma_q, float sigma_d, u
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateQD(..)_finished ."<<flush;}
 }
 
-void RunCL::updateG(int count, uint start, uint stop){
+void RunCL::updateG(int count){
 	string fname = "RunCL::updateG(..)";
 	int local_verbosity_threshold = V_RUNCL_UPDATEG;																						if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateG(..)_chk0 ##########################"<<flush;}
 	G_count++;
@@ -185,7 +185,7 @@ void RunCL::updateG(int count, uint start, uint stop){
 	_clSetKernelArg(updateG_kernel, 6, sizeof(cl_mem), &keyframe_g1mem, 			fname);													//__global 	 float8*	g1p				//6
 
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateG(..)_chk2"<<flush;}
-	mipmap_call_kernel( updateG_kernel, m_queue, start, stop );
+	mipmap_call_kernel( updateG_kernel, m_queue );
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateG(..)_chk3 Saving keyframe_g1mem."<<flush;
 																																				stringstream ss;	ss << dataset_frame_num << "_updateG";
 																																				/*
@@ -200,7 +200,7 @@ void RunCL::updateG(int count, uint start, uint stop){
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateG(..)_chk4 Finished.###############################"<<flush;}
 }
 
-void RunCL::updateA(float lambda, float theta,  uint start, uint stop){
+void RunCL::updateA(float lambda, float theta){
 	string fname = "RunCL::updateA(..)";
 	int local_verbosity_threshold = V_RUNCL_UPDATEA;																						if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateA(..)_chk0 .####################################"<<flush;}
 	A_count++;
@@ -223,7 +223,7 @@ void RunCL::updateA(float lambda, float theta,  uint start, uint stop){
 	_clSetKernelArg(updateA_kernel,10, sizeof(cl_mem), &dbg_databuf, 		fname);															//__global 	float*  dbg_data			//10	// dbg_databuf,   debugging buffer
 
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::updateA(..)_chk2 ."<<flush;}
-	mipmap_call_kernel( updateA_kernel, m_queue, start, stop );
+	mipmap_call_kernel( updateA_kernel, m_queue );
 																																			if(verbosity>local_verbosity_threshold) {
 																																				stringstream ss;
 																																				ss << "updateA"<< save_index << "_A_count_" << A_count << "_theta_" << theta << "_lambda_"<< lambda ;
@@ -244,7 +244,7 @@ void RunCL::updateA(float lambda, float theta,  uint start, uint stop){
 																																			if(verbosity>0) cout<<"\nRunCL::updateA_chk2_finished,   fp32_params[MAX_INV_DEPTH]="<<fp32_params[MAX_INV_DEPTH]<<"#############################################"<<flush;
 }
 
-void RunCL::measureDepthFit(uint start, uint stop){
+void RunCL::measureDepthFit(){
 	string fname = "RunCL::measureDepthFit(..)";
 	int local_verbosity_threshold = V_RUNCL_MEASUREDEPTHFIT;																				if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::measureDepthFit(..)_chk0 .##########################"<<flush;}
 	uint kernel_verbosity = (verbosity>local_verbosity_threshold+1)  ;
@@ -261,7 +261,7 @@ void RunCL::measureDepthFit(uint start, uint stop){
 	_clSetKernelArg(measureDepthFit_kernel, 8, local_work_size*4*sizeof(float), NULL, 	fname);												//__local		float*	local_sum_dpt_disparity		//8
 	_clSetKernelArg(measureDepthFit_kernel, 9, sizeof(cl_mem), &dmem_disparity_sum, 	fname);												//__global 		float*	global_sum_dpt_disparity,	//9
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::measureDepthFit(..)_chk1 ."<<flush;}
-	mipmap_call_kernel( measureDepthFit_kernel, m_queue, start, stop );
+	mipmap_call_kernel( measureDepthFit_kernel, m_queue );
 																																			if(verbosity>local_verbosity_threshold) {
 																																				stringstream ss;
 																																				ss << "measureDepthFit"<< save_index << "_A_count_" << A_count ;
