@@ -575,13 +575,14 @@
  __kernel void compute_lookup_table(					// computed once at start of program	// TODO when is it possible to roll the layers together ?  i.e. when local mem is not used.
 	 // inputs
 	__private	uint	layer,					//0
+	__private	uint	lookup_table_offset,	//1
 
-	__constant 	uint8*	mipmap_params,			//1
-	__constant 	uint*	uint_params,			//2
-	__constant  float*  fp32_params,			//3
+	__constant 	uint8*	mipmap_params,			//2
+	__constant 	uint*	uint_params,			//3
+	__constant  float*  fp32_params,			//4
 
 	// output
-	__global 	int4*	lookup_table			//4
+	__global 	float4*	lookup_table			//5
 ){
 	uint  global_id					= get_global_id(0);
 	float global_id_flt 			= global_id;
@@ -589,25 +590,26 @@
 	uint8 mipmap_params_			= mipmap_params[layer];
 	uint read_offset_ 				= mipmap_params_[MiM_READ_OFFSET];
 	uint read_cols_ 				= mipmap_params_[MiM_READ_COLS];
-	//uint pixels_ 					= mipmap_params_[MiM_PIXELS];
+	uint pixels_ 					= mipmap_params_[MiM_PIXELS];
 
 	uint mm_cols					= uint_params[MM_COLS];
-	//uint pixels						= uint_params[PIXELS];
+	uint pixels						= uint_params[PIXELS];
 	uint mm_pixels					= uint_params[MM_PIXELS];
 
-	int v 							= (global_id - read_offset_) / read_cols_;												// read_row
-	int u 							= fmod((global_id_flt - read_offset_), read_cols_);										// read_column
+	int v 							= global_id  / read_cols_;												// read_row
+	int u 							= fmod(global_id_flt, read_cols_);										// read_column
 
-	int read_index 				= read_offset_  +  v  * mm_cols  + u ;
-	int alpha						= 255;	// img_cur[read_index].w;
-	int4 lookup 					= {u,v,read_index,alpha};
+	int read_index 					= read_offset_  +  v  * mm_cols  + u ;
+	int alpha						= 255;
+	float4 lookup 					= {u,v,read_index,alpha};
 
-	if ( global_id > mm_pixels)		lookup = 0;																// NB 0 is an unused index on the mipmap.
+	if ( global_id > pixels_)		{lookup = 0;alpha=255;read_index=0;u=0;v=0;}															// NB 0 is an unused index on the mipmap.
 uint group_id = get_group_id(0);
-if (group_id<4 && global_id%500==0) printf("\n__kernel compute_lookup_table(..) layer = %u, group_id = %u, global_id = %u, lookup=%d,%d,%d,%d,  mm_pixels=%u, read_offset_=%u", \
-	layer, group_id, global_id, lookup.x, lookup.y, lookup.z, lookup.w,  mm_pixels, read_offset_); //  pixels_=%u, pixels=%u,  pixels_, pixels,
+uint local_id = get_local_id(0);
+if (/*group_id==0 && local_id==0*/global_id==0) printf("  __kernel compute_lookup_table(..) layer = %u, group_id = %u, global_id = %u, lookup=%d,%d,%d,%d,  pixels_=%u, pixels=%u,  mm_pixels=%u, read_offset_=%u, global_id_offset=%u", \
+	layer, group_id, global_id, lookup.x, lookup.y, lookup.z, lookup.w,  pixels_, pixels, mm_pixels, read_offset_, lookup_table_offset); //
 
-	lookup_table[global_id]			= lookup;																// pixel idex in mipmap
+	lookup_table[global_id + lookup_table_offset]	= lookup;	//read_index;//											// pixel idex in mipmap
 }
 
 

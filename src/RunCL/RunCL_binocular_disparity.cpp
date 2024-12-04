@@ -11,33 +11,39 @@ void RunCL::compute_lookup_table( uint start, uint stop){
 	// inputs
 	// __private	(compute_lookup_table_kernel,  0, sizeof( int),    &reduction);	 set in for(uint reduction..) loop below			//__private	    uint		layer,				//0
 	// __constant
-	_clSetKernelArg( compute_lookup_table_kernel,  1, sizeof( cl_mem), &mipmap_buf,				fname);									//__constant	uint*		mipmap_params,		//1
-	_clSetKernelArg( compute_lookup_table_kernel,  2, sizeof( cl_mem), &uint_param_buf,			fname);									//__constant 	uint*		uint_params,		//2
-	_clSetKernelArg( compute_lookup_table_kernel,  3, sizeof( cl_mem), &fp32_param_buf,			fname);									//__constant	float*		fp32_params,		//3
+	_clSetKernelArg( compute_lookup_table_kernel,  2, sizeof( cl_mem), &mipmap_buf,				fname);									//__constant	uint*		mipmap_params,		//1
+	_clSetKernelArg( compute_lookup_table_kernel,  3, sizeof( cl_mem), &uint_param_buf,			fname);									//__constant 	uint*		uint_params,		//2
+	_clSetKernelArg( compute_lookup_table_kernel,  4, sizeof( cl_mem), &fp32_param_buf,			fname);									//__constant	float*		fp32_params,		//3
 
 	// output
-	_clSetKernelArg( compute_lookup_table_kernel,  4, sizeof( cl_mem), &lookup_table_buf,		fname);									//__global 		uint4*		lookup_table		//4
+	_clSetKernelArg( compute_lookup_table_kernel,  5, sizeof( cl_mem), &lookup_table_buf,		fname);									//__global 		uint4*		lookup_table		//4
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout<<"\nRunCL::compute_lookup_table( ..)_chk1,  cl_kernel: compute_lookup_table_kernel,  cl_command_queue: m_queue,   start="
 																																				<<start<<",   stop="<<stop<<"local_work_size="<<local_work_size<<" _chk0"<<flush;
 																																			}
 	cl_event		ev;
 	cl_int			res, status;
-	for(uint reduction = start; reduction <= stop; reduction++) {																			// NB processes largest layer first.
-																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::mipmap_call_kernel(..)_chk1,  reduction="<<reduction<<",  num_threads[reduction]="<<num_threads[reduction]<<"  local_work_size="<<local_work_size<<flush; }
-		//if (reduction>=start && reduction<stop){																							// compute num threads to launch & num_pixels in reduction
-																																			//if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::mipmap_call_kernel(..)_chk2 :  num_threads[reduction]="<<num_threads[reduction]<<"  local_work_size="<<local_work_size<<flush; }
-			res 	= clSetKernelArg(compute_lookup_table_kernel, 0, sizeof(int), &reduction);
-																			if (res    !=CL_SUCCESS)	{ cout <<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}	;
+	lookup_table_offset[0]	= 0; 																										// NB 'start' may not be set to zero
 
-			res 	= clEnqueueNDRangeKernel(m_queue, compute_lookup_table_kernel, 1, &lookup_table_offset[reduction], &num_threads[reduction], &local_work_size, 0, NULL, &ev); // run mipmap_float4_kernel, NB wait for own previous iteration.
-																			if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
-			status 	= clFlush(m_queue);										if (status != CL_SUCCESS)	{ cout << "\nRunCL::mipmap_call_kernel( cl_kernel: compute_lookup_table_kernel,  clFlush(queue_to_call) status  = "		<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
-			status 	= clWaitForEvents (1, &ev);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::mipmap_call_kernel( cl_kernel: compute_lookup_table_kernel) for loop,  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
+	for(uint reduction = 0; reduction <= stop; reduction++) {																			// NB processes largest layer first.
+																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::mipmap_call_kernel(..)_chk1,  reduction="\
+																																				<<reduction<<",  num_threads[reduction]="<<num_threads[reduction]<<"  local_work_size="<<local_work_size<<flush; }
+		uint 	lookup_table_offset_uint = lookup_table_offset[reduction];
+		res 	= clSetKernelArg(compute_lookup_table_kernel, 0, sizeof(int), &reduction); 						if (res    !=CL_SUCCESS)	{ cout <<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}	;
+		res 	= clSetKernelArg(compute_lookup_table_kernel, 1, sizeof(int), &lookup_table_offset_uint ); 		if (res    !=CL_SUCCESS)	{ cout <<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}	;
 
-			lookup_table_offset[reduction +1]=  lookup_table_offset[reduction] + num_threads[reduction];									// NB this pads the lookup table, so that local work groups will not be shared betwen layers.
+		res 	= clEnqueueNDRangeKernel(m_queue, compute_lookup_table_kernel, 1, 0, &num_threads[reduction], &local_work_size, 0, NULL, &ev); // run mipmap_float4_kernel, NB wait for own previous iteration.
+																		if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
+		status 	= clFlush(m_queue);										if (status != CL_SUCCESS)	{ cout << "\nRunCL::mipmap_call_kernel( cl_kernel: compute_lookup_table_kernel,  clFlush(queue_to_call) status  = "		<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
+		status 	= clWaitForEvents (1, &ev);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::mipmap_call_kernel( cl_kernel: compute_lookup_table_kernel) for loop,  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
+
+		lookup_table_offset[reduction +1]=  lookup_table_offset[reduction] + num_threads[reduction];										// NB this pads the lookup table, so that local work groups will not be shared betwen layers.
 																																			// It also  means that this offset should be used to launch layers from the lookup table.
 	}
+	for(uint reduction = 0; reduction <= stop; reduction++) {
+			cout << "\nnum_threads["<<reduction<<"] = "<<num_threads[reduction]<<" MipMap[reduction*8 +MiM_PIXELS] = "<<MipMap[reduction*8 +MiM_PIXELS]<<flush;
+	}
+	cout <<"\nNB there will only be a gap in the lookuptable when:  num_threads[reduction] > MipMap[reduction*8 +MiM_PIXELS]  , which depends on the image dimensions and local_work_size"<<flush;
 
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_lookup_table( ..)_chk2 ."<<flush;	// Save buffers to file ###########
 																																				stringstream ss;
@@ -52,7 +58,9 @@ void RunCL::compute_lookup_table( uint start, uint stop){
 																																				cout<<"\n\nRunCL::compute_lookup_table( ..)_chk2.2 ."<<flush;
 
 																																				cout<<"\n\nRunCL::compute_lookup_table( ..)_chk2.3 ."<<flush;
-																																				DownloadAndSave_3Channel( 	lookup_table_buf,	ss.str( ), paths.at( "lookup_table_buf"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32SC4, 	show);
+																																				DownloadAndSave_3Channel( 	lookup_table_buf,	ss.str( ), paths.at( "lookup_table_buf"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show);
+																																				// NB the tiff file holda the int32 values as float32. This is okay because they fit in the mantissa.
+																																				// BGRA format, B=u, G=v, R=read_index, A=alpha.
 																																				tiff 			= old_tiff;
 																																			}
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_lookup_table( ..)_finished #############################################################"<<flush;

@@ -263,8 +263,6 @@ void RunCL::Save_vtk(cv::Mat mat, cv::Mat keyframe, std::filesystem::path folder
 */
 
 
-
-
 void RunCL::DownloadAndSave(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range ){
 	int local_verbosity_threshold = V_RUNCL_DOWNLOADANDSAVE;//verbosity_mp["RunCL::DownloadAndSave"];// 1;
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave chk0"<<flush;
@@ -538,13 +536,7 @@ void RunCL::DownloadAndSave_3Channel(cl_mem buffer, std::string count, std::file
 
 			if(png==true) cv::imwrite(folder_png.string(), (outMat) );
 			outMat.copyTo(*bufImg);
-		}else if (type_mat == CV_32SC4){
-			if(tiff==true) cv::imwrite(folder_tiff.string(), temp_mat );
-			temp_mat *=256;
-			temp_mat.convertTo(outMat, CV_8U);
 
-			if(png==true)  cv::imwrite(folder_png.string(), (outMat) );
-			outMat.copyTo(*bufImg);
 		}else {cout << "\n\nError RunCL::DownloadAndSave_3Channel(..)  needs new code for "<<checkCVtype(type_mat)<<endl<<flush; exit_(0);}
 																																			//if(verbosity>local_verbosity_threshold) cout << "\nDownloadAndSave_3Channel  bufImg->type() = "<<bufImg->type()<<"\t "<< checkCVtype(bufImg->type())  <<" \n" << flush;
 	tiff = old_tiff;
