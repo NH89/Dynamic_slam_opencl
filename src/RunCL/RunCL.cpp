@@ -583,22 +583,27 @@ void RunCL::mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_
 
 
 void RunCL::layer_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_to_call, uint layer, const size_t local_work_size){
-	int local_verbosity_threshold = V_RUNCL_MIPMAP_CALL_KERNEL;//verbosity_mp["RunCL::mipmap_call_kernel"];// -2;
+	int local_verbosity_threshold = V_RUNCL_LAYER_CALL_KERNEL;
+	string fname = "RunCL::layer_call_kernel( )";
 																																			if(verbosity>local_verbosity_threshold) {
-																																				cout<<"\nRunCL::mipmap_call_kernel( cl_kernel "<<kernel_to_call<<",  cl_command_queue "<<queue_to_call<<",   layer="<<layer<<
-																																				",  local_work_size="<<local_work_size<<" )_chk0"<<flush;
+																																				cout<<"\nRunCL::layer_call_kernel( cl_kernel "<<kernel_to_call<<",  cl_command_queue "<<queue_to_call<<",   layer="<<layer<<
+																																				",  local_work_size="<<local_work_size<<" )_chk0"
+																																				",  mm_layerstep="<<mm_layerstep<<flush;
 																																			}
 	cl_event		ev;
 	cl_int			res, status;
 	uint 			reduction 		= layer;
-																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::mipmap_call_kernel(..)_chk1,  reduction="<<reduction<<",  num_threads[reduction]="<<num_threads[reduction]<<"  local_work_size="<<local_work_size<<flush; }
+	uint 			read_offset		= lookup_table_offset[reduction];
+
+	_clSetKernelArg( kernel_to_call,  			0, sizeof( uint), &read_offset,				fname);										// 	__private	uint	read_offset,
+																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::layer_call_kernel(..)_chk1,  reduction="<<reduction<<",  num_threads[reduction]="<<num_threads[reduction]<<"  local_work_size="<<local_work_size<<flush; }
 
 	res 	= clEnqueueNDRangeKernel(queue_to_call, kernel_to_call, 1, 0, &num_threads[reduction], &local_work_size, 0, NULL, &ev); // run mipmap_float4_kernel, NB wait for own previous iteration.
 
 																	if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
-	status 	= clFlush(queue_to_call);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::mipmap_call_kernel( cl_kernel "<<kernel_to_call<<",  clFlush(queue_to_call) status  = "		<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
-	status 	= clWaitForEvents (1, &ev);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::mipmap_call_kernel( cl_kernel "<<kernel_to_call<<") for loop,  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
-																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::mipmap_call_kernel(..)_finished\n"<<flush; }
+	status 	= clFlush(queue_to_call);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::layer_call_kernel( cl_kernel "<<kernel_to_call<<",  clFlush(queue_to_call) status  = "		<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
+	status 	= clWaitForEvents (1, &ev);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::layer_call_kernel( cl_kernel "<<kernel_to_call<<") for loop,  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
+																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::layer_call_kernel(..)_finished\n"<<flush; }
 }
 
 

@@ -85,8 +85,8 @@ void RunCL::createFolders(){
 										"key_frame_depth_map_src", "depth_GT", \
 										"dmem","amem","lomem","himem","qmem","qmem2","cdatabuf","cdatabuf_8chan","hdatabuf","dbg_databuf","img_sum_buf", \
 										"HSV_grad_mem", "dmem_disparity", \
-										"binocular_disparity", "binocular_rho",\
-										\
+	};
+	std::vector<std::string> names2 = {"binocular_disparity", "binocular_rho",\
 										"lookup_table_buf", "curr_img_buf", "curr_img_sq_buf",  "curr_img_var_buf", \
 										"new_img_buf", "new_img_warped_buf", "new_img_sq_buf", "new_img_var_buf",  \
 										"img_covar_buf", "img_corr_buf",  "warp_buf"\
@@ -105,7 +105,20 @@ void RunCL::createFolders(){
 		std::filesystem::create_directory(temp_path);
 		temp_path += "/tiff/";									// "/png/";
 		std::filesystem::create_directory(temp_path);
+	}
 
+	std::filesystem::path temp_path2 = out_path;																							// "/binoc_disparity/" sub-folder
+	temp_path2 +="/binocular_disparity/";
+	std::filesystem::create_directory(temp_path2);
+
+	for (std::string key : names2){
+		temp_path = temp_path2;
+		temp_path += key;
+		tempPair = {key, temp_path};
+		paths.insert(tempPair);
+		std::filesystem::create_directory(temp_path);
+		temp_path += "/tiff/";									// "/png/";
+		std::filesystem::create_directory(temp_path);
 	}
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\nRunCL::createFolders() chk1\n";			// print the folder paths
@@ -431,8 +444,8 @@ void RunCL::DownloadAndSave_3Channel(cl_mem buffer, std::string count, std::file
 	int local_verbosity_threshold = V_RUNCL_DOWNLOADANDSAVE_3CHANNEL;//verbosity_mp["RunCL::DownloadAndSave_3Channel"];// 2;																										// bufImg will hold a pointer to the version written to .png
 	bool old_tiff = tiff;
 	if (exception_tiff == true) tiff = exception_tiff;
-																																			cout<<"\n\nDownloadAndSave_3Channel_Chk_0"<<flush;
-																																			cout<<"\nverbosity="<< verbosity <<",   = "<< local_verbosity_threshold <<flush;
+																																			//cout<<"\n\nDownloadAndSave_3Channel_Chk_0"<<flush;
+																																			//cout<<"\nverbosity="<< verbosity <<",   = "<< local_verbosity_threshold <<flush;
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave_3Channel_Chk_0    filename = ["<<folder_tiff.filename()
 																																				<<"] folder="<<folder_tiff<<", image_size_bytes="<<image_size_bytes<<", size_mat="<<size_mat
 																																				<<", type_mat="<<type_mat<<" : "<<checkCVtype(type_mat)<<"\t"<<flush;
@@ -544,7 +557,7 @@ void RunCL::DownloadAndSave_3Channel(cl_mem buffer, std::string count, std::file
 }
 
 void RunCL::DownloadAndSave_3Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers,  bool exception_tiff /*=false*/, float iter, bool display){
-	int local_verbosity_threshold = V_RUNCL_DOWNLOADANDSAVE_3CHANNEL_VOLUME;//verbosity_mp["RunCL::DownloadAndSave_3Channel_volume"];//2;
+	int local_verbosity_threshold = V_RUNCL_DOWNLOADANDSAVE_3CHANNEL_VOLUME;
 																																			if(verbosity> local_verbosity_threshold) {
 																																				cout<<"\n\nDownloadAndSave_3Channel_volume_chk_0   \tcount=\""<<count<<"\", \tfilename = ["<<folder.filename().string()<<"]"<<flush;
 																																				cout<<"\t folder="<<folder.string()<<",\t image_size_bytes="<<image_size_bytes<<",\t size_mat="<<size_mat<<",\t type_mat="<<type_mat<<
@@ -563,7 +576,7 @@ void RunCL::DownloadAndSave_3Channel_volume(cl_mem buffer, std::string count, st
 			cv::waitKey(-1);
 			destroyWindow( "RunCL::DownloadAndSave_3Channel_volume: bufImg" );
 		}																																	if(verbosity> local_verbosity_threshold) { cout << "\n\nDownloadAndSave_3Channel_volume_chk_2"<<flush;}
-		writeToResultsMat(&bufImg , iter , row_of_images+i );																				// Add patch from bufImg to resultsMat  TODO this is a bad idea, tangled code.
+		// writeToResultsMat(&bufImg , iter , row_of_images+i );																				// Add patch from bufImg to resultsMat  TODO this is a bad idea, tangled code.
 																																			// DownloadAndSave_3Channel_volume(..) is called for several differnt buffers. !
 																																			// Onlly valid when called by RunCL::tracking_result
 	}
