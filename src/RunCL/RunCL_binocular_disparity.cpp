@@ -61,6 +61,15 @@ void RunCL::compute_lookup_table( uint start, uint stop){
 																																			}
 }
 
+// void RunCL::binocular_disparity_copy_buffers(  ){
+// 	string fname = "RunCL::binocular_disparity_copy_buffers( )";
+// 	int local_verbosity_threshold = V_RUNCL_WARP_IMAGE;
+// 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::binocular_disparity_copy_buffers( ..)_chk0 #############################################################"<<flush;}
+// 	_clEnqueueCopyBuffer( m_queue, keyframe_imgmem, 	curr_img_buf, 			0, 0, mm_size_bytes_C4, 	fname);
+// 	_clEnqueueCopyBuffer( m_queue, imgmem, 				new_img_buf, 			0, 0, mm_size_bytes_C4, 	fname);
+// 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::binocular_disparity_copy_buffers( ..)_chk_finished"<<flush;
+// }
+
 
 void RunCL::warp_image( uint layer, uint iter ){																					// computed once each iteration of warping, for each layer of image pyramid
     string fname = "RunCL::warp_image( )";
@@ -72,8 +81,8 @@ void RunCL::warp_image( uint layer, uint iter ){																					// computed
 																																			}
 	// inputs
 	// __private
-	//_clSetKernelArg( warp_image_kernel,  			0, sizeof( uint), &read_offset,				fname);										// 	__private	uint	read_offset,			//0
-	_clSetKernelArg( warp_image_kernel,  			1, sizeof( uint), &mm_width,				fname);										// 	__private	uint	mm_cols,				//1
+	//_clSetKernelArg( warp_image_kernel,			0, sizeof( uint), 	&read_offset,			fname);										// 	__private	uint	read_offset,			//0
+	_clSetKernelArg( warp_image_kernel,  			1, sizeof( uint), 	&mm_width,				fname);										// 	__private	uint	mm_cols,				//1
 	// __constant
 	_clSetKernelArg( warp_image_kernel,  			2, sizeof( cl_mem), &uint_param_buf,		fname);										// 	__constant 	uint*	uint_params,			//2
 	// __global
@@ -85,9 +94,9 @@ void RunCL::warp_image( uint layer, uint iter ){																					// computed
 	_clSetKernelArg( warp_image_kernel,  			6, sizeof( cl_mem), &new_img_warped_buf,	fname);										// 	__global 	float4*	new_img_warped			//6
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::warp_image( ..)_chk1 ."<<flush;}
 	layer_call_kernel( warp_image_kernel, m_queue, layer, local_work_size);
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::( ..)_chk2 ."<<flush;								// Save buffers to file ###########
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::warp_image( ..)_chk2 ."<<flush;								// Save buffers to file ###########
 																																				stringstream ss;
-																																				ss << "compute_lookup_table_" << save_index ;
+																																				ss << "_binoc_" << save_index <<"_layer_"<<layer<<"_iter_"<<iter ;
 																																				bool show 		= false;
 																																				bool old_tiff 	= tiff;
 																																				tiff 			= true;
@@ -119,7 +128,7 @@ void RunCL::img_sq( uint layer, uint iter, cl_mem img_buf, cl_mem img_sq_buf, st
 	layer_call_kernel( img_sq_kernel, m_queue, layer, local_work_size);
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::img_sq( ..)_chk2 ."<<flush;								// Save buffers to file ###########
 																																				stringstream ss;
-																																				ss << "compute_lookup_table_" << save_index ;
+																																				ss << "_binoc_" << save_index <<"_layer_"<<layer<<"_iter_"<<iter ;
 																																				bool show 		= false;
 																																				bool old_tiff 	= tiff;
 																																				tiff 			= true;
@@ -153,7 +162,7 @@ void RunCL::img_variance( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_v
 	layer_call_kernel( img_variance_kernel, m_queue, layer, local_work_size);
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::img_variance( ..)_chk2 ."<<flush;								// Save buffers to file ###########
 																																				stringstream ss;
-																																				ss << "compute_lookup_table_" << save_index ;
+																																				ss << "_binoc_" << save_index <<"_layer_"<<layer<<"_iter_"<<iter ;
 																																				bool show 		= false;
 																																				bool old_tiff 	= tiff;
 																																				tiff 			= true;
@@ -194,7 +203,7 @@ void RunCL::compute_warp( uint layer, uint iter ){
 	layer_call_kernel( compute_warp_kernel, m_queue, layer, local_work_size);
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_warp( ..)_chk2 ."<<flush;								// Save buffers to file ###########
 																																				stringstream ss;
-																																				ss << "compute_lookup_table_" << save_index ;
+																																				ss << "_binoc_" << save_index <<"_layer_"<<layer<<"_iter_"<<iter<<"_" ;
 																																				bool show 				= false;
 																																				bool display 			= false;
 																																				bool old_tiff 			= tiff;

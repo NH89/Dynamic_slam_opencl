@@ -168,6 +168,7 @@ public:
 	/////////////////////////////////////// RunCL_disparity.cpp
 
 	void compute_lookup_table(uint start, uint stop);
+	// void binocular_disparity_copy_buffers(  );
 	void warp_image(   uint layer, uint iter);
 	void img_sq(       uint layer, uint iter, cl_mem img_buf,    cl_mem img_sq_buf,  std::string folder);
 	void img_variance( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder);

@@ -186,8 +186,10 @@ float compute_maximum(__private float4 A, __private float4 B, __private float4 C
 	__global 	float2*	warp					//10
 ){
 	uint read_index		= lookup_table[ get_global_id(0) + read_offset ].z;
-	if (read_index ==0 ) return;
-
+	if (read_index ==0 ) {
+		printf("\n_kernel compute_warp(..), mm_size=%u",mm_size);
+		return;
+	}
 	float W[9] 			= { 1,2,1,2,4,2,1,2,1 }; 																		// 3x3 discrete Gaussian kernel
 	float4 covar[5]		= {0};
 	float4 corr[5]		= {0};
@@ -207,10 +209,10 @@ float compute_maximum(__private float4 A, __private float4 B, __private float4 C
 
 	int sample_idx[5];
 	sample_idx[0] 		=	-mm_cols;
-	sample_idx[0] 		=	-1;
-	sample_idx[0] 		=	0;
-	sample_idx[0] 		=	+1;
-	sample_idx[0] 		=	+mm_cols;
+	sample_idx[1] 		=	-1;
+	sample_idx[2] 		=	0;
+	sample_idx[3] 		=	+1;
+	sample_idx[4] 		=	+mm_cols;
 
 	for (int j=0; j<5; j++){
 		for (int i=0; i<9; i++ ){ covar[j]		+= curr_img[read_index_3x3[i] ] * new_img[read_index_3x3[i] + sample_idx[j] ] *  W[i]; }

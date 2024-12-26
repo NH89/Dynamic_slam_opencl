@@ -345,6 +345,11 @@ void RunCL::DownloadAndSave(cl_mem buffer, std::string count, std::filesystem::p
 
 void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers ){
 	int local_verbosity_threshold = V_RUNCL_DOWNLOADANDSAVE_2CHANNEL_VOLUME;//verbosity_mp["RunCL::DownloadAndSave_2Channel_volume"];// 1;
+																																			cout<<"\n\nDownloadAndSave_2Channel_volume() "<<flush;
+																																			cout<<"\nvol_layers="<<vol_layers<<flush;
+																																			cout<<"\n, max_range="<<max_range<<flush;
+																																			cout<<"\n, folder = ["<<folder_tiff.filename().string()<<"] "<<flush;
+
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave_2Channel_volume() vol_layers="<<vol_layers<<", max_range="<<max_range<<", folder = ["<<folder_tiff.filename().string()<<"] "<<flush;
 	if (type_mat != CV_32FC2){cout <<"Error (type_mat != CV_32FC2)"<<flush; return;}
 
@@ -380,11 +385,11 @@ void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, st
 		stringstream png_ss_u, png_ss_v;
 		std::string  date_time_str = date_time_string();
 
-		ss_u << "/" << folder_tiff.filename().string() << "layer_"<<layer<<"_U_" << count <<"_sum"<<sum_u<<"_type_"<<type_string<<"min"<<minVal_u<<"_max"<<maxVal_u<<"_maxRange"<<max_range;
-		ss_v << "/" << folder_tiff.filename().string() << "layer_"<<layer<<"_V_" << count <<"_sum"<<sum_v<<"_type_"<<type_string<<"min"<<minVal_v<<"_max"<<maxVal_u<<"_maxRange"<<max_range;
+		ss_u << "/" << folder_tiff.filename().string() << "_vol_layer_"<<layer<<"_U_" << count <<"_sum"<<sum_u<<"_type_"<<type_string<<"min"<<minVal_u<<"_max"<<maxVal_u<<"_maxRange"<<max_range;
+		ss_v << "/" << folder_tiff.filename().string() << "_vol_layer_"<<layer<<"_V_" << count <<"_sum"<<sum_v<<"_type_"<<type_string<<"min"<<minVal_v<<"_max"<<maxVal_u<<"_maxRange"<<max_range;
 
-		png_ss_u << "/" << folder_tiff.filename().string() << "layer_"<<layer<<"_U_" << count << date_time_str;
-		png_ss_v << "/" << folder_tiff.filename().string() << "layer_"<<layer<<"_V_" << count << date_time_str;
+		png_ss_u << "/" << folder_tiff.filename().string() << "_vol_layer_"<<layer<<"_U_" << count << date_time_str;
+		png_ss_v << "/" << folder_tiff.filename().string() << "_vol_layer_"<<layer<<"_V_" << count << date_time_str;
 
 		std::filesystem::path folder_png_u = folder_tiff, folder_png_v = folder_tiff;
 		//folder_tiff += "/tiff/";
@@ -566,7 +571,7 @@ void RunCL::DownloadAndSave_3Channel_volume(cl_mem buffer, std::string count, st
 	cv::Mat bufImg;
 	int row_of_images = 0;  if ( vol_layers > 1) row_of_images=1;
 	for (uint i=0; i<vol_layers; i++) {
-		stringstream ss;	ss << count << i;
+		stringstream ss;	ss << count << "_vol_layer_" << i;
 		DownloadAndSave_3Channel(buffer, ss.str(), folder, image_size_bytes, size_mat, type_mat, show, &bufImg, max_range, i*image_size_bytes, exception_tiff);
 																																			if(verbosity> local_verbosity_threshold) { cout << "\n\nDownloadAndSave_3Channel_volume_chk_1 (display==true)   bufImg.type() = "<<bufImg.type()
 																																				<<"\t "<< checkCVtype(bufImg.type()) <<"\t row_of_images+i="<<row_of_images+i<<"\t  iter="<<iter<<"   \n" << flush;}
