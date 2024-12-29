@@ -86,12 +86,12 @@ void RunCL::createFolders(){
 										"dmem","amem","lomem","himem","qmem","qmem2","cdatabuf","cdatabuf_8chan","hdatabuf","dbg_databuf","img_sum_buf", \
 										"HSV_grad_mem", "dmem_disparity", \
 	};
-	std::vector<std::string> names2 = {"binocular_disparity", "binocular_rho",\
+	std::vector<std::string> names2 = {\
 										"lookup_table_buf", "curr_img_buf", "curr_img_sq_buf",  "curr_img_var_buf", \
 										"new_img_buf", "new_img_warped_buf", "new_img_sq_buf", "new_img_var_buf",  \
 										"img_covar_buf", "img_corr_buf",  "warp_buf"\
 	};
-										//"atomic_test1_buf", "atomic_test2_buf"
+										//"atomic_test1_buf", "atomic_test2_buf"  // "binocular_disparity", "binocular_rho",
 	std::pair<std::string, std::filesystem::path> tempPair;
 
 	tempPair = {"folder", out_path};																										// Top level output folder, used to std::out file.
@@ -369,16 +369,24 @@ void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, st
 		channels[3] = cv::Mat::ones( channels[1].size(), channels[1].type() );
 
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave_2Channel_volume()_Chk_2"<<flush;
-		cv::Mat temp_mat_u, temp_mat_v;
-		cv::Mat channels_u[4] = {channels[0],channels[0]*(-1),channels[2],channels[3] };													// Compose BGR 3channel for each of u & v.
-		cv::Mat channels_v[4] = {channels[1],channels[1]*(-1),channels[2],channels[3] };													// NB Blue = +ve, , Green = -ve , Red not used.
-		merge(channels_u,4,temp_mat_u);																										// Origin is top right corner of the image.
-		merge(channels_v,4,temp_mat_v);
+		// cv::Mat temp_mat_u, temp_mat_v;
+		// cv::Mat channels_u[4] = {channels[0],channels[0]*(-1),channels[2],channels[3] };													// Compose BGR 3channel for each of u & v.
+		// cv::Mat channels_v[4] = {channels[1],channels[1]*(-1),channels[2],channels[3] };													// NB Blue = +ve, , Green = -ve , Red not used.
+		// merge(channels_u,4,temp_mat_u);																										// Origin is top right corner of the image.
+		// merge(channels_v,4,temp_mat_v);
+		merge(channels,4, temp_mat);
+
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave_2Channel_volume()_Chk_3"<<flush;
 		double minVal_u=1, maxVal_u=1,  minVal_v=1, maxVal_v=1;
 		cv::Point minLoc_u={0,0}, maxLoc_u{0,0}, minLoc_v={0,0}, maxLoc_v{0,0};
 		cv::minMaxLoc(channels[0], &minVal_u, &maxVal_u, &minLoc_u, &maxLoc_u);
 		cv::minMaxLoc(channels[1], &minVal_v, &maxVal_v, &minLoc_v, &maxLoc_v);
+
+		float maxVal = std::max({minVal_u*-1, maxVal_u,  minVal_v*-1, maxVal_v});
+		if (max_range !=0){
+			temp_mat /= max_range;
+			if (max_range < 0){	temp_mat += 0.5f ;}
+		}else{ temp_mat = (temp_mat/ maxVal) + 0.5f;}
 																																			if(verbosity>local_verbosity_threshold) cout<<"\n\nDownloadAndSave_2Channel_volume()_Chk_4"<<flush;
 		string type_string = checkCVtype(type_mat);
 		stringstream ss_u, ss_v;
@@ -415,24 +423,25 @@ void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, st
 			cout << "\n\n## Error  (type_mat != CV_32FC2 or CV_16FC2) ##\n\n" << flush;
 			return;
 		}
-		if (max_range == 0){ temp_mat_u /= maxVal_u;  temp_mat_v /= maxVal_v; }																// Squash/stretch & shift to 0.0-1.0 range
-		else if (max_range <0.0){
-			temp_mat_u /=(-2*max_range);
-			temp_mat_v /=(-2*max_range);
-			temp_mat_u +=0.5;
-			temp_mat_v +=0.5;
-		}else{
-			temp_mat_u /=max_range;
-			temp_mat_v /=max_range;
-		}
-		if(tiff==true){
-			cv::imwrite(folder_tiff_u.string(), temp_mat_u );
-			cv::imwrite(folder_tiff_v.string(), temp_mat_v );
-		}
-		temp_mat_u *= 256*256 *5;																											// NB This is mosty for SE3_map_mem, which is dark due to small increment of each DoF.
-		temp_mat_v *= 256*256 *5;
-		temp_mat_u.convertTo(outMat_u, CV_16UC4);
-		temp_mat_v.convertTo(outMat_v, CV_16UC4);
+		// if (max_range == 0){ temp_mat_u /= maxVal_u;  temp_mat_v /= maxVal_v; }																// Squash/stretch & shift to 0.0-1.0 range
+		// else if (max_range <0.0){
+		// 	temp_mat_u /=(-2*max_range);
+		// 	temp_mat_v /=(-2*max_range);
+		// 	temp_mat_u +=0.5;
+		// 	temp_mat_v +=0.5;
+		// }else{
+		// 	temp_mat_u /=max_range;
+		// 	temp_mat_v /=max_range;
+		// }
+		// if(tiff==true){
+		// 	cv::imwrite(folder_tiff_u.string(), temp_mat_u );
+		// 	cv::imwrite(folder_tiff_v.string(), temp_mat_v );
+		// }
+		// temp_mat_u *= 256*256 *5;																											// NB This is mosty for SE3_map_mem, which is dark due to small increment of each DoF.
+		// temp_mat_v *= 256*256 *5;
+		// temp_mat_u.convertTo(outMat_u, CV_16UC4);
+		// temp_mat_v.convertTo(outMat_v, CV_16UC4);
+
 		if(png==true){
 			cv::imwrite(folder_png_u.string(), outMat_u );
 			cv::imwrite(folder_png_v.string(), outMat_v );

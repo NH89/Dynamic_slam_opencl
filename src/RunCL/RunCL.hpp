@@ -84,8 +84,8 @@ public:
 	cl_mem 				pix_sum_mem, var_sum_mem, se3_sum_mem, se3_sum2_mem, se3_weight_sum_mem;
 	cl_mem 				keyframe_imgmem, keyframe_imgmem_HSV_grad, keyframe_depth_mem, keyframe_g1mem, keyframe_SE3_grad_map_mem, keyframe_depth_mem_GT;
 	cl_mem				HSV_grad_mem, dmem_disparity, dmem_disparity_sum;
-	cl_mem				binocular_disparity, binocular_rho;
-	cl_mem				atomic_test1_buf, atomic_test2_buf;
+	//cl_mem				binocular_disparity, binocular_rho;
+	//cl_mem				atomic_test1_buf, atomic_test2_buf;
 	cl_mem				lookup_table_buf,   curr_img_buf,  curr_img_sq_buf, curr_img_var_buf,    new_img_buf, new_img_warped_buf, new_img_sq_buf, new_img_var_buf,    img_covar_buf, img_corr_buf, warp_buf;
 	
 	//

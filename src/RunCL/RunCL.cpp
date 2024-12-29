@@ -688,11 +688,11 @@ void RunCL::allocatemem(){
 	dmem_disparity		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 40= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	dmem_disparity_sum	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, d_disp_sum_size_bytes,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
-	binocular_disparity	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 40= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	binocular_rho		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	//binocular_disparity	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 40= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	//binocular_rho		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
-	atomic_test1_buf	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, 4*local_work_size*sizeof(int),		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 42= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	atomic_test2_buf	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, 4*local_work_size*sizeof(float),		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 42= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	//atomic_test1_buf	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, 4*local_work_size*sizeof(int),		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 42= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	//atomic_test2_buf	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, 4*local_work_size*sizeof(float),		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 42= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 	lookup_table_buf	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	curr_img_buf		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
@@ -704,7 +704,7 @@ void RunCL::allocatemem(){
 	new_img_var_buf		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	img_covar_buf		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 					, 5 * mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	img_corr_buf		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 					, 5 * mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	warp_buf			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 					, 2 * mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	warp_buf			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 					, 2 * mm_size_bytes_C4/*C1*/,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 
 																																		if(verbosity>local_verbosity_threshold) {
@@ -766,8 +766,8 @@ void RunCL::allocatemem(){
 	status = clEnqueueFillBuffer(uload_queue, dmem_disparity, 		&zero, 			sizeof(float),   0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueFillBuffer(uload_queue, dmem_disparity_sum, 	&zero, 			sizeof(float),   0, d_disp_sum_size_bytes, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 
-	status = clEnqueueFillBuffer(uload_queue, binocular_disparity, 	&zero, 			sizeof(float),   0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
-	status = clEnqueueFillBuffer(uload_queue, binocular_rho, 		&zero, 			sizeof(float),   0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	//status = clEnqueueFillBuffer(uload_queue, binocular_disparity, 	&zero, 			sizeof(float),   0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	//status = clEnqueueFillBuffer(uload_queue, binocular_rho, 		&zero, 			sizeof(float),   0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 
 
 	status = clEnqueueFillBuffer(uload_queue, lookup_table_buf, 	&zero, 			sizeof(float),   0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
@@ -900,11 +900,11 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	status = clReleaseMemObject(dmem_disparity);				if (status != CL_SUCCESS)	{ cout << "\ndmem_disparity                 status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_45"<<flush;
 	status = clReleaseMemObject(dmem_disparity_sum);			if (status != CL_SUCCESS)	{ cout << "\ndmem_disparity_sum             status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_47"<<flush;
 
-	status = clReleaseMemObject(binocular_disparity);			if (status != CL_SUCCESS)	{ cout << "\ndmem_disparity                 status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_45"<<flush;
-	status = clReleaseMemObject(binocular_rho);					if (status != CL_SUCCESS)	{ cout << "\ndmem_disparity_sum             status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_47"<<flush;
+	//status = clReleaseMemObject(binocular_disparity);			if (status != CL_SUCCESS)	{ cout << "\ndmem_disparity                 status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_45"<<flush;
+	//status = clReleaseMemObject(binocular_rho);					if (status != CL_SUCCESS)	{ cout << "\ndmem_disparity_sum             status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_47"<<flush;
 
-	status = clReleaseMemObject(atomic_test1_buf);				if (status != CL_SUCCESS)	{ cout << "\natomic_test1_buf               status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
-	status = clReleaseMemObject(atomic_test2_buf);				if (status != CL_SUCCESS)	{ cout << "\natomic_test1_buf               status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+	//status = clReleaseMemObject(atomic_test1_buf);				if (status != CL_SUCCESS)	{ cout << "\natomic_test1_buf               status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+	//status = clReleaseMemObject(atomic_test2_buf);				if (status != CL_SUCCESS)	{ cout << "\natomic_test1_buf               status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 
 	status = clReleaseMemObject(lookup_table_buf);				if (status != CL_SUCCESS)	{ cout << "\nlookup_table_buf               status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(curr_img_buf);					if (status != CL_SUCCESS)	{ cout << "\ncurr_img_buf                   status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;

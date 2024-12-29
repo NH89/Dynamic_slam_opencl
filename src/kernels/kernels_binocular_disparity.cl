@@ -102,11 +102,11 @@ __kernel void warp_image(						// Computed once each iteration of warping, for e
 	// output
 	__global 	float4*	img_var					//4
 ){
-	uint 	read_index					= floor( lookup_table[ get_global_id(0) + read_offset ].z );
+	uint 	read_index	= floor( lookup_table[ get_global_id(0) + read_offset ].z );
 	if (read_index ==0 ) return;
-	float4 	pixel 						= 0;
-	float4 	var							= 0;
-	float 	W[9] 						= { 1,2,1,2,4,2,1,2,1 }; 					// 3x3 discrete Gaussian kernel
+	float4 	pixel 		= 0;
+	float4 	var			= 0;
+	float 	W[9] 		= { 1.0f/16, 2.0f/16, 1.0f/16, 2.0f/16, 4.0f/16, 2.0f/16, 1.0f/16, 2.0f/16, 1.0f/16 }; 			// 3x3 discrete Gaussian kernel
 
 	uint 	read_index_3x3[9];
 	read_index_3x3[1]	=	read_index 			-mm_cols;
@@ -128,7 +128,7 @@ __kernel void warp_image(						// Computed once each iteration of warping, for e
 // 									read_index_3x3[6],read_index_3x3[7],read_index_3x3[8]\
 // 									);}
 
-	for (int i=0; i<9; i++ ){	var	+= img_sq[ read_index_3x3[i] ] * W[i]; }
+	for (int i=0; i<9; i++ ){	var	+= img_sq[ read_index_3x3[i] ] /* * W[i]*/; }
 	img_var[read_index]	= var;
 }
 
@@ -183,14 +183,14 @@ float compute_maximum(__private float4 A, __private float4 B, __private float4 C
 	// output
 	__global 	float4*	img_covar,				//8		// 5*float4*mm_size
 	__global 	float4*	img_corr,				//9		// 5*float4*mm_size
-	__global 	float2*	warp					//10
+	__global 	float2*	warp					//10	// 2*float4*mm_size // float2*
 ){
 	uint read_index		= lookup_table[ get_global_id(0) + read_offset ].z;
 	if (read_index ==0 ) {
 		printf("\n_kernel compute_warp(..), mm_size=%u",mm_size);
 		return;
 	}
-	float W[9] 			= { 1,2,1,2,4,2,1,2,1 }; 																		// 3x3 discrete Gaussian kernel
+	float W[9] 			= { 1.0f/16, 2.0f/16, 1.0f/16, 2.0f/16, 4.0f/16, 2.0f/16, 1.0f/16, 2.0f/16, 1.0f/16 };			// 3x3 discrete Gaussian kernel
 	float4 covar[5]		= {0};
 	float4 corr[5]		= {0};
 
@@ -225,14 +225,22 @@ float compute_maximum(__private float4 A, __private float4 B, __private float4 C
 		img_corr[read_index + j*mm_size]		= corr[j];
 	}
 
-	float2 warp2								= warp[read_index];
-	float warp_u								= warp2.x + compute_maximum( corr[1], corr[2], corr[3] );
-	float warp_v								= warp2.y + compute_maximum( corr[0], corr[2], corr[4] );
-	warp_u										= clamp(warp_u, -1.0f, 1.0f);
-	warp_v										= clamp(warp_v, -1.0f, 1.0f);											// warp increment clamped to +/-1
+ 	float2 warp2								= warp[read_index];
+ 	float warp_u								= /*warp2.x +*/ compute_maximum( corr[1], corr[2], corr[3] );
+ 	float warp_v								= /*warp2.y +*/ compute_maximum( corr[0], corr[2], corr[4] );
+ 	warp_u										= clamp(warp_u, -1.0f, 1.0f);
+ 	warp_v										= clamp(warp_v, -1.0f, 1.0f);					// warp increment clamped to +/-1
+
+// 	float4 warp_u_f4							= corr[1] - corr[3];
+// 	//float4 warp_v								= corr[0] - corr[4];
+// 	warp_u_f4.w									= 1;
+// 	//warp_v.w									= 1;
+// 	float4 warp_uv_f4							= {warp_u, warp_v, 0.0f, 1.0f};
 
 	float2 warp2_new							= {warp_u, warp_v};
 	warp[read_index]							= warp2_new;
+// 	warp[read_index]							= warp_u_f4;			//warp2_new;
+// 	warp[read_index + mm_size]					= warp_uv_f4;
 }
 
 // TODO  (i) confidence map, (ii) anisotropic diffusion, (iii) Inter-Scale Disparity Refinement
