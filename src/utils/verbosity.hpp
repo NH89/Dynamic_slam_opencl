@@ -101,6 +101,7 @@
 	#define	V_RUNCL_IMG_SQ -1
 	#define	V_RUNCL_IMG_VARIANCE -1
 	#define	V_RUNCL_COMPUTE_WARP -1
+	#define V_RUNCL_PROPAGATE_WARP -1
 
 	/////////////////////////////////////// RUNCL_DOWNLOADANDSAVE.CPP
 	#define	V_RUNCL_CREATEFOLDERS   2

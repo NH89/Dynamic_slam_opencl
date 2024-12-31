@@ -72,7 +72,7 @@ public:
 	cl_kernel			cvt_color_space_kernel, cvt_color_space_linear_kernel, sum_image_variance_kernel, blur_image_kernel;
 	cl_kernel 			reduce_kernel, mipmap_float4_kernel, mipmap_float_kernel, img_grad_kernel, se3_rho_sq_kernel, comp_param_maps_kernel;
 	cl_kernel			se3_lk_grad_kernel, atomic_test1_kernel, atomic_test2_kernel;
-	cl_kernel			compute_lookup_table_kernel, warp_image_kernel, img_sq_kernel, img_variance_kernel, compute_warp_kernel;
+	cl_kernel			compute_lookup_table_kernel, warp_image_kernel, img_sq_kernel, img_variance_kernel, compute_warp_kernel, propagate_warp_kernel;
 	
 	// GPU Buffers
 	cl_mem 				basemem, imgmem,  imgmem_blurred, gxmem, gymem, k_map_mem, dist_map_mem, SE3_grad_map_mem, SE3_incr_map_mem;
@@ -169,11 +169,11 @@ public:
 
 	void compute_lookup_table(uint start, uint stop);
 	// void binocular_disparity_copy_buffers(  );
-	void warp_image(   uint layer, uint iter);
-	void img_sq(       uint layer, uint iter, cl_mem img_buf,    cl_mem img_sq_buf,  std::string folder);
-	void img_variance( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder);
-	void compute_warp( uint layer, uint iter);
-
+	void warp_image(     uint layer, uint iter);
+	void img_sq(         uint layer, uint iter, cl_mem img_buf,    cl_mem img_sq_buf,  std::string folder);
+	void img_variance(   uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder);
+	void compute_warp(   uint layer, uint iter);
+	void propagate_warp( uint layer );
 
 	/////////////////////////////////////// RunCL_DownloadAndSave.cpp
 

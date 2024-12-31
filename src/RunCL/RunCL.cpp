@@ -299,6 +299,7 @@ void RunCL::createKernels(){
 	img_sq_kernel					= clCreateKernel(m_program, "img_sq", 						&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'img_sq_kernel'  kernel not built.\n"				<<flush; exit_(0);   }
 	img_variance_kernel				= clCreateKernel(m_program, "img_variance", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'img_variance_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
 	compute_warp_kernel				= clCreateKernel(m_program, "compute_warp", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'compute_warp_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
+	propagate_warp_kernel			= clCreateKernel(m_program, "propagate_warp", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'propagate_warp_kernel'  kernel not built.\n"		<<flush; exit_(0);   }
 
 	//compute_lookup_table_kernel, warp_image_kernel, img_sq_kernel, img_variance_kernel, compute_warp_kernel
 }
@@ -951,6 +952,7 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	status = clReleaseKernel(img_sq_kernel);					if (status != CL_SUCCESS)	{ cout << "\nimg_sq_kernel					status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(img_variance_kernel);				if (status != CL_SUCCESS)	{ cout << "\nimg_variance_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(compute_warp_kernel);				if (status != CL_SUCCESS)	{ cout << "\ncompute_warp_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(propagate_warp_kernel);			if (status != CL_SUCCESS)	{ cout << "\npropagate_warp_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 
 	// release command queues

@@ -25,8 +25,8 @@
 // 	uint pixels						= uint_params[PIXELS];
 // 	uint mm_pixels					= uint_params[MM_PIXELS];
 
-	int v 							= global_id  / read_cols_;												// read_row
-	int u 							= fmod(global_id_flt, read_cols_);										// read_column
+	int v 							= global_id  / read_cols_;						// read_row
+	int u 							= fmod(global_id_flt, read_cols_);				// read_column
 
 	int read_index 					= read_offset_  +  v  * mm_cols  + u ;
 	int alpha						= 255;
@@ -57,21 +57,25 @@ __kernel void warp_image(						// Computed once each iteration of warping, for e
 	__global 	float4*	new_img_warped			//6
 ){
 	uint	global_id			= get_global_id(0);
+	float 	global_id_flt		= global_id;
 	float4 	lookup_ref			= lookup_table[global_id + read_offset];
 	uint 	read_index			= floor(lookup_ref.z);
 	float2 	warp2				= warp[read_index];
-	float 	u_flt 				= lookup_ref.x 	+ warp2.x;
-	float 	v_flt 				= lookup_ref.y	+ warp2.y;
-	float 	u_mod				= fmod(u_flt , 1);
-	float 	v_mod				= fmod(v_flt , 1);
-	uint 	u 					= floor(u_flt);
-	uint 	v 					= floor(v_flt);
-	uint	sample_index		= read_index  +  (v * mm_cols)  + u ;
+	float	u_mod				= fmod(warp2.x, 1);
+	float	v_mod				= fmod(warp2.y, 1);
+	int		u_int				= floor(warp2.x);
+	int		v_int				= floor(warp2.y);
+	uint	sample_index		= read_index  + (v_int * mm_cols)  + u_int ;
 
 	// 2-way linear interpolation of four sample pixels.
-	float4 warped_lower			= new_img[read_index] 			* (1-u_mod) 	+ new_img[read_index+1] 		* u_mod;
-	float4 warped_upper			= new_img[read_index+mm_cols] 	* (1-u_mod) 	+ new_img[read_index+mm_cols+1] * u_mod;
-	new_img_warped[read_index]	= warped_lower 					* (1-v_mod)  	+ warped_upper 					* v_mod;
+	float4 warped_lower			= new_img[sample_index] 		* (1-u_mod) 	+ new_img[sample_index+1] 			* u_mod;
+	float4 warped_upper			= new_img[sample_index+mm_cols] * (1-u_mod) 	+ new_img[sample_index+mm_cols+1] 	* u_mod;
+	new_img_warped[read_index]	= warped_lower 					* (1-v_mod)  	+ warped_upper 						* v_mod;
+
+// 	if (0.0f == fmod(global_id_flt, 33.0f) ){
+// 		printf("\n__kernel void warp_image(..): warp2=(%f,%f), global_id=%u, lookup_ref.x=%f lookup_ref.y=%f u_int=%u, u_mod=%f, read_index=%u", \
+// 		warp2.x, warp2.y, global_id, lookup_ref.x, lookup_ref.y, u_int, u_mod, read_index);
+// 	}
 }
 
 
@@ -132,41 +136,53 @@ __kernel void warp_image(						// Computed once each iteration of warping, for e
 	img_var[read_index]	= var;
 }
 
-
+/*
+// float compute_maximum(__private float4 A, __private float4 B, __private float4 C){
+// 	float 	steps[3]  = {-1, 0, 1};
+// 	float a, b, c,   d, e,   f, g,   h, i,   j, k, d2, f2, h2, prediction, optimum;										// compute x value of the optimum of parabola, y= a*x*x + b*x + c
+// 																														// given samples at x=1,2,4
+// 	d = steps[0];	e = A.x ;	// d=-1	// TODO  which combination of color channels ?
+// 	f = steps[1];	g = B.x ;	// f=0
+// 	h = steps[2];	i = C.x ;	// h=1
+//
+// 	d2 = d * d;		// 1
+// 	f2 = f * f;		// 0
+// 	h2 = h * h;		// 1
+//
+// 	j = (f2 - d2)*(f-h) - (h2 - f2)*(d-f);		// 0 - d-f 				= 1
+// 	k = (g-i)*(d-f) - (e-g)*(f-h);				// B-C + (A-B) 			= A-C
+// 	a = k/j;									// 						= A-C
+// 	b = (e-g +a*(f2-d2))  /  (d-f);				// (A-B  +  A-C)/-1		= B+C-2*A
+// 	c = e - a*d2 - b*d;							// A -A-C + B+C-2*A 	= B-2*A
+//
+// 	if (a<0){																											// IF concavity leads to a maximum, use it.
+// 		float x 		= -b /(2*a);			//
+// 		prediction 		= a*(x*x) + b*x + c;
+// 		optimum 		= x;
+// 	}else{																												// IF concavity leads to a maximum, pick the best sample so far.
+// 		if (e>=i){
+// 			prediction 	= i;
+// 			optimum 	= h;
+// 		}else{
+// 			prediction 	= e;
+// 			optimum 	= d;
+// 		}
+// 	}
+// 	return optimum;
+// }
+*/
 float compute_maximum(__private float4 A, __private float4 B, __private float4 C){
-	float 	steps[3]  = {-1, 0, 1};
-	float a, b, c,   d, e,   f, g,   h, i,   j, k, d2, f2, h2, prediction, optimum;										// compute x value of the optimum of parabola, y= a*x*x + b*x + c
-																														// given samples at x=1,2,4
-	d = steps[0];	e = A.x ;		// TODO  which combination of color channels ?
-	f = steps[1];	g = B.x ;
-	h = steps[2];	i = C.x ;
+	// from https://math.stackexchange.com/questions/2150199/is-there-a-method-for-estimating-the-parabolic-function-using-three-points-or-a
+	float x1=-1,	x2=0,	x3=1;
+	float y1=A.x,	y2=B.x,	y3=C.x;
 
-	d2 = d * d;
-	f2 = f * f;
-	h2 = h * h;
+	float k1 = y1/((x1-x2)*(x1-x3));
+	float k2 = y2/((x2-x1)*(x2-x3));
+	float k3 = y3/((x3-x2)*(x3-x1));
 
-	j = (f2 - d2)*(f-h) - (h2 - f2)*(d-f);
-	k = (g-i)*(d-f) - (e-g)*(f-h);
-	a = k/j;
-	b = (e-g +a*(f2-d2))  /  (d-f);
-	c = e - a*d2 - b*d;
-
-	if (a<0){																											// IF concavity leads to a maximum, use it.
-		float x 		= -b /(2*a);
-		prediction 		= a*(x*x) + b*x + c;
-		optimum 		= x;
-	}else{																												// IF concavity leads to a maximum, pick the best sample so far.
-		if (e>=i){
-			prediction 	= i;
-			optimum 	= h;
-		}else{
-			prediction 	= e;
-			optimum 	= d;
-		}
-	}
+	float optimum = (k1*(x2+x3) + k2*(x1+x3) + k3*(x2+x1)) / (2*(k1+k2+k3));
 	return optimum;
 }
-
 
  __kernel void compute_warp(
 	// inputs
@@ -186,10 +202,10 @@ float compute_maximum(__private float4 A, __private float4 B, __private float4 C
 	__global 	float2*	warp					//10	// 2*float4*mm_size // float2*
 ){
 	uint read_index		= lookup_table[ get_global_id(0) + read_offset ].z;
-	if (read_index ==0 ) {
-		printf("\n_kernel compute_warp(..), mm_size=%u",mm_size);
-		return;
-	}
+ 	if (read_index ==0 ) {
+ 		//printf("\n_kernel compute_warp(..), mm_size=%u",mm_size);
+ 		return;	// NB required, or it will crash.
+ 	}
 	float W[9] 			= { 1.0f/16, 2.0f/16, 1.0f/16, 2.0f/16, 4.0f/16, 2.0f/16, 1.0f/16, 2.0f/16, 1.0f/16 };			// 3x3 discrete Gaussian kernel
 	float4 covar[5]		= {0};
 	float4 corr[5]		= {0};
@@ -219,29 +235,77 @@ float compute_maximum(__private float4 A, __private float4 B, __private float4 C
 		img_covar[read_index + j*mm_size]		= covar[j];
 
 		float4 inv_denominator					= ( sqrt( curr_img_var[read_index] ) * sqrt( new_img_var[read_index + sample_idx[j] ]  ) );
-		float4 denominator 						= isnormal(inv_denominator) ? 1/inv_denominator : 1;					// prevent div by zero
+		float4 denominator						= isnormal(inv_denominator) ? 1/inv_denominator : 1;					// prevent div by zero
 
 		corr[j] 								= covar[j] / denominator ;
 		img_corr[read_index + j*mm_size]		= corr[j];
 	}
 
  	float2 warp2								= warp[read_index];
- 	float warp_u								= /*warp2.x +*/ compute_maximum( corr[1], corr[2], corr[3] );
- 	float warp_v								= /*warp2.y +*/ compute_maximum( corr[0], corr[2], corr[4] );
+ 	float warp_u								= warp2.x + compute_maximum( corr[1], corr[2], corr[3] );
+ 	float warp_v								= warp2.y + compute_maximum( corr[0], corr[2], corr[4] );
  	warp_u										= clamp(warp_u, -1.0f, 1.0f);
  	warp_v										= clamp(warp_v, -1.0f, 1.0f);					// warp increment clamped to +/-1
 
+	float2 warp2_new							= {warp_u, warp_v};
+	warp[read_index]							= warp2_new;
+}
+
+ __kernel void propagate_warp(
+	// inputs
+	__private	uint	read_offset,			//0
+	__private	uint 	rows_in,				//1
+	__private	uint	cols_in,				//2
+	__private	uint	write_offset,			//3
+	__private	uint	mm_cols,				//4
+
+	__global 	float4*	lookup_table,			//5
+	// input_output
+	__global 	float2*	warp					//6		// 2*float4*mm_size // float2*
+){
+	uint 	global_id		= get_global_id(0);
+	float4 	lookup_in		= lookup_table[ global_id + read_offset  ];
+	uint read_col			= lookup_in.x;
+	uint read_row			= lookup_in.y;
+	uint read_index			= lookup_in.z;
+
+	uint write_index		= lookup_table[ global_id + write_offset ].z;
+
+	float2 warp_in			= warp[read_index];
+	float2 warp_in_up		= warp[read_index - mm_cols];
+	float2 warp_in_left		= warp[read_index - 1];
+	float2 warp_in_right	= warp[read_index + 1];
+	float2 warp_in_down		= warp[read_index + mm_cols];
+
+	float2 warp_out_ld, warp_out_rd, warp_out_lu, warp_out_ru;
+
+	if (read_col==0 || read_row==0 || read_col==cols_in || read_row== rows_in ){		// If at margin: copy directly,
+		warp_out_ld = warp_in;
+		warp_out_rd = warp_in;
+		warp_out_lu = warp_in;
+		warp_out_ru = warp_in;
+	}else{																					// else: interpolate with neighbors.
+		warp_out_ld = warp_in*0.5f +  warp_in_left *0.25f +  warp_in_down*0.25f;
+		warp_out_rd = warp_in*0.5f +  warp_in_right*0.25f +  warp_in_down*0.25f;
+		warp_out_lu = warp_in*0.5f +  warp_in_left *0.25f +  warp_in_up  *0.25f;
+		warp_out_ru = warp_in*0.5f +  warp_in_right*0.25f +  warp_in_up  *0.25f;
+	}
+	warp[write_index]				= warp_out_ld;
+	warp[write_index +1]			= warp_out_rd;
+	warp[write_index + mm_cols]		= warp_out_lu;
+	warp[write_index + mm_cols +1]	= warp_out_ru;
+ }
+
+/*
 // 	float4 warp_u_f4							= corr[1] - corr[3];
 // 	//float4 warp_v								= corr[0] - corr[4];
 // 	warp_u_f4.w									= 1;
 // 	//warp_v.w									= 1;
 // 	float4 warp_uv_f4							= {warp_u, warp_v, 0.0f, 1.0f};
 
-	float2 warp2_new							= {warp_u, warp_v};
-	warp[read_index]							= warp2_new;
 // 	warp[read_index]							= warp_u_f4;			//warp2_new;
 // 	warp[read_index + mm_size]					= warp_uv_f4;
-}
+*/
 
 // TODO  (i) confidence map, (ii) anisotropic diffusion, (iii) Inter-Scale Disparity Refinement
 
