@@ -136,6 +136,134 @@ __kernel void warp_image(						// Computed once each iteration of warping, for e
 	img_var[read_index]	= var;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////
+
+__kernel void mean_sq_3rows(
+	// inputs
+	__private	uint	read_offset,			//0
+
+	__global 	float4*	lookup_table,			//1
+	__global 	float4*	img,					//2
+	// output
+	__global 	float4*	mean_sq_rows,			//3
+	__global 	float4*	sq_mean_rows			//4
+){
+	uint 	read_index	= floor( lookup_table[ get_global_id(0) + read_offset ].z );
+	if (read_index ==0 ) return;
+
+	float4 mean_local				= {0,0,0,0};
+	float4 mean_of_squares			= {0,0,0,0};
+	float 	W[3] 					= {1/4, 2/4, 2/4};		//1x3 discrete gaussian weights, instead of equal weighting, improves insensitivity to rotation.
+
+	for (int col=0;col<3;col++){
+		float4 pix_val 				= 	img[read_index + col -1];
+		mean 						+= 	W[col] * pix_val;
+		mean_of_squares 			+=	W[col] * pix_val * pix_val;
+	}
+	mean 							*= 	mean;
+	mean_sq_rows[read_index]		= 	mean;
+	sq_mean_rows[read_index]		= 	mean_of_squares;
+}
+
+__kernel void mean_sq_cols(
+	// inputs
+	__private	uint	read_offset,			//0
+	__private	uint	mm_cols,				//1
+
+	__global 	float4*	lookup_table,			//2
+	__global 	float4*	mean_sq_rows,			//3
+	__global 	float4*	sq_mean_rows,			//4
+	// output
+	__global 	float4*	mean,					//5
+	__global 	float4*	sq_mean					//6
+){
+	uint 	read_index	= floor( lookup_table[ get_global_id(0) + read_offset ].z );
+	if (read_index ==0 ) return;
+
+	float4 mean_local				= {0,0,0,0};
+	float4 mean_of_squares			= {0,0,0,0};
+	float 	W[3] 					= {1/4, 2/4, 2/4};		//1x3 discrete gaussian weights, instead of equal weighting, improves insensitivity to rotation.
+
+	for (int col=0;col<3;col++){
+		mean_local 					+= 	W[col] * mean_sq_rows[read_index + (col-1)*mm_cols];
+	}
+	mean[read_index]				= 	mean_local;
+
+	for (int col=0;col<3;col++){
+		float4 pix_val 				= 	sq_mean_rows[read_index + (col-1)*mm_cols];
+		mean_of_squares 			+=	W[col] * pix_val * pix_val;
+	}
+	sq_mean[read_index]				= 	mean_of_squares;
+}
+
+__kernel void co_mean_rows(
+	// inputs
+	__private	uint	read_offset,			//0
+	__private	uint	mm_cols,				//1
+
+	__global 	float4*	lookup_table,			//1
+	__global 	float4*	ref_img,				//2
+	__global 	float4*	warped_img,				//3
+	// output
+	__global 	float4*	co_mean_rows			//4
+){
+	uint 	read_index									= floor( lookup_table[ get_global_id(0) + read_offset ].z );
+	if (read_index ==0 ) 								return;
+	uint 	offset[5] 									= { -mm_cols, -1, 0, 1, mm_cols };
+	float 	W[3]										= {1/4, 2/4, 2/4};
+														//1x3 discrete gaussian weights, instead of equal weighting, improves insensitivity to rotation.
+
+	for (int sample=0;sample<5;sample++){
+		float4 co_mean									=	{0,0,0,0};
+		for (int col=0;col<3;col++){
+			float4 X 									= 	ref_img[	read_index + (col-1) ];
+			float4 Y 									= 	warped_img[	read_index + (col-1) + offset[sample] ];
+			co_mean 									+= 	W[col] * X * Y ;
+		}
+		co_mean_rows[ read_index + offset[sample] ] 	= co_mean;
+	}
+}
+
+__kernel void covariance_cols(
+	// inputs
+	__private	uint	read_offset,			//0
+	__private	uint	mm_cols,				//1
+
+	__global 	float4*	lookup_table,			//2
+	__global 	float4*	co_mean_rows,			//3
+
+	__global 	float4*	ref_img_mean,			//4
+	__global 	float4*	ref_img_sq_mean,		//5
+
+	__global 	float4*	warped_img_mean,		//6
+	__global 	float4*	warped_img_sq_mean,		//7
+
+	// output
+	__global 	float4*	correlation				//8
+){
+	uint 	read_index									= floor( lookup_table[ get_global_id(0) + read_offset ].z );
+	if (read_index ==0 ) 								return;
+	uint	offset[5] 									= { -mm_cols, -1, 0, 1, mm_cols };
+	float 	W[3]										= {1/4, 2/4, 2/4};					//1x3 discrete gaussian weights, improves insensitivity to rotation.
+	float4	ref_img_mean_local							= ref_img_mean[read_index];
+	float4	ref_img_denominator							= sqrt( pow(ref_img_mean_local, 2)	 - ref_img_sq_mean[read_index] ) ;
+
+	for (int sample=0;sample<5;sample++){
+		float4 co_mean									= {0,0,0,0};
+		for (int col=0;col<3;col++){
+			co_mean 									+= 	W[col] * co_mean_rows[	read_index + (col-1) + offset[sample] ];
+		}
+		float4 warped_img_mean_local 					= warped_img_mean[read_index + offset[sample]];
+		float4 warped_img_denominator 					= sqrt( pow( warped_img_mean_local, 2) - warped_img_sq_mean[read_index + offset[sample]] ) ;
+		// TODO NB chk denominator != 0.0f
+
+		co_mean_rows[ read_index + offset[sample] ] 	= (co_mean - ref_img_mean_local * warped_img_mean_local ) / ( ref_img_denominator * warped_img_denominator );
+	}
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+
 /*
 // float compute_maximum(__private float4 A, __private float4 B, __private float4 C){
 // 	float 	steps[3]  = {-1, 0, 1};
@@ -256,7 +384,7 @@ float compute_maximum(__private float4 A, __private float4 B, __private float4 C
 	__private	uint	read_offset,			//0
 	__private	uint 	rows_in,				//1
 	__private	uint	cols_in,				//2
-	__private	uint	write_offset,			//3
+	__private	uint	write_offset,			//3  // rather send the mm_offset
 	__private	uint	mm_cols,				//4
 
 	__global 	float4*	lookup_table,			//5
@@ -264,12 +392,15 @@ float compute_maximum(__private float4 A, __private float4 B, __private float4 C
 	__global 	float2*	warp					//6		// 2*float4*mm_size // float2*
 ){
 	uint 	global_id		= get_global_id(0);
+	float 	global_id_flt 	= global_id;
 	float4 	lookup_in		= lookup_table[ global_id + read_offset  ];
 	uint read_col			= lookup_in.x;
 	uint read_row			= lookup_in.y;
 	uint read_index			= lookup_in.z;
 
-	uint write_index		= lookup_table[ global_id + write_offset ].z;
+	uint row 				= global_id / cols_in;
+	uint col 				= fmod( global_id_flt, cols_in);
+	uint write_index		= col*2 + row*2*mm_cols +  lookup_table[ write_offset ].z;  //
 
 	float2 warp_in			= warp[read_index];
 	float2 warp_in_up		= warp[read_index - mm_cols];
@@ -279,21 +410,31 @@ float compute_maximum(__private float4 A, __private float4 B, __private float4 C
 
 	float2 warp_out_ld, warp_out_rd, warp_out_lu, warp_out_ru;
 
-	if (read_col==0 || read_row==0 || read_col==cols_in || read_row== rows_in ){		// If at margin: copy directly,
-		warp_out_ld = warp_in;
-		warp_out_rd = warp_in;
-		warp_out_lu = warp_in;
-		warp_out_ru = warp_in;
-	}else{																					// else: interpolate with neighbors.
-		warp_out_ld = warp_in*0.5f +  warp_in_left *0.25f +  warp_in_down*0.25f;
-		warp_out_rd = warp_in*0.5f +  warp_in_right*0.25f +  warp_in_down*0.25f;
-		warp_out_lu = warp_in*0.5f +  warp_in_left *0.25f +  warp_in_up  *0.25f;
-		warp_out_ru = warp_in*0.5f +  warp_in_right*0.25f +  warp_in_up  *0.25f;
+	if (global_id < rows_in*cols_in) {
+		/*if (col==0 || row==0 || col==cols_in || row== rows_in ){		// If at margin: copy directly,
+			warp_out_ld = warp_in;
+			warp_out_rd = warp_in;
+			warp_out_lu = warp_in;
+			warp_out_ru = warp_in;
+		}else*/{																					// else: interpolate with neighbors.
+			warp_out_ld = warp_in*0.5f +  warp_in_left *0.25f +  warp_in_down*0.25f;
+			warp_out_rd = warp_in*0.5f +  warp_in_right*0.25f +  warp_in_down*0.25f;
+			warp_out_lu = warp_in*0.5f +  warp_in_left *0.25f +  warp_in_up  *0.25f;
+			warp_out_ru = warp_in*0.5f +  warp_in_right*0.25f +  warp_in_up  *0.25f;
+		}
+		float2 flt2_ones	= {col, row}; //{1.0f, 1.0f}; //{read_index,write_index}; //
+
+		warp[write_index]				= warp_out_lu;	// flt2_ones; //
+		warp[write_index +1]			= warp_out_ru;
+		warp[write_index + mm_cols]		= warp_out_ld;//warp_out_lu;
+		warp[write_index + mm_cols +1]	= warp_out_rd;//warp_out_ru;
+
+		if (fmod(global_id_flt,333.0f) ==0.0f ) {
+			printf("\n_kernel propagate_warp(..), global_id=%u, read_offset=%u, rows_in=%u, cols_in=%u, write_offset=%u, write_index=%u, mm_cols=%u, read_col=%u, read_row=%u, col=%u, row=%u",\
+			global_id, read_offset, rows_in, cols_in, write_offset, write_index, mm_cols, read_col, read_row, col, row);
+		}
 	}
-	warp[write_index]				= warp_out_ld;
-	warp[write_index +1]			= warp_out_rd;
-	warp[write_index + mm_cols]		= warp_out_lu;
-	warp[write_index + mm_cols +1]	= warp_out_ru;
+	//barrier(CLK_GLOBAL_MEM_FENCE);
  }
 
 /*

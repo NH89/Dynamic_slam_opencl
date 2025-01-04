@@ -73,6 +73,7 @@ public:
 	cl_kernel 			reduce_kernel, mipmap_float4_kernel, mipmap_float_kernel, img_grad_kernel, se3_rho_sq_kernel, comp_param_maps_kernel;
 	cl_kernel			se3_lk_grad_kernel, atomic_test1_kernel, atomic_test2_kernel;
 	cl_kernel			compute_lookup_table_kernel, warp_image_kernel, img_sq_kernel, img_variance_kernel, compute_warp_kernel, propagate_warp_kernel;
+	cl_kernel			mean_sq_3rows_kernel, mean_sq_cols_kernel, co_mean_rows_kernel, covariance_cols_kernel;
 	
 	// GPU Buffers
 	cl_mem 				basemem, imgmem,  imgmem_blurred, gxmem, gymem, k_map_mem, dist_map_mem, SE3_grad_map_mem, SE3_incr_map_mem;
@@ -87,7 +88,9 @@ public:
 	//cl_mem				binocular_disparity, binocular_rho;
 	//cl_mem				atomic_test1_buf, atomic_test2_buf;
 	cl_mem				lookup_table_buf,   curr_img_buf,  curr_img_sq_buf, curr_img_var_buf,    new_img_buf, new_img_warped_buf, new_img_sq_buf, new_img_var_buf,    img_covar_buf, img_corr_buf, warp_buf;
-	
+
+	cl_mem				ref_img_mean_rows_buf, ref_img_sq_mean_rows_buf, warped_img_mean_rows_buf, warped_img_sq_mean_rows_buf;
+	cl_mem				ref_img_mean_buf,      ref_img_sq_mean_buf,      warped_img_mean_buf,      warped_img_sq_mean_buf,      co_mean_rows_buf, correlation_buf;
 	//
 	cv::Mat 			baseImage, key_frame;
 
@@ -174,6 +177,11 @@ public:
 	void img_variance(   uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder);
 	void compute_warp(   uint layer, uint iter);
 	void propagate_warp( uint layer );
+
+	void mean_sq_3rows(   uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder);
+	void mean_sq_cols(    uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder);
+	void co_mean_rows(    uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder);
+	void covariance_cols( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder);
 
 	/////////////////////////////////////// RunCL_DownloadAndSave.cpp
 

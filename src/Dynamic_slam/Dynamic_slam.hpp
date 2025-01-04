@@ -132,7 +132,9 @@ class Dynamic_slam
 
     /////////////////////////////////////// Dynamic_slam_disparity.cpp
     void binocular_reference_frame();
+    void binocular_reference_frame2();
     void binocular_disparity();
+    void binocular_disparity2();
 
     /////////////////////////////////////// Dynamic_slam_keyframe.cpp
     void initialize_keyframe_vec(  );
