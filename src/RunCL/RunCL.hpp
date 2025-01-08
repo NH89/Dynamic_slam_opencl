@@ -87,10 +87,11 @@ public:
 	cl_mem				HSV_grad_mem, dmem_disparity, dmem_disparity_sum;
 	//cl_mem				binocular_disparity, binocular_rho;
 	//cl_mem				atomic_test1_buf, atomic_test2_buf;
-	cl_mem				lookup_table_buf,   curr_img_buf,  curr_img_sq_buf, curr_img_var_buf,    new_img_buf, new_img_warped_buf, new_img_sq_buf, new_img_var_buf,    img_covar_buf, img_corr_buf, warp_buf;
+	cl_mem				/*lookup_table_buf,*/   curr_img_buf,  curr_img_sq_buf, curr_img_var_buf,    /*new_img_buf,*/ new_img_warped_buf, new_img_sq_buf, new_img_var_buf,    img_covar_buf, img_corr_buf, warp_buf;
 
-	cl_mem				ref_img_mean_rows_buf, ref_img_sq_mean_rows_buf, warped_img_mean_rows_buf, warped_img_sq_mean_rows_buf;
-	cl_mem				ref_img_mean_buf,      ref_img_sq_mean_buf,      warped_img_mean_buf,      warped_img_sq_mean_buf,      co_mean_rows_buf, correlation_buf;
+	cl_mem				lookup_table_buf,		ref_img_buf,				new_img_buf,				warped_img_buf;
+	cl_mem				ref_img_mean_rows_buf,	ref_img_sq_mean_rows_buf,	warped_img_mean_rows_buf,	warped_img_sq_mean_rows_buf;
+	cl_mem				ref_img_mean_buf,		ref_img_sq_mean_buf,		warped_img_mean_buf,		warped_img_sq_mean_buf,      co_mean_rows_buf, correlation_buf;
 	//
 	cv::Mat 			baseImage, key_frame;
 
@@ -178,10 +179,11 @@ public:
 	void compute_warp(   uint layer, uint iter);
 	void propagate_warp( uint layer );
 
-	void mean_sq_3rows(   uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder);
-	void mean_sq_cols(    uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder);
-	void co_mean_rows(    uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder);
-	void covariance_cols( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder);
+	void mean_sq_3rows(uint layer, uint iter, std::string folder_mean_rows, std::string folder_sq_mean_rows, cl_mem img_buf, cl_mem mean_rows_buf, cl_mem sq_mean_rows_buf)
+;
+	void mean_sq_cols(    uint layer, uint iter, std::string folder, cl_mem mean_sq_rows_buf, cl_mem sq_mean_rows_buf, cl_mem mean_buf, cl_mem sq_mean);
+	void co_mean_rows(    uint layer, uint iter, std::string folder);
+	void covariance_cols( uint layer, uint iter, std::string folder);
 
 	/////////////////////////////////////// RunCL_DownloadAndSave.cpp
 

@@ -157,11 +157,10 @@ __kernel void mean_sq_3rows(
 
 	for (int col=0;col<3;col++){
 		float4 pix_val 				= 	img[read_index + col -1];
-		mean 						+= 	W[col] * pix_val;
+		mean_local 					+= 	W[col] * pix_val;
 		mean_of_squares 			+=	W[col] * pix_val * pix_val;
 	}
-	mean 							*= 	mean;
-	mean_sq_rows[read_index]		= 	mean;
+	mean_sq_rows[read_index]		= 	(mean_local * mean_local);
 	sq_mean_rows[read_index]		= 	mean_of_squares;
 }
 

@@ -177,12 +177,11 @@ void RunCL::img_variance( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_v
 }
 ////////////////////////////////////////////////////////////
 
+	//void mean_sq_3rows(uint layer, uint iter, std::string folder_mean_rows, std::string folder_sq_mean_rows, cl_mem img_buf, cl_mem mean_rows_, cl_mem sq_mean_rows_buf);
 
-//	ref_img_mean_rows_buf, ref_img_sq_mean_rows_buf, warped_img_mean_rows_buf, warped_img_sq_mean_rows_buf;
-//	ref_img_mean_buf,      ref_img_sq_mean_buf,      warped_img_mean_buf,      warped_img_sq_mean_buf,      co_mean_rows_buf, correlation_buf;
+	// ref_img_mean_rows_buf,	ref_img_sq_mean_rows_buf,
 
-
-void RunCL::mean_sq_3rows( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder){
+void RunCL::mean_sq_3rows( uint layer, uint iter, std::string folder_mean_rows, std::string folder_sq_mean_rows, cl_mem img_buf, cl_mem mean_rows_buf, cl_mem sq_mean_rows_buf){
     string fname = "RunCL::mean_sq_3rows( )";
 	int local_verbosity_threshold = V_RUNCL_IMG_VARIANCE;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mean_sq_3rows( ..)_chk0 #############################################################"<<flush;
@@ -190,31 +189,17 @@ void RunCL::mean_sq_3rows( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_
 																																				<< ",  layer = " << layer
 																																				<< flush;
 																																			}
-	__kernel void mean_sq_3rows(
 	// inputs
-	__private	uint	read_offset,			//0
-
-	__global 	float4*	lookup_table,			//1
-	__global 	float4*	img,					//2
-	// output
-	__global 	float4*	mean_sq_rows,			//3
-	__global 	float4*	sq_mean_rows			//4
-	)
-
-
-
-	// inputs
-	// __private
 	//_clSetKernelArg( warp_image_kernel,  			0, sizeof( uint), 	&read_offset,			fname);										// 	__private	uint	read_offset,			//0
-	_clSetKernelArg( img_variance_kernel,  			1, sizeof( uint), 	&mm_width,				fname);										// 	__private	uint	mm_cols,				//1
-	// __global
-	_clSetKernelArg( img_variance_kernel,  			2, sizeof( cl_mem), &lookup_table_buf,		fname);										// 	__global 	uint4*	lookup_table,			//2
-	_clSetKernelArg( img_variance_kernel,  			3, sizeof( cl_mem), &img_sq_buf,			fname);										// 	__global 	float4*	img_sq					//3
 
+	_clSetKernelArg( mean_sq_3rows_kernel,  		1, sizeof( cl_mem), &lookup_table_buf,		fname);										// 	__global 	float4*	lookup_table,			//1
+	_clSetKernelArg( mean_sq_3rows_kernel,  		2, sizeof( cl_mem), &img_buf,				fname);										// 	__global 	float4*	img,					//2
 	// output
-	_clSetKernelArg( img_variance_kernel,  			4, sizeof( cl_mem), &img_var_buf,			fname);										// 	__global 	float4*	img_var					//4
+	_clSetKernelArg( mean_sq_3rows_kernel,  		3, sizeof( cl_mem), &mean_rows_buf,			fname);										// 	__global 	float4*	mean_rows,				//3
+	_clSetKernelArg( mean_sq_3rows_kernel,  		4, sizeof( cl_mem), &sq_mean_rows_buf,		fname);										// 	__global 	float4*	sq_mean_rows			//4
+
 																																		if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mean_sq_3rows( ..)_chk1 ."<<flush;}
-	layer_call_kernel( img_variance_kernel, m_queue, layer, local_work_size);
+	layer_call_kernel( mean_sq_3rows_kernel, m_queue, layer, local_work_size);
 																																			if( verbosity>local_verbosity_threshold && layer==1 ) {cout<<"\n\nRunCL::mean_sq_3rows( ..)_chk2 ."<<flush;								// Save buffers to file ###########
 																																				stringstream ss;
 																																				ss << "_binoc_" << save_index <<"_layer_"<<layer<<"_iter_"<<iter ;
@@ -230,7 +215,7 @@ void RunCL::mean_sq_3rows( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_
 }
 
 
-void RunCL::mean_sq_cols( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder){
+void RunCL::mean_sq_cols( uint layer, uint iter, std::string folder, cl_mem mean_sq_rows_buf, cl_mem sq_mean_rows_buf, cl_mem mean_buf, cl_mem sq_mean){
     string fname = "RunCL::mean_sq_cols( )";
 	int local_verbosity_threshold = V_RUNCL_IMG_VARIANCE;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mean_sq_cols( ..)_chk0 #############################################################"<<flush;
@@ -238,30 +223,18 @@ void RunCL::mean_sq_cols( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_v
 																																				<< ",  layer = " << layer
 																																				<< flush;
 																																			}
-	__kernel void mean_sq_cols(
 	// inputs
-	__private	uint	read_offset,			//0
-	__private	uint	mm_cols,				//1
-
-	__global 	float4*	lookup_table,			//2
-	__global 	float4*	mean_sq_rows,			//3
-	__global 	float4*	sq_mean_rows,			//4
-	// output
-	__global 	float4*	mean,					//5
-	__global 	float4*	sq_mean					//6
-	)
-	// inputs
-	// __private
 	//_clSetKernelArg( warp_image_kernel,  			0, sizeof( uint), 	&read_offset,			fname);										// 	__private	uint	read_offset,			//0
-	_clSetKernelArg( img_variance_kernel,  			1, sizeof( uint), 	&mm_width,				fname);										// 	__private	uint	mm_cols,				//1
-	// __global
-	_clSetKernelArg( img_variance_kernel,  			2, sizeof( cl_mem), &lookup_table_buf,		fname);										// 	__global 	uint4*	lookup_table,			//2
-	_clSetKernelArg( img_variance_kernel,  			3, sizeof( cl_mem), &img_sq_buf,			fname);										// 	__global 	float4*	img_sq					//3
+	_clSetKernelArg( mean_sq_cols_kernel,  			1, sizeof( uint), 	&mm_width,				fname);										//	__private	uint	mm_cols,				//1
 
+	_clSetKernelArg( mean_sq_cols_kernel,  			2, sizeof( cl_mem), &lookup_table_buf,		fname);										// 	__global 	float4*	lookup_table,			//2
+	_clSetKernelArg( mean_sq_cols_kernel,  			3, sizeof( cl_mem), &mean_sq_rows_buf,		fname);										// 	__global 	float4*	mean_sq_rows,			//3
+	_clSetKernelArg( mean_sq_cols_kernel,  			4, sizeof( cl_mem), &sq_mean_rows_buf,		fname);										// 	__global 	float4*	sq_mean_rows,			//4
 	// output
-	_clSetKernelArg( img_variance_kernel,  			4, sizeof( cl_mem), &img_var_buf,			fname);										// 	__global 	float4*	img_var					//4
+	_clSetKernelArg( mean_sq_cols_kernel,  			5, sizeof( cl_mem), &mean_buf,				fname);										// 	__global 	float4*	mean,					//5
+	_clSetKernelArg( mean_sq_cols_kernel,  			6, sizeof( cl_mem), &sq_mean,				fname);										// 	__global 	float4*	sq_mean					//6
 																																		if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mean_sq_cols( ..)_chk1 ."<<flush;}
-	layer_call_kernel( img_variance_kernel, m_queue, layer, local_work_size);
+	layer_call_kernel( mean_sq_cols_kernel, m_queue, layer, local_work_size);
 																																			if( verbosity>local_verbosity_threshold && layer==1 ) {cout<<"\n\nRunCL::mean_sq_cols( ..)_chk2 ."<<flush;								// Save buffers to file ###########
 																																				stringstream ss;
 																																				ss << "_binoc_" << save_index <<"_layer_"<<layer<<"_iter_"<<iter ;
@@ -277,7 +250,7 @@ void RunCL::mean_sq_cols( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_v
 }
 
 
-void RunCL::co_mean_rows( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder){
+void RunCL::co_mean_rows( uint layer, uint iter, std::string folder){
     string fname = "RunCL::co_mean_rows( )";
 	int local_verbosity_threshold = V_RUNCL_IMG_VARIANCE;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::co_mean_rows( ..)_chk0 #############################################################"<<flush;
@@ -285,29 +258,18 @@ void RunCL::co_mean_rows( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_v
 																																				<< ",  layer = " << layer
 																																				<< flush;
 																																			}
-	__kernel void co_mean_rows(
-	// inputs
-	__private	uint	read_offset,			//0
-	__private	uint	mm_cols,				//1
-
-	__global 	float4*	lookup_table,			//1
-	__global 	float4*	ref_img,				//2
-	__global 	float4*	warped_img,				//3
-	// output
-	__global 	float4*	co_mean_rows			//4
-	)
 	// inputs
 	// __private
-	//_clSetKernelArg( warp_image_kernel,  			0, sizeof( uint), 	&read_offset,			fname);										// 	__private	uint	read_offset,			//0
-	_clSetKernelArg( img_variance_kernel,  			1, sizeof( uint), 	&mm_width,				fname);										// 	__private	uint	mm_cols,				//1
+	//_clSetKernelArg( warp_image_kernel,  		0, sizeof( uint), 	&read_offset,			fname);										// 	__private	uint	read_offset,			//0
+	_clSetKernelArg( co_mean_rows_kernel,  		1, sizeof( uint), 	&mm_width,				fname);										// 	__private	uint	mm_cols,				//1
 	// __global
-	_clSetKernelArg( img_variance_kernel,  			2, sizeof( cl_mem), &lookup_table_buf,		fname);										// 	__global 	uint4*	lookup_table,			//2
-	_clSetKernelArg( img_variance_kernel,  			3, sizeof( cl_mem), &img_sq_buf,			fname);										// 	__global 	float4*	img_sq					//3
-
+	_clSetKernelArg( co_mean_rows_kernel,  		2, sizeof( cl_mem), &lookup_table_buf,		fname);										// 	__global 	float4*	lookup_table,			//1
+	_clSetKernelArg( co_mean_rows_kernel,  		3, sizeof( cl_mem), &ref_img_buf,			fname);										// 	__global 	float4*	ref_img,				//2
+	_clSetKernelArg( co_mean_rows_kernel,  		4, sizeof( cl_mem), &warped_img_buf,		fname);										// 	__global 	float4*	warped_img,				//3
 	// output
-	_clSetKernelArg( img_variance_kernel,  			4, sizeof( cl_mem), &img_var_buf,			fname);										// 	__global 	float4*	img_var					//4
-																																		if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::co_mean_rows( ..)_chk1 ."<<flush;}
-	layer_call_kernel( img_variance_kernel, m_queue, layer, local_work_size);
+	_clSetKernelArg( co_mean_rows_kernel,  		5, sizeof( cl_mem), &co_mean_rows_buf,		fname);										// 	__global 	float4*	co_mean_rows			//4
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::co_mean_rows( ..)_chk1 ."<<flush;}
+	layer_call_kernel( co_mean_rows_kernel, m_queue, layer, local_work_size);
 																																			if( verbosity>local_verbosity_threshold && layer==1 ) {cout<<"\n\nRunCL::co_mean_rows( ..)_chk2 ."<<flush;								// Save buffers to file ###########
 																																				stringstream ss;
 																																				ss << "_binoc_" << save_index <<"_layer_"<<layer<<"_iter_"<<iter ;
@@ -322,8 +284,11 @@ void RunCL::co_mean_rows( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_v
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::co_mean_rows( ..)_finished ."<<flush;}
 }
 
+//	ref_img_mean_rows_buf, ref_img_sq_mean_rows_buf, warped_img_mean_rows_buf, warped_img_sq_mean_rows_buf;
+//	ref_img_mean_buf,      ref_img_sq_mean_buf,      warped_img_mean_buf,      warped_img_sq_mean_buf,      co_mean_rows_buf, correlation_buf;
 
-void RunCL::covariance_cols( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder){
+
+void RunCL::covariance_cols( uint layer, uint iter, std::string folder){
     string fname = "RunCL::covariance_cols( )";
 	int local_verbosity_threshold = V_RUNCL_IMG_VARIANCE;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::covariance_cols( ..)_chk0 #############################################################"<<flush;
@@ -333,20 +298,20 @@ void RunCL::covariance_cols( uint layer, uint iter, cl_mem img_sq_buf, cl_mem im
 																																			}
 	// inputs
 	// __private
-	//_clSetKernelArg( warp_image_kernel,  			0, sizeof( uint), 	&read_offset,			fname);										// __private	uint	read_offset,			//0
-	_clSetKernelArg( covariance_cols_kernel,  			1, sizeof( uint), 	&mm_width,				fname);										// __private	uint	mm_cols,				//1
+	//_clSetKernelArg( warp_image_kernel,  				0, sizeof( uint), 	&read_offset,				fname);								// __private	uint	read_offset,			//0
+	_clSetKernelArg( covariance_cols_kernel,  			1, sizeof( uint), 	&mm_width,					fname);								// __private	uint	mm_cols,				//1
 	// __global
-	_clSetKernelArg( covariance_cols_kernel,  			2, sizeof( cl_mem), &lookup_table_buf,		fname);										// __global 	float4*	lookup_table,			//2
-	_clSetKernelArg( covariance_cols_kernel,  			3, sizeof( cl_mem), &_buf,		fname);										// __global 	float4*	co_mean_rows,			//3
+	_clSetKernelArg( covariance_cols_kernel,  			2, sizeof( cl_mem), &lookup_table_buf,			fname);								// __global 	float4*	lookup_table,			//2
+	_clSetKernelArg( covariance_cols_kernel,  			3, sizeof( cl_mem), &co_mean_rows_buf,			fname);								// __global 	float4*	co_mean_rows,			//3
 
-	_clSetKernelArg( covariance_cols_kernel,  			4, sizeof( cl_mem), &_buf,		fname);										// __global 	float4*	ref_img_mean,			//4
-	_clSetKernelArg( covariance_cols_kernel,  			5, sizeof( cl_mem), &_buf,		fname);										// __global 	float4*	ref_img_sq_mean,		//5
+	_clSetKernelArg( covariance_cols_kernel,  			4, sizeof( cl_mem), &ref_img_mean_buf,			fname);								// __global 	float4*	ref_img_mean,			//4
+	_clSetKernelArg( covariance_cols_kernel,  			5, sizeof( cl_mem), &ref_img_sq_mean_buf,		fname);								// __global 	float4*	ref_img_sq_mean,		//5
 
-	_clSetKernelArg( covariance_cols_kernel,  			6, sizeof( cl_mem), &_buf,		fname);										// __global 	float4*	warped_img_mean,		//6
-	_clSetKernelArg( covariance_cols_kernel,  			7, sizeof( cl_mem), &_buf,		fname);										// __global 	float4*	warped_img_sq_mean,		//7
+	_clSetKernelArg( covariance_cols_kernel,  			6, sizeof( cl_mem), &warped_img_mean_buf,		fname);								// __global 	float4*	warped_img_mean,		//6
+	_clSetKernelArg( covariance_cols_kernel,  			7, sizeof( cl_mem), &warped_img_sq_mean_buf,	fname);								// __global 	float4*	warped_img_sq_mean,		//7
 
 	// output
-	_clSetKernelArg( covariance_cols_kernel,  			8, sizeof( cl_mem), &_buf,		fname);										// __global 	float4*	correlation				//8
+	_clSetKernelArg( covariance_cols_kernel,  			8, sizeof( cl_mem), &correlation_buf,		fname);									// __global 	float4*	correlation				//8
 
 																																		if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::covariance_cols( ..)_chk1 ."<<flush;}
 	layer_call_kernel( covariance_cols_kernel, m_queue, layer, local_work_size);

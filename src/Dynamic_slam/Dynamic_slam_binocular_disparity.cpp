@@ -34,11 +34,10 @@ void Dynamic_slam::binocular_reference_frame2(){
 	// prepare reference frame
 	uint iter = 0;
 	for (int layer = runcl.mm_stop ; layer >=0 ; layer-- ){
-		runcl.mean_sq_3rows(   uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder);
-		runcl.mean_sq_cols(    uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder);
+		runcl.mean_sq_3rows(  layer, iter, "ref_img_mean_rows_buf", "ref_img_sq_mean_rows_buf", runcl.ref_img_buf, runcl.ref_img_mean_rows_buf, runcl.ref_img_sq_mean_rows_buf);
+		runcl.mean_sq_cols(   layer, iter, std::string folder, cl_mem mean_sq_rows_buf, cl_mem sq_mean_rows_buf, cl_mem mean_buf, cl_mem sq_mean);
 	}
 	// predict warp ? from previous keyframe
-
 
 																												if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::reference_frame() finished ############################\f"<<flush;}
 }
@@ -73,9 +72,7 @@ void Dynamic_slam::binocular_disparity2(){
 																												if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::disparity() ######################################"<<flush;}
 	// load image into buffers
 	runcl._clEnqueueCopyBuffer( runcl.m_queue, runcl.imgmem, 	runcl.new_img_buf, 			0, 0, runcl.mm_size_bytes_C4, 	fname);
-
 	// predict warp from previous frame ?
-
 
 	// compute warp for this frame  // can be until (layer > runcl.mm_start) but takes 3x longer.
 	for (int layer = runcl.mm_stop ; layer > runcl.mm_start+1 ; layer-- ){										if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::disparity() chk_1 layer="<<layer<<", runcl.mm_start="<<runcl.mm_start<<flush;}
