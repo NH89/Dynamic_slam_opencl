@@ -145,7 +145,7 @@ __kernel void mean_sq_3rows(
 	__global 	float4*	lookup_table,			//1
 	__global 	float4*	img,					//2
 	// output
-	__global 	float4*	mean_sq_rows,			//3
+	__global 	float4*	mean_rows,				//3
 	__global 	float4*	sq_mean_rows			//4
 ){
 	uint 	read_index	= floor( lookup_table[ get_global_id(0) + read_offset ].z );
@@ -153,14 +153,14 @@ __kernel void mean_sq_3rows(
 
 	float4 mean_local				= {0,0,0,0};
 	float4 mean_of_squares			= {0,0,0,0};
-	float 	W[3] 					= {1/4, 2/4, 2/4};		//1x3 discrete gaussian weights, instead of equal weighting, improves insensitivity to rotation.
+	float 	W[3] 					= {1.0f/4, 2.0f/4, 1.0f/4};		//1x3 discrete gaussian weights, instead of equal weighting, improves insensitivity to rotation.
 
 	for (int col=0;col<3;col++){
 		float4 pix_val 				= 	img[read_index + col -1];
 		mean_local 					+= 	W[col] * pix_val;
 		mean_of_squares 			+=	W[col] * pix_val * pix_val;
 	}
-	mean_sq_rows[read_index]		= 	(mean_local * mean_local);
+	mean_rows[read_index]			= 	mean_local;
 	sq_mean_rows[read_index]		= 	mean_of_squares;
 }
 
@@ -181,7 +181,7 @@ __kernel void mean_sq_cols(
 
 	float4 mean_local				= {0,0,0,0};
 	float4 mean_of_squares			= {0,0,0,0};
-	float 	W[3] 					= {1/4, 2/4, 2/4};		//1x3 discrete gaussian weights, instead of equal weighting, improves insensitivity to rotation.
+	float 	W[3] 					= {1.0f/4, 2.0f/4, 1.0f/4};		//1x3 discrete gaussian weights, instead of equal weighting, improves insensitivity to rotation.
 
 	for (int col=0;col<3;col++){
 		mean_local 					+= 	W[col] * mean_sq_rows[read_index + (col-1)*mm_cols];
@@ -198,18 +198,19 @@ __kernel void mean_sq_cols(
 __kernel void co_mean_rows(
 	// inputs
 	__private	uint	read_offset,			//0
-	__private	uint	mm_cols,				//1
+	__private	uint 	mm_size,				//1
+	__private	uint	mm_cols,				//2
 
-	__global 	float4*	lookup_table,			//1
-	__global 	float4*	ref_img,				//2
-	__global 	float4*	warped_img,				//3
+	__global 	float4*	lookup_table,			//3
+	__global 	float4*	ref_img,				//4
+	__global 	float4*	warped_img,				//5
 	// output
-	__global 	float4*	co_mean_rows			//4
+	__global 	float4*	co_mean_rows			//6
 ){
 	uint 	read_index									= floor( lookup_table[ get_global_id(0) + read_offset ].z );
 	if (read_index ==0 ) 								return;
 	uint 	offset[5] 									= { -mm_cols, -1, 0, 1, mm_cols };
-	float 	W[3]										= {1/4, 2/4, 2/4};
+	float 	W[3]										= {1.0f/4, 2.0f/4, 1.0f/4};
 														//1x3 discrete gaussian weights, instead of equal weighting, improves insensitivity to rotation.
 
 	for (int sample=0;sample<5;sample++){
@@ -219,45 +220,117 @@ __kernel void co_mean_rows(
 			float4 Y 									= 	warped_img[	read_index + (col-1) + offset[sample] ];
 			co_mean 									+= 	W[col] * X * Y ;
 		}
-		co_mean_rows[ read_index + offset[sample] ] 	= co_mean;
+		co_mean_rows[ read_index + sample*mm_size ] 	= co_mean;
 	}
+}
+
+float2 compute_maximum(__private float4 A, __private float4 B, __private float4 C){
+	// from https://math.stackexchange.com/questions/2150199/is-there-a-method-for-estimating-the-parabolic-function-using-three-points-or-a
+	float x1=-1,	x2=0,	x3=1;
+	float y1=A.x,	y2=B.x,	y3=C.x;			// TODO  which choice of channels ?
+
+	float k1 		= y1/((x1-x2)*(x1-x3));
+	float k2 		= y2/((x2-x1)*(x2-x3));
+	float k3 		= y3/((x3-x2)*(x3-x1));
+
+	float optimum_x = (k1*(x2+x3) + k2*(x1+x3) + k3*(x2+x1)) / (2*(k1+k2+k3));
+	optimum_x 		= clamp(optimum_x, -1.0f, 1.0f);										// warp increment clamped to +/-1
+
+	float a1 		= optimum_x - x1;
+	float a2 		= optimum_x - x2;
+	float a3 		= optimum_x - x3;
+
+	float optimum_y = k1*a2*a3 + k2*a1*a3 + k3*a1*a2;
+
+	float2 optimum	= {optimum_x, optimum_y};
+	return optimum;
 }
 
 __kernel void covariance_cols(
 	// inputs
 	__private	uint	read_offset,			//0
+	__private	uint 	mm_size,				//1
+	__private	uint	mm_cols,				//2
+
+	__global 	float4*	lookup_table,			//3
+	__global 	float4*	co_mean_rows,			//4
+
+	__global 	float4*	ref_img_mean,			//5
+	__global 	float4*	ref_img_sq_mean,		//6
+
+	__global 	float4*	warped_img_mean,		//7
+	__global 	float4*	warped_img_sq_mean,		//8
+
+	// output
+	__global 	float4*	correlation,			//9
+	__global 	float2*	warp,					//10	// 2*float4*mm_size // float2*
+	__global 	float2*	confidence			//11
+){
+	uint 	read_index							= floor( lookup_table[ get_global_id(0) + read_offset ].z );
+	if (read_index ==0 ) 						return;
+	uint	offset[5] 							= { -mm_cols, -1, 0, 1, mm_cols };
+	float 	W[3]								= {1.0f/4, 2.0f/4, 1.0f/4};					//1x3 discrete gaussian weights, improves insensitivity to rotation.
+	float4	ref_img_mean_local					= ref_img_mean[read_index];
+	float4	ref_img_denominator					= sqrt( pow(ref_img_mean_local, 2)	 - ref_img_sq_mean[read_index] ) ;
+
+	float4	corr[5]								= {0};
+
+	for (int sample=0;sample<5;sample++){
+		float4 co_mean							= {0,0,0,0};
+		for (int col=0;col<3;col++){
+			co_mean 							+= 	W[col] * co_mean_rows[	read_index + (col-1) + sample*mm_size ];
+		}
+		float4 warped_img_mean_local 			= warped_img_mean[read_index + offset[sample]];
+		float4 warped_img_denominator 			= sqrt( pow( warped_img_mean_local, 2) - warped_img_sq_mean[read_index + offset[sample]] ) ;
+		float4 denominator 						= 1.0f / ( ref_img_denominator * warped_img_denominator );
+		if(isnan(denominator.x)) 				denominator.y=1.0f;		// NB if  mean^2 == mean(pixel^2) for ref_img or wraped_img,
+		if(isnan(denominator.y)) 				denominator.x=1.0f;		// then denominator = 1/0 = inf.
+		if(isnan(denominator.z)) 				denominator.z=1.0f;
+		corr[sample] 							= (co_mean - ref_img_mean_local * warped_img_mean_local ) * denominator  ;
+		corr[sample].w 							= 1.0f;
+		correlation[read_index + sample*mm_size]= corr[sample];
+	}
+
+	float2 warp2								= warp[read_index];
+ 	float2 opt_u								= compute_maximum( corr[1], corr[2], corr[3] );
+	float2 opt_v								= compute_maximum( corr[0], corr[2], corr[4] );
+ 	float warp_u								= warp2.x + opt_u.x;
+ 	float warp_v								= warp2.y + opt_v.x;
+
+	float2 warp2_new							= {warp_u, warp_v};
+	warp[read_index]							= warp2_new;
+
+	float2 InitConf  							= confidence[read_index];
+	float2 ConfHV 								= {opt_u.y, opt_v.y};
+	InitConf									= ConfHV + 0.75f * (InitConf - ConfHV);
+	confidence[read_index]						= InitConf;
+}
+
+
+__kernel void regularize_warp(
+	// inputs
+	__private	uint	read_offset,			//0
 	__private	uint	mm_cols,				//1
 
 	__global 	float4*	lookup_table,			//2
-	__global 	float4*	co_mean_rows,			//3
-
-	__global 	float4*	ref_img_mean,			//4
-	__global 	float4*	ref_img_sq_mean,		//5
-
-	__global 	float4*	warped_img_mean,		//6
-	__global 	float4*	warped_img_sq_mean,		//7
-
+	__global 	float2*	confidence_buf,			//3
 	// output
-	__global 	float4*	correlation				//8
+	__global 	float2*	warp					//4
+
 ){
-	uint 	read_index									= floor( lookup_table[ get_global_id(0) + read_offset ].z );
-	if (read_index ==0 ) 								return;
-	uint	offset[5] 									= { -mm_cols, -1, 0, 1, mm_cols };
-	float 	W[3]										= {1/4, 2/4, 2/4};					//1x3 discrete gaussian weights, improves insensitivity to rotation.
-	float4	ref_img_mean_local							= ref_img_mean[read_index];
-	float4	ref_img_denominator							= sqrt( pow(ref_img_mean_local, 2)	 - ref_img_sq_mean[read_index] ) ;
+	uint 	read_index							= floor( lookup_table[ get_global_id(0) + read_offset ].z );
+	if 		(read_index ==0 ) 					return;
+	uint	offset[5] 							= { -mm_cols, -1, 0, 1, mm_cols };
+	float2 	Disp								= {0.0f, 0.0f};
+	float2	Conf 								= {0.0f, 0.0f};
+	float2	Warp								= {0.0f, 0.0f};
 
 	for (int sample=0;sample<5;sample++){
-		float4 co_mean									= {0,0,0,0};
-		for (int col=0;col<3;col++){
-			co_mean 									+= 	W[col] * co_mean_rows[	read_index + (col-1) + offset[sample] ];
-		}
-		float4 warped_img_mean_local 					= warped_img_mean[read_index + offset[sample]];
-		float4 warped_img_denominator 					= sqrt( pow( warped_img_mean_local, 2) - warped_img_sq_mean[read_index + offset[sample]] ) ;
-		// TODO NB chk denominator != 0.0f
-
-		co_mean_rows[ read_index + offset[sample] ] 	= (co_mean - ref_img_mean_local * warped_img_mean_local ) / ( ref_img_denominator * warped_img_denominator );
+		Conf	=  confidence_buf[read_index + offset[sample]];
+		Warp	=  warp[read_index + offset[sample]];
+		Disp	+= Warp * Conf ;
 	}
+	warp[read_index] = Disp;
 }
 
 
@@ -298,18 +371,6 @@ __kernel void covariance_cols(
 // 	return optimum;
 // }
 */
-float compute_maximum(__private float4 A, __private float4 B, __private float4 C){
-	// from https://math.stackexchange.com/questions/2150199/is-there-a-method-for-estimating-the-parabolic-function-using-three-points-or-a
-	float x1=-1,	x2=0,	x3=1;
-	float y1=A.x,	y2=B.x,	y3=C.x;
-
-	float k1 = y1/((x1-x2)*(x1-x3));
-	float k2 = y2/((x2-x1)*(x2-x3));
-	float k3 = y3/((x3-x2)*(x3-x1));
-
-	float optimum = (k1*(x2+x3) + k2*(x1+x3) + k3*(x2+x1)) / (2*(k1+k2+k3));
-	return optimum;
-}
 
  __kernel void compute_warp(
 	// inputs
@@ -369,8 +430,10 @@ float compute_maximum(__private float4 A, __private float4 B, __private float4 C
 	}
 
  	float2 warp2								= warp[read_index];
- 	float warp_u								= warp2.x + compute_maximum( corr[1], corr[2], corr[3] );
- 	float warp_v								= warp2.y + compute_maximum( corr[0], corr[2], corr[4] );
+	float2 opt_u								= compute_maximum( corr[1], corr[2], corr[3] );
+	float2 opt_v								= compute_maximum( corr[0], corr[2], corr[4] );
+ 	float warp_u								= warp2.x + opt_u.x;
+ 	float warp_v								= warp2.y + opt_v.x;
  	warp_u										= clamp(warp_u, -1.0f, 1.0f);
  	warp_v										= clamp(warp_v, -1.0f, 1.0f);					// warp increment clamped to +/-1
 

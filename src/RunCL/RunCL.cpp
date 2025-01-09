@@ -305,6 +305,7 @@ void RunCL::createKernels(){
 	mean_sq_cols_kernel				= clCreateKernel(m_program, "mean_sq_cols", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'mean_sq_cols_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
 	co_mean_rows_kernel				= clCreateKernel(m_program, "co_mean_rows", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'co_mean_rows_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
 	covariance_cols_kernel			= clCreateKernel(m_program, "covariance_cols", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'covariance_cols_kernel'  kernel not built.\n"		<<flush; exit_(0);   }
+	regularize_warp_kernel			= clCreateKernel(m_program, "regularize_warp", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'regularize_warp_kernel'  kernel not built.\n"		<<flush; exit_(0);   }
 
 }
 
@@ -712,6 +713,9 @@ void RunCL::allocatemem(){
 	warp_buf			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 					, 2 * mm_size_bytes_C4/*C1*/,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 
+	ref_img_buf						= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	warped_img_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+
 	ref_img_mean_rows_buf			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	ref_img_sq_mean_rows_buf		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	warped_img_mean_rows_buf		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
@@ -724,6 +728,8 @@ void RunCL::allocatemem(){
 
 	co_mean_rows_buf				= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, 5 * mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	correlation_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, 5 * mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	confidence_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+
 
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nRunCL::allocatemem_chk3\n\n" << flush;
@@ -937,6 +943,10 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	status = clReleaseMemObject(img_corr_buf);					if (status != CL_SUCCESS)	{ cout << "\nimg_corr_buf                   status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(warp_buf);						if (status != CL_SUCCESS)	{ cout << "\nwarp_buf                       status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 
+
+	status = clReleaseMemObject(ref_img_buf);					if (status != CL_SUCCESS)	{ cout << "\nref_img_mean_rows_buf          status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+	status = clReleaseMemObject(warped_img_buf);				if (status != CL_SUCCESS)	{ cout << "\nref_img_mean_rows_buf          status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+
 	status = clReleaseMemObject(ref_img_mean_rows_buf);			if (status != CL_SUCCESS)	{ cout << "\nref_img_mean_rows_buf          status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(ref_img_sq_mean_rows_buf);		if (status != CL_SUCCESS)	{ cout << "\nref_img_sq_mean_rows_buf       status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(warped_img_mean_rows_buf);		if (status != CL_SUCCESS)	{ cout << "\nwarped_img_mean_rows_buf       status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
@@ -949,6 +959,7 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 
 	status = clReleaseMemObject(co_mean_rows_buf);				if (status != CL_SUCCESS)	{ cout << "\nco_mean_rows_buf               status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(correlation_buf);				if (status != CL_SUCCESS)	{ cout << "\ncorrelation_buf                status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+	status = clReleaseMemObject(confidence_buf);				if (status != CL_SUCCESS)	{ cout << "\nconfidence_buf                 status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 
 
 	// release kernels
@@ -988,6 +999,7 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	status = clReleaseKernel(mean_sq_cols_kernel);				if (status != CL_SUCCESS)	{ cout << "\nmean_sq_cols_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(co_mean_rows_kernel);				if (status != CL_SUCCESS)	{ cout << "\nco_mean_rows_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(covariance_cols_kernel);			if (status != CL_SUCCESS)	{ cout << "\ncovariance_cols_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(regularize_warp_kernel);			if (status != CL_SUCCESS)	{ cout << "\nregularize_warp_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 	// release command queues
 	status = clReleaseCommandQueue(m_queue);                   if (status != CL_SUCCESS)	{ cout << "\nm_queue                        status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_67"<<flush;
