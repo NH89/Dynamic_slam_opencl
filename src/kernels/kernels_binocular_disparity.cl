@@ -1,6 +1,8 @@
 #include "kernels_macros.h"
 #include "kernels.h"
 
+__constant float4 zero_f4				= {0.0f,0.0f,0.0f,0.0f};
+
  __kernel void compute_lookup_table(					// computed once at start of program	// TODO when is it possible to roll the layers together ?  i.e. when local mem is not used.
 	 // inputs
 	__private	uint	layer,					//0
@@ -32,7 +34,7 @@
 	int alpha						= 255;
 	float4 lookup 					= {u,v,read_index,alpha};
 
-	if ( global_id > pixels_)		{lookup = 0;alpha=255;read_index=0;u=0;v=0;}	// NB read_index=mm_cols+3 is an unused index on the mipmap, and safe for a 3x3 sample.
+	if ( global_id >= pixels_)		{lookup = (float4)(0.0f,0.0f,0.0f,0.0f);} /*alpha=255;read_index=0;u=0;v=0;*/ // NB read_index=mm_cols+3 is an unused index on the mipmap, and safe for a 3x3 sample.
 // uint group_id = get_group_id(0);
 // uint local_id = get_local_id(0);
 // if (/*group_id==0 && local_id==0*/global_id==0) printf("  __kernel compute_lookup_table(..) layer = %u, group_id = %u, global_id = %u, lookup=%d,%d,%d,%d,  pixels_=%u, pixels=%u,  mm_pixels=%u, read_offset_=%u, global_id_offset=%u", \
@@ -70,8 +72,10 @@ __kernel void warp_image(						// Computed once each iteration of warping, for e
 	// 2-way linear interpolation of four sample pixels.
 	float4 warped_lower			= new_img[sample_index] 		* (1-u_mod) 	+ new_img[sample_index+1] 			* u_mod;
 	float4 warped_upper			= new_img[sample_index+mm_cols] * (1-u_mod) 	+ new_img[sample_index+mm_cols+1] 	* u_mod;
-	new_img_warped[read_index]	= warped_lower 					* (1-v_mod)  	+ warped_upper 						* v_mod;
+	float4 warped				= warped_lower 					* (1-v_mod)  	+ warped_upper 						* v_mod;
 
+	warped = select( warped, zero_f4, isnan(warped) );
+	new_img_warped[read_index]	= warped;
 // 	if (0.0f == fmod(global_id_flt, 33.0f) ){
 // 		printf("\n__kernel void warp_image(..): warp2=(%f,%f), global_id=%u, lookup_ref.x=%f lookup_ref.y=%f u_int=%u, u_mod=%f, read_index=%u", \
 // 		warp2.x, warp2.y, global_id, lookup_ref.x, lookup_ref.y, u_int, u_mod, read_index);
@@ -145,22 +149,20 @@ __kernel void mean_sq_3rows(
 	__global 	float4*	lookup_table,			//1
 	__global 	float4*	img,					//2
 	// output
-	__global 	float4*	mean_rows,				//3
-	__global 	float4*	sq_mean_rows			//4
+	__global 	float4*	sq_mean_rows			//3
 ){
 	uint 	read_index	= floor( lookup_table[ get_global_id(0) + read_offset ].z );
 	if (read_index ==0 ) return;
 
-	float4 mean_local				= {0,0,0,0};
+	const float 	W[3] 			= {1.0f/4, 2.0f/4, 1.0f/4};		//1x3 discrete gaussian weights, instead of equal weighting, improves insensitivity to rotation.
 	float4 mean_of_squares			= {0,0,0,0};
-	float 	W[3] 					= {1.0f/4, 2.0f/4, 1.0f/4};		//1x3 discrete gaussian weights, instead of equal weighting, improves insensitivity to rotation.
+	float4 pix_val;
 
+	__attribute__((opencl_unroll_hint))
 	for (int col=0;col<3;col++){
-		float4 pix_val 				= 	img[read_index + col -1];
-		mean_local 					+= 	W[col] * pix_val;
+		pix_val 					= 	img[read_index + col -1];
 		mean_of_squares 			+=	W[col] * pix_val * pix_val;
 	}
-	mean_rows[read_index]			= 	mean_local;
 	sq_mean_rows[read_index]		= 	mean_of_squares;
 }
 
@@ -170,27 +172,19 @@ __kernel void mean_sq_cols(
 	__private	uint	mm_cols,				//1
 
 	__global 	float4*	lookup_table,			//2
-	__global 	float4*	mean_sq_rows,			//3
-	__global 	float4*	sq_mean_rows,			//4
+	__global 	float4*	sq_mean_rows,			//3
 	// output
-	__global 	float4*	mean,					//5
-	__global 	float4*	sq_mean					//6
+	__global 	float4*	sq_mean					//4
 ){
 	uint 	read_index	= floor( lookup_table[ get_global_id(0) + read_offset ].z );
 	if (read_index ==0 ) return;
 
-	float4 mean_local				= {0,0,0,0};
 	float4 mean_of_squares			= {0,0,0,0};
 	float 	W[3] 					= {1.0f/4, 2.0f/4, 1.0f/4};		//1x3 discrete gaussian weights, instead of equal weighting, improves insensitivity to rotation.
 
+	__attribute__((opencl_unroll_hint))
 	for (int col=0;col<3;col++){
-		mean_local 					+= 	W[col] * mean_sq_rows[read_index + (col-1)*mm_cols];
-	}
-	mean[read_index]				= 	mean_local;
-
-	for (int col=0;col<3;col++){
-		float4 pix_val 				= 	sq_mean_rows[read_index + (col-1)*mm_cols];
-		mean_of_squares 			+=	W[col] * pix_val * pix_val;
+		mean_of_squares 			+=	W[col] * sq_mean_rows[read_index + (col-1)*mm_cols];
 	}
 	sq_mean[read_index]				= 	mean_of_squares;
 }
@@ -209,16 +203,22 @@ __kernel void co_mean_rows(
 ){
 	uint 	read_index									= floor( lookup_table[ get_global_id(0) + read_offset ].z );
 	if (read_index ==0 ) 								return;
-	uint 	offset[5] 									= { -mm_cols, -1, 0, 1, mm_cols };
-	float 	W[3]										= {1.0f/4, 2.0f/4, 1.0f/4};
+	const uint 	offset[5] 								= { -mm_cols, -1, 0, 1, mm_cols };
+	const float 	W[3]								= {1.0f/4, 2.0f/4, 1.0f/4};
 														//1x3 discrete gaussian weights, instead of equal weighting, improves insensitivity to rotation.
+	float4 X[3];
+	__attribute__((opencl_unroll_hint))
+	for (int col=0;col<3;col++){
+			X[col] 									= 	W[col] * ref_img[	read_index + (col-1) ];
+	}
 
+	__attribute__((opencl_unroll_hint))
 	for (int sample=0;sample<5;sample++){
 		float4 co_mean									=	{0,0,0,0};
+		__attribute__((opencl_unroll_hint))
 		for (int col=0;col<3;col++){
-			float4 X 									= 	ref_img[	read_index + (col-1) ];
 			float4 Y 									= 	warped_img[	read_index + (col-1) + offset[sample] ];
-			co_mean 									+= 	W[col] * X * Y ;
+			co_mean 									+= 	X[col] * Y ;
 		}
 		co_mean_rows[ read_index + sample*mm_size ] 	= co_mean;
 	}
@@ -254,39 +254,38 @@ __kernel void covariance_cols(
 
 	__global 	float4*	lookup_table,			//3
 	__global 	float4*	co_mean_rows,			//4
-
-	__global 	float4*	ref_img_mean,			//5
-	__global 	float4*	ref_img_sq_mean,		//6
-
-	__global 	float4*	warped_img_mean,		//7
-	__global 	float4*	warped_img_sq_mean,		//8
+	__global 	float4*	ref_img_sq_mean,		//5
+	__global 	float4*	warped_img_sq_mean,		//6
 
 	// output
-	__global 	float4*	correlation,			//9
-	__global 	float2*	warp,					//10	// 2*float4*mm_size // float2*
-	__global 	float2*	confidence			//11
+	__global 	float4*	correlation,			//7
+	__global 	float2*	warp,					//8	// 2*float4*mm_size // float2*
+	__global 	float2*	confidence				//9
 ){
 	uint 	read_index							= floor( lookup_table[ get_global_id(0) + read_offset ].z );
 	if (read_index ==0 ) 						return;
 	uint	offset[5] 							= { -mm_cols, -1, 0, 1, mm_cols };
 	float 	W[3]								= {1.0f/4, 2.0f/4, 1.0f/4};					//1x3 discrete gaussian weights, improves insensitivity to rotation.
-	float4	ref_img_mean_local					= ref_img_mean[read_index];
-	float4	ref_img_denominator					= sqrt( pow(ref_img_mean_local, 2)	 - ref_img_sq_mean[read_index] ) ;
+	float4	ref_img_denominator					= sqrt( ref_img_sq_mean[read_index] ) ;  	// /*pow(ref_img_mean_local, 2)	 -*/ TODO what if ref_img_sq_mean > ref_img_mean ?
 
 	float4	corr[5]								= {0};
+	bool 	unsafe								= false;
 
+	__attribute__((opencl_unroll_hint))
 	for (int sample=0;sample<5;sample++){
 		float4 co_mean							= {0,0,0,0};
+		__attribute__((opencl_unroll_hint))
 		for (int col=0;col<3;col++){
-			co_mean 							+= 	W[col] * co_mean_rows[	read_index + (col-1) + sample*mm_size ];
+			co_mean 							+= 	W[col] * co_mean_rows[	read_index + (col-1)*mm_cols + sample*mm_size ];
 		}
-		float4 warped_img_mean_local 			= warped_img_mean[read_index + offset[sample]];
-		float4 warped_img_denominator 			= sqrt( pow( warped_img_mean_local, 2) - warped_img_sq_mean[read_index + offset[sample]] ) ;
-		float4 denominator 						= 1.0f / ( ref_img_denominator * warped_img_denominator );
-		if(isnan(denominator.x)) 				denominator.y=1.0f;		// NB if  mean^2 == mean(pixel^2) for ref_img or wraped_img,
-		if(isnan(denominator.y)) 				denominator.x=1.0f;		// then denominator = 1/0 = inf.
-		if(isnan(denominator.z)) 				denominator.z=1.0f;
-		corr[sample] 							= (co_mean - ref_img_mean_local * warped_img_mean_local ) * denominator  ;
+		float4 warped_img_denominator 			= sqrt( warped_img_sq_mean[read_index + offset[sample]] ) ;
+		corr[sample] 							= co_mean / ( ref_img_denominator  *  warped_img_denominator  );
+		//corr[sample] 							= select( corr[sample], zero_f4, (isless(corr[sample],zero_f4) || isgreater(corr[sample],zero_f4)) );
+
+  		if( !isfinite(corr[sample].x) )	{	corr[sample].x = 0.0f;	unsafe=true;	}
+  		if( !isfinite(corr[sample].y) )	{	corr[sample].y = 0.0f;	unsafe=true;	}
+  		if( !isfinite(corr[sample].z) )	{	corr[sample].z = 0.0f;	unsafe=true;	}
+
 		corr[sample].w 							= 1.0f;
 		correlation[read_index + sample*mm_size]= corr[sample];
 	}
@@ -303,9 +302,12 @@ __kernel void covariance_cols(
 	float2 InitConf  							= confidence[read_index];
 	float2 ConfHV 								= {opt_u.y, opt_v.y};
 	InitConf									= ConfHV + 0.75f * (InitConf - ConfHV);
+
+	//	if (unsafe)	InitConf						= (float2)(0.0f,0.0f);
 	confidence[read_index]						= InitConf;
 }
-
+// NB confidence should always be 0<conf<1 , even if warp is -ve
+// Confidence is derived from the maximum_correlation value.
 
 __kernel void regularize_warp(
 	// inputs
@@ -325,6 +327,7 @@ __kernel void regularize_warp(
 	float2	Conf 								= {0.0f, 0.0f};
 	float2	Warp								= {0.0f, 0.0f};
 
+	__attribute__((opencl_unroll_hint))
 	for (int sample=0;sample<5;sample++){
 		Conf	=  confidence_buf[read_index + offset[sample]];
 		Warp	=  warp[read_index + offset[sample]];

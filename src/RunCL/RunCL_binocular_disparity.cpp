@@ -100,7 +100,7 @@ void RunCL::warp_image( uint layer, uint iter ){																					// computed
 																																				bool show 		= false;
 																																				bool old_tiff 	= tiff;
 																																				tiff 			= true;
-																																				float max_range = -1; 		// -1 -> gray = zero.
+																																				float max_range = 1; 		// -1 -> gray = zero.
 																																				_cl_flush_finish(m_queue, fname);
 																																				DownloadAndSave_3Channel( 	warped_img_buf,	ss.str( ), paths.at( "warped_img_buf"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , max_range);
 																																				tiff 			= old_tiff;
@@ -181,7 +181,7 @@ void RunCL::img_variance( uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_v
 
 	// ref_img_mean_rows_buf,	ref_img_sq_mean_rows_buf,
 
-void RunCL::mean_sq_3rows( uint layer, uint iter, std::string folder_mean_rows, std::string folder_sq_mean_rows, cl_mem img_buf, cl_mem mean_rows_buf, cl_mem sq_mean_rows_buf){
+void RunCL::mean_sq_3rows( uint layer, uint iter, std::string folder_sq_mean_rows, cl_mem img_buf, cl_mem sq_mean_rows_buf){
     string fname = "RunCL::mean_sq_3rows( )";
 	int local_verbosity_threshold = V_RUNCL_IMG_VARIANCE;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mean_sq_3rows( ..)_chk0 #############################################################"<<flush;
@@ -195,8 +195,7 @@ void RunCL::mean_sq_3rows( uint layer, uint iter, std::string folder_mean_rows, 
 	_clSetKernelArg( mean_sq_3rows_kernel,  		1, sizeof( cl_mem), &lookup_table_buf,		fname);										// 	__global 	float4*	lookup_table,			//1
 	_clSetKernelArg( mean_sq_3rows_kernel,  		2, sizeof( cl_mem), &img_buf,				fname);										// 	__global 	float4*	img,					//2
 	// output
-	_clSetKernelArg( mean_sq_3rows_kernel,  		3, sizeof( cl_mem), &mean_rows_buf,			fname);										// 	__global 	float4*	mean_rows,				//3
-	_clSetKernelArg( mean_sq_3rows_kernel,  		4, sizeof( cl_mem), &sq_mean_rows_buf,		fname);										// 	__global 	float4*	sq_mean_rows			//4
+	_clSetKernelArg( mean_sq_3rows_kernel,  		3, sizeof( cl_mem), &sq_mean_rows_buf,		fname);										// 	__global 	float4*	sq_mean_rows			//3
 
 																																		if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mean_sq_3rows( ..)_chk1 ."<<flush;}
 	layer_call_kernel( mean_sq_3rows_kernel, m_queue, layer, local_work_size);
@@ -208,7 +207,6 @@ void RunCL::mean_sq_3rows( uint layer, uint iter, std::string folder_mean_rows, 
 																																				tiff 			= true;
 																																				float max_range = 1; 		// -1 -> gray = zero.
 																																				_cl_flush_finish(m_queue, fname);
-																																				DownloadAndSave_3Channel( 	mean_rows_buf,		ss.str( ), paths.at( folder_mean_rows ),	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , max_range);
 																																				DownloadAndSave_3Channel( 	sq_mean_rows_buf,	ss.str( ), paths.at( folder_sq_mean_rows ),	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , max_range);
 																																				tiff 			= old_tiff;
 																																			}
@@ -216,7 +214,7 @@ void RunCL::mean_sq_3rows( uint layer, uint iter, std::string folder_mean_rows, 
 }
 
 
-void RunCL::mean_sq_cols( uint layer, uint iter, std::string folder_mean, std::string folder_sq_mean, cl_mem mean_sq_rows_buf, cl_mem sq_mean_rows_buf, cl_mem mean_buf, cl_mem sq_mean_buf){
+void RunCL::mean_sq_cols( uint layer, uint iter, std::string folder_sq_mean, cl_mem sq_mean_rows_buf, cl_mem sq_mean_buf){
     string fname = "RunCL::mean_sq_cols( )";
 	int local_verbosity_threshold = V_RUNCL_IMG_VARIANCE;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mean_sq_cols( ..)_chk0 #############################################################"<<flush;
@@ -229,11 +227,9 @@ void RunCL::mean_sq_cols( uint layer, uint iter, std::string folder_mean, std::s
 	_clSetKernelArg( mean_sq_cols_kernel,  			1, sizeof( uint), 	&mm_width,				fname);										//	__private	uint	mm_cols,				//1
 
 	_clSetKernelArg( mean_sq_cols_kernel,  			2, sizeof( cl_mem), &lookup_table_buf,		fname);										// 	__global 	float4*	lookup_table,			//2
-	_clSetKernelArg( mean_sq_cols_kernel,  			3, sizeof( cl_mem), &mean_sq_rows_buf,		fname);										// 	__global 	float4*	mean_sq_rows,			//3
-	_clSetKernelArg( mean_sq_cols_kernel,  			4, sizeof( cl_mem), &sq_mean_rows_buf,		fname);										// 	__global 	float4*	sq_mean_rows,			//4
+	_clSetKernelArg( mean_sq_cols_kernel,  			3, sizeof( cl_mem), &sq_mean_rows_buf,		fname);										// 	__global 	float4*	sq_mean_rows,			//3
 	// output
-	_clSetKernelArg( mean_sq_cols_kernel,  			5, sizeof( cl_mem), &mean_buf,				fname);										// 	__global 	float4*	mean,					//5
-	_clSetKernelArg( mean_sq_cols_kernel,  			6, sizeof( cl_mem), &sq_mean_buf,			fname);										// 	__global 	float4*	sq_mean					//6
+	_clSetKernelArg( mean_sq_cols_kernel,  			4, sizeof( cl_mem), &sq_mean_buf,			fname);										// 	__global 	float4*	sq_mean					//4
 																																		if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mean_sq_cols( ..)_chk1 ."<<flush;}
 	layer_call_kernel( mean_sq_cols_kernel, m_queue, layer, local_work_size);
 																																			if( verbosity>local_verbosity_threshold /*&& layer==1*/ ) {cout<<"\n\nRunCL::mean_sq_cols( ..)_chk2 ."<<flush;					// Save buffers to file ###########
@@ -244,7 +240,6 @@ void RunCL::mean_sq_cols( uint layer, uint iter, std::string folder_mean, std::s
 																																				tiff 			= true;
 																																				float max_range = 1; 		// -1 -> gray = zero.
 																																				_cl_flush_finish(m_queue, fname);
-																																				DownloadAndSave_3Channel( 	mean_buf,		ss.str( ), paths.at( folder_mean ),		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , max_range);
 																																				DownloadAndSave_3Channel( 	sq_mean_buf,	ss.str( ), paths.at( folder_sq_mean ),	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , max_range);
 																																				tiff 			= old_tiff;
 																																			}
@@ -310,17 +305,13 @@ void RunCL::covariance_cols( uint layer, uint iter ){
 	// __global
 	_clSetKernelArg( covariance_cols_kernel,  			3, sizeof( cl_mem), &lookup_table_buf,			fname);								// __global 	float4*	lookup_table,			//3
 	_clSetKernelArg( covariance_cols_kernel,  			4, sizeof( cl_mem), &co_mean_rows_buf,			fname);								// __global 	float4*	co_mean_rows,			//4
-
-	_clSetKernelArg( covariance_cols_kernel,  			5, sizeof( cl_mem), &ref_img_mean_buf,			fname);								// __global 	float4*	ref_img_mean,			//5
-	_clSetKernelArg( covariance_cols_kernel,  			6, sizeof( cl_mem), &ref_img_sq_mean_buf,		fname);								// __global 	float4*	ref_img_sq_mean,		//6
-
-	_clSetKernelArg( covariance_cols_kernel,  			7, sizeof( cl_mem), &warped_img_mean_buf,		fname);								// __global 	float4*	warped_img_mean,		//7
-	_clSetKernelArg( covariance_cols_kernel,  			8, sizeof( cl_mem), &warped_img_sq_mean_buf,	fname);								// __global 	float4*	warped_img_sq_mean,		//8
+	_clSetKernelArg( covariance_cols_kernel,  			5, sizeof( cl_mem), &ref_img_sq_mean_buf,		fname);								// __global 	float4*	ref_img_sq_mean,		//6
+	_clSetKernelArg( covariance_cols_kernel,  			6, sizeof( cl_mem), &warped_img_sq_mean_buf,	fname);								// __global 	float4*	warped_img_sq_mean,		//8
 
 	// output
-	_clSetKernelArg( covariance_cols_kernel,  			9, sizeof( cl_mem), &correlation_buf,			fname);								// __global 	float4*	correlation				//9
-	_clSetKernelArg( covariance_cols_kernel,  		   10, sizeof( cl_mem), &warp_buf,					fname);								// __global 	float2*	warp					//10
-	_clSetKernelArg( covariance_cols_kernel,  		   11, sizeof( cl_mem), &confidence_buf,			fname);								// __global 	float2*	warp					//11
+	_clSetKernelArg( covariance_cols_kernel,  			7, sizeof( cl_mem), &correlation_buf,			fname);								// __global 	float4*	correlation				//9
+	_clSetKernelArg( covariance_cols_kernel,  			8, sizeof( cl_mem), &warp_buf,					fname);								// __global 	float2*	warp					//10
+	_clSetKernelArg( covariance_cols_kernel,  			9, sizeof( cl_mem), &confidence_buf,			fname);								// __global 	float2*	warp					//11
 																																		if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::covariance_cols( ..)_chk1 ."<<flush;}
 	layer_call_kernel( covariance_cols_kernel, m_queue, layer, local_work_size);
 																																			if( verbosity>local_verbosity_threshold /*&& layer==1*/ ) {cout<<"\n\nRunCL::covariance_cols( ..)_chk2 ."<<flush;				// Save buffers to file ###########
@@ -331,12 +322,11 @@ void RunCL::covariance_cols( uint layer, uint iter ){
 																																				bool old_tiff 	= tiff;
 																																				tiff 			= true;
 																																				uint vol_layers = 5;
-																																				float max_range = -1.0f; 		// -1 -> gray = zero.
+																																				float max_range = 0.0f; 		// -1 -> gray = zero.
 																																				_cl_flush_finish(m_queue, fname);
-																																				//DownloadAndSave_3Channel( 		correlation_buf,	ss.str( ), paths.at( "correlation_buf" ),	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, max_range);
-																																				DownloadAndSave_3Channel_volume( 	correlation_buf,	ss.str( ), paths.at( "correlation_buf" ),  	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, -0.1, 	vol_layers, tiff, iter, display);
+																																				DownloadAndSave_3Channel_volume( 	correlation_buf,	ss.str( ), paths.at( "correlation_buf" ),  	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, 1.0f, vol_layers, tiff, iter, display);
 																																				DownloadAndSave_2Channel_volume( 	warp_buf,			ss.str( ), paths.at( "warp_buf"),  		  2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, 	show, max_range, 2 );  // 1, 2D warp, 1DoF
-																																				DownloadAndSave_3Channel( 			confidence_buf,		ss.str( ), paths.at( "confidence_buf"),		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , -1	);
+																																				DownloadAndSave_2Channel_volume( 	confidence_buf,		ss.str( ), paths.at( "confidence_buf"),	  2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, 	show, 1.0f, 2 );
 																																				tiff 			= old_tiff;
 																																			}
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::covariance_cols( ..)_finished ."<<flush;}
