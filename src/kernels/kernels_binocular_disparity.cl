@@ -44,6 +44,69 @@ __constant float4 zero_f4				= {0.0f,0.0f,0.0f,0.0f};
 }
 
 
+__kernel void set_warp_new_image(						// Computed once each iteration of warping, for each layer of image pyramid
+	// inputs									// Warp describes where to sample the new image to match the reference image.
+	__private	uint	read_offset,			//0
+	__private	uint	layer,					//1
+	__private	uint	reduction,				//2
+
+	__constant 	uint8*	mipmap_params,			//3
+	__constant 	uint*	uint_params,			//4
+	__constant  float*  fp32_params,			//5
+
+	__global	float16*k2k,					//6		// keyframe2K[3]
+	__global 	float2*	warp,					//7
+	__global 	float4*	lookup_table,			//8
+	//__global 	float4*	new_img,				//9
+	__global	float* 	depth_map,				//10
+
+	// outputs
+	__global 	float4*	new_img_warped			//11
+){
+	uint global_id_uint = get_global_id(0);
+	float global_id_flt	= global_id_uint;
+
+	uint8 mipmap_params_ 		= mipmap_params[layer];
+	uint read_offset_ 			= mipmap_params_[MiM_READ_OFFSET];
+	uint read_cols_ 			= mipmap_params_[MiM_READ_COLS];
+	uint read_rows_ 			= mipmap_params_[MiM_READ_ROWS];
+	uint layer_pixels			= mipmap_params_[MiM_PIXELS];
+
+	uint mm_cols				= uint_params[MM_COLS];
+
+	float min_inv_depth 		= fp32_params[MIN_INV_DEPTH] ; //+ inv_d_step;
+	float max_inv_depth 		= fp32_params[MAX_INV_DEPTH] ; //- inv_d_step;
+
+	float4 	lookup_ref			= lookup_table[global_id_uint + read_offset];
+	uint 	read_index			= floor(lookup_ref.z);
+ 	float2 	warp2				= warp[read_index];
+
+	float	u_flt				= lookup_ref.x;
+	float	v_flt				= lookup_ref.y;
+	uint 	u					= floor(u_flt);
+	uint 	v 					= floor(v_flt);
+	float 	inv_depth 			= depth_map[read_index]; 	//1.0f;// mid point max-min inv depth	// Find new pixel position, h=homogeneous coords.//inv dept  //depth_index
+
+	int sample					= 0;
+	float16 k2k_pvt				= k2k[sample];															// NB we read  k2k[1] and  k2k[2]
+	float uh2 					= k2k_pvt[0]*u_flt + k2k_pvt[1]*v_flt + k2k_pvt[2]*1 + k2k_pvt[3]*inv_depth;
+	float vh2 					= k2k_pvt[4]*u_flt + k2k_pvt[5]*v_flt + k2k_pvt[6]*1 + k2k_pvt[7]*inv_depth;
+	float wh2 					= k2k_pvt[8]*u_flt + k2k_pvt[9]*v_flt + k2k_pvt[10]*1+ k2k_pvt[11]*inv_depth;
+	//float h/z  				= k2k_pvt[12]*u_flt + k2k_pvt[13]*v + k2k_pvt[14]*1; // +k2k_pvt[15]/z
+
+	float u2_flt				= (uh2/(wh2*reduction)) + warp2.x;
+	float v2_flt				= (vh2/(wh2*reduction)) + warp2.y;
+	float2 new_img_warp			= {u2_flt,v2_flt};
+													// Used to set up warp field for new image.
+													// This allows efficient iteration of warp merged with SE3 tracking.
+	warp[read_index] 			= new_img_warp;		// TODO NB will need to separate warp from SE3 _before_ doing this again.
+													// Need to pass old_k2k and new_k2k, for new image within keyframe.
+													// For New keyframe ? use old_k2k from old keyframe, and new_k2k from new keframe.
+													// TODO NB Problem how to predict warp for new frame, from warp from old frame ?
+													// Perhaps integrate the extra warp into depth & vel maps at the end of each frame.
+}
+
+
 __kernel void warp_image(						// Computed once each iteration of warping, for each layer of image pyramid
 	// inputs									// Warp describes where to sample the new image to match the reference image.
 	__private	uint	read_offset,			//0
@@ -72,10 +135,8 @@ __kernel void warp_image(						// Computed once each iteration of warping, for e
 	// 2-way linear interpolation of four sample pixels.
 	float4 warped_lower			= new_img[sample_index] 		* (1-u_mod) 	+ new_img[sample_index+1] 			* u_mod;
 	float4 warped_upper			= new_img[sample_index+mm_cols] * (1-u_mod) 	+ new_img[sample_index+mm_cols+1] 	* u_mod;
-	float4 warped				= warped_lower 					* (1-v_mod)  	+ warped_upper 						* v_mod;
+	new_img_warped[read_index]	= warped_lower 					* (1-v_mod)  	+ warped_upper 						* v_mod;
 
-	warped = select( warped, zero_f4, isnan(warped) );
-	new_img_warped[read_index]	= warped;
 // 	if (0.0f == fmod(global_id_flt, 33.0f) ){
 // 		printf("\n__kernel void warp_image(..): warp2=(%f,%f), global_id=%u, lookup_ref.x=%f lookup_ref.y=%f u_int=%u, u_mod=%f, read_index=%u", \
 // 		warp2.x, warp2.y, global_id, lookup_ref.x, lookup_ref.y, u_int, u_mod, read_index);

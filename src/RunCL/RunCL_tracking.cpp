@@ -376,6 +376,7 @@ void RunCL::tracking_result( string result){
 * 	atomic_test1_buf	= clCreateBuffer( m_context, CL_MEM_READ_WRITE 						, 4*local_work_size*sizeof( int),	0, &res);	if( res!=CL_SUCCESS){cout<<"\nres 42= "<<checkerror( res)<<"\n"<<flush;exit_( res);}
 */
 
+/*
 // void RunCL::atomic_test1( ){
 // 	string fname = "RunCL::atomic_test1( )";
 // 	int local_verbosity_threshold = V_RUNCL_ATOMIC_TEST1;
@@ -435,7 +436,7 @@ void RunCL::tracking_result( string result){
 //
 // 	res = clSetKernelArg( atomic_test2_kernel, 0, sizeof( int), 		&num_threads_int);														if ( res    !=CL_SUCCESS)	{ cout <<"\nres = "<<checkerror( res)<<"\n"<<flush;exit_( res);}
 // 	res = clSetKernelArg( atomic_test2_kernel, 1, sizeof( cl_mem), 	&atomic_test2_buf);															if ( res    !=CL_SUCCESS)	{ cout <<"\nres = "<<checkerror( res)<<"\n"<<flush;exit_( res);}
-// 	/*
+// 	/ *
 // 	cl_int clEnqueueNDRangeKernel(
 // 									cl_command_queue 		command_queue,
 // 									cl_kernel 				kernel,
@@ -447,7 +448,7 @@ void RunCL::tracking_result( string result){
 // 									const cl_event* 		event_wait_list,
 // 									cl_event* 				event
 // 									);
-// 	*/
+// 	* /
 // 	res 	= clEnqueueNDRangeKernel( m_queue, atomic_test2_kernel, 1, 0, &num_threads, &local_work_size, 0, NULL, &ev);						if ( res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror( res) <<"\n"<<flush; exit_( res);}
 // 	status 	= clFlush( m_queue);																												if ( status != CL_SUCCESS)	{ cout << "\nRunCL::atomic_test1( ),  clFlush( queue_to_call) status  = "<<status<<" "<< checkerror( status) <<"\n"<<flush; exit_( status);}
 //
@@ -476,3 +477,4 @@ void RunCL::tracking_result( string result){
 //
 //
 // }
+*/
