@@ -48,43 +48,25 @@ __kernel void set_warp_new_image(						// Computed once each iteration of warpin
 	// inputs									// Warp describes where to sample the new image to match the reference image.
 	__private	uint	read_offset,			//0
 	__private	uint	layer,					//1
-	__private	uint	reduction,				//2
+	__private	float	reduction,				//2
 
 	__constant 	uint8*	mipmap_params,			//3
 	__constant 	uint*	uint_params,			//4
 	__constant  float*  fp32_params,			//5
 
 	__global	float16*k2k,					//6		// keyframe2K[3]
-	__global 	float2*	warp,					//7
-	__global 	float4*	lookup_table,			//8
-	//__global 	float4*	new_img,				//9
-	__global	float* 	depth_map,				//10
-
-	// outputs
-	__global 	float4*	new_img_warped			//11
+	__global 	float4*	lookup_table,			//7
+	__global	float* 	depth_map,				//8
+	// output
+	__global 	float2*	warp					//9
 ){
 	uint global_id_uint = get_global_id(0);
-	float global_id_flt	= global_id_uint;
-
-	uint8 mipmap_params_ 		= mipmap_params[layer];
-	uint read_offset_ 			= mipmap_params_[MiM_READ_OFFSET];
-	uint read_cols_ 			= mipmap_params_[MiM_READ_COLS];
-	uint read_rows_ 			= mipmap_params_[MiM_READ_ROWS];
-	uint layer_pixels			= mipmap_params_[MiM_PIXELS];
-
-	uint mm_cols				= uint_params[MM_COLS];
-
-	float min_inv_depth 		= fp32_params[MIN_INV_DEPTH] ; //+ inv_d_step;
-	float max_inv_depth 		= fp32_params[MAX_INV_DEPTH] ; //- inv_d_step;
-
 	float4 	lookup_ref			= lookup_table[global_id_uint + read_offset];
 	uint 	read_index			= floor(lookup_ref.z);
- 	float2 	warp2				= warp[read_index];
+	if (read_index ==0 ) return;
 
-	float	u_flt				= lookup_ref.x;
-	float	v_flt				= lookup_ref.y;
-	uint 	u					= floor(u_flt);
-	uint 	v 					= floor(v_flt);
+	float	u_flt				= lookup_ref.x*reduction;	// NB reduction is used to enlarge the coords to layer zero, before k2k transform.
+	float	v_flt				= lookup_ref.y*reduction;
 	float 	inv_depth 			= depth_map[read_index]; 	//1.0f;// mid point max-min inv depth	// Find new pixel position, h=homogeneous coords.//inv dept  //depth_index
 
 	int sample					= 0;
@@ -94,9 +76,20 @@ __kernel void set_warp_new_image(						// Computed once each iteration of warpin
 	float wh2 					= k2k_pvt[8]*u_flt + k2k_pvt[9]*v_flt + k2k_pvt[10]*1+ k2k_pvt[11]*inv_depth;
 	//float h/z  				= k2k_pvt[12]*u_flt + k2k_pvt[13]*v + k2k_pvt[14]*1; // +k2k_pvt[15]/z
 
-	float u2_flt				= (uh2/(wh2*reduction)) + warp2.x;
-	float v2_flt				= (vh2/(wh2*reduction)) + warp2.y;
-	float2 new_img_warp			= {u2_flt,v2_flt};
+	float u2_flt				= ((uh2)/(wh2*reduction));	// + warp2.x;  	// NB Ideally we should have scaled versions of k2k, to avoid using reduction.
+	float v2_flt				= ((vh2)/(wh2*reduction));	// + warp2.y;	// NB need float u,v to compute interpolation.
+
+	if (fmod(u_flt,40.0f)<1.0f && fmod(v_flt,20.0f)<1.0f ){
+		uint mm_cols			= uint_params[MM_COLS];
+		uint new_read_index		= read_index + floor(v2_flt-lookup_ref.y) * mm_cols  + floor(u2_flt-lookup_ref.x);
+		float2 new_img_warp		= {0.0f,0.0f};
+		if (new_read_index < uint_params[MM_PIXELS] && new_read_index > 0) {warp[new_read_index] 	= new_img_warp;}
+
+		printf("\n__kernel set_warp_new_image(..)  global_id_uint=%u, read_index=%u, new_read_index=%u,  lookup_ref.x=%f lookup_ref.y=%f, uh2=%f, vh2=%f, wh2=%f, reduction=%f, layer=%u, u2_flt=%f, v2_flt=%f, (u2_flt-lookup_ref.x)=%f, (v2_flt-lookup_ref.y)=%f ",\
+												   global_id_uint,    read_index,    new_read_index,     lookup_ref.x,   lookup_ref.y,    uh2,    vh2,    wh2,    reduction,    layer,    u2_flt,    v2_flt,    (u2_flt-lookup_ref.x),    (v2_flt-lookup_ref.y) );
+		v2_flt 					= 0.0f;
+	}
+	float2 new_img_warp			= {u2_flt, v2_flt}; // or just read from the warp, not the u,v from lookup_table
 													// Used to set up warp field for new image.
 													// This allows efficient iteration of warp merged with SE3 tracking.
 	warp[read_index] 			= new_img_warp;		// TODO NB will need to separate warp from SE3 _before_ doing this again.

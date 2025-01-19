@@ -295,6 +295,8 @@ void RunCL::createKernels(){
 	//disparity_kernel				= clCreateKernel(m_program, "disparity2", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'disparity'  kernel not built.\n"				<<flush; exit_(0);   }
 
 	compute_lookup_table_kernel		= clCreateKernel(m_program, "compute_lookup_table", 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'compute_lookup_table_kernel'  kernel not built.\n"	<<flush; exit_(0);   }
+	set_warp_new_image_kernel		= clCreateKernel(m_program, "set_warp_new_image",			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'set_warp_new_image_kernel'  kernel not built.\n"	<<flush; exit_(0);   }
+
 	warp_image_kernel				= clCreateKernel(m_program, "warp_image", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'warp_image_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
 	img_sq_kernel					= clCreateKernel(m_program, "img_sq", 						&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'img_sq_kernel'  kernel not built.\n"				<<flush; exit_(0);   }
 	img_variance_kernel				= clCreateKernel(m_program, "img_variance", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'img_variance_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
@@ -989,6 +991,8 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	status = clReleaseKernel(atomic_test2_kernel);				if (status != CL_SUCCESS)	{ cout << "\natomic_test1_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 	status = clReleaseKernel(compute_lookup_table_kernel);		if (status != CL_SUCCESS)	{ cout << "\ncompute_lookup_table_kernel	status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(set_warp_new_image_kernel);		if (status != CL_SUCCESS)	{ cout << "\nset_warp_new_image_kernel		status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+
 	status = clReleaseKernel(warp_image_kernel);				if (status != CL_SUCCESS)	{ cout << "\nwarp_image_kernel				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(img_sq_kernel);					if (status != CL_SUCCESS)	{ cout << "\nimg_sq_kernel					status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(img_variance_kernel);				if (status != CL_SUCCESS)	{ cout << "\nimg_variance_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;

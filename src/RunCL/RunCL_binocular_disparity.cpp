@@ -71,6 +71,46 @@ void RunCL::compute_lookup_table( uint start, uint stop){
 // }
 
 
+void RunCL::set_warp_new_image(uint layer, float reduction){					// Computed once each iteration of warping, for each layer of image pyramid
+    string fname = "RunCL::set_warp_new_image( )";
+	int local_verbosity_threshold = V_RUNCL_WARP_IMAGE;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::set_warp_new_image(..)_chk0 #############################################################"<<flush;
+																																				cout << "\n local_work_size = " << local_work_size
+																																				<< ",  layer = " << layer
+																																				<< flush;
+																																			}
+	// inputs									// Warp describes where to sample the new image to match the reference image.
+	// __private
+	//_clSetKernelArg( warp_image_kernel,			0, sizeof( uint), 	&read_offset,			fname);										// __private	uint	read_offset,			//0
+	_clSetKernelArg( set_warp_new_image_kernel,  	1, sizeof( uint), 	&layer,					fname);										// __private	uint	layer,					//1
+	_clSetKernelArg( set_warp_new_image_kernel,  	2, sizeof( float), 	&reduction,				fname);										// __private	float	reduction,				//2
+ //
+	_clSetKernelArg( set_warp_new_image_kernel,  	3, sizeof( cl_mem), &mipmap_buf,			fname);										// __constant	uint8*	mipmap_params,			//3
+	_clSetKernelArg( set_warp_new_image_kernel,  	4, sizeof( cl_mem), &uint_param_buf,		fname);										// __constant	uint*	uint_params,			//4
+	_clSetKernelArg( set_warp_new_image_kernel,  	5, sizeof( cl_mem), &fp32_param_buf,		fname);										// __constant	float*  fp32_params,			//5
+ //
+	_clSetKernelArg( set_warp_new_image_kernel,  	6, sizeof( cl_mem), &k2kbuf,				fname);										// __global		float16*k2k,					//6		// keyframe2K[3]
+	_clSetKernelArg( set_warp_new_image_kernel,  	7, sizeof( cl_mem), &lookup_table_buf,		fname);										// __global		float4*	lookup_table,			//7
+	_clSetKernelArg( set_warp_new_image_kernel,  	8, sizeof( cl_mem), &keyframe_depth_mem,	fname);										// __global		float* 	depth_map,				//8
+	// output
+	_clSetKernelArg( set_warp_new_image_kernel,  	9, sizeof( cl_mem), &warp_buf,				fname);										// __global		float2*	warp,					//9
+
+																																				if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::set_warp_new_image( ..)_chk1 ."<<flush;}
+	layer_call_kernel( set_warp_new_image_kernel, m_queue, layer, local_work_size);
+																																			if( verbosity>local_verbosity_threshold /*&& layer==1*/ ) {cout<<"\n\nRunCL::set_warp_new_image( ..)_chk2 ."<<flush;								// Save buffers to file ###########
+																																				stringstream ss;
+																																				ss << "_binoc_" << save_index <<"_layer_"<<layer ;
+																																				bool show 		= false;
+																																				bool old_tiff 	= tiff;
+																																				tiff 			= true;
+																																				float max_range = 1.0f; 		// -ve or 0 -> gray = zero.  0 -> use max range from image.
+																																				_cl_flush_finish(m_queue, fname);
+																																				DownloadAndSave_2Channel_volume( warp_buf,	ss.str( ), paths.at( "warp_buf"),  2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, show, max_range, 2 );  // 1, 2D warp, 1DoF
+																																				tiff 			= old_tiff;
+																																			}
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::set_warp_new_image( ..)_finished ."<<flush;}
+}
+
 void RunCL::warp_image( uint layer, uint iter ){																					// computed once each iteration of warping, for each layer of image pyramid
     string fname = "RunCL::warp_image( )";
 	int local_verbosity_threshold = V_RUNCL_WARP_IMAGE;

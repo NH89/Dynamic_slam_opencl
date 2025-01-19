@@ -155,8 +155,7 @@ void RunCL::initializeDepthCostVol( cl_mem key_frame_depth_map_src){			 								
 																																				ss << "initializeDepthCostVol";
 																																				ss << save_index;													// Save buffers to file ###########
 																																				cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk1.5.1 ."<<flush;
-
-																																				DownloadAndSave_3Channel( 	keyframe_imgmem, 			ss.str( ), paths.at( "keyframe_imgmem"),  mm_size_bytes_C4, mm_Image_size,  CV_32FC4, 	false );
+																																				DownloadAndSave_3Channel( 	keyframe_imgmem, 			ss.str( ), paths.at( "keyframe_imgmem"),  mm_size_bytes_C4, mm_Image_size,  CV_32FC4, 	false, 1, 0, true );
 																																				DownloadAndSave_HSV_grad(	keyframe_imgmem_HSV_grad, 	ss.str( ), paths.at( "keyframe_imgmem_HSV_grad"),2*mm_size_bytes_C4, mm_Image_size, CV_32FC( 8),	false, -1, 0 );
 																																				cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk1.6 ."<<flush;
 
@@ -209,8 +208,8 @@ void RunCL::initializeFirstDepthCostVol( float default_depth ){			 													
 																																				ss << "initializeDepthCostVol";
 																																				ss << save_index;													// Save buffers to file ###########
 																																				cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk1.5.1 ."<<flush;
-
-																																				DownloadAndSave_3Channel( 	keyframe_imgmem, 			ss.str( ), paths.at( "keyframe_imgmem"),  mm_size_bytes_C4, mm_Image_size,  CV_32FC4, 	false );
+																																				DownloadAndSave_3Channel( 	keyframe_imgmem, 			ss.str( ), paths.at( "keyframe_imgmem"),  mm_size_bytes_C4, mm_Image_size,  CV_32FC4, 	false, 1, 0, true );
+																																				//DownloadAndSave_3Channel( 	keyframe_imgmem, 			ss.str( ), paths.at( "keyframe_imgmem"),  mm_size_bytes_C4, mm_Image_size,  CV_32FC4, 	false );
 																																				DownloadAndSave_HSV_grad(  keyframe_imgmem_HSV_grad, 	ss.str( ), paths.at( "keyframe_imgmem_HSV_grad"),2*mm_size_bytes_C4, mm_Image_size, CV_32FC( 8),	false, -1, 0 );
 																																				cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk1.6 ."<<flush;
 

@@ -236,7 +236,11 @@ void RunCL::mipmap_linear(){
 																																				size_t   new_size_bytes = mm_width * mm_height * 4*4;
 																																				ss << "_raw_";
 																																				stringstream ss_path;	ss_path << "imgmem";
-																																				DownloadAndSave_3Channel( imgmem, ss.str(), paths.at(ss_path.str()), new_size_bytes, new_Image_size, CV_32FC4, false );
+																																				//
+	//void DownloadAndSave_3Channel( buffer, count, folder_tiff, image_size_bytes, size_mat, type_mat, show,            max_range=1, offset=0, exception_tiff=false )
+	//	   DownloadAndSave_3Channel( buffer, count, folder_tiff, image_size_bytes, size_mat, type_mat, show,  &bufImg,  max_range,   offset,   exception_tiff );
+	//void DownloadAndSave_3Channel( buffer, count, folder_tiff, image_size_bytes, size_mat, type_mat, show,  *bufImg,  max_range=1, offset=0, exception_tiff=false );
+																																				DownloadAndSave_3Channel( imgmem, ss.str(), paths.at(ss_path.str()), new_size_bytes, new_Image_size, CV_32FC4, false, 1, 0, true );
 																																				cout << "\n  (local_size+4) *5*4* sizeof(float) = "<<  (local_size+4) *5*4* sizeof(float) << " ,   (local_size+4) = " <<  (local_size+4) << endl << flush;
 																																			}
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_linear(..)_chk4 Finished"<<flush;}
