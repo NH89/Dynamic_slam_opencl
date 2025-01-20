@@ -49,8 +49,8 @@ __kernel void set_warp_new_image(						// Computed once each iteration of warpin
 	__private	uint	read_offset,			//0
 	__private	uint	layer,					//1
 	__private	float	reduction,				//2
+	__private	uint	mm_cols,				//3
 
-	__constant 	uint8*	mipmap_params,			//3
 	__constant 	uint*	uint_params,			//4
 	__constant  float*  fp32_params,			//5
 
@@ -78,18 +78,33 @@ __kernel void set_warp_new_image(						// Computed once each iteration of warpin
 
 	float u2_flt				= ((uh2)/(wh2*reduction));	// + warp2.x;  	// NB Ideally we should have scaled versions of k2k, to avoid using reduction.
 	float v2_flt				= ((vh2)/(wh2*reduction));	// + warp2.y;	// NB need float u,v to compute interpolation.
-
-	if (fmod(u_flt,40.0f)<1.0f && fmod(v_flt,20.0f)<1.0f ){
-		uint mm_cols			= uint_params[MM_COLS];
-		uint new_read_index		= read_index + floor(v2_flt-lookup_ref.y) * mm_cols  + floor(u2_flt-lookup_ref.x);
-		float2 new_img_warp		= {0.0f,0.0f};
-		if (new_read_index < uint_params[MM_PIXELS] && new_read_index > 0) {warp[new_read_index] 	= new_img_warp;}
-
-		printf("\n__kernel set_warp_new_image(..)  global_id_uint=%u, read_index=%u, new_read_index=%u,  lookup_ref.x=%f lookup_ref.y=%f, uh2=%f, vh2=%f, wh2=%f, reduction=%f, layer=%u, u2_flt=%f, v2_flt=%f, (u2_flt-lookup_ref.x)=%f, (v2_flt-lookup_ref.y)=%f ",\
-												   global_id_uint,    read_index,    new_read_index,     lookup_ref.x,   lookup_ref.y,    uh2,    vh2,    wh2,    reduction,    layer,    u2_flt,    v2_flt,    (u2_flt-lookup_ref.x),    (v2_flt-lookup_ref.y) );
-		v2_flt 					= 0.0f;
-	}
-	float2 new_img_warp			= {u2_flt, v2_flt}; // or just read from the warp, not the u,v from lookup_table
+/*
+// 	if (fmod(u_flt,40.0f)<1.0f && fmod(v_flt,20.0f)<1.0f ){
+// 		//uint mm_cols			= uint_params[MM_COLS];
+// 		uint new_read_index		= read_index + floor(v2_flt-lookup_ref.y) * mm_cols  + floor(u2_flt-lookup_ref.x);
+//
+// 		if (new_read_index < uint_params[MM_PIXELS] && new_read_index > 0) {
+// 			float2 new_img_warp_2	= {lookup_ref.x/100.f, lookup_ref.y/100.f};  //{(float)(layer)/10.0f,(float)(global_id_uint)};
+// 			warp[new_read_index] 	= new_img_warp_2;
+// 		}
+// 	}
+//
+//
+//
+// 	if (fmod(u_flt,40.0f)<1.0f && fmod(v_flt,20.0f)<1.0f ){
+// 		uint new_read_index		= read_index + floor(v2_flt-lookup_ref.y) * mm_cols  + floor(u2_flt-lookup_ref.x);
+//
+// 		if (new_read_index < uint_params[MM_PIXELS] && new_read_index > 0) {
+//
+// 			float2 new_img_warp_1	= {u2_flt, v2_flt};
+// 			warp[read_index] 		= new_img_warp_1;
+// 		}
+// 		printf("\n__kernel set_warp_new_image(..)  read_offset=%u,  mm_cols=%u,  global_id_uint=%u, read_index=%u, new_read_index=%u,  lookup_ref.x=%f lookup_ref.y=%f, uh2=%f, vh2=%f, wh2=%f, reduction=%f, layer=%u, u2_flt=%f, v2_flt=%f, (u2_flt-lookup_ref.x)=%f, (v2_flt-lookup_ref.y)=%f ",\
+// 												   read_offset,     mm_cols,     global_id_uint,    read_index,    new_read_index,     lookup_ref.x,   lookup_ref.y,    uh2,    vh2,    wh2,    reduction,    layer,    u2_flt,    v2_flt,    (u2_flt-lookup_ref.x),    (v2_flt-lookup_ref.y) );
+// 	}
+	//else{
+*/
+	float2 new_img_warp			= {(u2_flt-lookup_ref.x), (v2_flt-lookup_ref.y)}; // or just read from the warp, not the u,v from lookup_table
 													// Used to set up warp field for new image.
 													// This allows efficient iteration of warp merged with SE3 tracking.
 	warp[read_index] 			= new_img_warp;		// TODO NB will need to separate warp from SE3 _before_ doing this again.
@@ -97,6 +112,7 @@ __kernel void set_warp_new_image(						// Computed once each iteration of warpin
 													// For New keyframe ? use old_k2k from old keyframe, and new_k2k from new keframe.
 													// TODO NB Problem how to predict warp for new frame, from warp from old frame ?
 													// Perhaps integrate the extra warp into depth & vel maps at the end of each frame.
+	//}
 }
 
 
@@ -104,18 +120,24 @@ __kernel void warp_image(						// Computed once each iteration of warping, for e
 	// inputs									// Warp describes where to sample the new image to match the reference image.
 	__private	uint	read_offset,			//0
 	__private	uint	mm_cols,				//1
+	__private	uint	layer,					//2
 
-	__constant 	uint*	uint_params,			//2
+	__constant 	uint8*	mipmap_params,			//3
 
-	__global 	float2*	warp,					//3
-	__global 	float4*	lookup_table,			//4
-	__global 	float4*	new_img,				//5
+	__global 	float2*	warp,					//4
+	__global 	float4*	lookup_table,			//5
+	__global 	float4*	new_img,				//6
 
 	// outputs
-	__global 	float4*	new_img_warped			//6
+	__global 	float4*	new_img_warped			//7
 ){
 	uint	global_id			= get_global_id(0);
 	float 	global_id_flt		= global_id;
+
+	uint8 mipmap_params_ 		= mipmap_params[layer];
+	uint read_cols_ 			= mipmap_params_[MiM_READ_COLS];
+	uint read_rows_ 			= mipmap_params_[MiM_READ_ROWS];
+
 	float4 	lookup_ref			= lookup_table[global_id + read_offset];
 	uint 	read_index			= floor(lookup_ref.z);
 	float2 	warp2				= warp[read_index];
@@ -125,11 +147,16 @@ __kernel void warp_image(						// Computed once each iteration of warping, for e
 	int		v_int				= floor(warp2.y);
 	uint	sample_index		= read_index  + (v_int * mm_cols)  + u_int ;
 
-	// 2-way linear interpolation of four sample pixels.
-	float4 warped_lower			= new_img[sample_index] 		* (1-u_mod) 	+ new_img[sample_index+1] 			* u_mod;
-	float4 warped_upper			= new_img[sample_index+mm_cols] * (1-u_mod) 	+ new_img[sample_index+mm_cols+1] 	* u_mod;
-	new_img_warped[read_index]	= warped_lower 					* (1-v_mod)  	+ warped_upper 						* v_mod;
-
+	//if(sample_index>0 && sample_index < uint_params[MM_PIXELS] ){
+	float u = lookup_ref.x + warp2.x;
+	float v = lookup_ref.y + warp2.y;
+	if( v>=0 && v<read_rows_  && u>=0 && u <= read_cols_){
+		// 2-way linear interpolation of four sample pixels.
+		float4 warped_lower			= new_img[sample_index] 		* (1-u_mod) 	+ new_img[sample_index+1] 			* u_mod;
+		float4 warped_upper			= new_img[sample_index+mm_cols] * (1-u_mod) 	+ new_img[sample_index+mm_cols+1] 	* u_mod;
+		new_img_warped[read_index]	= warped_lower 					* (1-v_mod)  	+ warped_upper 						* v_mod;
+	}
+	barrier(CLK_LOCAL_MEM_FENCE);
 // 	if (0.0f == fmod(global_id_flt, 33.0f) ){
 // 		printf("\n__kernel void warp_image(..): warp2=(%f,%f), global_id=%u, lookup_ref.x=%f lookup_ref.y=%f u_int=%u, u_mod=%f, read_index=%u", \
 // 		warp2.x, warp2.y, global_id, lookup_ref.x, lookup_ref.y, u_int, u_mod, read_index);

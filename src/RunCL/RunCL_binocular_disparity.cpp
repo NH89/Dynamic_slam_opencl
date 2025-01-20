@@ -84,11 +84,11 @@ void RunCL::set_warp_new_image(uint layer, float reduction){					// Computed onc
 	//_clSetKernelArg( warp_image_kernel,			0, sizeof( uint), 	&read_offset,			fname);										// __private	uint	read_offset,			//0
 	_clSetKernelArg( set_warp_new_image_kernel,  	1, sizeof( uint), 	&layer,					fname);										// __private	uint	layer,					//1
 	_clSetKernelArg( set_warp_new_image_kernel,  	2, sizeof( float), 	&reduction,				fname);										// __private	float	reduction,				//2
- //
-	_clSetKernelArg( set_warp_new_image_kernel,  	3, sizeof( cl_mem), &mipmap_buf,			fname);										// __constant	uint8*	mipmap_params,			//3
+	_clSetKernelArg( set_warp_new_image_kernel,  	3, sizeof( uint), 	&mm_width,				fname);										// 	__private	uint	mm_cols,				//3
+	// __constant
 	_clSetKernelArg( set_warp_new_image_kernel,  	4, sizeof( cl_mem), &uint_param_buf,		fname);										// __constant	uint*	uint_params,			//4
 	_clSetKernelArg( set_warp_new_image_kernel,  	5, sizeof( cl_mem), &fp32_param_buf,		fname);										// __constant	float*  fp32_params,			//5
- //
+	// __global
 	_clSetKernelArg( set_warp_new_image_kernel,  	6, sizeof( cl_mem), &k2kbuf,				fname);										// __global		float16*k2k,					//6		// keyframe2K[3]
 	_clSetKernelArg( set_warp_new_image_kernel,  	7, sizeof( cl_mem), &lookup_table_buf,		fname);										// __global		float4*	lookup_table,			//7
 	_clSetKernelArg( set_warp_new_image_kernel,  	8, sizeof( cl_mem), &keyframe_depth_mem,	fname);										// __global		float* 	depth_map,				//8
@@ -111,7 +111,7 @@ void RunCL::set_warp_new_image(uint layer, float reduction){					// Computed onc
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::set_warp_new_image( ..)_finished ."<<flush;}
 }
 
-void RunCL::warp_image( uint layer, uint iter ){																					// computed once each iteration of warping, for each layer of image pyramid
+void RunCL::warp_image( uint layer, int iter ){																					// computed once each iteration of warping, for each layer of image pyramid
     string fname = "RunCL::warp_image( )";
 	int local_verbosity_threshold = V_RUNCL_WARP_IMAGE;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::warp_image( ..)_chk0 #############################################################"<<flush;
@@ -123,15 +123,16 @@ void RunCL::warp_image( uint layer, uint iter ){																					// computed
 	// __private
 	//_clSetKernelArg( warp_image_kernel,			0, sizeof( uint), 	&read_offset,			fname);										// 	__private	uint	read_offset,			//0
 	_clSetKernelArg( warp_image_kernel,  			1, sizeof( uint), 	&mm_width,				fname);										// 	__private	uint	mm_cols,				//1
+	_clSetKernelArg( warp_image_kernel,  			2, sizeof( uint), 	&layer,					fname);										// 	__private	uint	layer,					//2
 	// __constant
-	_clSetKernelArg( warp_image_kernel,  			2, sizeof( cl_mem), &uint_param_buf,		fname);										// 	__constant 	uint*	uint_params,			//2
+	_clSetKernelArg( warp_image_kernel,  			3, sizeof( cl_mem), &mipmap_buf,			fname);										// 	__constant 	uint*	mipmap_params,			//3
 	// __global
-	_clSetKernelArg( warp_image_kernel,  			3, sizeof( cl_mem), &warp_buf,				fname);										// 	__global 	float2*	warp,					//3
-	_clSetKernelArg( warp_image_kernel,  			4, sizeof( cl_mem), &lookup_table_buf,		fname);										// 	__global 	uint4*	lookup_table,			//4
-	_clSetKernelArg( warp_image_kernel,  			5, sizeof( cl_mem), &new_img_buf,			fname);										// 	__global 	float4*	new_img,				//5
+	_clSetKernelArg( warp_image_kernel,  			4, sizeof( cl_mem), &warp_buf,				fname);										// 	__global 	float2*	warp,					//4
+	_clSetKernelArg( warp_image_kernel,  			5, sizeof( cl_mem), &lookup_table_buf,		fname);										// 	__global 	uint4*	lookup_table,			//5
+	_clSetKernelArg( warp_image_kernel,  			6, sizeof( cl_mem), &new_img_buf,			fname);										// 	__global 	float4*	new_img,				//6
 
 	// outputs
-	_clSetKernelArg( warp_image_kernel,  			6, sizeof( cl_mem), &warped_img_buf,		fname);										// 	__global 	float4*	new_img_warped			//6
+	_clSetKernelArg( warp_image_kernel,  			7, sizeof( cl_mem), &warped_img_buf,		fname);										// 	__global 	float4*	new_img_warped			//7
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::warp_image( ..)_chk1 ."<<flush;}
 	layer_call_kernel( warp_image_kernel, m_queue, layer, local_work_size);
 																																			if( verbosity>local_verbosity_threshold /*&& layer==1*/ ) {cout<<"\n\nRunCL::warp_image( ..)_chk2 ."<<flush;								// Save buffers to file ###########
