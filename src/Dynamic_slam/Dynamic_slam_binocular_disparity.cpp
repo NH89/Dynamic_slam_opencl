@@ -44,12 +44,10 @@ void Dynamic_slam::binocular_reference_frame(){
 																												}
 	// prepare reference frame
 	uint iter = 0;
-	float reduction = 1.0f;
 	for (int layer = runcl.mm_stop ; layer >=0 ; layer-- ){
-		reduction = runcl.uint_params[MM_COLS] / runcl.MipMap[layer*8 + MiM_READ_COLS];		// uint reduction = mm_cols/read_cols_;  uint_params[MM_COLS];  mipmap_params_[MiM_READ_COLS];  uint8 mipmap_params_ = mipmap_params[layer];
+		float  reduction = runcl.uint_params[MM_COLS] / runcl.MipMap[layer*8 + MiM_READ_COLS];		// uint reduction = mm_cols/read_cols_;  uint_params[MM_COLS];  mipmap_params_[MiM_READ_COLS];  uint8 mipmap_params_ = mipmap_params[layer];
 		runcl.mean_sq_3rows(  		layer, iter, "ref_img_sq_mean_rows_buf",	runcl.ref_img_buf,					runcl.ref_img_sq_mean_rows_buf);
 		runcl.mean_sq_cols(			layer, iter, "ref_img_sq_mean_buf", 		runcl.ref_img_sq_mean_rows_buf, 	runcl.ref_img_sq_mean_buf);
-		runcl.set_warp_new_image(	layer, reduction);
 	}
 	// predict warp ? from previous keyframe
 
@@ -101,15 +99,19 @@ void Dynamic_slam::binocular_disparity(){
 	const float zero  = 0.0f;
 	runcl._clEnqueueFillBuffer( runcl.m_queue, runcl.confidence_buf,  &zero,    sizeof( float),  0,     runcl.mm_size_bytes_C4, 	fname);
 	runcl._cl_flush_finish(runcl.m_queue, fname);
-	// predict warp from previous frame ?
 
+	// predict warp from previous frame ?  // Here we use only the SE3 tracking + keyframe_depthmap
+	runcl.zero_warp_buffer();
+	for (int layer = runcl.mm_stop ; layer >=0 ; layer-- ){
+		float  reduction = runcl.uint_params[MM_COLS] / runcl.MipMap[layer*8 + MiM_READ_COLS];		// uint reduction = mm_cols/read_cols_;  uint_params[MM_COLS];  mipmap_params_[MiM_READ_COLS];  uint8 mipmap_params_ = mipmap_params[layer];
+		runcl.set_warp_new_image(	layer, reduction);
+	}
 
 	// debug chk of initial warped image
 	for (int layer = runcl.mm_stop ; layer >=0 ; layer-- ){										if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::disparity() chk_1 layer="<<layer<<", runcl.mm_start+3="<<runcl.mm_start+3<<", runcl.mm_stop="<<runcl.mm_stop<<flush;}
 		int iter = -1;
 		runcl.warp_image(      layer, iter  );
 	}
-
 
 	// compute warp for this frame  // can be until (layer > runcl.mm_start) but takes 3x longer.
 	for (int layer = runcl.mm_stop ; layer > runcl.mm_start+3 ; layer-- ){										if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::disparity() chk_1 layer="<<layer<<", runcl.mm_start+3="<<runcl.mm_start+3<<", runcl.mm_stop="<<runcl.mm_stop<<flush;}

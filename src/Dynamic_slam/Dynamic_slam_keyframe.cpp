@@ -14,8 +14,6 @@ void Dynamic_slam::initialize_keyframe_vec(  ){
 																																				<< runcl.dataset_frame_num << flush;
 																																				PRINT_MATX44F( frame_data.back().frame_data.inv_pose , );
 																																			}
-
-
 	keyframe_datum 												new_keyframe;
 	Matx44f old_keyframe2pose 									= frame_data.back().frame_data_GT.keyframe2pose;
 
@@ -25,6 +23,7 @@ void Dynamic_slam::initialize_keyframe_vec(  ){
 	frame_data.back().frame_data.keyframe2pose_algebra			= PToLie( frame_data.back().frame_data.keyframe2pose );
 
 	float default_depth 										= ( runcl.fp32_params[MAX_INV_DEPTH] + runcl.fp32_params[MIN_INV_DEPTH] ) /2.0;
+/*
 	// keyframe_datum 												new_keyframe;
 	// //Matx44f old_keyframe2pose 								= frame_data.back().frame_data_GT.keyframe2pose;
 	// frame_datum  old_frame_datum								= frame_data.back();
@@ -38,7 +37,7 @@ void Dynamic_slam::initialize_keyframe_vec(  ){
 	// frame_data.back().frame_data.pose							= old_frame_datum.frame_data.pose;
 	// frame_data.back().frame_data.inv_pose						= old_frame_datum.frame_data.inv_pose;
 																																			// TODO These variables should be redundant in keyframe. Rather copy only the valid variables. ? Reduce the keyframe struct ?
-
+*/
 	new_keyframe.frame_data  									=	frame_data.back();														// Copy current tracking frame to the new keyframe.
 	keyframe_data.push_back( 									new_keyframe );
 	keyframe_data.back().first_frame_index						=	frame_data.size();
@@ -53,11 +52,12 @@ void Dynamic_slam::initialize_keyframe_vec(  ){
 																																				PRINT_MATX44F( old_keyframe2pose ,  );
 																																				//PRINT_MATX44F( old_frame_datum.frame_data_GT.keyframe2pose ,  );
 																																			}
+/*
 		//cv::Matx44f inv_pose2pose 			=  getInvPose( old_frame_datum.frame_data.keyframe2pose, verbosity );
 		// 																																	PRINT_MATX44F( inv_pose2pose, );
 		// 																																	PRINT_MATX44F( frame_data.back().frame_data.K, );
 		// 																																	PRINT_MATX44F( frame_data.back().frame_data.inv_K, );
-
+*/
 		// cv::Matx44f forward_keyframe2K  	=  frame_data.back().frame_data.K * inv_pose2pose * frame_data.back().frame_data.inv_K;			// Projects new keyframe pixel to previous keyframe
 		 cv::Matx44f forward_keyframe2K  	= frame_data.back().frame_data.K2K.inv() ;  // old_frame_datum.frame_data.K2K; //.inv() ;
 		float forward_keyframe2K_f16[16];
@@ -68,6 +68,7 @@ void Dynamic_slam::initialize_keyframe_vec(  ){
 		// runcl.initializeDepthCostVol( 		runcl.amem );																					// Also copies  	imgmem 						-> keyframe_imgmem
 																																			//					HSV_grad_mem 				-> keyframe_imgmem_HSV_grad
 		runcl.initializeFirstDepthCostVol(	default_depth );
+/*
 																																			//	runcl.amem 	=	key_frame_depth_map_src 	-> keyframe_depth_mem
 																																			//					depth_mem_GT 				-> keyframe_depth_mem_GT
 																																			//					SE3_grad_map_mem 			-> keyframe_SE3_grad_map_mem,
@@ -75,12 +76,10 @@ void Dynamic_slam::initialize_keyframe_vec(  ){
 																																			// Zeros buffers: 	dbg_databuf, cdatabuf, hdatabuf, img_sum_buf,
 																																			// 					dmem, amem, qmem, qmem2, lomem, himem.
 		//runcl.transform_costvolume( 		forward_keyframe2K_f16 );
-
+*/
 	}else{																																	// IF starting a new vector<keframe_datum>, i.e. begining of program.
-
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::initialize_keyframe_vec()_chk 1.2,  default_depth="<<default_depth<< flush; }
 		runcl.initializeFirstDepthCostVol(	default_depth );																				// Zeros  	amem, cdatabuf, temp_cdatabuf,  etc..
-
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::initialize_keyframe_vec()_chk 1.3"<< flush;
 																																				stringstream ss;	ss << fname << "_chk1.3_frame_num" << runcl.dataset_frame_num << "_estimateSE3_LK_";
 																																				runcl.DownloadAndSave( 	runcl.keyframe_depth_mem,   	ss.str( ), 	runcl.paths.at( "keyframe_depth_mem"), runcl.mm_size_bytes_C1,   runcl.mm_Image_size,   CV_32FC1, 	false , 1); // runcl.fp32_params[MAX_INV_DEPTH]
@@ -104,6 +103,7 @@ void Dynamic_slam::initialize_keyframe_vec(  ){
 																																				runcl.DownloadAndSave( 	runcl.keyframe_depth_mem,   	ss.str( ), 	runcl.paths.at( "keyframe_depth_mem"), runcl.mm_size_bytes_C1,   runcl.mm_Image_size,   CV_32FC1, 	false , 1); // runcl.fp32_params[MAX_INV_DEPTH]
 																																			}
 	runcl.initialize_fp32_params();												// reset parameters											// runcl.initialize_fp32_params();  runcl.keyFrameCount++; runcl.dataset_frame_num++;
+	binocular_reference_frame();
 	runcl.keyFrameCount++;
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::initialize_keyframe_vec() Finished ###########################" << flush;}
 }

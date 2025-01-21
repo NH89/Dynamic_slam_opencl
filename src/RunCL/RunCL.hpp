@@ -174,6 +174,8 @@ public:
 
 	void compute_lookup_table(uint start, uint stop);
 	// void binocular_disparity_copy_buffers(  );
+
+	void zero_warp_buffer();
 	void set_warp_new_image(uint layer, float reduction);
 	void warp_image(uint layer, int iter);
 	void img_sq(         uint layer, uint iter, cl_mem img_buf,    cl_mem img_sq_buf,  std::string folder);

@@ -355,10 +355,12 @@ void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, st
 																																				<<", max_range="<<max_range<<", folder = ["<<folder_tiff.filename().string()<<"] "<<flush;
 	if (type_mat != CV_32FC2){cout <<"Error (type_mat != CV_32FC2)"<<flush; return;}
 
-		uint 	offset 		= 0;	//layer * image_size_bytes;
+	for (uint layer=0; layer<vol_layers; layer++  ) {
+
+		uint 	offset 		= layer * image_size_bytes; // 0;	//
 		cv::Mat temp_mat 	= cv::Mat::zeros (size_mat, type_mat);																			// (int rows, int cols, int type)
 		ReadOutput(temp_mat.data, buffer,  image_size_bytes, offset); 																		// NB contains elements of type_mat, (CV_32FC1 for most buffers)
-																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_2Channel_volume()_Chk_1"<<flush;
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_2Channel_volume()_Chk_1  layer="<<layer<<flush;
 		vector<cv::Mat> channels;
 		split(temp_mat, channels);
 		channels.push_back( cv::Mat::zeros( size_mat, CV_32FC1 ) );
@@ -398,21 +400,23 @@ void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, st
 		string 			type_string 	= checkCVtype(type_mat);
 		string  		date_time_str 	= date_time_string();
 
-		ss 		<< "/" << folder_tiff.filename().string() <<"_UV_" << count <<"_sum_u_"<<sum_u<<"_sum_v_"<<sum_v<<"_type_"<<type_string<<"min"<<minVal_u<<"_max"<<maxVal_u<<"_maxRange"<<max_range;
-		png_ss 	<< "/" << folder_tiff.filename().string() <<"_UV_" << count << date_time_str;
+		ss 		<< "/" << folder_tiff.filename().string() << "_vol_layer_"<<layer<<"_UV_" << count <<"_sum_u_"<<sum_u<<"_sum_v_"<<sum_v<<"_type_"<<type_string<<"min"<<minVal_u<<"_max"<<maxVal_u<<"_maxRange"<<max_range;
+		png_ss 	<< "/" << folder_tiff.filename().string() << "_vol_layer_"<<layer<<"_UV_" << count << date_time_str;
 
-		std::filesystem::path folder_png = folder_tiff;
-		folder_tiff += "/tiff/";
-		folder_tiff += ss.str();
-		folder_tiff += ".tiff";
+		std::filesystem::path folder_tiff_= folder_tiff;
+		std::filesystem::path folder_png  = folder_tiff;
+		folder_tiff_ += "/tiff/";
+		folder_tiff_ += ss.str();
+		folder_tiff_ += ".tiff";
 
 		folder_png  += png_ss.str();
 		folder_png  += ".png";
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_2Channel_volume()_Chk_4, max_range="<<max_range\
-																																				<<",   filepath = ["<<folder_png.string()<<" ,\t "<<folder_tiff.string()<<"]";
-		if(tiff==true)	cv::imwrite( folder_tiff.string(), 	temp_mat );
+																																				<<",   filepath = ["<<folder_png.string()<<" ,\t "<<folder_tiff_.string()<<"]";
+		if(tiff==true)	cv::imwrite( folder_tiff_.string(), 	temp_mat );
 		if(png==true)	cv::imwrite( folder_png.string(), (	temp_mat*256) );
 		if(show)		cv::imshow(  ss.str(), 				temp_mat );
+	}
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_2Channel_volume()_finished\n"<<flush;
 }
 

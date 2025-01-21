@@ -78,32 +78,7 @@ __kernel void set_warp_new_image(						// Computed once each iteration of warpin
 
 	float u2_flt				= ((uh2)/(wh2*reduction));	// + warp2.x;  	// NB Ideally we should have scaled versions of k2k, to avoid using reduction.
 	float v2_flt				= ((vh2)/(wh2*reduction));	// + warp2.y;	// NB need float u,v to compute interpolation.
-/*
-// 	if (fmod(u_flt,40.0f)<1.0f && fmod(v_flt,20.0f)<1.0f ){
-// 		//uint mm_cols			= uint_params[MM_COLS];
-// 		uint new_read_index		= read_index + floor(v2_flt-lookup_ref.y) * mm_cols  + floor(u2_flt-lookup_ref.x);
-//
-// 		if (new_read_index < uint_params[MM_PIXELS] && new_read_index > 0) {
-// 			float2 new_img_warp_2	= {lookup_ref.x/100.f, lookup_ref.y/100.f};  //{(float)(layer)/10.0f,(float)(global_id_uint)};
-// 			warp[new_read_index] 	= new_img_warp_2;
-// 		}
-// 	}
-//
-//
-//
-// 	if (fmod(u_flt,40.0f)<1.0f && fmod(v_flt,20.0f)<1.0f ){
-// 		uint new_read_index		= read_index + floor(v2_flt-lookup_ref.y) * mm_cols  + floor(u2_flt-lookup_ref.x);
-//
-// 		if (new_read_index < uint_params[MM_PIXELS] && new_read_index > 0) {
-//
-// 			float2 new_img_warp_1	= {u2_flt, v2_flt};
-// 			warp[read_index] 		= new_img_warp_1;
-// 		}
-// 		printf("\n__kernel set_warp_new_image(..)  read_offset=%u,  mm_cols=%u,  global_id_uint=%u, read_index=%u, new_read_index=%u,  lookup_ref.x=%f lookup_ref.y=%f, uh2=%f, vh2=%f, wh2=%f, reduction=%f, layer=%u, u2_flt=%f, v2_flt=%f, (u2_flt-lookup_ref.x)=%f, (v2_flt-lookup_ref.y)=%f ",\
-// 												   read_offset,     mm_cols,     global_id_uint,    read_index,    new_read_index,     lookup_ref.x,   lookup_ref.y,    uh2,    vh2,    wh2,    reduction,    layer,    u2_flt,    v2_flt,    (u2_flt-lookup_ref.x),    (v2_flt-lookup_ref.y) );
-// 	}
-	//else{
-*/
+
 	float2 new_img_warp			= {(u2_flt-lookup_ref.x), (v2_flt-lookup_ref.y)}; // or just read from the warp, not the u,v from lookup_table
 													// Used to set up warp field for new image.
 													// This allows efficient iteration of warp merged with SE3 tracking.
