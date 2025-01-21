@@ -9,4 +9,4 @@ Notes_variables.cl
 *.diff
 Doxygen/*
 Docs/doxy-docs/*
-
+Docs/doxygen/*

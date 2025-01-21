@@ -146,7 +146,7 @@ int Dynamic_slam::nextFrame() {
 																						auto step_0 = high_resolution_clock::now();
 	frame_data.push_back( frame_data.back() ); //////////////////////////////////////////   new_frame										// duplicate last frame, as basis for new frame.
 
-	if ( obj["initialize_tracking_from_GT_depth"].asBool() == false  ){ runcl.update_tracking_depthmap( runcl.amem   );	}					// copies buffer: amem to keyframe_depth_mem.  NB amem initialization will affect 1st tracking.
+//TODO regularize amem //	if ( obj["initialize_tracking_from_GT_depth"].asBool() == false  ){ runcl.update_tracking_depthmap( runcl.amem   );	}					// copies buffer: amem to keyframe_depth_mem.  NB amem initialization will affect 1st tracking.
 																																			// This would update keyframe_depth_mem ith the raw amem, every frame.
 
 	getFrameData_vec();		/*Only IF GT available*/									auto step_1 = high_resolution_clock::now();			// updates pose2pose for next frame in cost volume.

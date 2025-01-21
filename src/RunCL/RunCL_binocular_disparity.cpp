@@ -79,6 +79,8 @@ void RunCL::zero_warp_buffer(){
 	status = clEnqueueFillBuffer(uload_queue, warp_buf,	&zero, sizeof(float), 0, mm_size_bytes_C1 * 2,	0, NULL, &writeEvt);	if(status != CL_SUCCESS){ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	clFlush(uload_queue);
 	status = clFinish(uload_queue);
+
+
 }
 
 
@@ -111,14 +113,16 @@ void RunCL::set_warp_new_image(uint layer, float reduction){					// Computed onc
 	layer_call_kernel( set_warp_new_image_kernel, m_queue, layer, local_work_size);
 																																			if( verbosity>local_verbosity_threshold /*&& layer==1*/ ) {cout<<"\n\nRunCL::set_warp_new_image( ..)_chk2 ."<<flush;								// Save buffers to file ###########
 																																				stringstream ss;
-																																				ss << "_binoc__zero_warp_buffer_" << save_index <<"_layer_"<<layer ;
+																																				ss << "_binoc__set_warp_new_image_" << save_index <<"_layer_"<<layer ;
 																																				bool show 		= false;
 																																				bool old_tiff 	= tiff;
 																																				tiff 			= true;
 																																				float max_range = 1.0f; 		// -ve or 0 -> gray = zero.  0 -> use max range from image.
 																																				uint vol_layers	= 1;
 																																				_cl_flush_finish(m_queue, fname);
-																																				DownloadAndSave_2Channel_volume( warp_buf,	ss.str( ), paths.at( "warp_buf"),  2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, show, max_range, vol_layers );  // 1, 2D warp, 1DoF
+																																				DownloadAndSave_2Channel_volume( warp_buf,	ss.str( ), paths.at( "warp_buf"),  			2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, show, max_range, vol_layers );  // 1, 2D warp, 1DoF
+																																				DownloadAndSave( 	keyframe_depth_mem,   	ss.str( ), paths.at( "keyframe_depth_mem"),   mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, false , fp32_params[MAX_INV_DEPTH]);
+
 																																				tiff 			= old_tiff;
 																																			}
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::set_warp_new_image( ..)_finished ."<<flush;}
