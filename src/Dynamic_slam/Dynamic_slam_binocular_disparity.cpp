@@ -45,8 +45,9 @@ void Dynamic_slam::binocular_reference_frame(){
 	// prepare reference frame
 	uint iter = 0;
 	for (int layer = runcl.mm_stop ; layer >=0 ; layer-- ){
-		runcl.mean_sq_3rows(  		layer, iter, "ref_img_sq_mean_rows_buf",	runcl.ref_img_buf,					runcl.ref_img_sq_mean_rows_buf);
-		runcl.mean_sq_cols(			layer, iter, "ref_img_sq_mean_buf", 		runcl.ref_img_sq_mean_rows_buf, 	runcl.ref_img_sq_mean_buf);
+		runcl.mean_sq_3rows(  		layer, iter, "ref_img_sq_mean_rows_buf",	runcl.ref_img_buf,	runcl.ref_img_sq_mean_rows_buf);
+		// uint layer, uint iter, std::string folder_sq_mean,		cl_mem sq_mean_rows_buf, 	cl_mem img_buf, 	cl_mem sq_mean_buf, 	cl_mem sd_buf
+		runcl.mean_sq_cols(			layer, iter, "ref_img_sq_mean_buf",			runcl.ref_img_buf, 	runcl.ref_img_sq_mean_rows_buf, runcl.ref_img_sq_mean_buf, runcl.sd_buf);
 	}
 	// predict warp ? from previous keyframe
 
@@ -117,8 +118,8 @@ void Dynamic_slam::binocular_disparity(){
 	for (int layer = runcl.mm_stop ; layer > runcl.mm_start+3 ; layer-- ){										if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::disparity() chk_1 layer="<<layer<<", runcl.mm_start+3="<<runcl.mm_start+3<<", runcl.mm_stop="<<runcl.mm_stop<<flush;}
 		for (int iter = 0 ; iter < 5   ; iter++ ){																if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::disparity() chk_2 layer="<<layer<<", iter="<<iter<<"_"<<flush;}
 			runcl.warp_image(      layer, iter  );
-			runcl.mean_sq_3rows(   layer, iter, "warped_img_sq_mean_rows_buf",  runcl.warped_img_buf,				runcl.warped_img_sq_mean_rows_buf);
-			runcl.mean_sq_cols(    layer, iter, "warped_img_sq_mean_buf", 	 	runcl.warped_img_sq_mean_rows_buf, 	runcl.warped_img_sq_mean_buf);
+			runcl.mean_sq_3rows(   layer, iter, "warped_img_sq_mean_rows_buf",  runcl.warped_img_buf,	runcl.warped_img_sq_mean_rows_buf);
+			runcl.mean_sq_cols(    layer, iter, "warped_img_sq_mean_buf",		runcl.warped_img_buf, 	runcl.warped_img_sq_mean_rows_buf, runcl.warped_img_sq_mean_buf, runcl.warped_img_sd_buf);
 			runcl.co_mean_rows(    layer, iter  );
 			runcl.covariance_cols( layer, iter  );
 			runcl.regularize_warp( layer, iter  );
