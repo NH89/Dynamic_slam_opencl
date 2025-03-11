@@ -298,9 +298,9 @@ void RunCL::createKernels(){
 	set_warp_new_image_kernel		= clCreateKernel(m_program, "set_warp_new_image",			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'set_warp_new_image_kernel'  kernel not built.\n"	<<flush; exit_(0);   }
 
 	warp_image_kernel				= clCreateKernel(m_program, "warp_image", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'warp_image_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
-	img_sq_kernel					= clCreateKernel(m_program, "img_sq", 						&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'img_sq_kernel'  kernel not built.\n"				<<flush; exit_(0);   }
-	img_variance_kernel				= clCreateKernel(m_program, "img_variance", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'img_variance_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
-	compute_warp_kernel				= clCreateKernel(m_program, "compute_warp", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'compute_warp_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
+	//img_sq_kernel					= clCreateKernel(m_program, "img_sq", 						&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'img_sq_kernel'  kernel not built.\n"				<<flush; exit_(0);   }
+	//img_variance_kernel				= clCreateKernel(m_program, "img_variance", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'img_variance_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
+	//compute_warp_kernel				= clCreateKernel(m_program, "compute_warp", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'compute_warp_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
 	propagate_warp_kernel			= clCreateKernel(m_program, "propagate_warp", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'propagate_warp_kernel'  kernel not built.\n"		<<flush; exit_(0);   }
 
 	mean_sq_3rows_kernel			= clCreateKernel(m_program, "mean_sq_3rows", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'mean_sq_3rows_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
@@ -994,9 +994,9 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	status = clReleaseKernel(set_warp_new_image_kernel);		if (status != CL_SUCCESS)	{ cout << "\nset_warp_new_image_kernel		status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 	status = clReleaseKernel(warp_image_kernel);				if (status != CL_SUCCESS)	{ cout << "\nwarp_image_kernel				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
-	status = clReleaseKernel(img_sq_kernel);					if (status != CL_SUCCESS)	{ cout << "\nimg_sq_kernel					status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
-	status = clReleaseKernel(img_variance_kernel);				if (status != CL_SUCCESS)	{ cout << "\nimg_variance_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
-	status = clReleaseKernel(compute_warp_kernel);				if (status != CL_SUCCESS)	{ cout << "\ncompute_warp_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	//status = clReleaseKernel(img_sq_kernel);					if (status != CL_SUCCESS)	{ cout << "\nimg_sq_kernel					status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	//status = clReleaseKernel(img_variance_kernel);				if (status != CL_SUCCESS)	{ cout << "\nimg_variance_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	//status = clReleaseKernel(compute_warp_kernel);				if (status != CL_SUCCESS)	{ cout << "\ncompute_warp_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(propagate_warp_kernel);			if (status != CL_SUCCESS)	{ cout << "\npropagate_warp_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 	status = clReleaseKernel(mean_sq_3rows_kernel);				if (status != CL_SUCCESS)	{ cout << "\nmean_sq_3rows_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;

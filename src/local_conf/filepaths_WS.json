@@ -1,6 +1,6 @@
 {
                                                                         // Can add either relative or absolute path. NB Uses BoostFileSystem for OS portablitity.
-    "source_filepath":"/home/nick/programming/ComputerVision/MyCode/Dynamic_slam_opencl/",
+    "source_filepath":"/home/nick/programming/ComputerVision/MyCode/Dynamic_slam_opencl/src/",
     // other .json files
     "params_conf":"local_conf/conf.json",
     "verbosity_conf":"local_conf/verbosity.json",
@@ -10,7 +10,7 @@
 
      // Setup openCL /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     "kernel_folder":"kernels/",
-    "kernel_build_options": "-I/home/nick/programming/ComputerVision/MyCode/Dynamic_slam_opencl/kernels/",  //   to do reconstruct using source_filepath
+    "kernel_build_options": "-I/home/nick/programming/ComputerVision/MyCode/Dynamic_slam_opencl/src/kernels/",  //   to do reconstruct using source_filepath
 
     "opencl_platform":0,        // ThinkPad 2, Clevo 0, WS 0 or 1       // need platform & device GPU choices
     "opencl_device":0,

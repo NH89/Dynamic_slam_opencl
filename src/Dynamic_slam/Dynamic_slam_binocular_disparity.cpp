@@ -45,7 +45,6 @@ void Dynamic_slam::binocular_reference_frame(){
 	// prepare reference frame
 	uint iter = 0;
 	for (int layer = runcl.mm_stop ; layer >=0 ; layer-- ){
-		float  reduction = runcl.uint_params[MM_COLS] / runcl.MipMap[layer*8 + MiM_READ_COLS];		// uint reduction = mm_cols/read_cols_;  uint_params[MM_COLS];  mipmap_params_[MiM_READ_COLS];  uint8 mipmap_params_ = mipmap_params[layer];
 		runcl.mean_sq_3rows(  		layer, iter, "ref_img_sq_mean_rows_buf",	runcl.ref_img_buf,					runcl.ref_img_sq_mean_rows_buf);
 		runcl.mean_sq_cols(			layer, iter, "ref_img_sq_mean_buf", 		runcl.ref_img_sq_mean_rows_buf, 	runcl.ref_img_sq_mean_buf);
 	}
@@ -102,6 +101,7 @@ void Dynamic_slam::binocular_disparity(){
 
 	// predict warp from previous frame ?  // Here we use only the SE3 tracking + keyframe_depthmap
 	runcl.zero_warp_buffer();
+
 	for (int layer = runcl.mm_stop ; layer >=0 ; layer-- ){
 		float  reduction = runcl.uint_params[MM_COLS] / runcl.MipMap[layer*8 + MiM_READ_COLS];		// uint reduction = mm_cols/read_cols_;  uint_params[MM_COLS];  mipmap_params_[MiM_READ_COLS];  uint8 mipmap_params_ = mipmap_params[layer];
 		runcl.set_warp_new_image(	layer, reduction);
