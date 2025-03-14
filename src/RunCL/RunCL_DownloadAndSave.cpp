@@ -87,17 +87,15 @@ void RunCL::createFolders(){
 										"HSV_grad_mem", "dmem_disparity", \
 	};
 	std::vector<std::string> names2 = {\
-										"lookup_table_buf",				"ref_img_buf",				"new_img_buf",		"warped_img_buf",\
-										"ref_img_sq_mean_rows_buf",		"ref_img_sq_mean_buf",\
-										"warped_img_sq_mean_rows_buf",	"warped_img_sq_mean_buf",\
-										"co_mean_rows_buf", 			"correlation_buf",			"confidence_buf",	"warp_buf"\
+										"lookup_table_buf",				"ref_img_buf",					"new_img_buf",					"warped_img_buf",\
+										"ref_img_mean_rows_buf",		"ref_img_mean_buf",				"warped_img_mean_rows_buf",		"warped_img_mean_buf",\
+										"ref_img_diff_buf",												"warped_img_diff_buf",	\
+										"ref_img_sigma_3rows",			"ref_img_sigma_3cols",			"warped_img_sigma_3rows",		"warped_img_sigma_3cols",\
+										"covariance_rows_buf", 			"covariance_buf",\
+										"correlation_buf",				"warp_buf",						"confidence_buf",\
+										"warp_buf_regularized",			"confidence_buf_regularized"\
 	};
-										/*"lookup_table_buf",*/ 	/*"curr_img_buf", 			"curr_img_sq_buf",  		"curr_img_var_buf",*/ \
-										/*"new_img_buf",*/ 			/*"new_img_warped_buf", 		"new_img_sq_buf", 			"new_img_var_buf",*/  \
-										/*"img_covar_buf", 			"img_corr_buf",*/  			/*"warp_buf",*/\
-										// \
-										// /*"ref_img_mean_rows_buf",*/  /*"warped_img_mean_rows_buf",*/	/*"ref_img_mean_buf",*/		/*"warped_img_mean_buf",*/
-										//"atomic_test1_buf", "atomic_test2_buf"  // "binocular_disparity", "binocular_rho",
+										//"atomic_test1_buf", "atomic_test2_buf"
 	std::pair<std::string, std::filesystem::path> tempPair;
 
 	tempPair = {"folder", out_path};																										// Top level output folder, used to std::out file.

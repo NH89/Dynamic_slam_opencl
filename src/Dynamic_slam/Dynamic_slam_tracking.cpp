@@ -325,7 +325,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 																																			<<"   SE3_start_layer="<<SE3_start_layer
 																																			<<"   obj['SE3_start_layer'].asUInt()="<<obj["SE3_start_layer"].asUInt()
 																																			<<endl<<flush;
-																																			layer=obj["SE3_start_layer"].asUInt();
+																																			//layer=obj["SE3_start_layer"].asUInt();
 																																			if (layer>6) runcl.exit_(1);
 																																		}
 		runcl.estimateSE3_LK( k2k_4_16[0], SE3_results, SE3_weights, Rho_sq_results[0], iter, layer-2, layer );		// NB processes largest layer first.		// Find the gradient "update" wrt SE3

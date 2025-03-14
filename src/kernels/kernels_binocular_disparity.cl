@@ -129,11 +129,14 @@ __kernel void warp_image(						// Computed once each iteration of warping, for e
 	float 	v 	= lookup_ref.y + warp2.y;
 	if( v>=0 && v<read_rows_  && u>=0 && u <= read_cols_){
 		// 2-way linear interpolation of four sample pixels.
-		float4 warped_lower			= mix( new_img[sample_index+1], 			new_img[sample_index], 			u_mod );  // new_img[sample_index] 			* (1-u_mod) + new_img[sample_index+1] 			* u_mod;
-		float4 warped_upper			= mix( new_img[sample_index+mm_cols+1] , 	new_img[sample_index+mm_cols] , u_mod );  // new_img[sample_index+mm_cols] 	* (1-u_mod) + new_img[sample_index+mm_cols+1] 	* u_mod;
-		new_img_warped[read_index]	= mix( warped_upper , 						warped_lower , 					v_mod );  // warped_lower 					* (1-v_mod)  	+ warped_upper 						* v_mod;
+		float4 warped_lower			= mix( new_img[sample_index], 			new_img[sample_index+1], 			u_mod );  // new_img[sample_index] 			* (1-u_mod) + new_img[sample_index+1] 			* u_mod;
+		float4 warped_upper			= mix( new_img[sample_index+mm_cols] , 	new_img[sample_index+mm_cols+1],	u_mod );  // new_img[sample_index+mm_cols] 	* (1-u_mod) + new_img[sample_index+mm_cols+1] 	* u_mod;
+		new_img_warped[read_index]	= mix( warped_lower , 					warped_upper ,						v_mod );  // warped_lower 					* (1-v_mod)  	+ warped_upper 						* v_mod;
 	}
-	barrier(CLK_LOCAL_MEM_FENCE);
+	//float4	test 				= { (float)u_int, (float)v_int, u_mod, v_mod };
+	//new_img_warped[read_index]	=	test;
+
+	//barrier(CLK_LOCAL_MEM_FENCE);
 // 	if (0.0f == fmod(global_id_flt, 33.0f) ){
 // 		printf("\n__kernel void warp_image(..): warp2=(%f,%f), global_id=%u, lookup_ref.x=%f lookup_ref.y=%f u_int=%u, u_mod=%f, read_index=%u", \
 // 		warp2.x, warp2.y, global_id, lookup_ref.x, lookup_ref.y, u_int, u_mod, read_index);
@@ -143,7 +146,7 @@ __kernel void warp_image(						// Computed once each iteration of warping, for e
 												// Rows then Columns kernels reduces computation & memoory reads,
 												// especially as patch size increases.
 
-__kernel void mean_sq_3rows(					// square the pixels to accentuate high values in each channel
+__kernel void mean_3rows(						// square the pixels to accentuate high values in each channel
 												// Compute mu_X for the 3x3 patch, and then Standard Deviation sd =(X-mu_X)
 	// inputs
 	__private	uint	read_offset,			//0
@@ -157,16 +160,16 @@ __kernel void mean_sq_3rows(					// square the pixels to accentuate high values 
 	if (read_index ==0 ) return;
 
 	float4 sum_of_squares				= zero_f4;
-	float4 pix_val;
 
 	__attribute__((opencl_unroll_hint))
 	for (int col=-1;col<2;col++){
-		sum_of_squares 					+=	pown( img[read_index + col], 2);						// pixel squared
+		sum_of_squares 					+=	img[read_index + col]; 			//pown( img[read_index + col], 2);						// pixel squared
 	}
-	sq_mean_rows[read_index]			= 	sum_of_squares;
+	sum_of_squares.w					= 3.0f;
+	sq_mean_rows[read_index]			= sum_of_squares/3.0f;
 }
 
-__kernel void mean_sq_3cols(
+__kernel void mean_3cols(
 	// inputs
 	__private	uint	read_offset,			//0
 	__private	uint	mm_cols,				//1
@@ -175,21 +178,25 @@ __kernel void mean_sq_3cols(
 	__global 	float4*	sq_mean_rows,			//3
 	__global 	float4*	img,					//4
 	// output
-	__global 	float4*	mean_sq,				//5
-	__global	float4* sd						//6		// standard deviation of this pixel.
+	__global 	float4*	mean,					//5
+	__global	float4* diff					//6		// standard deviation of this pixel.
 ){
 	uint 	read_index					= floor( lookup_table[ get_global_id(0) + read_offset ].z );
 	if (read_index ==0 ) return;
 
-	float4 mean_of_squares				= zero_f4;
+	float4 pvt_mean						= zero_f4;
 
 	__attribute__((opencl_unroll_hint))
 	for (int col=-1;col<2;col++){ 					// mad_sat -> non-wrap-around integer result. // read_index + col*mm_cols
-		mean_of_squares 				+=	sq_mean_rows[ mad_sat( (int)col , (int)mm_cols , (int)read_index ) ];
+		pvt_mean 						+=	sq_mean_rows[ mad_sat( (int)col , (int)mm_cols , (int)read_index ) ];
 	}
-	mean_of_squares 					/= 9.0f;
-	mean_sq[read_index]					= mean_of_squares;
-	sd[read_index]						= img[read_index] - mean_of_squares;
+	pvt_mean.w							=  3.0f;
+	pvt_mean 							/= 3.0f;
+	mean[read_index]					= pvt_mean;
+
+	float4 pvt_diff						= img[read_index] - pvt_mean;
+	pvt_diff.w							= 1.0f;
+	diff[read_index]					= pvt_diff;
 }
 
 												// TODO not clear that the sigma kernels are needed, may just use sd from mean_sq kernels.
@@ -200,21 +207,23 @@ __kernel void sigma_3rows(						// sigma_X = Expectation[ X - mu_X ],  the Stand
 	__private	uint	read_offset,			//0
 
 	__global 	float4*	lookup_table,			//1
-	__global 	float4*	sd,						//2
+	__global 	float4*	diff,					//2
 	// output
 	__global 	float4*	sigma_rows				//3
 ){
 	uint 	read_index					= floor( lookup_table[ get_global_id(0) + read_offset ].z );
 	if (read_index ==0 ) return;
 
-	float4 sum_of_sd					= zero_f4;
-	float4 pix_val;
+	float4 sum_diff_squared				= zero_f4;
+	float4 pvt_diff;
 
 	__attribute__((opencl_unroll_hint))
 	for (int col=-1;col<2;col++){
-		sum_of_sd 						+=	sd[read_index + col];
+			pvt_diff					= diff[read_index + col];
+			sum_diff_squared 			+= pvt_diff * pvt_diff;
 	}
-	sigma_rows[read_index]				= 	sum_of_sd;
+	sum_diff_squared.w					= 3.0f;
+	sigma_rows[read_index]				= sum_diff_squared/3.0f;
 }
 
 
@@ -226,7 +235,7 @@ __kernel void sigma_3cols(
 	__global 	float4*	lookup_table,			//2
 	__global 	float4*	sigma_rows,				//3
 	// output
-	__global 	float4*	mean_sigma				//4		// standard deviation of this 3x3 patch of pixels
+	__global 	float4*	SD						//4		// standard deviation of this 3x3 patch of pixels
 ){
 	uint 	read_index					= floor( lookup_table[ get_global_id(0) + read_offset ].z );
 	if (read_index ==0 ) return;
@@ -237,7 +246,8 @@ __kernel void sigma_3cols(
 	for (int col=-1;col<2;col++){ 					// mad_sat -> non-wrap-around integer result. // read_index + col*mm_cols
 		mean_of_sigma	 				+=	sigma_rows[ mad_sat( (int)col , (int)mm_cols , (int)read_index ) ];
 	}
-	mean_sigma[read_index]				= mean_of_sigma/9.0f;
+	mean_of_sigma.w						= 3.0f;
+	SD[read_index]						= sqrt( mean_of_sigma/3.0f );
 }
 
 
@@ -249,15 +259,19 @@ __kernel void covariance_3rows( 				// ref_img SD * warped_img SD, for each of 5
 	__private	uint 	mm_size,				//2
 
 	__global 	float4*	lookup_table,			//3
-	__global	float4* sd_ref_img,				//4
-	__global	float4* sd_warped_img,			//5
+	__global	float4* diff_ref_img,			//4
+	__global	float4* diff_warped_img,		//5
 	//output
 	__global	float4*	covariance_rows			//6		// sizeof(float4) * 5 * mm_size
 ){
 	uint 	read_index							= floor( lookup_table[ get_global_id(0) + read_offset ].z );
 	if (read_index ==0 ) return;
-	float4 	temp_val;
-	float4 	ref_val								= sd_ref_img[read_index];
+	float4 	temp_val, pvt_diff_ref[3];
+
+	__attribute__((opencl_unroll_hint))
+	for (int col=0;col<3;col++){
+		pvt_diff_ref[col]							= diff_ref_img[read_index + col -1];							// store pixelwise (X- mu_x)
+	}
 
 	uint	write_index 						= read_index;
 	uint	increment[5]						= { -mm_cols , -1 , 0 , 1 , mm_cols };
@@ -267,10 +281,11 @@ __kernel void covariance_3rows( 				// ref_img SD * warped_img SD, for each of 5
 		temp_val								= zero_f4;
 
 		__attribute__((opencl_unroll_hint))
-		for (int col=-1;col<2;col++){
-			temp_val							+= ref_val * sd_warped_img[ read_index + col + increment[sample] ];
+		for (int col=0;col<3;col++){
+			temp_val							+= pvt_diff_ref[col] * diff_warped_img[ read_index + col -1 + increment[sample] ];	// co-variance
 		}
-		covariance_rows[ write_index ]			= temp_val;
+		temp_val.w								= 3.0f;
+		covariance_rows[ write_index ]			= temp_val/3.0f;
 		write_index								+= mm_size;
 	}
 }
@@ -302,7 +317,8 @@ __kernel void covariance_3cols(
 		for (int col=-1;col<2;col++){
 			temp_val					+= covariance_rows[ mad_sat( (int)col , (int)mm_cols , (int)write_index )  ];
 		}
-		covariance[ write_index ]		= temp_val;
+		temp_val.w						= 3.0f;
+		covariance[ write_index ]		= temp_val/3.0f;
 		write_index						+= mm_size;
 	}
 }
@@ -370,26 +386,32 @@ __kernel void correlation(						// Could merge with covariance_3cols(..). Also c
 	if (read_index ==0 ) return;
 	float4 	pvt_correlation[5] 					= {zero_f4, zero_f4, zero_f4, zero_f4, zero_f4};
 
-	uint	write_index 						= read_index;
+	uint	write_index							= read_index;
 	uint	increment[5]						= { -mm_cols , -1 , 0 , 1 , mm_cols };
 
 	__attribute__((opencl_unroll_hint))
-	for (int sample=0;sample<5;sample++){
-		pvt_correlation[sample]					= clamp( (covariance[write_index] /  sd_ref_img[read_index] * sd_warped_img[write_index]), 0.0f , 1.0f ) ;  // ### clamped to 0.0 < correlation < 1.0
-		correlation[write_index]				= pvt_correlation[sample];
+	for (uint sample=0;sample<5;sample++){
+		pvt_correlation[sample]					= covariance[write_index] / (sd_ref_img[read_index] * sd_warped_img[read_index + increment[sample] ] );      // clamp( (covariance[write_index] /  sd_ref_img[read_index] * sd_warped_img[write_index]), -1.0f , 1.0f ) ;  // ### clamped to 0.0 < correlation < 1.0
+
+		if ( !isnormal(pvt_correlation[sample].x) )	{ pvt_correlation[sample].x	= 0.111f; }		// not needed if clamped to (-1 <-> +1)
+		if ( !isnormal(pvt_correlation[sample].y) )	{ pvt_correlation[sample].y	= 0.111f; }
+		if ( !isnormal(pvt_correlation[sample].z) )	{ pvt_correlation[sample].z	= 0.111f; }
+////sd_warped_img[read_index + increment[sample] ];// (sd_ref_img[read_index] );//* sd_warped_img[read_index + increment[sample] ] ); //covariance[write_index]; //
+		correlation[write_index]				=  pvt_correlation[sample];
+		write_index								+= mm_size;
 	}
 
 	float old_conf  							= confidence[read_index];
 	float2 warp2								= warp[read_index];
- 	float2 opt_u								= compute_maximum( pvt_correlation[1], pvt_correlation[2], pvt_correlation[3] );		// does the work of PolyDisparity kernel in UG code.
-	float2 opt_v								= compute_maximum( pvt_correlation[0], pvt_correlation[2], pvt_correlation[4] );
+ 	float2 opt_u								= pvt_correlation[1].x - pvt_correlation[3].x; // compute_maximum( pvt_correlation[1], pvt_correlation[2], pvt_correlation[3] );//		// does the work of PolyDisparity kernel in UG code.
+	float2 opt_v								= pvt_correlation[0].x - pvt_correlation[4].x; //compute_maximum( pvt_correlation[0], pvt_correlation[2], pvt_correlation[4] );//
 
 	float2 warp_new;
-	warp_new.x									= warp2.x + opt_u.x;		// TODO currently only using channel .x of the correlation, from .x of the images.
- 	warp_new.y									= warp2.y + opt_v.x;		// Need to decide how to blend the channels.
+	warp_new.x									=  opt_u.x + warp2.x;	// TODO currently only using channel .x of the correlation, from .x of the images.
+ 	warp_new.y									=  opt_v.x + warp2.y;	// Need to decide how to blend the channels.
 	warp[read_index]							= warp_new;
 
-	confidence[read_index]						= clamp( (0.75f*old_conf + 0.25f * opt_u.y * opt_v.y), 0.0f, 1.0f);						// ### clamped to 0.0 < confidence < 1.0
+	confidence[read_index]						= (0.75f*old_conf + 0.25f * opt_u.y * opt_v.y); // clamp( (0.75f*old_conf + 0.25f * opt_u.y * opt_v.y), 0.0f, 1.0f);						// ### clamped to 0.0 < confidence < 1.0
 }
 
 
@@ -403,8 +425,8 @@ __kernel void regularize_warp(					// Use local mem to avoid repeat loading of s
 	__local		float*	local_confidence,		//3		2 rows + 1px halo at each end, middle row only.
 
 	__global 	float4*	lookup_table,			//4
-	__global 	float*	confidence_buf,			//5
-	__global 	float2*	warp,					//6
+	__global 	float2*	warp,					//5
+	__global 	float*	confidence_buf,			//6
 	// outputs
 	__global 	float2*	new_warp,				//7
 	__global 	float*	new_confidence			//8
@@ -429,7 +451,7 @@ __kernel void regularize_warp(					// Use local mem to avoid repeat loading of s
 		local_warp[       lid_1 + pix_offset[lid] + patch_length ]			= warp[           read_index + pix_offset[lid] ];
 		local_confidence[ lid_1 + pix_offset[lid] + patch_length ]			= confidence_buf[ read_index + pix_offset[lid] ];
 	}
-
+	barrier(CLK_LOCAL_MEM_FENCE);
 	// 5-way weighted sum of neighbopurs (i) conf*input,  and (ii) conf
 	uint	increment[5]						= { 0 , patch_length-1 , patch_length , patch_length+1 , 2*patch_length }; // where to sample local mem relative to lid_1 = lid+1.
 	float2	sum_warp 							= {0.0f, 0.0f};
@@ -485,7 +507,7 @@ __kernel void regularize_warp(					// Use local mem to avoid repeat loading of s
 	if (lid <2){
 		local_warp[  pix_offset[lid] ]			= warp[ read_index + pix_offset[lid] ];
 	}
-
+	barrier(CLK_LOCAL_MEM_FENCE);
 	float2 warp_in00					= local_warp[lid] ;
 	float2 warp_in10					= local_warp[lid+1] ;
 	float2 warp_in01					= local_warp[lid+patch_length] ;

@@ -202,17 +202,17 @@ __kernel void blur_image(
 	float4 blurred_pixel = 0;
 	for (int i=0; i<5; i++){
 		for (int j=0; j<5; j++){
-			blurred_pixel += local_img_patch[lid+j + i*patch_length]/25; 							// 5x5 box filter, rather than Gaussian
+			blurred_pixel += local_img_patch[lid+j + i*patch_length];// /25; 						// 5x5 box filter, rather than Gaussian
 		}
 	}
 	if (read_column < 2 || read_column > read_cols_ -3) {
 		blurred_pixel = 0;
 		for (int i=0; i<5; i++){
-			blurred_pixel += local_img_patch[lid+2 + i*patch_length]/5;								// prevents blur wrapping left-right.
+			blurred_pixel += local_img_patch[lid+2 + i*patch_length];// /5;							// prevents blur wrapping left-right.
 		}
 	}
 	if (read_row>=read_rows_ || global_id_u >= pixels) return;									// num pixels to be written & num threads to really use. // mipmap_params_[MiM_PIXELS]
-
+	blurred_pixel		/= 25;
 	blurred_pixel[3] = 1.0f;
 	img_blurred[ read_index] = blurred_pixel;
 }

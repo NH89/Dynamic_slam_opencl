@@ -72,8 +72,11 @@ public:
 	cl_kernel			cvt_color_space_kernel, cvt_color_space_linear_kernel, sum_image_variance_kernel, blur_image_kernel;
 	cl_kernel 			reduce_kernel, mipmap_float4_kernel, mipmap_float_kernel, img_grad_kernel, se3_rho_sq_kernel, comp_param_maps_kernel;
 	cl_kernel			se3_lk_grad_kernel, atomic_test1_kernel, atomic_test2_kernel;
-	cl_kernel			compute_lookup_table_kernel, set_warp_new_image_kernel, warp_image_kernel, /*img_sq_kernel, img_variance_kernel, compute_warp_kernel,*/ propagate_warp_kernel;
-	cl_kernel			mean_sq_3rows_kernel, mean_sq_cols_kernel, sigma_3rows_kernel, sigma_3cols_kernel, covariance_3rows_kernel, covariance_cols_kernel, regularize_warp_kernel;
+	// stereo disparity kernels
+	cl_kernel			compute_lookup_table_kernel, set_warp_new_image_kernel, warp_image_kernel;
+	cl_kernel			mean_sq_3rows_kernel, mean_sq_cols_kernel, sigma_3rows_kernel, sigma_3cols_kernel;
+	cl_kernel			covariance_3rows_kernel, covariance_cols_kernel, correlation_kernel;
+	cl_kernel			regularize_warp_kernel, propagate_warp_kernel;
 	
 	// GPU Buffers
 	cl_mem 				basemem, imgmem,  imgmem_blurred, gxmem, gymem, k_map_mem, dist_map_mem, SE3_grad_map_mem, SE3_incr_map_mem;
@@ -85,15 +88,17 @@ public:
 	cl_mem 				pix_sum_mem, var_sum_mem, se3_sum_mem, se3_sum2_mem, se3_weight_sum_mem;
 	cl_mem 				keyframe_imgmem, keyframe_imgmem_HSV_grad, keyframe_depth_mem, keyframe_g1mem, keyframe_SE3_grad_map_mem, keyframe_depth_mem_GT;
 	cl_mem				HSV_grad_mem, dmem_disparity, dmem_disparity_sum;
-	//cl_mem				binocular_disparity, binocular_rho;
-	//cl_mem				atomic_test1_buf, atomic_test2_buf;
-	cl_mem				curr_img_buf,  curr_img_sq_buf, curr_img_var_buf, new_img_warped_buf, new_img_sq_buf, new_img_var_buf,    img_covar_buf, img_corr_buf;
 
-	cl_mem				lookup_table_buf,			ref_img_buf,					new_img_buf,				warped_img_buf;
-	cl_mem				ref_img_sq_mean_rows_buf,	warped_img_sq_mean_rows_buf,	ref_img_sigma_rows_buf,		warped_img_sigma_rows_buf,		covariance_rows_buf;
-	cl_mem				ref_img_sq_mean_buf,		warped_img_sq_mean_buf,			ref_img_mean_sigma_buf,		warped_img_mean_sigma_buf,		covariance_buf;
-	cl_mem				ref_img_sd_buf,				warped_img_sd_buf;
-	cl_mem				correlation_buf,			confidence_buf,					warp_buf,					warp_buf_regularized;
+	// buffers for stereo disparity
+	cl_mem				lookup_table_buf,			ref_img_buf,				new_img_buf,					warped_img_buf;
+	cl_mem				ref_img_mean_rows_buf,		ref_img_mean_buf,			warped_img_mean_rows_buf,		warped_img_mean_buf;
+	cl_mem				ref_img_diff_buf,			warped_img_diff_buf;
+	cl_mem				ref_img_sigma_rows_buf,		ref_img_mean_sigma_buf,		warped_img_sigma_rows_buf,		warped_img_mean_sigma_buf;
+
+	cl_mem 				covariance_rows_buf,		covariance_buf;
+	cl_mem				correlation_buf;
+	cl_mem				warp_buf,					confidence_buf;
+	cl_mem				warp_buf_regularized,		confidence_buf_regularized;
 	//
 	cv::Mat 			baseImage, key_frame;
 
@@ -184,13 +189,14 @@ public:
 	void compute_warp(   uint layer, uint iter);
 	void propagate_warp( uint layer );
 
-
-	void mean_sq_3rows(	  uint layer, uint iter, std::string folder_sq_mean_rows,	cl_mem img_buf,			cl_mem sq_mean_rows_buf);
-	void mean_sq_cols(	  uint layer, uint iter, std::string folder_sq_mean,		cl_mem img_buf, 		cl_mem sq_mean_rows_buf, 	cl_mem sq_mean_buf, 	cl_mem sd_buf);
-	void sigma_3rows( 	  uint layer, uint iter, std::string folder_sigma_3rows, 	cl_mem sd_buf, 			cl_mem sigma_rows_buf);
-	void sigma_3cols( 	  uint layer, uint iter, std::string folder_sigma_3cols, 	cl_mem sigma_rows_buf, 	cl_mem mean_sigma_buf );
+					   // uint layer, uint iter, std::string folder_mean_rows, cl_mem img_buf, cl_mem mean_rows_buf
+	void mean_3rows (	  uint layer, uint iter, std::string folder_mean_rows,								cl_mem img_buf,			cl_mem mean_rows_buf);
+	void mean_cols (	  uint layer, uint iter, std::string folder_mean,			std::string folder_sd,	cl_mem img_buf, 		cl_mem mean_rows_buf, 	cl_mem mean_buf, 	cl_mem diff_buf);
+	void sigma_3rows( 	  uint layer, uint iter, std::string folder_sigma_3rows, 							cl_mem sd_buf, 			cl_mem sigma_rows_buf);
+	void sigma_3cols( 	  uint layer, uint iter, std::string folder_sigma_3cols, 							cl_mem sigma_rows_buf, 	cl_mem mean_sigma_buf );
 	void covariance_3rows(uint layer, uint iter);
 	void covariance_cols( uint layer, uint iter);
+	void correlation( 	  uint layer, uint iter);
 	void regularize_warp( uint layer, uint iter);
 
 	/////////////////////////////////////// RunCL_DownloadAndSave.cpp
