@@ -8,8 +8,11 @@ using namespace std;
 void Dynamic_slam::binocular_reference_frame(){
 	string fname = "RunCL::binocular_reference_frame( )";
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_BINOCULAR_REFERENCE_FRAME;
-																												if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::reference_frame() ######################################"<<flush;}
+																												if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::binocular_reference_frame() ######################################"<<flush;}
 	// load image into buffers
+	runcl.disparity_load_frame( runcl.basemem, runcl.ref_img_buf, "ref_img_buf" );
+	runcl.mipmap_3x3blur_linear( runcl.ref_img_buf, "ref_img_buf");
+/*
 	runcl._clEnqueueCopyBuffer( runcl.m_queue, runcl.keyframe_imgmem, 	runcl.ref_img_buf, 			0, 0, runcl.mm_size_bytes_C4, 	fname);
 																												if( verbosity>local_verbosity_threshold ) {cout<<"\n\nRunCL::mean_sq_3rows( ..)_chk2 ."<<flush;								// Save buffers to file ###########
 																														stringstream ss;
@@ -22,17 +25,18 @@ void Dynamic_slam::binocular_reference_frame(){
 																														runcl.DownloadAndSave_3Channel(  runcl.ref_img_buf,  ss.str( ), runcl.paths.at( "ref_img_buf" ),  runcl.mm_size_bytes_C4,  runcl.mm_Image_size,  CV_32FC4,  show , max_range);
 																														runcl.tiff 			= old_tiff;
 																												}
+*/
 	// prepare reference frame
-	uint iter = 0;
-	for (int layer = runcl.mm_stop; layer >=0; layer-- ){
-		runcl.mean_3rows (  		layer, iter, "ref_img_mean_rows_buf",							runcl.ref_img_buf,				runcl.ref_img_mean_rows_buf );
-		runcl.mean_cols (			layer, iter, "ref_img_mean_buf",			"ref_img_diff_buf",	runcl.ref_img_buf, 				runcl.ref_img_mean_rows_buf, runcl.ref_img_mean_buf, runcl.ref_img_diff_buf );
-		runcl.sigma_3rows( 			layer, iter, "ref_img_sigma_3rows", 							runcl.ref_img_diff_buf, 		runcl.ref_img_sigma_rows_buf);
-		runcl.sigma_3cols( 			layer, iter, "ref_img_sigma_3cols", 							runcl.ref_img_sigma_rows_buf, 	runcl.ref_img_mean_sigma_buf);
-	}
+	// uint iter = 0;
+	// for (int layer = runcl.mm_stop; layer >=0; layer-- ){
+	// 	runcl.mean_3rows (  		layer, iter, "ref_img_mean_rows_buf",							runcl.ref_img_buf,				runcl.ref_img_mean_rows_buf );
+	// 	runcl.mean_cols  (			layer, iter, "ref_img_mean_buf",			"ref_img_diff_buf",	runcl.ref_img_buf, 				runcl.ref_img_mean_rows_buf, runcl.ref_img_mean_buf, runcl.ref_img_diff_buf );
+	// 	runcl.sigma_3rows( 			layer, iter, "ref_img_sigma_3rows", 							runcl.ref_img_diff_buf, 		runcl.ref_img_sigma_rows_buf);
+	// 	runcl.sigma_3cols( 			layer, iter, "ref_img_sigma_3cols", 							runcl.ref_img_sigma_rows_buf, 	runcl.ref_img_mean_sigma_buf);
+	// }
 	// predict warp ? from previous keyframe
 
-																												if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::reference_frame() finished ############################\f"<<flush;}
+																												if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::binocular_reference_frame() finished ############################\f"<<flush;}
 }
 
 void Dynamic_slam::binocular_disparity(){
@@ -40,6 +44,9 @@ void Dynamic_slam::binocular_disparity(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_BINOCULAR_DISPARITY;
 																												if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::disparity() ######################################"<<flush;}
 	// load image into buffers
+	runcl.disparity_load_frame(runcl.basemem, runcl.new_img_buf, "new_img_buf" );
+	runcl.mipmap_3x3blur_linear( runcl.new_img_buf, "new_img_buf");
+/*
 	runcl._clEnqueueCopyBuffer( runcl.m_queue, runcl.imgmem,	runcl.new_img_buf,			0, 0, runcl.mm_size_bytes_C4, 	fname);
 																													if( verbosity>local_verbosity_threshold ) {cout<<"\n\nRunCL::mean_sq_3rows( ..)_chk2 ."<<flush;								// Save buffers to file ###########
 																														stringstream ss;
@@ -52,6 +59,7 @@ void Dynamic_slam::binocular_disparity(){
 																														runcl.DownloadAndSave_3Channel(  runcl.new_img_buf,  ss.str( ), runcl.paths.at( "new_img_buf" ),  runcl.mm_size_bytes_C4,  runcl.mm_Image_size,  CV_32FC4,  show , max_range);
 																														runcl.tiff 			= old_tiff;
 																												}
+*/
 	const float zero  = 0.0f;
 	runcl._clEnqueueFillBuffer( runcl.m_queue, runcl.confidence_buf,  &zero,    sizeof( float),  0,     runcl.mm_size_bytes_C4, 	fname);
 	runcl._cl_flush_finish(runcl.m_queue, fname);
@@ -71,17 +79,19 @@ void Dynamic_slam::binocular_disparity(){
 	}
 
 	// compute warp for this frame  // can be until (layer > runcl.mm_start) but takes 3x longer.		(NB "SE3_start_layer":4,  "SE3_stop_layer":1, )
-	for (int layer = 0/*runcl.mm_stop*/ ; layer > -1/*runcl.mm_start+3*/ ; layer-- ){						if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::disparity() chk_1 layer="<<layer<<", runcl.mm_start+3="<<runcl.mm_start+3<<", runcl.mm_stop="<<runcl.mm_stop<<flush;}
+	for (int layer = 4/*0*//*runcl.mm_stop*/ ; layer > -1/*runcl.mm_start+3*/ ; layer-- ){						if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::disparity() chk_1 layer="<<layer<<", runcl.mm_start+3="<<runcl.mm_start+3<<", runcl.mm_stop="<<runcl.mm_stop<<flush;}
 		for (int iter = 0 ; iter < 5   ; iter++ ){																if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::disparity() chk_2 layer="<<layer<<", iter="<<iter<<"_"<<flush;}
 			runcl.warp_image(		layer, iter  );
-			runcl.mean_3rows (		layer, iter, "warped_img_mean_rows_buf",							runcl.warped_img_buf,				runcl.warped_img_mean_rows_buf );
-			runcl.mean_cols (		layer, iter, "warped_img_mean_buf",			"warped_img_diff_buf",	runcl.warped_img_buf,				runcl.warped_img_mean_rows_buf,		runcl.warped_img_mean_buf,	runcl.warped_img_diff_buf );
-			runcl.sigma_3rows(		layer, iter, "warped_img_sigma_3rows",								runcl.warped_img_diff_buf,			runcl.warped_img_sigma_rows_buf);
-			runcl.sigma_3cols(		layer, iter, "warped_img_sigma_3cols",								runcl.warped_img_sigma_rows_buf,	runcl.warped_img_mean_sigma_buf);
-			runcl.covariance_3rows(	layer, iter  );
-			runcl.covariance_cols(	layer, iter  );
-			runcl.correlation(		layer, iter  );
-			runcl.regularize_warp(	layer, iter  );
+			runcl.correlation_one_step ( layer, iter );
+
+			// runcl.mean_3rows (		layer, iter, "warped_img_mean_rows_buf",							runcl.warped_img_buf,				runcl.warped_img_mean_rows_buf );
+			// runcl.mean_cols (		layer, iter, "warped_img_mean_buf",			"warped_img_diff_buf",	runcl.warped_img_buf,				runcl.warped_img_mean_rows_buf,		runcl.warped_img_mean_buf,	runcl.warped_img_diff_buf );
+			// runcl.sigma_3rows(		layer, iter, "warped_img_sigma_3rows",								runcl.warped_img_diff_buf,			runcl.warped_img_sigma_rows_buf);
+			// runcl.sigma_3cols(		layer, iter, "warped_img_sigma_3cols",								runcl.warped_img_sigma_rows_buf,	runcl.warped_img_mean_sigma_buf);
+			// runcl.covariance_3rows(	layer, iter  );
+			// runcl.covariance_cols(	layer, iter  );
+			// runcl.correlation(		layer, iter  );
+			// runcl.regularize_warp(	layer, iter  );
 		}
 		if (layer>runcl.mm_start){ runcl.propagate_warp( layer ); }
 	}

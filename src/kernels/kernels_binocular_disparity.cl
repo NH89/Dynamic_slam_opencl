@@ -10,12 +10,12 @@ __constant float4 ones_f4				= {1.0f,1.0f,1.0f,1.0f};
 	__private	uint	layer,					//0
 	__private	uint	lookup_table_offset,	//1
 
-	__constant 	uint8*	mipmap_params,			//2
-	__constant 	uint*	uint_params,			//3
-	__constant  float*  fp32_params,			//4
+	__constant 	uint8*	mipmap_params,			//3
+	__constant 	uint*	uint_params,			//4
+	__constant  float*  fp32_params,			//5
 
 	// output
-	__global 	float4*	lookup_table			//5
+	__global 	float4*	lookup_table			//6
 ){
 	uint  global_id					= get_global_id(0);
 	float global_id_flt 			= global_id;
@@ -45,6 +45,28 @@ __constant float4 ones_f4				= {1.0f,1.0f,1.0f,1.0f};
 	lookup_table[global_id + lookup_table_offset]	= lookup;	//read_index;//											// pixel idex in mipmap
 }
 
+__kernel void disparity_load_frame(
+	__private	uint	read_offset,			//0
+	__private	uint 	baseImage_size,			//1
+
+	__global 	float4*	lookup_table,			//2
+	__global 	uchar*	basemem,				//3
+
+	// outputs
+	__global 	float4*	new_img					//4
+){
+	uint 	global_id_uint 		= get_global_id(0);
+	float4 	lookup_ref			= lookup_table[global_id_uint];
+	uint 	write_index			= floor(lookup_ref.z);
+	if ( write_index ==0 ) return;
+
+	float R_float				= basemem[global_id_uint*3]  /256.0f;
+	float G_float				= basemem[global_id_uint*3+1]/256.0f;
+	float B_float				= basemem[global_id_uint*3+2]/256.0f;
+
+	float4 pixel				= { R_float, G_float, B_float, 1.0f };
+	new_img[write_index]		= pixel;
+}
 
 __kernel void set_warp_new_image(						// Computed once each iteration of warping, for each layer of image pyramid
 	// inputs									// Warp describes where to sample the new image to match the reference image.
@@ -62,7 +84,7 @@ __kernel void set_warp_new_image(						// Computed once each iteration of warpin
 	// output
 	__global 	float2*	warp					//9
 ){
-	uint global_id_uint = get_global_id(0);
+	uint 	global_id_uint 		= get_global_id(0);
 	float4 	lookup_ref			= lookup_table[global_id_uint + read_offset];
 	uint 	read_index			= floor(lookup_ref.z);
 	if (read_index ==0 ) return;
@@ -118,10 +140,10 @@ __kernel void warp_image(						// Computed once each iteration of warping, for e
 	float4 	lookup_ref			= lookup_table[global_id + read_offset];
 	uint 	read_index			= floor(lookup_ref.z);
 	float2 	warp2				= warp[read_index];
-	float	u_mod				= fmod(warp2.x, 1);
-	float	v_mod				= fmod(warp2.y, 1);
 	int		u_int				= floor(warp2.x);
 	int		v_int				= floor(warp2.y);
+	float	u_mod				= warp2.x - u_int;
+	float	v_mod				= warp2.y - v_int;
 	uint	sample_index		= read_index  + (v_int * mm_cols)  + u_int ;
 
 	//if(sample_index>0 && sample_index < uint_params[MM_PIXELS] ){
@@ -129,19 +151,98 @@ __kernel void warp_image(						// Computed once each iteration of warping, for e
 	float 	v 	= lookup_ref.y + warp2.y;
 	if( v>=0 && v<read_rows_  && u>=0 && u <= read_cols_){
 		// 2-way linear interpolation of four sample pixels.
-		float4 warped_lower			= mix( new_img[sample_index], 			new_img[sample_index+1], 			u_mod );  // new_img[sample_index] 			* (1-u_mod) + new_img[sample_index+1] 			* u_mod;
-		float4 warped_upper			= mix( new_img[sample_index+mm_cols] , 	new_img[sample_index+mm_cols+1],	u_mod );  // new_img[sample_index+mm_cols] 	* (1-u_mod) + new_img[sample_index+mm_cols+1] 	* u_mod;
-		new_img_warped[read_index]	= mix( warped_lower , 					warped_upper ,						v_mod );  // warped_lower 					* (1-v_mod)  	+ warped_upper 						* v_mod;
-	}
-	//float4	test 				= { (float)u_int, (float)v_int, u_mod, v_mod };
-	//new_img_warped[read_index]	=	test;
+		float4 warped_lower			= new_img[sample_index] 			* (1-u_mod)  +  new_img[sample_index+1] 			* u_mod; // mix( new_img[sample_index], 			new_img[sample_index+1], 			u_mod );  //
+		float4 warped_upper			= new_img[sample_index+mm_cols] 	* (1-u_mod)  +  new_img[sample_index+mm_cols+1] 	* u_mod; // mix( new_img[sample_index+mm_cols] , 	new_img[sample_index+mm_cols+1],	u_mod );  //
+		new_img_warped[read_index]	= warped_lower 						* (1-v_mod)  +  warped_upper 						* v_mod; // mix( warped_lower , 					warped_upper ,						v_mod );  //
 
-	//barrier(CLK_LOCAL_MEM_FENCE);
+		//float4	test 				= { (float)u_int, (float)v_int, u_mod, v_mod };
+		//new_img_warped[read_index]	=	test;
+	}
 // 	if (0.0f == fmod(global_id_flt, 33.0f) ){
 // 		printf("\n__kernel void warp_image(..): warp2=(%f,%f), global_id=%u, lookup_ref.x=%f lookup_ref.y=%f u_int=%u, u_mod=%f, read_index=%u", \
 // 		warp2.x, warp2.y, global_id, lookup_ref.x, lookup_ref.y, u_int, u_mod, read_index);
 // 	}
 }
+
+
+__kernel void correlation_one_step(		// TODO add local memory for efficiency
+	// inputs
+	__private	uint	read_offset,			//0
+	__private	uint	mm_cols,				//1
+	__private	uint 	mm_size,				//2
+	//
+	__global 	float4*	lookup_table,			//3
+	__global 	float4*	ref_img,				//4
+	__global 	float4*	warped_img,				//5
+	//outputs
+	__global 	float4*	correlation				//6
+			  ){
+	// From YouTube Template Matching by  Correlation | Image Processing I, Columbia Univ.
+	// N_tf[i,j] = Sum_m,n( f[m,n] * t[m-i,n-j] ) / sqrt(Sum_m,n( f^2[m,n] ) * sqrt(Sum_m,n( t^2[m-i,n-j] ) )
+
+	uint 	read_index							= floor( lookup_table[ get_global_id(0) + read_offset ].z );
+	if (read_index ==0 ) return;
+
+	uint 	index;
+	float4  pvt_ref_pixel[9];
+	float4  pvt_pixel;
+	float4  pvt_correlation[5];
+	float4  pvt_covariance;
+	float4  pvt_sum_sq_ref_patch;
+	float4  pvt_sum_sq_warped_patch;
+
+	uint	write_index 						= read_index;
+	uint	increment[5]						= { -mm_cols , -1 , 0 , 1 , mm_cols };
+
+	index										= 0;
+	pvt_sum_sq_ref_patch						= zero_f4;
+
+	__attribute__((opencl_unroll_hint))
+	for (int col=-1;col<2;col++){
+		__attribute__((opencl_unroll_hint))
+		for (int row=-1;row<2;row++){
+				pvt_ref_pixel[index]			= ref_img[read_index+col+row*mm_cols];
+				pvt_sum_sq_ref_patch			+= pvt_ref_pixel[index] * pvt_ref_pixel[index];
+		}
+	}
+
+	__attribute__((opencl_unroll_hint))
+	for (int sample=0;sample<5;sample++){
+
+		index 									= 0;
+		pvt_correlation[sample]					= zero_f4;
+		pvt_covariance							= zero_f4;
+		pvt_sum_sq_warped_patch					= zero_f4;
+
+		__attribute__((opencl_unroll_hint))
+		for (int col=-1;col<2;col++){
+			__attribute__((opencl_unroll_hint))
+			for (int row=-1;row<2;row++){
+				pvt_pixel						= warped_img[ read_index + col + row*mm_cols + increment[sample] ];
+				pvt_sum_sq_warped_patch			+= pvt_pixel * pvt_pixel;
+
+				pvt_covariance					+= pvt_ref_pixel[index] * pvt_pixel;
+				index++;
+			}
+		}
+		pvt_correlation[ sample ]				= pvt_covariance / ( sqrt(pvt_sum_sq_ref_patch) * sqrt(pvt_sum_sq_warped_patch) );
+		if ( !isnormal(pvt_correlation[sample].x) )	{ pvt_correlation[sample].x	= 0.0f; }		// not needed if clamped to (-1 <-> +1)
+		if ( !isnormal(pvt_correlation[sample].y) )	{ pvt_correlation[sample].y	= 0.0f; }
+		if ( !isnormal(pvt_correlation[sample].z) )	{ pvt_correlation[sample].z	= 0.0f; }
+
+		pvt_correlation[sample] 				= clamp( pvt_correlation[sample], -1.0f, 1.0f );
+
+		pvt_correlation[ sample ].w 			= 1.0f;
+		correlation	[ write_index ]				= pvt_correlation[ sample ];
+
+		write_index								+= mm_size;
+		barrier(CLK_GLOBAL_MEM_FENCE); // CLK_LOCAL_MEM_FENCE);
+	}
+
+	// TODO add warp & confidence
+
+}
+
 
 												// Rows then Columns kernels reduces computation & memoory reads,
 												// especially as patch size increases.
@@ -391,7 +492,7 @@ __kernel void correlation(						// Could merge with covariance_3cols(..). Also c
 
 	__attribute__((opencl_unroll_hint))
 	for (uint sample=0;sample<5;sample++){
-		pvt_correlation[sample]					= covariance[write_index] / (sd_ref_img[read_index] * sd_warped_img[read_index + increment[sample] ] );      // clamp( (covariance[write_index] /  sd_ref_img[read_index] * sd_warped_img[write_index]), -1.0f , 1.0f ) ;  // ### clamped to 0.0 < correlation < 1.0
+		pvt_correlation[sample]					= covariance[write_index] / sqrt(sd_ref_img[read_index] * sd_warped_img[read_index + increment[sample] ] );      // clamp( (covariance[write_index] /  sd_ref_img[read_index] * sd_warped_img[write_index]), -1.0f , 1.0f ) ;  // ### clamped to 0.0 < correlation < 1.0
 
 		if ( !isnormal(pvt_correlation[sample].x) )	{ pvt_correlation[sample].x	= 0.111f; }		// not needed if clamped to (-1 <-> +1)
 		if ( !isnormal(pvt_correlation[sample].y) )	{ pvt_correlation[sample].y	= 0.111f; }

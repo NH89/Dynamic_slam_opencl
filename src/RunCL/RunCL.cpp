@@ -271,6 +271,7 @@ void RunCL::createKernels(){
 	reduce_kernel					= clCreateKernel(m_program, "reduce", 						&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'reduce'  kernel not built.\n"					<<flush; exit_(0);   }
 	mipmap_float4_kernel			= clCreateKernel(m_program, "mipmap_linear_flt4", 			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'mipmap_linear_flt4'  kernel not built.\n"		<<flush; exit_(0);   }
 	mipmap_float_kernel				= clCreateKernel(m_program, "mipmap_linear_flt", 			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'mipmap_linear_flt'  kernel not built.\n"		<<flush; exit_(0);   }
+	mipmap_3x3blur_flt4_kernel		= clCreateKernel(m_program, "mipmap_3x3blur_flt4", 			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'mipmap_linear_flt4'  kernel not built.\n"		<<flush; exit_(0);   }
 
 	img_grad_kernel					= clCreateKernel(m_program, "img_grad", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'img_grad'  kernel not built.\n"					<<flush; exit_(0);   }
 	comp_param_maps_kernel			= clCreateKernel(m_program, "compute_param_maps", 			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'compute_param_maps'  kernel not built.\n"		<<flush; exit_(0);   }
@@ -294,8 +295,11 @@ void RunCL::createKernels(){
 
 	// stereo disparity kernels
 	compute_lookup_table_kernel		= clCreateKernel(m_program, "compute_lookup_table", 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'compute_lookup_table_kernel'  kernel not built.\n"	<<flush; exit_(0);   }
+	disparity_load_frame_kernel		= clCreateKernel(m_program, "disparity_load_frame", 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'disparity_load_frame_kernel'  kernel not built.\n"	<<flush; exit_(0);   }
 	set_warp_new_image_kernel		= clCreateKernel(m_program, "set_warp_new_image",			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'set_warp_new_image_kernel'  kernel not built.\n"	<<flush; exit_(0);   }
 	warp_image_kernel				= clCreateKernel(m_program, "warp_image", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'warp_image_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
+
+	correlation_one_step_kernel		= clCreateKernel(m_program, "correlation_one_step", 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'correlation_one_step'  kernel not built.\n"			<<flush; exit_(0);   }
 
 	mean_sq_3rows_kernel			= clCreateKernel(m_program, "mean_3rows", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'mean_sq_3rows_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
 	mean_sq_cols_kernel				= clCreateKernel(m_program, "mean_3cols",	 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'mean_sq_3cols_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
@@ -369,12 +373,18 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																			if (verbosity>local_verbosity_threshold) {
 																																				cout << "\n"
 																																				<< "RunCL::initialize_RunCL_chk_1: runcl.baseImage.size() = "<< baseImage.size() \
-																																				<<" runcl.baseImage.type() = " << baseImage.type() << "\t"<< checkCVtype(baseImage.type()) <<flush;
+																																				<<" runcl.baseImage.type() = \"" << baseImage.type() << "\" = "<< checkCVtype(baseImage.type()) <<flush;
+																																			}
+																																			if( baseImage.type() != CV_8UC3 ) {  //
+																																				cerr << "RunCL::initialize_RunCL(cv::Mat baseImage_) "
+																																				<<"Error: ( baseImage.type() != CV_8UC3 ),  NB current image loading kernels depend on CV_8UC3 input."
+																																				<<"runcl.baseImage.type() = \"" << baseImage.type() << "\" = "<< checkCVtype(baseImage.type()) <<flush;
+																																				exit_(EXIT_FAILURE);
 																																			}
 																																			if(verbosity>1) { imshow("runcl.baseImage",baseImage); cv::waitKey(-1); }
 	image_size_bytes	= baseImage.total() * baseImage.elemSize();																			// Constant parameters of the base image
 	image_size_bytes_C1	= baseImage.total() * sizeof(float);
-	costVolLayers 		=( 1 + obj["layers"].asUInt() ); // TODO  2*
+	costVolLayers 		=( 1 + obj["layers"].asUInt() ); // TODO  2;
 	baseImage_size 		= baseImage.size();
 	baseImage_type 		= baseImage.type();
 	baseImage_width		= baseImage.cols;
@@ -600,7 +610,7 @@ void RunCL::layer_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_t
 	cl_event		ev;
 	cl_int			res, status;
 	uint 			reduction 		= layer;
-	uint 			read_offset		= lookup_table_offset[reduction];
+	uint 			read_offset		= lookup_table_offset[reduction];																		cout << "\nread_offset = "<<read_offset<<"  "<<flush;
 
 	_clSetKernelArg( kernel_to_call,  			0, sizeof( uint), &read_offset,				fname);										// 	__private	uint	read_offset,
 																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::layer_call_kernel(..)_chk1,  reduction="<<reduction<<",  num_threads[reduction]="<<num_threads[reduction]<<"  local_work_size="<<local_work_size<<flush; }
@@ -954,6 +964,8 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	status = clReleaseKernel(sum_image_variance_kernel);		if (status != CL_SUCCESS)	{ cout << "\nsum_image_variance_kernel 		status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_50"<<flush;
 	status = clReleaseKernel(reduce_kernel);					if (status != CL_SUCCESS)	{ cout << "\nreduce_kernel 					status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_51"<<flush;
 	status = clReleaseKernel(mipmap_float4_kernel);				if (status != CL_SUCCESS)	{ cout << "\nmipmap_float4_kernel 			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_52"<<flush;
+	status = clReleaseKernel(mipmap_3x3blur_flt4_kernel);		if (status != CL_SUCCESS)	{ cout << "\nmipmap_3x3blur_flt4 			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_52"<<flush;
+
 	status = clReleaseKernel(img_grad_kernel);					if (status != CL_SUCCESS)	{ cout << "\nimg_grad_kernel 				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_53"<<flush;
 	status = clReleaseKernel(comp_param_maps_kernel);			if (status != CL_SUCCESS)	{ cout << "\ncomp_param_maps_kernel 		status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_54"<<flush;
 	status = clReleaseKernel(se3_rho_sq_kernel);				if (status != CL_SUCCESS)	{ cout << "\nse3_rho_sq_kernel 				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_55"<<flush;
@@ -975,10 +987,13 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	status = clReleaseKernel(atomic_test1_kernel);				if (status != CL_SUCCESS)	{ cout << "\natomic_test1_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(atomic_test2_kernel);				if (status != CL_SUCCESS)	{ cout << "\natomic_test1_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
+	// kernels for stereo disparity
 	status = clReleaseKernel(compute_lookup_table_kernel);		if (status != CL_SUCCESS)	{ cout << "\ncompute_lookup_table_kernel	status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(disparity_load_frame_kernel);		if (status != CL_SUCCESS)	{ cout << "\ndisparity_load_frame_kernel	status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(set_warp_new_image_kernel);		if (status != CL_SUCCESS)	{ cout << "\nset_warp_new_image_kernel		status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(warp_image_kernel);				if (status != CL_SUCCESS)	{ cout << "\nwarp_image_kernel				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
-	status = clReleaseKernel(propagate_warp_kernel);			if (status != CL_SUCCESS)	{ cout << "\npropagate_warp_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+
+	status = clReleaseKernel(correlation_one_step_kernel);		if (status != CL_SUCCESS)	{ cout << "\ncorrelation_one_step_kernel	status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 	status = clReleaseKernel(mean_sq_3rows_kernel);				if (status != CL_SUCCESS)	{ cout << "\nmean_sq_3rows_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(mean_sq_cols_kernel);				if (status != CL_SUCCESS)	{ cout << "\nmean_sq_cols_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
@@ -987,6 +1002,7 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	status = clReleaseKernel(covariance_3rows_kernel);			if (status != CL_SUCCESS)	{ cout << "\ncovariance_3rows_kernel		status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(covariance_cols_kernel);			if (status != CL_SUCCESS)	{ cout << "\ncovariance_cols_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(regularize_warp_kernel);			if (status != CL_SUCCESS)	{ cout << "\nregularize_warp_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(propagate_warp_kernel);			if (status != CL_SUCCESS)	{ cout << "\npropagate_warp_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 	// release command queues
 	status = clReleaseCommandQueue(m_queue);                   if (status != CL_SUCCESS)	{ cout << "\nm_queue                        status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_67"<<flush;

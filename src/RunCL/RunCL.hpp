@@ -73,10 +73,11 @@ public:
 	cl_kernel 			reduce_kernel, mipmap_float4_kernel, mipmap_float_kernel, img_grad_kernel, se3_rho_sq_kernel, comp_param_maps_kernel;
 	cl_kernel			se3_lk_grad_kernel, atomic_test1_kernel, atomic_test2_kernel;
 	// stereo disparity kernels
-	cl_kernel			compute_lookup_table_kernel, set_warp_new_image_kernel, warp_image_kernel;
+	cl_kernel			compute_lookup_table_kernel, disparity_load_frame_kernel, set_warp_new_image_kernel, warp_image_kernel;
 	cl_kernel			mean_sq_3rows_kernel, mean_sq_cols_kernel, sigma_3rows_kernel, sigma_3cols_kernel;
 	cl_kernel			covariance_3rows_kernel, covariance_cols_kernel, correlation_kernel;
 	cl_kernel			regularize_warp_kernel, propagate_warp_kernel;
+	cl_kernel			mipmap_3x3blur_flt4_kernel, correlation_one_step_kernel;
 	
 	// GPU Buffers
 	cl_mem 				basemem, imgmem,  imgmem_blurred, gxmem, gymem, k_map_mem, dist_map_mem, SE3_grad_map_mem, SE3_incr_map_mem;
@@ -179,7 +180,7 @@ public:
 	/////////////////////////////////////// RunCL_disparity.cpp
 
 	void compute_lookup_table(uint start, uint stop);
-	// void binocular_disparity_copy_buffers(  );
+	void disparity_load_frame(cl_mem input_img, cl_mem output_img, std::string folder );
 
 	void zero_warp_buffer();
 	void set_warp_new_image(uint layer, float reduction);
@@ -189,6 +190,7 @@ public:
 	void compute_warp(   uint layer, uint iter);
 	void propagate_warp( uint layer );
 
+	void correlation_one_step ( uint layer, uint iter );
 					   // uint layer, uint iter, std::string folder_mean_rows, cl_mem img_buf, cl_mem mean_rows_buf
 	void mean_3rows (	  uint layer, uint iter, std::string folder_mean_rows,								cl_mem img_buf,			cl_mem mean_rows_buf);
 	void mean_cols (	  uint layer, uint iter, std::string folder_mean,			std::string folder_sd,	cl_mem img_buf, 		cl_mem mean_rows_buf, 	cl_mem mean_buf, 	cl_mem diff_buf);
@@ -243,7 +245,8 @@ public:
 	void cvt_color_space();
 	void sum_image_variance();
 	void blur_image();
-	void mipmap_linear();
+	void mipmap_linear(cl_mem image_buf, std::string folder);
+	void mipmap_3x3blur_linear(cl_mem image_buf, std::string folder);
 	void img_gradients();
 	
 	void load_GT_depth(cv::Mat GT_depth, bool invert);																					// Depthmap loading & preparation

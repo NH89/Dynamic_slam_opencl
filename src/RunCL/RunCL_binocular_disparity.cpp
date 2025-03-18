@@ -61,15 +61,40 @@ void RunCL::compute_lookup_table( uint start, uint stop){
 																																			}
 }
 
-// void RunCL::binocular_disparity_copy_buffers(  ){
-// 	string fname = "RunCL::binocular_disparity_copy_buffers( )";
-// 	int local_verbosity_threshold = V_RUNCL_WARP_IMAGE;
-// 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::binocular_disparity_copy_buffers( ..)_chk0 #############################################################"<<flush;}
-// 	_clEnqueueCopyBuffer( m_queue, keyframe_imgmem, 	curr_img_buf, 			0, 0, mm_size_bytes_C4, 	fname);
-// 	_clEnqueueCopyBuffer( m_queue, imgmem, 				new_img_buf, 			0, 0, mm_size_bytes_C4, 	fname);
-// 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::binocular_disparity_copy_buffers( ..)_chk_finished"<<flush;
-// }
 
+void RunCL::disparity_load_frame(cl_mem input_img, cl_mem output_img, std::string folder ){													// Loads an image into layer zero of a padded image pyramid, e.g. from basemem to img_mem or keyframe_img_mem.
+    string fname = "RunCL::disparity_load_frame( )";
+	int local_verbosity_threshold = V_RUNCL_WARP_IMAGE;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::disparity_load_frame(..)_chk0 #############################################################"<<flush;
+																																				cout << "\n local_work_size = "<<local_work_size<<",  num_threads[0] = "<<num_threads[0]<< flush;
+																																			}
+	uint baseImagePixels =   baseImage_size.height * baseImage_size.width;																	cout << "\nbaseImagePixels = "<<baseImagePixels<<",  baseImage_size.height = "<<baseImage_size.height<<",  baseImage_size.width = "<<baseImage_size.width <<flush;
+																																			cout << "\nimage_size_bytes = "<<image_size_bytes<<flush;
+	// __private
+	//_clSetKernelArg( warp_image_kernel,			0, sizeof( uint), 	&read_offset,			fname);										// __private	uint	read_offset,			//0
+	_clSetKernelArg( disparity_load_frame_kernel,	1, sizeof( uint), 	&baseImagePixels,		fname);										// __private	uint	baseImage_size,			//1
+	// __global
+	_clSetKernelArg( disparity_load_frame_kernel,  	2, sizeof( cl_mem), &lookup_table_buf,		fname);										// __global		float4*	lookup_table,			//2
+	_clSetKernelArg( disparity_load_frame_kernel,  	3, sizeof( cl_mem), &input_img,				fname);										// __global		float* 	depth_map,				//3
+	// output
+	_clSetKernelArg( disparity_load_frame_kernel,  	4, sizeof( cl_mem), &output_img,			fname);										// __global		float2*	warp,					//4
+
+																																				if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::disparity_load_frame( ..)_chk1 ."<<flush;}
+	int layer = 0;																															// NB this kernel is called for layer 0 only.
+	layer_call_kernel( disparity_load_frame_kernel, m_queue, layer, local_work_size);
+																																			if( verbosity>local_verbosity_threshold /*&& layer==1*/ ) {cout<<"\n\nRunCL::disparity_load_frame( ..)_chk2 ."<<flush;								// Save buffers to file ###########
+																																				stringstream ss;
+																																				ss << "_binoc__disparity_load_frame_" << save_index <<"_layer_"<<layer ;
+																																				bool show 		= false;
+																																				bool old_tiff 	= tiff;
+																																				tiff 			= true;
+																																				float max_range = 1; 		// -1 -> gray = zero.
+																																				_cl_flush_finish(m_queue, fname);
+																																				DownloadAndSave_3Channel(  output_img,  ss.str( ),  paths.at(folder),  mm_size_bytes_C4,  mm_Image_size,  CV_32FC4, show,  max_range);
+																																				tiff 			= old_tiff;
+																																			}
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::disparity_load_frame( ..)_finished ."<<flush;}
+}
 
 
 void RunCL::zero_warp_buffer(){
@@ -165,6 +190,47 @@ void RunCL::warp_image( uint layer, int iter ){																					// computed 
 																																				tiff 			= old_tiff;
 																																			}
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::warp_image( ..)_finished ."<<flush;}
+}
+
+
+void RunCL::correlation_one_step ( uint layer, uint iter ){
+    string fname = "RunCL::correlation_one_step( )";
+	int local_verbosity_threshold = V_RUNCL_IMG_VARIANCE;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::correlation_one_step( ..)_chk0 #############################################################"<<flush;
+																																				cout << "\t local_work_size = " << local_work_size
+																																				<< ",  layer = " << layer
+																																				<< flush;
+																																			}
+	// inputs
+	// __private
+	//_clSetKernelArg( warp_image_kernel,  			0, sizeof( uint), 	&read_offset,			fname);										// 	__private	uint	read_offset,		//0
+	_clSetKernelArg( correlation_one_step_kernel,  		1, sizeof( uint), 	&mm_width,				fname);									// 	__private	uint	mm_cols,			//1
+	_clSetKernelArg( correlation_one_step_kernel,  		2, sizeof( uint), 	&mm_layerstep,			fname);									//	 __private	uint 	mm_size,			//2
+	// __global
+	_clSetKernelArg( correlation_one_step_kernel,  		3, sizeof( cl_mem), &lookup_table_buf,		fname);									//__global 	float4*	lookup_table,			//3
+	_clSetKernelArg( correlation_one_step_kernel,  		4, sizeof( cl_mem), &ref_img_buf,			fname);									//__global 	float4*	ref_img,				//4
+	_clSetKernelArg( correlation_one_step_kernel,  		5, sizeof( cl_mem), &warped_img_buf,		fname);									//__global 	float4*	warped_img,				//5
+	// output
+	_clSetKernelArg( correlation_one_step_kernel,  		6, sizeof( cl_mem), &correlation_buf,		fname);									//__global 	float4*	correlation				//6
+
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::correlation_one_step( ..)_chk1 ."<<flush;}
+	layer_call_kernel( correlation_one_step_kernel, m_queue, layer, local_work_size);
+																																			if( verbosity>local_verbosity_threshold /*&& layer==1*/ ) {cout<<"\n\nRunCL::correlation( ..)_chk2 ."<<flush;				// Save buffers to file ###########
+																																				stringstream ss;
+																																				ss << "_binoc__correlation_" << save_index <<"_layer_"<<layer<<"_iter_"<<iter ;
+																																				bool show 		= false;
+																																				bool display 	= false;
+																																				bool old_tiff 	= tiff;
+																																				tiff 			= true;
+																																				uint vol_layers = 5;			// NB 5 samples of possible warp.
+																																				float max_range = -1.0f; 		// -1 -> gray = zero.
+																																				_cl_flush_finish(m_queue, fname);
+																																				DownloadAndSave_3Channel_volume( 	correlation_buf,	ss.str( ), paths.at( "correlation_buf" ),  	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, -1.0f, 	vol_layers, tiff, iter, display);
+																																				//DownloadAndSave_2Channel_volume( 	warp_buf,			ss.str( ), paths.at( "warp_buf"),  		  2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, 	show, -1.0f, 		1 );
+																																				//DownloadAndSave( 			  		confidence_buf,		ss.str( ), paths.at( "confidence_buf"),		mm_size_bytes_C1,   mm_Image_size,   CV_32FC1,  show, max_range);
+																																				tiff 			= old_tiff;
+																																			}
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::correlation_one_step( ..)_finished ."<<flush;}
 }
 
 

@@ -216,7 +216,7 @@ void RunCL::blur_image(){
 }
 
 
-void RunCL::mipmap_linear(){
+void RunCL::mipmap_linear(cl_mem image_buf, std::string folder){
 	string fname = "RunCL::mipmap_linear()";
 	int local_verbosity_threshold = V_RUNCL_MIPMAP_LINEAR;																					if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_linear(..)_chk0"<<flush;}
 	
@@ -224,7 +224,7 @@ void RunCL::mipmap_linear(){
 	//      __private	 uint layer, set in mipmap_call_kernel(..) below                                                                      __private	 uint	    layer,		    //0
     _clSetKernelArg(mipmap_float4_kernel, 1, sizeof(cl_mem), 					 	&mipmap_buf, fname);									//__constant uint*		mipmap_params,	//1
 	_clSetKernelArg(mipmap_float4_kernel, 2, sizeof(cl_mem), 					 	&uint_param_buf, fname);								//__constant uint*		uint_params,	//3
-	_clSetKernelArg(mipmap_float4_kernel, 3, sizeof(cl_mem), 						&imgmem, fname);										//__global   float4*	img,			//4
+	_clSetKernelArg(mipmap_float4_kernel, 3, sizeof(cl_mem), 						&image_buf, fname);										//__global   float4*	img,			//4
 	_clSetKernelArg(mipmap_float4_kernel, 4, (local_size+4) *5*4* sizeof(float), 	NULL, fname);											//__local    float4*	local_img_patch //5
 
 	mipmap_call_kernel( mipmap_float4_kernel, m_queue, true );   // TODO Start at first reduction, rehash __kernel void mipmap_linear_flt(..) and call only the num threads required. NB currently uses 4x as many threads as needed.
@@ -235,12 +235,39 @@ void RunCL::mipmap_linear(){
 																																				cv::Size new_Image_size = cv::Size(mm_width, mm_height);
 																																				size_t   new_size_bytes = mm_width * mm_height * 4*4;
 																																				ss << "_raw_";
-																																				stringstream ss_path;	ss_path << "imgmem";
+																																				//stringstream ss_path;	ss_path << "imgmem";
 																																				//
 	//void DownloadAndSave_3Channel( buffer, count, folder_tiff, image_size_bytes, size_mat, type_mat, show,            max_range=1, offset=0, exception_tiff=false )
 	//	   DownloadAndSave_3Channel( buffer, count, folder_tiff, image_size_bytes, size_mat, type_mat, show,  &bufImg,  max_range,   offset,   exception_tiff );
 	//void DownloadAndSave_3Channel( buffer, count, folder_tiff, image_size_bytes, size_mat, type_mat, show,  *bufImg,  max_range=1, offset=0, exception_tiff=false );
-																																				DownloadAndSave_3Channel( imgmem, ss.str(), paths.at(ss_path.str()), new_size_bytes, new_Image_size, CV_32FC4, false, 1, 0, true );
+																																				DownloadAndSave_3Channel( image_buf, ss.str(), paths.at(folder/*ss_path.str()*/), new_size_bytes, new_Image_size, CV_32FC4, false, 1, 0, true );
+																																				cout << "\n  (local_size+4) *5*4* sizeof(float) = "<<  (local_size+4) *5*4* sizeof(float) << " ,   (local_size+4) = " <<  (local_size+4) << endl << flush;
+																																			}
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_linear(..)_chk4 Finished"<<flush;}
+}
+
+void RunCL::mipmap_3x3blur_linear(cl_mem image_buf, std::string folder){
+	string fname = "RunCL::mipmap_linear()";
+	int local_verbosity_threshold = V_RUNCL_MIPMAP_LINEAR;																					if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_linear(..)_chk0"<<flush;}
+
+	size_t local_size = local_work_size;																									// set kernel args
+	//      __private	 uint layer, set in mipmap_call_kernel(..) below                                                                      __private	 uint	    layer,		    //0
+    _clSetKernelArg( mipmap_3x3blur_flt4_kernel, 1, sizeof(cl_mem), 					 	&mipmap_buf, fname);									//__constant uint*		mipmap_params,	//1
+	_clSetKernelArg( mipmap_3x3blur_flt4_kernel, 2, sizeof(cl_mem), 					 	&uint_param_buf, fname);								//__constant uint*		uint_params,	//3
+	_clSetKernelArg( mipmap_3x3blur_flt4_kernel, 3, sizeof(cl_mem), 						&image_buf, fname);										//__global   float4*	img,			//4
+	_clSetKernelArg( mipmap_3x3blur_flt4_kernel, 4, (local_size+4) *5*4* sizeof(float), 	NULL, fname);											//__local    float4*	local_img_patch //5
+
+	mipmap_call_kernel( mipmap_3x3blur_flt4_kernel, m_queue, true );   // TODO Start at first reduction, rehash __kernel void mipmap_linear_flt(..) and call only the num threads required. NB currently uses 4x as many threads as needed.
+
+																																			if(verbosity>local_verbosity_threshold) {
+																																				cout<<"\n\nRunCL::mipmap(..)_chk3 Finished all loops."<<flush;
+																																				stringstream ss;	ss << dataset_frame_num << "_mipmap_linear";
+																																				cv::Size new_Image_size = cv::Size(mm_width, mm_height);
+																																				size_t   new_size_bytes = mm_width * mm_height * 4*4;
+																																				ss << "_raw_";
+																																				//stringstream ss_path;	ss_path << "imgmem";
+																																				//
+																																				DownloadAndSave_3Channel( image_buf, ss.str(), paths.at(folder/*ss_path.str()*/), new_size_bytes, new_Image_size, CV_32FC4, false, 1, 0, true );
 																																				cout << "\n  (local_size+4) *5*4* sizeof(float) = "<<  (local_size+4) *5*4* sizeof(float) << " ,   (local_size+4) = " <<  (local_size+4) << endl << flush;
 																																			}
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_linear(..)_chk4 Finished"<<flush;}

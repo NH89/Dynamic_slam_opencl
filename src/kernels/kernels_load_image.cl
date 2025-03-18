@@ -303,6 +303,95 @@ __kernel void mipmap_linear_flt4(		// Mipmap layers must be executed sesequentia
 	img[ write_index] = reduced_pixel;
 }
 
+
+__kernel void mipmap_3x3blur_flt4(		// Mipmap layers must be executed sesequentially			// Nvidia Geforce GPUs cannot use "half"
+	__private	uint	layer,			//0
+	__constant 	uint8*	mipmap_params,	//1
+	__constant 	uint*	uint_params,	//2
+	__global 	float4*	img,			//3
+	__local	 	float4*	local_img_patch //4
+		 )
+{
+	uint global_id_u 	= get_global_id(0);
+	float global_id_flt = global_id_u;
+	uint lid 			= get_local_id(0);
+	uint group_size 	= get_local_size(0);
+	uint patch_length	= group_size+4;
+
+	uint8 mipmap_params_ = mipmap_params[layer];
+	uint read_offset_ 	= mipmap_params_[MiM_READ_OFFSET];
+	uint write_offset_ 	= mipmap_params_[MiM_WRITE_OFFSET]; 										// = read_offset_ + read_cols_*read_rows for linear MipMap.
+	uint read_rows_		= mipmap_params_[MiM_READ_ROWS];
+	uint write_rows_	= read_rows_ /2;
+	uint read_cols_ 	= mipmap_params_[MiM_READ_COLS];
+	uint write_cols_ 	= mipmap_params_[MiM_WRITE_COLS];
+
+	uint margin 		= uint_params[MARGIN];
+	uint mm_cols		= uint_params[MM_COLS];   													// whole mipmap
+
+	uint write_row   	= global_id_u / write_cols_ ;
+	uint write_column 	= fmod(global_id_flt, write_cols_);
+
+	uint read_row    	= 2*write_row;
+	uint read_column 	= 2*write_column;
+
+	uint read_index 	= read_offset_  +  read_row  * mm_cols  + read_column  ;					// NB 4 channels.  + margin
+	uint write_index 	= write_offset_ +  write_row * mm_cols  + write_column ;					// write_cols_, use read_cols_ as multiplier to preserve images  + margin
+
+	//float4 white = {1.0f,1.0f,1.0f,1.0f};
+	//float4 black = {0.0f,0.0f,0.0f,0.0f};
+
+	int in_bounds = global_id_u < mipmap_params_[MiM_PIXELS]/2 ;
+
+	if (in_bounds ==1) {
+		for (int i=0, j=-2; i<5; i++, j++){															// Load local_img_patch
+			local_img_patch[lid+2 + i*patch_length] = img[ read_index +j*mm_cols];
+		}
+		////
+		if (lid==0 || lid==1){
+			for (int i=0; i<5; i++){
+				local_img_patch[lid + i*patch_length] = img[ read_index +i*mm_cols -2]; //white; //
+			}
+		}
+		if (lid==group_size-2 || lid==group_size-1){
+			for (int i=0; i<5; i++){
+				local_img_patch[lid+4 + i*patch_length] = img[ read_index +i*mm_cols +2]; //black; //
+			}
+		}
+		////
+		if ((write_row>write_rows_-3) ||  (write_row < 3)  ){										// Prevents blurring with black space below the image.
+			for (int i=0; i<5; i++){
+				local_img_patch[lid+2 + i*patch_length] = img[ read_index ];
+			}
+		}
+	}
+
+	barrier(CLK_LOCAL_MEM_FENCE);																	// No 'if->return' before fence between write & read local mem
+	if (in_bounds ==0) return;
+
+	const float weight[5] = {0.0f, 1.0f, 2.0f, 1.0f, 0.0f};
+	float4 reduced_pixel = 0;
+	for (int i=1; i<4; i++){
+		for (int j=1; j<4; j++){
+			reduced_pixel += local_img_patch[lid+j + i*patch_length] * weight[i]*weight[j]/16; 		// 3x3 gaussian filter, rather than Gaussian
+		}
+	}
+
+	if (write_column < 2 || write_column > write_cols_ -3) {
+		reduced_pixel = 0;
+		for (int i=1; i<4; i++){
+			reduced_pixel += local_img_patch[lid+2 + i*patch_length] * weight[i]/4;					// prevents blur wrapping left-right.
+		}
+	}
+
+	if (write_row>=write_rows_) return;
+	if (global_id_u >= mipmap_params_[MiM_PIXELS]) return;											// num pixels to be written & num threads to really use.
+
+	reduced_pixel[3] = 1.0f;
+	img[ write_index] = reduced_pixel;
+}
+
+
  /*
  * 	mipmap_linear_flt(..) only used for depthmap_GT  // This version with 5x5 box blur .
 __kernel void mipmap_linear_flt(	// Mipmap layers must be executed sesequentially				// Nvidia Geforce GPUs cannot use "half"

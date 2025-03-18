@@ -213,7 +213,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 																																			// load a basic image in CV_8UC3, then convert on GPU to 'half'
 	runcl.cvt_color_space( );
 	runcl.blur_image();
-	runcl.mipmap_linear();
+	runcl.mipmap_linear(runcl.imgmem, "imgmem");
 	runcl.sum_image_variance();
 	runcl.img_gradients();
 																																			// # Get 1st & 2nd order image gradients of MipMap
