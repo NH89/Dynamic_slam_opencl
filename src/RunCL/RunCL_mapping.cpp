@@ -265,17 +265,16 @@ void RunCL::measureDepthFit(){
 																																			if(verbosity>local_verbosity_threshold) {
 																																				stringstream ss;
 																																				ss << "measureDepthFit"<< save_index << "_A_count_" << A_count ;
-																																				cout<<"\n\nRunCL::measureDepthFit(..)_chk3, ss=" << ss.str() <<flush;
+																																				cout<<"\n\nRunCL::measureDepthFit(..)_chk2, ss=" << ss.str() <<flush;
 																																				DownloadAndSave_3Channel(dmem_disparity,   ss.str(), paths.at("dmem_disparity"),    mm_size_bytes_C4,   mm_Image_size, CV_32FC4,  false , 1.0,   0 ,  false); //  float max_range /*=1*/, uint offset /*=0*/, bool exception_tiff /*=false*/)
 																																			}
-	cv::Mat dmem_disparity_sum_mat = cv::Mat::zeros (d_disp_sum_size, 1, CV_32FC4); // cv::Mat::zeros (int rows, int cols, int type)		// NB the data returned is one float4 per group, for the base image, holding disparity (depth, ....) plus entry[3]=pixel count.
-	ReadOutput( dmem_disparity_sum_mat.data, var_sum_mem, d_disp_sum_size_bytes );                                                          // se3_sum_size_bytes
-	                                                                                                                                         if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::measureDepthFit(..)_chk2 ."<<flush;
+	cv::Mat dmem_disparity_sum_mat = cv::Mat::zeros (pix_sum_size, 1, CV_32FC4); // cv::Mat::zeros (int rows, int cols, int type)		// NB the data returned is one float4 per group, for the base image, holding disparity (depth, ....) plus entry[3]=pixel count.
+	ReadOutput( dmem_disparity_sum_mat.data, dmem_disparity_sum, pix_sum_size_bytes );
+	                                                                                                                                         if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::measureDepthFit(..)_chk3 ."<<flush;
 																																				cout << "\ndmem_disparity_sum_mat.size()="<<dmem_disparity_sum_mat.size()<<flush;
-																																				cout << "\nd_disp_sum_size="<<d_disp_sum_size<<flush;
+																																				cout << "\npix_sum_size="<<pix_sum_size<<flush;
                                                                                                                                                 cout << "\n dmem_disparity_sum_mat.data = (\n";
-
-                                                                                                                                                for (int i=0; i<d_disp_sum_size; i++){
+                                                                                                                                                for (int i=0; i<pix_sum_size; i++){
                                                                                                                                                     cout << "\n group="<<i<<" : ( " << flush;
                                                                                                                                                     for (int j=0; j<4; j++){
                                                                                                                                                         cout << dmem_disparity_sum_mat.at<float>(i,j) << " , " << flush;

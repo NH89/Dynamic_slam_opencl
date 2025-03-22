@@ -170,41 +170,179 @@ __kernel void correlation_one_step(		// TODO add local memory for efficiency
 	__private	uint	read_offset,			//0
 	__private	uint	mm_cols,				//1
 	__private	uint 	mm_size,				//2
-	//
-	__global 	float4*	lookup_table,			//3
-	__global 	float4*	ref_img,				//4
-	__global 	float4*	warped_img,				//5
+	//local
+	__local		float4*	local_ref_img,			//3		// 3*(group_size + 2) * sizeof(float4)
+	__local 	float4*	local_warped_img,		//4		// 5*(group_size + 4) * sizeof(float4)
+	//global
+	__global 	float4*	lookup_table,			//5
+	__global 	float4*	ref_img,				//6
+	__global 	float4*	warped_img,				//7
 	//outputs
-	__global 	float4*	correlation				//6
+	__global 	float4*	covariance,				//8
+	__global 	float4*	correlation				//9
 			  ){
 	// From YouTube Template Matching by  Correlation | Image Processing I, Columbia Univ.
 	// N_tf[i,j] = Sum_m,n( f[m,n] * t[m-i,n-j] ) / sqrt(Sum_m,n( f^2[m,n] ) * sqrt(Sum_m,n( t^2[m-i,n-j] ) )
 
 	uint 	read_index							= floor( lookup_table[ get_global_id(0) + read_offset ].z );
 	if (read_index ==0 ) return;
+	uint 	lid									= get_local_id(0);
+	uint 	local_size							= get_local_size(0);
+	uint 	local_ref_mem_width					= local_size + 2;
+	uint 	local_warpmem_width					= local_size + 4;
+
+	// TODO check local mem is large enough
+
+	{
+	// 	// Zero local_ref_mem
+// 	float4 black_f4 = { 0.0, 0.0, 0.0, 1.0 };
+// 	for( int idx = lid; idx < 5*(local_size+4); idx +=local_size) local_ref_img[idx] = black_f4;
+//
+// 	// debug zero margins of local mem
+// 	float4 orange_f4 = { 0.0f, 0.5f, 1.0f, 0.8f};
+// 	float4 blue_f4	 = { 1.0f, 0.5f, 0.0f, 0.8f};
+// 	if(lid==0){
+// 		for(int row=0; row<5; row++){
+// 			local_warped_img[lid+row*local_warpmem_width]						= orange_f4;
+// 			local_warped_img[lid+row*local_warpmem_width + 1]					= orange_f4;
+// 			local_warped_img[lid+row*local_warpmem_width + 2 + local_size ]		= blue_f4;
+// 			local_warped_img[lid+row*local_warpmem_width + 3 + local_size ]		= blue_f4;
+// 		}
+// 		for(int row=0; row<3; row++){
+// 			local_ref_img[lid+row*local_ref_mem_width]				= orange_f4;
+// 			local_ref_img[lid+(1+row)*local_ref_mem_width -2 ]		= blue_f4;
+// 		}
+// 	}
+// 	barrier(CLK_LOCAL_MEM_FENCE);
+	// 	//// end debug
+	}
+
+	for(int step=-1; step<2; step++){  // -1
+		local_ref_img[1+lid+(1+step)*local_ref_mem_width]		= ref_img[read_index+step*mm_cols];
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
+	if (lid<6){
+		const int local_index[6]				= { (0), 								(local_ref_mem_width),		(2*local_ref_mem_width),	\
+													(local_ref_mem_width-1),			(2*local_ref_mem_width-1),	(3*local_ref_mem_width-1)	};
+
+		const int offset[6]						= { (-1-mm_cols),						(-2), 						(-3+mm_cols), 						\
+													(-5-mm_cols+local_ref_mem_width), 	(-6+local_ref_mem_width), 	(-7+mm_cols+local_ref_mem_width)	};
+
+		local_ref_img[ local_index[lid] ]		= ref_img[ read_index + offset[lid] ];
+	}
+	barrier(CLK_LOCAL_MEM_FENCE);
+
+	for(uint step=0; step<5; step++){
+		uint local_index						= 2 + lid		+ step		*local_warpmem_width;
+		uint global_index						= read_index 	+ (step-2)	*mm_cols;
+		local_warped_img[local_index]			= warped_img[global_index];
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
+
+	if (lid < 16){
+		const int local_index[16]				= { 										(local_warpmem_width),				(2*local_warpmem_width),				(3*local_warpmem_width), 															\
+													(1),									(local_warpmem_width+1),			(2*local_warpmem_width+1),				(3*local_warpmem_width+1),					(4*local_warpmem_width+1),				\
+													(2+local_size),							(local_warpmem_width+2+local_size),	(2*local_warpmem_width+2+local_size),	(3*local_warpmem_width+2+local_size),		(4*local_warpmem_width+2+local_size),	\
+																							(local_warpmem_width+3+local_size), (2*local_warpmem_width+3+local_size),	(3*local_warpmem_width+3+local_size) 												};
+
+		const int offset[16]					= { 										(-2-mm_cols),						(-3), 									(-4+mm_cols), 																		\
+													(-4-2*mm_cols),							(-5-mm_cols),						(-6), 									(-7+mm_cols), 								(-8+2*mm_cols),							\
+													(-10-2*mm_cols+local_warpmem_width),	(-11-mm_cols+local_warpmem_width),	(-12+local_warpmem_width),				(-13+mm_cols+local_warpmem_width),			(-14+2*mm_cols+local_warpmem_width),	\
+																							(-13-mm_cols+local_warpmem_width),	(-14+local_warpmem_width), 				(-15+mm_cols+local_warpmem_width)													};
+
+ 		local_warped_img[ local_index[lid] ]	= warped_img[ read_index + offset[lid] ];
+ 	}
+	barrier(CLK_LOCAL_MEM_FENCE);
+	{
+		{
+// 	////////////
+// 	uint gid = get_group_id(0);
+// 	if ( gid > 50) {
+// 		covariance[read_index]	= 	local_ref_img[lid];
+// 		correlation[read_index]	=	local_warped_img[lid];
+//
+// 		if(lid==0){
+// 			float4 green_f4 			= { 0.0f, 0.5f, 0.0f, 1.0f};
+// 			covariance[read_index]		= green_f4;
+// 			correlation[read_index]		= green_f4;
+// 		}
+// 	}
+//
+// 	if (gid == 0 ) {
+// 		if(lid==0){
+// 			float4 red_f4 				= { 0.0f, 0.0f, 1.0f, 1.0f};
+// 			covariance[read_index]		+= red_f4;
+// 			correlation[read_index]		+= red_f4;
+// 		}
+// 	}
+//
+// 	if (!(gid == 11 || gid == 24 )) return;
+		}
+		{
+//	float4 temp 				= { 0.0f, -0.1f, 0.0f, 0.2f};
+
+// 	for (int i=0; i<5; i++){
+// 		correlation[read_index+ i*mm_cols]	= local_warped_img[lid+ i*local_warpmem_width] - temp;
+// 	}
+// 	for (int i=0; i<3; i++){
+// 		covariance[read_index+ i*mm_cols]	= local_ref_img[lid+ i*local_ref_mem_width] - temp;
+// 	}
+		}
+		{
+// 	if(lid==0){
+// 			for(uint row=0; row <5 ; row++){
+// 				for(uint col=0;	col<local_warpmem_width  ; col++){
+// 					correlation[read_index+ col + row*mm_cols]	= local_warped_img[lid+ col + row*local_warpmem_width] ;
+// 				}
+// 			}
+//
+// 			for(uint row=0; row <3 ; row++){
+// 				for(uint col=0;	col<local_ref_mem_width  ; col++){
+// 					covariance[read_index+ col + row*mm_cols]	= local_ref_img[lid+ col + row*local_ref_mem_width];
+// 				}
+// 			}
+//
+// 			//float4 temp 				= { 0.0f, 1.0f, 0.5f, 1.0f};
+// 			covariance[read_index]								= orange_f4;
+// 			covariance[read_index + local_size]					= orange_f4;
+// 			covariance[read_index + local_ref_mem_width-1]		= orange_f4;
+//
+// 			correlation[read_index]								= orange_f4;
+// 			correlation[read_index+1]							= orange_f4;
+//
+// 			correlation[read_index+ local_size]					= orange_f4;
+// 			correlation[read_index+ local_warpmem_width-1]		= orange_f4;
+// 	}
+		}
+
+	//return;
+	////////////
+	}
 
 	uint 	index;
 	float4  pvt_ref_pixel[9];
-	float4  pvt_pixel;
+	float4  pvt_pixel[9];
 	float4  pvt_correlation[5];
 	float4  pvt_covariance;
 	float4  pvt_sum_sq_ref_patch;
 	float4  pvt_sum_sq_warped_patch;
 
 	uint	write_index 						= read_index;
-	uint	increment[5]						= { -mm_cols , -1 , 0 , 1 , mm_cols };
+	uint	increment[5]						= { -local_warpmem_width , -1 , 0 , 1 , local_warpmem_width };		//{ -mm_cols , -1 , 0 , 1 , mm_cols };
 
 	index										= 0;
 	pvt_sum_sq_ref_patch						= zero_f4;
 
 	__attribute__((opencl_unroll_hint))
-	for (int col=-1;col<2;col++){
+	for (int col=0;col<3;col++){
 		__attribute__((opencl_unroll_hint))
-		for (int row=-1;row<2;row++){
-				pvt_ref_pixel[index]			= ref_img[read_index+col+row*mm_cols];
+		for (int row=0;row<3;row++){
+				pvt_ref_pixel[index]			= local_ref_img[lid +col + row*local_size ];	//	ref_img[read_index+col+row*mm_cols];
 				pvt_sum_sq_ref_patch			+= pvt_ref_pixel[index] * pvt_ref_pixel[index];
+				index++;
 		}
 	}
+	pvt_sum_sq_ref_patch						=  sqrt(pvt_sum_sq_ref_patch) / 3.0f;
 
 	__attribute__((opencl_unroll_hint))
 	for (int sample=0;sample<5;sample++){
@@ -215,31 +353,123 @@ __kernel void correlation_one_step(		// TODO add local memory for efficiency
 		pvt_sum_sq_warped_patch					= zero_f4;
 
 		__attribute__((opencl_unroll_hint))
-		for (int col=-1;col<2;col++){
+		for (int col=1;col<2;col++){    // int col=1;col<4;col++
 			__attribute__((opencl_unroll_hint))
-			for (int row=-1;row<2;row++){
-				pvt_pixel						= warped_img[ read_index + col + row*mm_cols + increment[sample] ];
-				pvt_sum_sq_warped_patch			+= pvt_pixel * pvt_pixel;
+			for (int row=1;row<4;row++){
+				pvt_pixel[index]				= local_warped_img[ lid + col + row*local_warpmem_width + increment[sample] ];	//	warped_img[ read_index + col + row*mm_cols + increment[sample] ];
+				pvt_sum_sq_warped_patch			+= pvt_pixel[index] * pvt_pixel[index];
 
-				pvt_covariance					+= pvt_ref_pixel[index] * pvt_pixel;
+				pvt_covariance					+= (pvt_ref_pixel[index] * pvt_pixel[index]);
 				index++;
 			}
 		}
-		pvt_correlation[ sample ]				= pvt_covariance / ( sqrt(pvt_sum_sq_ref_patch) * sqrt(pvt_sum_sq_warped_patch) );
-		if ( !isnormal(pvt_correlation[sample].x) )	{ pvt_correlation[sample].x	= 0.0f; }		// not needed if clamped to (-1 <-> +1)
-		if ( !isnormal(pvt_correlation[sample].y) )	{ pvt_correlation[sample].y	= 0.0f; }
-		if ( !isnormal(pvt_correlation[sample].z) )	{ pvt_correlation[sample].z	= 0.0f; }
+		pvt_sum_sq_warped_patch					= sqrt(pvt_sum_sq_warped_patch) / 3.0f;
 
-		pvt_correlation[sample] 				= clamp( pvt_correlation[sample], -1.0f, 1.0f );
+		//pvt_correlation[ sample ]				= pvt_covariance / 9.0f;
+		float4 denominator 						= (pvt_sum_sq_ref_patch * pvt_sum_sq_warped_patch ); //clamp( (pvt_sum_sq_ref_patch * pvt_sum_sq_warped_patch )  , 0.001f, 100.0f );
+		{
+		//pvt_correlation[ sample ]				/= denominator;
 
-		pvt_correlation[ sample ].w 			= 1.0f;
-		correlation	[ write_index ]				= pvt_correlation[ sample ];
+// 		float4  X,Y,Z,W;
+//
+// 		X.x	= pvt_correlation[ sample ].x;
+// 		X.y = denominator.x;
+// 		X.z = X.x / X.y;
+// 		X.w = 1.0f;
+//
+// 		Y.x = pvt_correlation[ sample ].y;
+// 		Y.y = denominator.y;
+// 		Y.z = Y.x / Y.y;
+// 		Y.w = 1.0f;
+//
+// 		Z.x = pvt_correlation[ sample ].z;
+// 		Z.y = denominator.z;
+// 		Z.z = Z.x / Z.y;
+// 		Z.w = 1.0f;
+//
+// 		W.x = pvt_correlation[ sample ].w;
+// 		W.y = denominator.w;
+// 		W.z = W.x / W.y;
+// 		W.w = 1.0f;
+//
+//
+// 		float4 pixel;
+// 		pixel.x = pvt_pixel[0].x;
+// 		pixel.y = pvt_pixel[4].x;
+// 		pixel.z = pvt_pixel[8].x;
+// 		pixel.w = 1.0f;
+//
+// 		float4 covar;
+// 		covar.x  = pvt_covariance.x; //pvt_ref_pixel[8].z ;
+// 		covar.y  = pvt_covariance.y; //pvt_pixel[8].z;
+// 		covar.z  = pvt_covariance.z;
+// 		covar.w  = 1.0f;
 
+// 		if ( !isnormal(pvt_correlation[sample].x) )	{ pvt_correlation[sample].x	= -0.5f; }		// not needed if clamped to (-1 <-> +1)
+// 		if ( !isnormal(pvt_correlation[sample].y) )	{ pvt_correlation[sample].y	= -0.5f; }
+// 		if ( !isnormal(pvt_correlation[sample].z) )	{ pvt_correlation[sample].z	= -0.5f; }
+
+// 		pvt_correlation[sample] 				= clamp( pvt_correlation[sample], -1.0f, 1.0f );
+
+// 		pvt_correlation[ sample ].w 			= 1.0f;
+		}
+		covariance[  write_index ]				= pvt_covariance;  // FIXME corrupted local_ref_img margins  // local_ref_img[lid +2 + 2*local_size ]; //
+		// // float4 base
+		correlation[ write_index ]				= denominator; // FIXME alpha!=1.0f    //pvt_sum_sq_ref_patch; //pvt_sum_sq_warped_patch; //pvt_covariance ; //covar; //X; //pixel; // pvt_correlation[ sample ] ;  // denominator ; //
+		{
+// 		pvt_correlation[ sample ].x				= pvt_covariance.x  * base.x ;
+// 		pvt_correlation[ sample ].y				= pvt_covariance.y  * base.y ;
+// 		pvt_correlation[ sample ].z				= pvt_covariance.z  * base.z ;
+// 		pvt_correlation[ sample ].w				= 1.0f;
+//
+// 		correlation[ write_index ]				= pvt_correlation[ sample ];
+		}
 		write_index								+= mm_size;
-		barrier(CLK_GLOBAL_MEM_FENCE); // CLK_LOCAL_MEM_FENCE);
 	}
 
 	// TODO add warp & confidence
+
+}
+
+
+__kernel void correlation_2nd_step(						// Could merge with covariance_3cols(..). Also computes new Warp and Confidence values.
+	// inputs
+	__private	uint	read_offset,			//0
+	__private	uint	mm_cols,				//1
+	__private	uint 	mm_size,				//2
+
+	__global 	float4*	lookup_table,			//3
+	__global	float4* covariance,				//4		// sizeof(float4) * 5 * mm_size
+	//output
+	__global	float4*	correlation,			//5		// sizeof(float4) * 5 * mm_size
+	__global 	float2*	warp,					//6		// 2*float4*mm_size // float2*
+	__global 	float*	confidence				//7
+
+ ){
+	uint 	read_index							= floor( lookup_table[ get_global_id(0) + read_offset ].z );
+	if (read_index ==0 ) return;
+	float4 	pvt_correlation[5] 					= {zero_f4, zero_f4, zero_f4, zero_f4, zero_f4};
+	float4 	pvt_covariance[5]					= {zero_f4, zero_f4, zero_f4, zero_f4, zero_f4};
+	float4 	pvt_denominator[5]					= {zero_f4, zero_f4, zero_f4, zero_f4, zero_f4};
+
+	uint	write_index							= read_index;
+	uint	increment[5]						= { -mm_cols , -1 , 0 , 1 , mm_cols };
+
+	__attribute__((opencl_unroll_hint))
+	for (uint sample=0;sample<5;sample++){
+		pvt_denominator[sample]					= clamp( correlation[read_index + increment[sample] ], 0.001f, 100.0f );
+	}
+	__attribute__((opencl_unroll_hint))
+	for (uint sample=0;sample<5;sample++){
+		pvt_covariance[sample]					= covariance[read_index  + increment[sample] ];
+	}
+	__attribute__((opencl_unroll_hint))
+	for (uint sample=0;sample<5;sample++){
+		pvt_correlation[sample]					= pvt_covariance[sample] / pvt_denominator[sample]; // clamp((ones_f4 / denominator), 0.001f, 100.0f )
+
+		correlation[read_index + increment[sample] ] 	= pvt_correlation[sample];
+	}
+
 
 }
 

@@ -64,6 +64,7 @@ __kernel void se3_Rho_sq(
 	__constant 	uint8*	mipmap_params,			//3
 	__constant 	uint*	uint_params,			//4
 	__constant  float*  fp32_params,			//5
+
 	__global	float16*k2k,					//6		// keyframe2K[3]
 	__global 	float4*	img_cur,				//7		// keyframe
 	__global 	float4*	img_new,				//8

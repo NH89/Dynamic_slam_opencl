@@ -77,7 +77,7 @@ public:
 	cl_kernel			mean_sq_3rows_kernel, mean_sq_cols_kernel, sigma_3rows_kernel, sigma_3cols_kernel;
 	cl_kernel			covariance_3rows_kernel, covariance_cols_kernel, correlation_kernel;
 	cl_kernel			regularize_warp_kernel, propagate_warp_kernel;
-	cl_kernel			mipmap_3x3blur_flt4_kernel, correlation_one_step_kernel;
+	cl_kernel			mipmap_3x3blur_flt4_kernel, correlation_one_step_kernel, correlation_2nd_step_kernel;
 	
 	// GPU Buffers
 	cl_mem 				basemem, imgmem,  imgmem_blurred, gxmem, gymem, k_map_mem, dist_map_mem, SE3_grad_map_mem, SE3_incr_map_mem;
@@ -106,7 +106,6 @@ public:
 	size_t  			global_work_size, mm_global_work_size, local_work_size, image_size_bytes, image_size_bytes_C1, mm_size_bytes_C1;
 	size_t 				mm_size_bytes_C3, mm_size_bytes_C4, mm_size_bytes_C8, mm_size_bytes_half4, mm_vol_size_bytes;
 	size_t 				so3_sum_size, so3_sum_size_bytes, mm_se3_sum_size, se3_sum_size_bytes, se3_sum2_size_bytes, pix_sum_size, pix_sum_size_bytes;
-	size_t 				d_disp_sum_size, d_disp_sum_size_bytes;
 	uint				se3_sum_size;
 
 	cl_device_id 		deviceId;
@@ -128,7 +127,7 @@ public:
 	int 				mm_height;						//	
 	int 				mm_width;						//	
 	int 				mm_layerstep;					//	
-	int 				fp16_size;
+	//int 				fp16_size;
 	uint 				mm_start;						//	
 	int 				mm_stop;
 	int 				baseImage_width;				//	
@@ -138,8 +137,8 @@ public:
 	int 				baseImage_type;					//	
 	int 				mm_Image_type;					//	
 	
-	int 				dataset_frame_num;				//	Frame number in dataset, set in constructor from json file. Incremented in Dynamic_slam::nextFrame.
-	int 				costvol_frame_num;				//	Frame number in the cost volume. Set = 0 in RunCL::initializeDepthCostVol(..) . Incremented in Dynamic_slam::nextFrame(..)
+	int 				dataset_frame_num		= 0;	//	Frame number in dataset, set in constructor from json file. Incremented in Dynamic_slam::nextFrame.
+	int 				costvol_frame_num		= 0;	//	Frame number in the cost volume. Set = 0 in RunCL::initializeDepthCostVol(..) . Incremented in Dynamic_slam::nextFrame(..)
 	int 				keyFrameCount			= 0;	//	used in saving data to file. Incremented in Dynamic_slam::initialize_new_keyframe(..)
 	int 				save_index				= 0;	//	Set in RunCL::initializeDepthCostVol(), and RunCL::updateDepthCostVol(), to save_index = keyFrameCount*1000 + costvol_frame_num;
 	
@@ -190,7 +189,8 @@ public:
 	void compute_warp(   uint layer, uint iter);
 	void propagate_warp( uint layer );
 
-	void correlation_one_step ( uint layer, uint iter );
+	void correlation_one_step( uint layer, uint iter );
+	void correlation_2nd_step( uint layer, uint iter );
 					   // uint layer, uint iter, std::string folder_mean_rows, cl_mem img_buf, cl_mem mean_rows_buf
 	void mean_3rows (	  uint layer, uint iter, std::string folder_mean_rows,								cl_mem img_buf,			cl_mem mean_rows_buf);
 	void mean_cols (	  uint layer, uint iter, std::string folder_mean,			std::string folder_sd,	cl_mem img_buf, 		cl_mem mean_rows_buf, 	cl_mem mean_buf, 	cl_mem diff_buf);

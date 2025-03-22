@@ -80,9 +80,10 @@ void Dynamic_slam::binocular_disparity(){
 
 	// compute warp for this frame  // can be until (layer > runcl.mm_start) but takes 3x longer.		(NB "SE3_start_layer":4,  "SE3_stop_layer":1, )
 	for (int layer = 4/*0*//*runcl.mm_stop*/ ; layer > -1/*runcl.mm_start+3*/ ; layer-- ){						if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::disparity() chk_1 layer="<<layer<<", runcl.mm_start+3="<<runcl.mm_start+3<<", runcl.mm_stop="<<runcl.mm_stop<<flush;}
-		for (int iter = 0 ; iter < 5   ; iter++ ){																if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::disparity() chk_2 layer="<<layer<<", iter="<<iter<<"_"<<flush;}
-			runcl.warp_image(		layer, iter  );
-			runcl.correlation_one_step ( layer, iter );
+		for (int iter = 0 ; iter < 1   ; iter++ ){																if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::disparity() chk_2 layer="<<layer<<", iter="<<iter<<"_"<<flush;}
+			runcl.warp_image(			layer, iter );
+			runcl.correlation_one_step( layer, iter );
+			//runcl.correlation_2nd_step( layer, iter );
 
 			// runcl.mean_3rows (		layer, iter, "warped_img_mean_rows_buf",							runcl.warped_img_buf,				runcl.warped_img_mean_rows_buf );
 			// runcl.mean_cols (		layer, iter, "warped_img_mean_buf",			"warped_img_diff_buf",	runcl.warped_img_buf,				runcl.warped_img_mean_rows_buf,		runcl.warped_img_mean_buf,	runcl.warped_img_diff_buf );

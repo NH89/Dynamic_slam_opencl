@@ -202,7 +202,7 @@ class Dynamic_slam
     void print_keyframe_data_vector(    uint start,     uint stop,  vector<Dynamic_slam::keyframe_datum>    keyframe_data_vector,   string vector_name );
 
 
-  private:
-    float old_theta, theta, thetaStart, thetaStep, thetaMin, epsilon, lambda, sigma_d, sigma_q;     // DTAM depthmap smoothing & optimization parameters
+  // private:   replaced by runcl.fp32_params[..]
+  //   float old_theta, theta, thetaStart, thetaStep, thetaMin, epsilon, lambda, sigma_d, sigma_q;     // DTAM depthmap smoothing & optimization parameters
 
 };

@@ -134,12 +134,14 @@ void Dynamic_slam::cacheGValues()
 bool Dynamic_slam::updateA(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_UPDATEA;//verbosity_mp["Dynamic_slam::updateA"];// 1;
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDynamic_slam::updateA "<<flush;
-	if (theta < 0.001 && old_theta > 0.001){  cacheGValues(); old_theta=theta; }		// If theta falls below 0.001, then G must be recomputed.
+	if (/*theta*/runcl.fp32_params[THETA] < 0.001 && /*old_theta*/runcl.fp32_params[OLD_THETA] > 0.001){  cacheGValues(); /*old_theta*/runcl.fp32_params[OLD_THETA] = /*theta*/runcl.fp32_params[THETA]; }		// If theta falls below 0.001, then G must be recomputed.
 	// bool doneOptimizing = (theta <= thetaMin);
+
 
 	runcl.updateA( runcl.fp32_params[LAMBDA], runcl.fp32_params[THETA]/*,  runcl.mm_start, runcl.mm_stop*/ );
 
 	runcl.measureDepthFit();
+
 
 	runcl.fp32_params[THETA] *= obj["thetaStep"].asFloat();
 

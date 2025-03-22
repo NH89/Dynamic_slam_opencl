@@ -431,7 +431,7 @@ __kernel void MeasureDepthFit(						// measure the fit of the depthmap against t
 
 	float proportional_sdd = sq_depth_disparity / (dpt_GT[read_index] * dpt_GT[read_index] * 64 * 8);
 
-	float4 disparity 	= { depth_disparity , -depth_disparity, proportional_sdd, 1.0f};
+	float4 disparity 	= { depth_disparity, depth_disparity*depth_disparity, proportional_sdd, 1.0f};
 
 						//= {dpt_GT[read_index] * 64, sq_depth_disparity, proportional_sdd , 1.0f };
 																							// B = true inverse depth
@@ -454,26 +454,18 @@ __kernel void MeasureDepthFit(						// measure the fit of the depthmap against t
 																										// NB kernels launched separately for each layer, but workgroup size varies between GPUs.
 		group_size   /= 2;
 		barrier(CLK_LOCAL_MEM_FENCE);																	// No 'if->return' before fence between write & read local mem
-
 		if (lid<group_size)  local_sum_dpt_disparity[lid] += local_sum_dpt_disparity[lid+group_size];	// local_sum_pix
 	}
-
-	barrier(CLK_LOCAL_MEM_FENCE);  // TODO get summation of depth error working
-	if (lid==0) {
+	if (lid==0) {																						// TODO get summation of depth error working
 		uint group_id 			= get_group_id(0);
 		uint global_sum_offset 	= 0; 																	//read_offset_ / local_size ;		// only the base layer		// Compute offset for this layer
 		uint num_groups 		= get_num_groups(0);
 
 		float4 layer_data 		= {num_groups, reduction, 0.0f, 0.0f };									// Write layer data to first entry  ## problem float4 into float ##
-		if (global_id_u == 0) 	{
-			global_sum_dpt_disparity[global_sum_offset] 	= num_groups;
-			global_sum_dpt_disparity[global_sum_offset+1] 	= reduction;
-			global_sum_dpt_disparity[global_sum_offset+2] 	= 0.0f;
-			global_sum_dpt_disparity[global_sum_offset+3] 	= 0.0f;
-		}
+		if (global_id_u == 0) 	{global_sum_dpt_disparity[global_sum_offset] = layer_data; }
 		global_sum_offset += 4 + group_id;
 
-		if (local_sum_dpt_disparity[0][3] >0){																	// Using alpha channel local_sum_pix[0][3], to count valid pixels being summed.
+		if (local_sum_dpt_disparity[0][3] >0){															// Using alpha channel local_sum_pix[0][3], to count valid pixels being summed.
 			global_sum_dpt_disparity[global_sum_offset] 	= local_sum_dpt_disparity[0];				// Save to global_sum_pix // Count hits, and divide group by num hits, without using atomics!
 		}else global_sum_dpt_disparity[global_sum_offset] 	= 0;
 	}

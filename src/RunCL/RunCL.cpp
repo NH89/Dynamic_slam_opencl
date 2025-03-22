@@ -300,6 +300,7 @@ void RunCL::createKernels(){
 	warp_image_kernel				= clCreateKernel(m_program, "warp_image", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'warp_image_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
 
 	correlation_one_step_kernel		= clCreateKernel(m_program, "correlation_one_step", 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'correlation_one_step'  kernel not built.\n"			<<flush; exit_(0);   }
+	correlation_2nd_step_kernel		= clCreateKernel(m_program, "correlation_2nd_step", 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'correlation_2nd_step'  kernel not built.\n"			<<flush; exit_(0);   }
 
 	mean_sq_3rows_kernel			= clCreateKernel(m_program, "mean_3rows", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'mean_sq_3rows_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
 	mean_sq_cols_kernel				= clCreateKernel(m_program, "mean_3cols",	 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'mean_sq_3cols_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
@@ -358,6 +359,8 @@ void RunCL::initialize_fp32_params(){
 				//SIGMA_Q ;
 				//SIGMA_D ;
 	fp32_params[THETA]			=    obj["thetaStart"].asFloat()	;
+	fp32_params[OLD_THETA]		=    fp32_params[THETA];
+
 	fp32_params[LAMBDA]			=    obj["lambda"].asFloat()		;
 	fp32_params[SCALE_EAUX]		=    obj["scale_E_aux"].asFloat()	;
 	fp32_params[SE3_LM_A]		=    obj["SE3_LM_A"].asFloat()		;
@@ -433,7 +436,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																				cout<<"\nRunCL::initialize, image_size_bytes="<< image_size_bytes <<  ", sizeof(float)="<< sizeof(float)<<flush;
 																																				cout<<"\n";
 
-																																				cout<<"\n"<<", fp16_size ="<< fp16_size   <<", mm_margin="     << mm_margin       <<", mm_width ="     <<  mm_width       <<flush;
+																																				cout<<"\n"<<", mm_margin="     << mm_margin       <<", mm_width ="     <<  mm_width       <<flush;  //  ", fp16_size ="<< fp16_size   <<
 																																				cout<<"\n"<<", mm_height ="<< mm_height   <<", mm_Image_size ="<<  mm_Image_size  <<", mm_Image_type ="<< mm_Image_type   <<flush;
 																																				cout<<"\n"<<", mm_size_bytes_C1="<< mm_size_bytes_C1  <<", mm_size_bytes_C3="<< mm_size_bytes_C3 <<", mm_size_bytes_C4="<< mm_size_bytes_C4 << ", mm_size_bytes_C8="<< mm_size_bytes_C8 <<", mm_vol_size_bytes ="<<  mm_vol_size_bytes  <<flush;
 																																				cout<<"\n";
@@ -570,8 +573,9 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	pix_sum_size			= se3_sum_size;
 	pix_sum_size_bytes		= pix_sum_size * sizeof(float) * 4;																				// NB the data returned is one float4 per group, for the base image, holding hsv channels plus entry[3]=pixel count.
 
-	d_disp_sum_size			=  1 + ceil( (float)(MipMap[(mm_num_reductions+1) + MiM_READ_OFFSET]) / (float)local_work_size ) ;				// mm_size_bytes_C1 =	mm_size_bytes_C1	= temp2.total() * temp2.elemSize();
-	d_disp_sum_size_bytes	=  d_disp_sum_size * sizeof(float) * 4;
+
+	// d_disp_sum_size			=  1 + ceil( (float)( MipMap[(mm_num_reductions+1) + MiM_READ_OFFSET] ) / (float)local_work_size ) ;			// mm_size_bytes_C1 =	mm_size_bytes_C1	= temp2.total() * temp2.elemSize();
+	// d_disp_sum_size_bytes	=  d_disp_sum_size * sizeof(float) * 4;
 																																			if(verbosity>local_verbosity_threshold) cout <<"\nRunCL::initialize_RunCL_chk finished ############################################################\n"<<flush;
 }
 
@@ -702,7 +706,7 @@ void RunCL::allocatemem(){
 
 	HSV_grad_mem		= clCreateBuffer(m_context, CL_MEM_READ_ONLY  						, mm_size_bytes_C8,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 39= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	dmem_disparity		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 40= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	dmem_disparity_sum	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, d_disp_sum_size_bytes,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	dmem_disparity_sum	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, pix_sum_size_bytes,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 	// buffers for stereo disparity
 	lookup_table_buf				= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
@@ -710,10 +714,10 @@ void RunCL::allocatemem(){
 	new_img_buf						= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	warped_img_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
-	ref_img_mean_rows_buf		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	ref_img_mean_rows_buf			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	ref_img_mean_buf				= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	warped_img_mean_rows_buf		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	warped_img_mean_buf			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	warped_img_mean_buf				= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 	ref_img_diff_buf				= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	warped_img_diff_buf				= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
@@ -792,7 +796,7 @@ void RunCL::allocatemem(){
 
 	status = clEnqueueFillBuffer(uload_queue, HSV_grad_mem, 		&zero, 			sizeof(float),   0, mm_size_bytes_C8, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueFillBuffer(uload_queue, dmem_disparity, 		&zero, 			sizeof(float),   0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
-	status = clEnqueueFillBuffer(uload_queue, dmem_disparity_sum, 	&zero, 			sizeof(float),   0, d_disp_sum_size_bytes, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	status = clEnqueueFillBuffer(uload_queue, dmem_disparity_sum, 	&zero, 			sizeof(float),   0, pix_sum_size_bytes, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 
 	//status = clEnqueueFillBuffer(uload_queue, binocular_disparity, 	&zero, 			sizeof(float),   0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	//status = clEnqueueFillBuffer(uload_queue, binocular_rho, 		&zero, 			sizeof(float),   0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
@@ -994,6 +998,7 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	status = clReleaseKernel(warp_image_kernel);				if (status != CL_SUCCESS)	{ cout << "\nwarp_image_kernel				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 	status = clReleaseKernel(correlation_one_step_kernel);		if (status != CL_SUCCESS)	{ cout << "\ncorrelation_one_step_kernel	status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(correlation_2nd_step_kernel);		if (status != CL_SUCCESS)	{ cout << "\ncorrelation_2nd_step_kernel	status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 	status = clReleaseKernel(mean_sq_3rows_kernel);				if (status != CL_SUCCESS)	{ cout << "\nmean_sq_3rows_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(mean_sq_cols_kernel);				if (status != CL_SUCCESS)	{ cout << "\nmean_sq_cols_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;

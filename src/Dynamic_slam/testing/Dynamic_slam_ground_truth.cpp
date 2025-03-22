@@ -10,7 +10,7 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
     std::strcpy (ch, str.c_str());
 	cv::Mat T_alt;
     convertAhandaPovRayToStandard( obj,  ch, R, T, cameraMatrix );
-	free(ch);
+	delete [] ch; //free(ch);
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\n Dynamic_slam::getFrameData_vec_chk 1";
 																																				cout << "\n\n R = " << R;
