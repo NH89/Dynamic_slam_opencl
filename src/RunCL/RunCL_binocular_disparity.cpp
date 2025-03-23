@@ -185,8 +185,8 @@ void RunCL::warp_image( uint layer, int iter ){																					// computed 
 																																				tiff 			= true;
 																																				float max_range = 1.0f; 		// -1 -> gray = zero.
 																																				_cl_flush_finish(m_queue, fname);
-																																				//DownloadAndSave_2Channel_volume( warp_buf,	ss.str( ), paths.at( "warp_buf"),  2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, show, max_range, 2 );  // 1, 2D warp, 1DoF
-																																				DownloadAndSave_3Channel( 	warped_img_buf,	ss.str( ), paths.at( "warped_img_buf"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , max_range);
+																																				DownloadAndSave_2Channel_volume( warp_buf,			ss.str( ), paths.at( "warp_buf"),  			2*mm_size_bytes_C1,	mm_Image_size,   CV_32FC2, show, max_range, 2 );  // 1, 2D warp, 1DoF
+																																				DownloadAndSave_3Channel( 		 warped_img_buf,	ss.str( ), paths.at( "warped_img_buf"),  	mm_size_bytes_C4,	mm_Image_size,   CV_32FC4, show, max_range);
 																																				tiff 			= old_tiff;
 																																			}
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::warp_image( ..)_finished ."<<flush;}
@@ -203,19 +203,21 @@ void RunCL::correlation_one_step ( uint layer, uint iter ){
 																																			}
 	// inputs
 	// __private
-	//_clSetKernelArg( warp_image_kernel,  				0, sizeof( uint), 							&read_offset,			fname);			// 	__private	uint	read_offset,		//0
-	_clSetKernelArg( correlation_one_step_kernel,  		1, sizeof( uint), 							&mm_width,				fname);			// 	__private	uint	mm_cols,			//1
-	_clSetKernelArg( correlation_one_step_kernel,  		2, sizeof( uint), 							&mm_layerstep,			fname);			//	 __private	uint 	mm_size,			//2
+	//_clSetKernelArg( warp_image_kernel,  				 0, sizeof( uint), 							&read_offset,			fname);			// 	__private	uint	read_offset,		//0
+	_clSetKernelArg( correlation_one_step_kernel,  		 1, sizeof( uint), 							&mm_width,				fname);			// 	__private	uint	mm_cols,			//1
+	_clSetKernelArg( correlation_one_step_kernel,  		 2, sizeof( uint), 							&mm_layerstep,			fname);			//	 __private	uint 	mm_size,			//2
 	// __local
-	_clSetKernelArg( correlation_one_step_kernel, 		3, (local_work_size+2)*3*sizeof(cl_float4), NULL,					fname);			// __local		float4*	local_ref_img,		//3		// 3*(group_size + 2) * sizeof(float4)
-	_clSetKernelArg( correlation_one_step_kernel, 		4, (local_work_size+4)*5*sizeof(cl_float4), NULL,					fname);			// __local		float*	local_confidence	//4		// 5*(group_size + 4) * sizeof(float4)
+	_clSetKernelArg( correlation_one_step_kernel, 		 3, (local_work_size+2)*3*sizeof(cl_float4), NULL,					fname);			// __local		float4*	local_ref_img,		//3		// 3*(group_size + 2) * sizeof(float4)
+	_clSetKernelArg( correlation_one_step_kernel, 		 4, (local_work_size+4)*5*sizeof(cl_float4), NULL,					fname);			// __local		float*	local_confidence	//4		// 5*(group_size + 4) * sizeof(float4)
 	// __global
-	_clSetKernelArg( correlation_one_step_kernel,  		5, sizeof( cl_mem), 						&lookup_table_buf,		fname);			//__global 	float4*	lookup_table,			//5
-	_clSetKernelArg( correlation_one_step_kernel,  		6, sizeof( cl_mem), 						&ref_img_buf,			fname);			//__global 	float4*	ref_img,				//6
-	_clSetKernelArg( correlation_one_step_kernel,  		7, sizeof( cl_mem), 						&warped_img_buf,		fname);			//__global 	float4*	warped_img,				//7
+	_clSetKernelArg( correlation_one_step_kernel,  		 5, sizeof( cl_mem), 						&lookup_table_buf,		fname);			//__global 	float4*	lookup_table,			//5
+	_clSetKernelArg( correlation_one_step_kernel,  		 6, sizeof( cl_mem), 						&ref_img_buf,			fname);			//__global 	float4*	ref_img,				//6
+	_clSetKernelArg( correlation_one_step_kernel,  		 7, sizeof( cl_mem), 						&warped_img_buf,		fname);			//__global 	float4*	warped_img,				//7
 	// output
-	_clSetKernelArg( correlation_one_step_kernel,  		8, sizeof( cl_mem), 						&covariance_buf,		fname);			//__global 	float4*	covariance				//8
-	_clSetKernelArg( correlation_one_step_kernel,  		9, sizeof( cl_mem), 						&correlation_buf,		fname);			//__global 	float4*	correlation				//9
+	_clSetKernelArg( correlation_one_step_kernel,  		 8, sizeof( cl_mem), 						&covariance_buf,		fname);			//__global 	float4*	covariance				//8
+	_clSetKernelArg( correlation_one_step_kernel,  		 9, sizeof( cl_mem), 						&correlation_buf,		fname);			//__global 	float4*	correlation				//9
+	_clSetKernelArg( correlation_one_step_kernel,  		10, sizeof( cl_mem), &warp_buf,				fname);									// __global 	float2*	warp				//10
+	_clSetKernelArg( correlation_one_step_kernel,  		11, sizeof( cl_mem), &confidence_buf,		fname);									// __global 	float*	confidence			//11
 
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::correlation_one_step( ..)_chk1 ."<<flush;}
 	layer_call_kernel( correlation_one_step_kernel, m_queue, layer, local_work_size);
@@ -231,8 +233,8 @@ void RunCL::correlation_one_step ( uint layer, uint iter ){
 																																				_cl_flush_finish(m_queue, fname);
 																																				DownloadAndSave_3Channel_volume( 	covariance_buf,		ss.str( ), paths.at( "covariance_buf" ),  	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, 1.0f, 	vol_layers, tiff, iter, display);
 																																				DownloadAndSave_3Channel_volume( 	correlation_buf,	ss.str( ), paths.at( "correlation_buf" ),  	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, 1.0f, 	vol_layers, tiff, iter, display); // just the denominator
-																																				//DownloadAndSave_2Channel_volume( 	warp_buf,			ss.str( ), paths.at( "warp_buf"),  		  2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, 	show, -1.0f, 		1 );
-																																				//DownloadAndSave( 			  		confidence_buf,		ss.str( ), paths.at( "confidence_buf"),		mm_size_bytes_C1,   mm_Image_size,   CV_32FC1,  show, max_range);
+																																				DownloadAndSave_2Channel_volume( 	warp_buf,			ss.str( ), paths.at( "warp_buf"),  		  2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, 	show, -1.0f, 		1 );
+																																				DownloadAndSave( 			  		confidence_buf,		ss.str( ), paths.at( "confidence_buf"),		mm_size_bytes_C1,   mm_Image_size,   CV_32FC1,  show, max_range);
 																																				tiff 			= old_tiff;
 																																			}
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::correlation_one_step( ..)_finished ."<<flush;}
@@ -564,7 +566,7 @@ void RunCL::regularize_warp( uint layer, uint iter ){
 
 	// outputs
 	_clSetKernelArg( regularize_warp_kernel,  		7, sizeof( cl_mem), 					&warp_buf_regularized,			fname);		// __global 	float2*	new_warp				//7
-	_clSetKernelArg( regularize_warp_kernel,  		8, sizeof( cl_mem), 					&confidence_buf_regularized,	fname);		// __global 	float2*	new_confidence			//8
+	_clSetKernelArg( regularize_warp_kernel,  		8, sizeof( cl_mem), 					&confidence_buf_regularized,	fname);		// __global 	float*	new_confidence			//8
 																																		if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::regularize_warp( ..)_chk1 ."<<flush;}
 	layer_call_kernel( regularize_warp_kernel, m_queue, layer, local_work_size);
 																																			if( verbosity>local_verbosity_threshold /*&& layer==1*/ ) {cout<<"\n\nRunCL::regularize_warp( ..)_chk2 ."<<flush;				// Save buffers to file ###########

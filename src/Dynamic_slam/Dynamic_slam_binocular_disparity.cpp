@@ -83,6 +83,8 @@ void Dynamic_slam::binocular_disparity(){
 		for (int iter = 0 ; iter < 1   ; iter++ ){																if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::disparity() chk_2 layer="<<layer<<", iter="<<iter<<"_"<<flush;}
 			runcl.warp_image(			layer, iter );
 			runcl.correlation_one_step( layer, iter );
+			runcl.regularize_warp(		layer, iter	);
+			{
 			//runcl.correlation_2nd_step( layer, iter );
 
 			// runcl.mean_3rows (		layer, iter, "warped_img_mean_rows_buf",							runcl.warped_img_buf,				runcl.warped_img_mean_rows_buf );
@@ -93,6 +95,7 @@ void Dynamic_slam::binocular_disparity(){
 			// runcl.covariance_cols(	layer, iter  );
 			// runcl.correlation(		layer, iter  );
 			// runcl.regularize_warp(	layer, iter  );
+			}
 		}
 		if (layer>runcl.mm_start){ runcl.propagate_warp( layer ); }
 	}

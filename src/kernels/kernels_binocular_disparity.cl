@@ -114,7 +114,6 @@ __kernel void set_warp_new_image(						// Computed once each iteration of warpin
 	//}
 }
 
-
 __kernel void warp_image(						// Computed once each iteration of warping, for each layer of image pyramid
 	// inputs									// Warp describes where to sample the new image to match the reference image.
 	__private	uint	read_offset,			//0
@@ -164,8 +163,48 @@ __kernel void warp_image(						// Computed once each iteration of warping, for e
 // 	}
 }
 
+float2 compute_maximum(__private float4 A, __private float4 B, __private float4 C){
+	// from https://math.stackexchange.com/questions/2150199/is-there-a-method-for-estimating-the-parabolic-function-using-three-points-or-a
+	// Also incorporating ug_stereomatcher Matachlib.cu  PolyDisparity kenel concavity chk & confidence setting.
+	float x1=-1,	x2=0,	x3=1;
+	float y1=A.x,	y2=B.x,	y3=C.x;			// TODO  which choice of channels ?
 
-__kernel void correlation_one_step(		// TODO add local memory for efficiency
+	float k1 		= y1/((x1-x2)*(x1-x3));
+	float k2 		= y2/((x2-x1)*(x2-x3));
+	float k3 		= y3/((x3-x2)*(x3-x1));
+
+	float optimum_x, optimum_y;
+	float concavity = mad(y2, -2.0f, (y1+y3) );
+
+	if ( concavity  <0.0f) {														// correct concavity, use parabolic curvature
+		optimum_x = (k1*(x2+x3) + k2*(x1+x3) + k3*(x2+x1)) / (2*(k1+k2+k3));
+		optimum_x = clamp(optimum_x, -1.0f, 1.0f);										// ### warp increment clamped to +/-1
+		float a1 		= optimum_x - x1;
+		float a2 		= optimum_x - x2;
+		float a3 		= optimum_x - x3;
+		optimum_y = k1*a2*a3 + k2*a1*a3 + k3*a1*a2;
+	}else{																			// wrong concavity, use linear gradient
+		optimum_x = (1.0f-y2) * 0.5f*(y1-y3);
+		optimum_x = clamp(optimum_x, -1.0f, 1.0f);										// ### warp increment clamped to +/-1
+		optimum_y = 1.0f;
+	}
+																					// NB intuitively, "confidence in warp" = curvature of fit * correlation .
+
+	if (optimum_y >1.0f){															// if predicted fit impossibly good
+		float d = optimum_y - y2;
+		if(d>1e-10){																// if predicted increase in fit is non-negligible
+			optimum_x = optimum_x * ((1.0 - y2) / d);								// scale the increment to reach correlation = 1.0f
+		}
+		optimum_y = 1.0f;
+	}else{
+		optimum_y = mad(0.3f , optimum_y , 0.7f);
+	}
+
+	float2 optimum	= {optimum_x, optimum_y};
+	return optimum;
+}
+
+__kernel void correlation_one_step(
 	// inputs
 	__private	uint	read_offset,			//0
 	__private	uint	mm_cols,				//1
@@ -179,37 +218,26 @@ __kernel void correlation_one_step(		// TODO add local memory for efficiency
 	__global 	float4*	warped_img,				//7
 	//outputs
 	__global 	float4*	covariance,				//8
-	__global 	float4*	correlation				//9
+	__global 	float4*	correlation,			//9
+	__global 	float2*	warp,					//10		// 2*float4*mm_size // float2*
+	__global 	float*	confidence				//11
 			  ){
 	// From YouTube Template Matching by  Correlation | Image Processing I, Columbia Univ.
 	// N_tf[i,j] = Sum_m,n( f[m,n] * t[m-i,n-j] ) / sqrt(Sum_m,n( f^2[m,n] ) * sqrt(Sum_m,n( t^2[m-i,n-j] ) )
 
 	uint 	read_index							= floor( lookup_table[ get_global_id(0) + read_offset ].z );
-	if (read_index ==0 ) return;
+	if (read_index ==0 ) return;																						// TODO this would cause the last workgroup to crash at the barriers.
 	uint 	lid									= get_local_id(0);
 	uint 	local_size							= get_local_size(0);
 	uint 	local_ref_mem_width					= local_size + 2;
 	uint 	local_warpmem_width					= local_size + 4;
 	uint 	gid									= get_group_id(0);
 	// TODO check local mem is large enough
-	{
-// 	for(int step=-1; step<2; step++){  // -1
-// 		local_ref_img[1+lid+(1+step)*local_ref_mem_width]		= ref_img[read_index+step*mm_cols];
-// 		barrier(CLK_LOCAL_MEM_FENCE);
-// 	}
-// 	if (lid<6){
-// 		const int local_index[6]				= { (0), 								(local_ref_mem_width),		(2*local_ref_mem_width),	\
-// 													(local_ref_mem_width-1),			(2*local_ref_mem_width-1),	(3*local_ref_mem_width-1)	};
-//
-// 		const int offset[6]						= { (-1-mm_cols),						(-2), 						(-3+mm_cols), 						\
-// 													(-5-mm_cols+local_ref_mem_width), 	(-6+local_ref_mem_width), 	(-7+mm_cols+local_ref_mem_width)	};
-//
-// 		local_ref_img[ local_index[lid] ]		= ref_img[ read_index + offset[lid] ];
-// 	}
-	}
+
 	uint global_index 						= read_index -1 - 1*mm_cols;												// Offset from read_index, to top left of patch to copy to local mem.
 	uint local_index						= lid;
 
+	__attribute__((opencl_unroll_hint))
 	for (uint row = 0; row<3; row++){
 		local_ref_img[local_index]			=  ref_img[global_index];
 		global_index						+= mm_cols;
@@ -220,7 +248,8 @@ __kernel void correlation_one_step(		// TODO add local memory for efficiency
 	global_index 							= floor( lookup_table[ get_global_id(0) + read_offset + local_size].z );
 	global_index 							= global_index -1 - 1*mm_cols; 												// Use lookup table to find correct starting read_index for the last 4 columns.
 	local_index								= lid + local_size;
-	for (uint row = 0; row<5; row++){																				// This wraps correctly for all layers of the image pyramid.
+	__attribute__((opencl_unroll_hint))
+	for (uint row = 0; row<5; row++){																					// This wraps correctly for all layers of the image pyramid.
 		if (lid<2){
 			local_ref_img[local_index]		= ref_img[global_index];
 		}
@@ -229,11 +258,9 @@ __kernel void correlation_one_step(		// TODO add local memory for efficiency
 		barrier(CLK_LOCAL_MEM_FENCE);
 	}
 
-
-	barrier(CLK_LOCAL_MEM_FENCE);
-
 	global_index 							= read_index -2 - 2*mm_cols;												// Offset from read_index, to top left of patch to copy to local mem.
 	local_index								= lid;
+	__attribute__((opencl_unroll_hint))
 	for (uint row = 0; row<5; row++){
 		local_warped_img[local_index]		=  warped_img[global_index];
 		global_index						+= mm_cols;
@@ -244,7 +271,8 @@ __kernel void correlation_one_step(		// TODO add local memory for efficiency
 	global_index 							= floor( lookup_table[ get_global_id(0) + read_offset + local_size].z );
 	global_index 							= global_index -2 - 2*mm_cols; 												// Use lookup table to find correct starting read_index for the last 4 columns.
 	local_index								= lid + local_size;
-	for (uint row = 0; row<5; row++){																				// This wraps correctly for all layers of the image pyramid.
+	__attribute__((opencl_unroll_hint))
+	for (uint row = 0; row<5; row++){																					// This wraps correctly for all layers of the image pyramid.
 		if (lid<4){
 			local_warped_img[local_index]	= warped_img[global_index];
 		}
@@ -252,80 +280,7 @@ __kernel void correlation_one_step(		// TODO add local memory for efficiency
 		local_index 						+= local_warpmem_width;
 		barrier(CLK_LOCAL_MEM_FENCE);
 	}
-
-
-// 	correlation[read_index]		= local_warped_img[lid + 4];
-// 	correlation[read_index]		= local_ref_img[lid + 2];
-//  	return;
-
-
-
-	barrier(CLK_LOCAL_MEM_FENCE);
-	{
-		{
-// 	////////////
-//	uint gid = get_group_id(0);
-// 	if ( gid > 50) {
-// 		covariance[read_index]	= 	local_ref_img[lid];
-// 		correlation[read_index]	=	local_warped_img[lid];
-//
-// 		if(lid==0){
-// 			float4 green_f4 			= { 0.0f, 0.5f, 0.0f, 1.0f};
-// 			covariance[read_index]		= green_f4;
-// 			correlation[read_index]		= green_f4;
-// 		}
-// 	}
-//
-// 	if (gid == 0 ) {
-// 		if(lid==0){
-// 			float4 red_f4 				= { 0.0f, 0.0f, 1.0f, 1.0f};
-// 			covariance[read_index]		+= red_f4;
-// 			correlation[read_index]		+= red_f4;
-// 		}
-// 	}
-//
-// 	if (!(gid == 11 || gid == 24 )) return;
-		}
-		{
-//	float4 temp 				= { 0.0f, -0.1f, 0.0f, 0.2f};
-
-// 	for (int i=0; i<5; i++){
-// 		correlation[read_index+ i*mm_cols]	= local_warped_img[lid+ i*local_warpmem_width] - temp;
-// 	}
-// 	for (int i=0; i<3; i++){
-// 		covariance[read_index+ i*mm_cols]	= local_ref_img[lid+ i*local_ref_mem_width] - temp;
-// 	}
-		}
-		{
-// 	if(lid==0){
-// 			for(uint row=0; row <5 ; row++){
-// 				for(uint col=0;	col<local_warpmem_width  ; col++){
-// 					correlation[read_index+ col + row*mm_cols]	= local_warped_img[lid+ col + row*local_warpmem_width] ;
-// 				}
-// 			}
-//
-// 			for(uint row=0; row <3 ; row++){
-// 				for(uint col=0;	col<local_ref_mem_width  ; col++){
-// 					covariance[read_index+ col + row*mm_cols]	= local_ref_img[lid+ col + row*local_ref_mem_width];
-// 				}
-// 			}
-//
-// 			//float4 temp 				= { 0.0f, 1.0f, 0.5f, 1.0f};
-// 			covariance[read_index]								= orange_f4;
-// 			covariance[read_index + local_size]					= orange_f4;
-// 			covariance[read_index + local_ref_mem_width-1]		= orange_f4;
-//
-// 			correlation[read_index]								= orange_f4;
-// 			correlation[read_index+1]							= orange_f4;
-//
-// 			correlation[read_index+ local_size]					= orange_f4;
-// 			correlation[read_index+ local_warpmem_width-1]		= orange_f4;
-// 	}
-		}
-
-	//return;
-	////////////
-	}
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////	// end of local memoory filling. //////////////////////////////////////////////
 
 	uint 	index;
 	float4  pvt_ref_pixel[9];
@@ -336,8 +291,7 @@ __kernel void correlation_one_step(		// TODO add local memory for efficiency
 	float4  pvt_sum_sq_warped_patch;
 
 	uint	write_index 						= read_index;
-	uint	increment[5]						= { -local_warpmem_width , -1 , 0 , 1 , local_warpmem_width };		//{ -mm_cols , -1 , 0 , 1 , mm_cols };
-
+	uint	increment[5]						= { -local_warpmem_width , -1 , 0 , 1 , local_warpmem_width };
 	index										= 0;
 	pvt_sum_sq_ref_patch						= zero_f4;
 
@@ -345,9 +299,10 @@ __kernel void correlation_one_step(		// TODO add local memory for efficiency
 	for (int col=0;col<3;col++){
 		__attribute__((opencl_unroll_hint))
 		for (int row=0;row<3;row++){
-				pvt_ref_pixel[index]			= local_ref_img[ lid + col + row*local_ref_mem_width ];	//	ref_img[read_index+col+row*mm_cols];
+				pvt_ref_pixel[index]			= local_ref_img[ lid + col + row*local_ref_mem_width ];
 				pvt_sum_sq_ref_patch			+= pvt_ref_pixel[index] * pvt_ref_pixel[index];
 				index++;
+				barrier(CLK_LOCAL_MEM_FENCE);
 		}
 	}
 	pvt_sum_sq_ref_patch						=  sqrt(pvt_sum_sq_ref_patch) / 3.0f;
@@ -364,120 +319,180 @@ __kernel void correlation_one_step(		// TODO add local memory for efficiency
 		for (int col=1;col<4;col++){    // int col=1;col<4;col++
 			__attribute__((opencl_unroll_hint))
 			for (int row=1;row<4;row++){
-				pvt_pixel[index]				= local_warped_img[ lid + col + row*local_warpmem_width + increment[sample] ];	//	warped_img[ read_index + col + row*mm_cols + increment[sample] ];
+				pvt_pixel[index]				= local_warped_img[ lid + col + row*local_warpmem_width + increment[sample] ];
 				pvt_sum_sq_warped_patch			+= pvt_pixel[index] * pvt_pixel[index];
 
 				pvt_covariance					+= (pvt_ref_pixel[index] * pvt_pixel[index]);
 				index++;
+				barrier(CLK_LOCAL_MEM_FENCE);
 			}
 		}
 		pvt_sum_sq_warped_patch					= sqrt(pvt_sum_sq_warped_patch) / 3.0f;
 		pvt_covariance							/= 9.0f;
+		//pvt_covariance.w						= 1.0f;
 
-		float4 denominator 						= (pvt_sum_sq_ref_patch * pvt_sum_sq_warped_patch ); //clamp( (pvt_sum_sq_ref_patch * pvt_sum_sq_warped_patch )  , 0.001f, 100.0f );
-		{
-		//pvt_correlation[ sample ]				/= denominator;
+		float4 denominator 						= (pvt_sum_sq_ref_patch * pvt_sum_sq_warped_patch );
+		pvt_correlation[ sample ]				= pvt_covariance / denominator ;
 
-// 		float4  X,Y,Z,W;
-//
-// 		X.x	= pvt_correlation[ sample ].x;
-// 		X.y = denominator.x;
-// 		X.z = X.x / X.y;
-// 		X.w = 1.0f;
-//
-// 		Y.x = pvt_correlation[ sample ].y;
-// 		Y.y = denominator.y;
-// 		Y.z = Y.x / Y.y;
-// 		Y.w = 1.0f;
-//
-// 		Z.x = pvt_correlation[ sample ].z;
-// 		Z.y = denominator.z;
-// 		Z.z = Z.x / Z.y;
-// 		Z.w = 1.0f;
-//
-// 		W.x = pvt_correlation[ sample ].w;
-// 		W.y = denominator.w;
-// 		W.z = W.x / W.y;
-// 		W.w = 1.0f;
-//
-//
-// 		float4 pixel;
-// 		pixel.x = pvt_pixel[0].x;
-// 		pixel.y = pvt_pixel[4].x;
-// 		pixel.z = pvt_pixel[8].x;
-// 		pixel.w = 1.0f;
-//
-// 		float4 covar;
-// 		covar.x  = pvt_covariance.x; //pvt_ref_pixel[8].z ;
-// 		covar.y  = pvt_covariance.y; //pvt_pixel[8].z;
-// 		covar.z  = pvt_covariance.z;
-// 		covar.w  = 1.0f;
-
-// 		if ( !isnormal(pvt_correlation[sample].x) )	{ pvt_correlation[sample].x	= -0.5f; }		// not needed if clamped to (-1 <-> +1)
-// 		if ( !isnormal(pvt_correlation[sample].y) )	{ pvt_correlation[sample].y	= -0.5f; }
-// 		if ( !isnormal(pvt_correlation[sample].z) )	{ pvt_correlation[sample].z	= -0.5f; }
-
-// 		pvt_correlation[sample] 				= clamp( pvt_correlation[sample], -1.0f, 1.0f );
-
-// 		pvt_correlation[ sample ].w 			= 1.0f;
-		}
-
-		//if ( gid > 50) {
-
-			covariance[  write_index ]				= pvt_covariance;  // FIXME corrupted local_ref_img margins  // local_ref_img[lid +2 + 2*local_size ]; //
-			// // float4 base
-			//correlation[ write_index ]				= denominator; // FIXME alpha!=1.0f    //pvt_sum_sq_ref_patch; //pvt_sum_sq_warped_patch; //pvt_covariance ; //covar; //X; //pixel; // pvt_correlation[ sample ] ;  // denominator ; //
-
-			pvt_correlation[ sample ]				= pvt_covariance / denominator ;
-			correlation[ write_index ]				= pvt_correlation[ sample ];
-
-
-			{
-	// 		pvt_correlation[ sample ].x				= pvt_covariance.x  * base.x ;
-	// 		pvt_correlation[ sample ].y				= pvt_covariance.y  * base.y ;
-	// 		pvt_correlation[ sample ].z				= pvt_covariance.z  * base.z ;
-	// 		pvt_correlation[ sample ].w				= 1.0f;
-	//
-	// 		correlation[ write_index ]				= pvt_correlation[ sample ];
-			}
-			{
-// 			if (lid==0){
-// 				float4 green_f4 					= { 0.0f, 0.5f, 0.0f, 1.0f};
-// 				covariance[  write_index + 3]		= green_f4 ;
-// 				correlation[ write_index + 3]		= green_f4 ;
-// 				for (int i=0; i<9; i++){
-// 					covariance[  write_index + 4 + i]	= pvt_ref_pixel[i];
-// 					correlation[ write_index + 4 + i]	= pvt_pixel[i];
-// 				}
-// 			}
-// 			if (lid==local_size-1){
-// 				float4 blue_f4 						= { 1.0f, 0.0f, 0.0f, 1.0f};
-// 				covariance[  write_index - 3]		= blue_f4 ;
-// 				correlation[ write_index - 3]		= blue_f4 ;
-// 				for (int i=0; i<9; i++){
-// 					covariance[  write_index - 4 - i]	= pvt_ref_pixel[i];
-// 					correlation[ write_index - 4 - i]	= pvt_pixel[i];
-// 				}
-// 			}
-		//}
-
-// 		if ( gid == 11 || gid == 24 ){
-// 			float4 temp 				= { 0.0f, -0.1f, 0.0f, 0.2f};
-//
-// 			for (int i=0; i<5; i++){
-// 				correlation[read_index+ i*mm_cols]	= local_warped_img[lid+ i*local_warpmem_width]; // - temp;
-// 			}
-// 			for (int i=0; i<3; i++){
-// 				covariance[read_index+ i*mm_cols]	= local_ref_img[lid+ i*local_ref_mem_width]; // - temp;
-// 			}
-// 		}
-		}
+		covariance[  write_index ]				= pvt_covariance;
+		correlation[ write_index ]				= pvt_correlation[ sample ];
 		write_index								+= mm_size;
 	}
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////	// end of correlation computation. //////////////////////////////////////////////
 
-	// TODO add warp & confidence
+	float old_conf  							= confidence[read_index];
+	float2 warp2								= warp[read_index];
+ 	float2 opt_u								= pvt_correlation[1].x - pvt_correlation[3].x; //compute_maximum( pvt_correlation[1], pvt_correlation[2], pvt_correlation[3] );//does the work of PolyDisparity kernel in UG code.
+	float2 opt_v								= pvt_correlation[0].x - pvt_correlation[4].x; //compute_maximum( pvt_correlation[0], pvt_correlation[2], pvt_correlation[4] );//
+
+	float2 warp_new;
+	warp_new.x									= /*opt_u.x +*/ warp2.x;	// TODO currently only using channel .x of the correlation, from .x of the images.
+ 	warp_new.y									= /*opt_v.x +*/ warp2.y;	// Need to decide how to blend the channels.
+	warp[read_index]							= warp_new;
+
+	confidence[read_index]						= (0.75f*old_conf + 0.25f * opt_u.y * opt_v.y); // clamp( (0.75f*old_conf + 0.25f * opt_u.y * opt_v.y), 0.0f, 1.0f);		// ### clamped to 0.0 < confidence < 1.0
 
 }
+
+__kernel void regularize_warp(					// Use local mem to avoid repeat loading of same data by different threads. // TODO handle margins.
+												// TODO ideal might be 8x8 tiled, rather than strips.
+	// inputs
+	__private	uint	read_offset,			//0
+	__private	uint	mm_cols,				//1
+
+	__local		float2*	local_warp,				//2		2 rows + 1px halo at each end, middle row only.
+	__local		float*	local_confidence,		//3		2 rows + 1px halo at each end, middle row only.
+
+	__global 	float4*	lookup_table,			//4
+	__global 	float2*	warp,					//5
+	__global 	float*	confidence_buf,			//6
+	// outputs
+	__global 	float2*	new_warp,				//7
+	__global 	float*	new_confidence			//8
+){
+	uint 	read_index							= floor( lookup_table[ get_global_id(0) + read_offset ].z );
+	if 		(read_index ==0 ) 					return;
+	uint 	lid									= get_local_id(0);
+	uint 	lid_1								= lid + 1;
+	// load local buffers
+	// load 3 rows
+	int patch_length 							= 2 + get_local_size(0);
+
+	__attribute__((opencl_unroll_hint))
+	for (int i=0; i<3; i++){  local_warp[      lid_1 + i*patch_length]		= warp[           read_index + (i-1) * mm_cols]; }
+
+	__attribute__((opencl_unroll_hint))
+	for (int i=0; i<3; i++){  local_confidence[lid_1 + i*patch_length]		= confidence_buf[ read_index + (i-1) * mm_cols]; }
+
+	// load margins. NB we only need the middle row.
+	int pix_offset[2] = {-1, patch_length};
+	if (lid <2){
+		local_warp[       lid_1 + pix_offset[lid] + patch_length ]			= warp[           read_index + pix_offset[lid] ];
+		local_confidence[ lid_1 + pix_offset[lid] + patch_length ]			= confidence_buf[ read_index + pix_offset[lid] ];
+	}
+	barrier(CLK_LOCAL_MEM_FENCE);
+	// 5-way weighted sum of neighbopurs (i) conf*input,  and (ii) conf
+	uint	increment[5]						= { 0 , patch_length-1 , patch_length , patch_length+1 , 2*patch_length }; // where to sample local mem relative to lid_1 = lid+1.
+	float2	sum_warp 							= {0.0f, 0.0f};
+	float	sum_conf 							= 0.0f;
+	float	pvt_conf							= 0.0f;
+
+	__attribute__((opencl_unroll_hint))
+	for (int sample=0;sample<5;sample++){
+		pvt_conf								= 	local_confidence[lid_1 + increment[sample] ];
+		sum_warp								+=  local_warp[lid_1 + increment[sample] ] * pvt_conf;
+		sum_conf								+=	pvt_conf;
+	}
+	new_warp[read_index]						=	sum_warp / sum_conf;
+	new_confidence[read_index]					=	sum_conf / 5.0f;
+}
+
+ __kernel void propagate_warp(					// Propagates warp to the next layer of the image pyramid, by linear interpolation. // TODO handle right and bottom margins.
+	// inputs
+	__private	uint	read_offset,			//0
+	__private	uint 	rows_in,				//1
+	__private	uint	cols_in,				//2
+	__private	uint	write_offset,			//3  // rather send the mm_offset
+	__private	uint	mm_cols,				//4
+
+	__local		float2*	local_warp,				//5		// 2 rows + 1px halo at right end for both rows.
+
+	__global 	float4*	lookup_table,			//6
+	// input_output
+	__global 	float2*	warp					//7		// 2*float4*mm_size // float2* // NB reading & writing to a different regions of the same buffer.
+){
+	uint 	global_id			= get_global_id(0);
+	float 	global_id_flt 		= global_id;
+	float4 	lookup_in			= lookup_table[ global_id + read_offset  ];
+	uint read_col				= lookup_in.x;
+	uint read_row				= lookup_in.y;
+	uint read_index				= lookup_in.z;
+
+	uint row 					= global_id / cols_in;
+	uint col 					= fmod( global_id_flt, cols_in);
+	uint write_index			= col*2 + row*2*mm_cols +  lookup_table[ write_offset ].z;
+
+	uint 	lid					= get_local_id(0);
+	// load local buffers
+	// load 3 rows
+	uint patch_length 			= 1 + get_local_size(0);
+
+	__attribute__((opencl_unroll_hint))
+	for (int i=0; i<2; i++){
+		local_warp[      lid + i*patch_length]		= warp[          read_index + i* mm_cols];
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
+
+	// load margins. NB we only need the middle row.
+	int pix_offset[2] = {patch_length, 2*patch_length};
+	if (lid <2){
+		local_warp[  pix_offset[lid] ]			= warp[ read_index + pix_offset[lid] ];
+	}
+	barrier(CLK_LOCAL_MEM_FENCE);
+	float2 warp_in00					= 2*local_warp[lid] ;					barrier(CLK_LOCAL_MEM_FENCE);
+	float2 warp_in10					= 2*local_warp[lid+1] ;					barrier(CLK_LOCAL_MEM_FENCE);
+	float2 warp_in01					= 2*local_warp[lid+patch_length] ;		barrier(CLK_LOCAL_MEM_FENCE);
+	float2 warp_in11					= 2*local_warp[lid+patch_length+1] ;	barrier(CLK_LOCAL_MEM_FENCE);
+
+	warp[write_index]					= warp_in00;
+	float2 warp_out10					= mix(warp_in00, warp_in10, 0.5f);
+	warp[write_index +1]				= warp_out10;
+	warp[write_index + mm_cols]			= mix(warp_in00, warp_in01, 0.5f);
+	warp[write_index + mm_cols +1]		= mix( mix(warp_in10, warp_in11, 0.5f), warp_out10, 0.5f);
+
+	if (fmod(global_id_flt,333.0f) ==0.0f ) {
+		printf("\n_kernel propagate_warp(..), global_id=%u, lid=%u,	read_offset=%u, rows_in=%u, cols_in=%u, write_offset=%u, write_index=%u, mm_cols=%u, read_col=%u, read_row=%u, col=%u, row=%u",\
+		global_id, lid, read_offset, rows_in, cols_in, write_offset, write_index, mm_cols, read_col, read_row, col, row);
+	}
+ }
+
+
+//////////////////////////////////////////////////////////////////////////// TODO update this list
+//Buffers required: 10 new. (not counting curr_img and new_img)
+// 	__private	uint	layer,					//0
+// 	__private	uint 	mm_size,				//0
+// 	__private	uint	mm_cols,				//1
+// 	__private	uint	read_offset,			//0
+//
+// 	__constant 	uint8*	mipmap_params,			//1
+// 	__constant 	uint*	uint_params,			//2
+// 	__constant  float*  fp32_params,			//3
+//
+// 	__global 	uint4*	lookup_table			//0
+// 	__global 	float2*	warp,					//1
+// 	__global 	float4*	new_img,				//2
+// 	__global 	float4*	new_img_warped			//3
+// 	__global 	float4*	new_img_sq				//4
+// 	__global 	float4*	new_img_var,			//5
+//
+// 	__global 	float4*	curr_img,				//6
+// 	__global 	float4*	curr_img_sq				//7
+// 	__global 	float4*	curr_img_var,			//8
+//
+// 	__global 	float4*	img_covar,				//9		// 5*float4*mm_size
+// 	__global 	float4*	img_corr,				//10	// 5*float4*mm_size
+// 	__global 	float2*	warp					//11
+
 
 
 __kernel void correlation_2nd_step(						// Could merge with covariance_3cols(..). Also computes new Warp and Confidence values.
@@ -520,7 +535,6 @@ __kernel void correlation_2nd_step(						// Could merge with covariance_3cols(..
 
 
 }
-
 
 												// Rows then Columns kernels reduces computation & memoory reads,
 												// especially as patch size increases.
@@ -703,47 +717,6 @@ __kernel void covariance_3cols(
 }
 
 
-float2 compute_maximum(__private float4 A, __private float4 B, __private float4 C){
-	// from https://math.stackexchange.com/questions/2150199/is-there-a-method-for-estimating-the-parabolic-function-using-three-points-or-a
-	// Also incorporating ug_stereomatcher Matachlib.cu  PolyDisparity kenel concavity chk & confidence setting.
-	float x1=-1,	x2=0,	x3=1;
-	float y1=A.x,	y2=B.x,	y3=C.x;			// TODO  which choice of channels ?
-
-	float k1 		= y1/((x1-x2)*(x1-x3));
-	float k2 		= y2/((x2-x1)*(x2-x3));
-	float k3 		= y3/((x3-x2)*(x3-x1));
-
-	float optimum_x, optimum_y;
-	float concavity = mad(y2, -2.0f, (y1+y3) );
-
-	if ( concavity  <0.0f) {														// correct concavity, use parabolic curvature
-		optimum_x = (k1*(x2+x3) + k2*(x1+x3) + k3*(x2+x1)) / (2*(k1+k2+k3));
-		optimum_x = clamp(optimum_x, -1.0f, 1.0f);										// ### warp increment clamped to +/-1
-		float a1 		= optimum_x - x1;
-		float a2 		= optimum_x - x2;
-		float a3 		= optimum_x - x3;
-		optimum_y = k1*a2*a3 + k2*a1*a3 + k3*a1*a2;
-	}else{																			// wrong concavity, use linear gradient
-		optimum_x = (1.0f-y2) * 0.5f*(y1-y3);
-		optimum_x = clamp(optimum_x, -1.0f, 1.0f);										// ### warp increment clamped to +/-1
-		optimum_y = 1.0f;
-	}
-																					// NB intuitively, "confidence in warp" = curvature of fit * correlation .
-
-	if (optimum_y >1.0f){															// if predicted fit impossibly good
-		float d = optimum_y - y2;
-		if(d>1e-10){																// if predicted increase in fit is non-negligible
-			optimum_x = optimum_x * ((1.0 - y2) / d);								// scale the increment to reach correlation = 1.0f
-		}
-		optimum_y = 1.0f;
-	}else{
-		optimum_y = mad(0.3f , optimum_y , 0.7f);
-	}
-
-	float2 optimum	= {optimum_x, optimum_y};
-	return optimum;
-}
-
 
 __kernel void correlation(						// Could merge with covariance_3cols(..). Also computes new Warp and Confidence values.
 	// inputs
@@ -793,140 +766,3 @@ __kernel void correlation(						// Could merge with covariance_3cols(..). Also c
 	confidence[read_index]						= (0.75f*old_conf + 0.25f * opt_u.y * opt_v.y); // clamp( (0.75f*old_conf + 0.25f * opt_u.y * opt_v.y), 0.0f, 1.0f);						// ### clamped to 0.0 < confidence < 1.0
 }
 
-
-__kernel void regularize_warp(					// Use local mem to avoid repeat loading of same data by different threads. // TODO handle margins.
-												// TODO ideal might be 8x8 tiled, rather than strips.
-	// inputs
-	__private	uint	read_offset,			//0
-	__private	uint	mm_cols,				//1
-
-	__local		float2*	local_warp,				//2		2 rows + 1px halo at each end, middle row only.
-	__local		float*	local_confidence,		//3		2 rows + 1px halo at each end, middle row only.
-
-	__global 	float4*	lookup_table,			//4
-	__global 	float2*	warp,					//5
-	__global 	float*	confidence_buf,			//6
-	// outputs
-	__global 	float2*	new_warp,				//7
-	__global 	float*	new_confidence			//8
-){
-	uint 	read_index							= floor( lookup_table[ get_global_id(0) + read_offset ].z );
-	if 		(read_index ==0 ) 					return;
-	uint 	lid									= get_local_id(0);
-	uint 	lid_1								= lid + 1;
-	// load local buffers
-	// load 3 rows
-	int patch_length 							= 2 + get_local_size(0);
-
-	__attribute__((opencl_unroll_hint))
-	for (int i=0; i<3; i++){  local_warp[      lid_1 + i*patch_length]		= warp[           read_index + (i-1) * mm_cols]; }
-
-	__attribute__((opencl_unroll_hint))
-	for (int i=0; i<3; i++){  local_confidence[lid_1 + i*patch_length]		= confidence_buf[ read_index + (i-1) * mm_cols]; }
-
-	// load margins. NB we only need the middle row.
-	int pix_offset[2] = {-1, patch_length};
-	if (lid <2){
-		local_warp[       lid_1 + pix_offset[lid] + patch_length ]			= warp[           read_index + pix_offset[lid] ];
-		local_confidence[ lid_1 + pix_offset[lid] + patch_length ]			= confidence_buf[ read_index + pix_offset[lid] ];
-	}
-	barrier(CLK_LOCAL_MEM_FENCE);
-	// 5-way weighted sum of neighbopurs (i) conf*input,  and (ii) conf
-	uint	increment[5]						= { 0 , patch_length-1 , patch_length , patch_length+1 , 2*patch_length }; // where to sample local mem relative to lid_1 = lid+1.
-	float2	sum_warp 							= {0.0f, 0.0f};
-	float	sum_conf 							= 0.0f;
-	float	pvt_conf							= 0.0f;
-	__attribute__((opencl_unroll_hint))
-	for (int sample=0;sample<5;sample++){
-		pvt_conf								= 	local_confidence[lid_1 + increment[sample] ];
-		sum_warp								+=  local_warp[lid_1 + increment[sample] ] * pvt_conf;
-		sum_conf								+=	pvt_conf;
-	}
-	new_warp[read_index]						=	sum_warp / sum_conf;
-	new_confidence[read_index]					=	sum_conf / 5.0f;
-}
-
-
-
- __kernel void propagate_warp(					// Propagates warp to the next layer of the image pyramid, by linear interpolation. // TODO handle right and bottom margins.
-	// inputs
-	__private	uint	read_offset,			//0
-	__private	uint 	rows_in,				//1
-	__private	uint	cols_in,				//2
-	__private	uint	write_offset,			//3  // rather send the mm_offset
-	__private	uint	mm_cols,				//4
-
-	__local		float2*	local_warp,				//5		// 2 rows + 1px halo at right end for both rows.
-
-	__global 	float4*	lookup_table,			//6
-	// input_output
-	__global 	float2*	warp					//7		// 2*float4*mm_size // float2* // NB reading & writing to a different regions of the same buffer.
-){
-	uint 	global_id			= get_global_id(0);
-	float 	global_id_flt 		= global_id;
-	float4 	lookup_in			= lookup_table[ global_id + read_offset  ];
-	uint read_col				= lookup_in.x;
-	uint read_row				= lookup_in.y;
-	uint read_index				= lookup_in.z;
-
-	uint row 					= global_id / cols_in;
-	uint col 					= fmod( global_id_flt, cols_in);
-	uint write_index			= col*2 + row*2*mm_cols +  lookup_table[ write_offset ].z;
-
-	uint 	lid					= get_local_id(0);
-	// load local buffers
-	// load 3 rows
-	uint patch_length 			= 1 + get_local_size(0);
-
-	__attribute__((opencl_unroll_hint))
-	for (int i=0; i<2; i++){  local_warp[      lid + i*patch_length]		= warp[          read_index + i* mm_cols]; }
-
-	// load margins. NB we only need the middle row.
-	int pix_offset[2] = {patch_length, 2*patch_length};
-	if (lid <2){
-		local_warp[  pix_offset[lid] ]			= warp[ read_index + pix_offset[lid] ];
-	}
-	barrier(CLK_LOCAL_MEM_FENCE);
-	float2 warp_in00					= local_warp[lid] ;
-	float2 warp_in10					= local_warp[lid+1] ;
-	float2 warp_in01					= local_warp[lid+patch_length] ;
-	float2 warp_in11					= local_warp[lid+patch_length+1] ;
-
-	warp[write_index]					= warp_in00;
-	float2 warp_out10					= mix(warp_in00, warp_in10, 0.5f);
-	warp[write_index +1]				= warp_out10;
-	warp[write_index + mm_cols]			= mix(warp_in00, warp_in01, 0.5f);
-	warp[write_index + mm_cols +1]		= mix( mix(warp_in10, warp_in11, 0.5f), warp_out10, 0.5f);
-
-	if (fmod(global_id_flt,333.0f) ==0.0f ) {
-		printf("\n_kernel propagate_warp(..), global_id=%u, lid=%u,	read_offset=%u, rows_in=%u, cols_in=%u, write_offset=%u, write_index=%u, mm_cols=%u, read_col=%u, read_row=%u, col=%u, row=%u",\
-		global_id, lid, read_offset, rows_in, cols_in, write_offset, write_index, mm_cols, read_col, read_row, col, row);
-	}
- }
-
-
-//////////////////////////////////////////////////////////////////////////// TODO update this list
-//Buffers required: 10 new. (not counting curr_img and new_img)
-// 	__private	uint	layer,					//0
-// 	__private	uint 	mm_size,				//0
-// 	__private	uint	mm_cols,				//1
-// 	__private	uint	read_offset,			//0
-//
-// 	__constant 	uint8*	mipmap_params,			//1
-// 	__constant 	uint*	uint_params,			//2
-// 	__constant  float*  fp32_params,			//3
-//
-// 	__global 	uint4*	lookup_table			//0
-// 	__global 	float2*	warp,					//1
-// 	__global 	float4*	new_img,				//2
-// 	__global 	float4*	new_img_warped			//3
-// 	__global 	float4*	new_img_sq				//4
-// 	__global 	float4*	new_img_var,			//5
-//
-// 	__global 	float4*	curr_img,				//6
-// 	__global 	float4*	curr_img_sq				//7
-// 	__global 	float4*	curr_img_var,			//8
-//
-// 	__global 	float4*	img_covar,				//9		// 5*float4*mm_size
-// 	__global 	float4*	img_corr,				//10	// 5*float4*mm_size
-// 	__global 	float2*	warp					//11
