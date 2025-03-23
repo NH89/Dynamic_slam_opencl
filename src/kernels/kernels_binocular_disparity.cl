@@ -192,66 +192,74 @@ __kernel void correlation_one_step(		// TODO add local memory for efficiency
 	uint 	local_warpmem_width					= local_size + 4;
 	uint 	gid									= get_group_id(0);
 	// TODO check local mem is large enough
-
 	{
-	// 	// Zero local_ref_mem
-// 	float4 black_f4 = { 0.0, 0.0, 0.0, 1.0 };
-// 	for( int idx = lid; idx < 5*(local_size+4); idx +=local_size) local_ref_img[idx] = black_f4;
-//
-// 	// debug zero margins of local mem
-// 	float4 orange_f4 = { 0.0f, 0.5f, 1.0f, 0.8f};
-// 	float4 blue_f4	 = { 1.0f, 0.5f, 0.0f, 0.8f};
-// 	if(lid==0){
-// 		for(int row=0; row<5; row++){
-// 			local_warped_img[lid+row*local_warpmem_width]						= orange_f4;
-// 			local_warped_img[lid+row*local_warpmem_width + 1]					= orange_f4;
-// 			local_warped_img[lid+row*local_warpmem_width + 2 + local_size ]		= blue_f4;
-// 			local_warped_img[lid+row*local_warpmem_width + 3 + local_size ]		= blue_f4;
-// 		}
-// 		for(int row=0; row<3; row++){
-// 			local_ref_img[lid+row*local_ref_mem_width]				= orange_f4;
-// 			local_ref_img[lid+(1+row)*local_ref_mem_width -2 ]		= blue_f4;
-// 		}
+// 	for(int step=-1; step<2; step++){  // -1
+// 		local_ref_img[1+lid+(1+step)*local_ref_mem_width]		= ref_img[read_index+step*mm_cols];
+// 		barrier(CLK_LOCAL_MEM_FENCE);
 // 	}
-// 	barrier(CLK_LOCAL_MEM_FENCE);
-	// 	//// end debug
+// 	if (lid<6){
+// 		const int local_index[6]				= { (0), 								(local_ref_mem_width),		(2*local_ref_mem_width),	\
+// 													(local_ref_mem_width-1),			(2*local_ref_mem_width-1),	(3*local_ref_mem_width-1)	};
+//
+// 		const int offset[6]						= { (-1-mm_cols),						(-2), 						(-3+mm_cols), 						\
+// 													(-5-mm_cols+local_ref_mem_width), 	(-6+local_ref_mem_width), 	(-7+mm_cols+local_ref_mem_width)	};
+//
+// 		local_ref_img[ local_index[lid] ]		= ref_img[ read_index + offset[lid] ];
+// 	}
 	}
+	uint global_index 						= read_index -1 - 1*mm_cols;												// Offset from read_index, to top left of patch to copy to local mem.
+	uint local_index						= lid;
 
-	for(int step=-1; step<2; step++){  // -1
-		local_ref_img[1+lid+(1+step)*local_ref_mem_width]		= ref_img[read_index+step*mm_cols];
+	for (uint row = 0; row<3; row++){
+		local_ref_img[local_index]			=  ref_img[global_index];
+		global_index						+= mm_cols;
+		local_index 						+= local_ref_mem_width;
 		barrier(CLK_LOCAL_MEM_FENCE);
 	}
-	if (lid<6){
-		const int local_index[6]				= { (0), 								(local_ref_mem_width),		(2*local_ref_mem_width),	\
-													(local_ref_mem_width-1),			(2*local_ref_mem_width-1),	(3*local_ref_mem_width-1)	};
 
-		const int offset[6]						= { (-1-mm_cols),						(-2), 						(-3+mm_cols), 						\
-													(-5-mm_cols+local_ref_mem_width), 	(-6+local_ref_mem_width), 	(-7+mm_cols+local_ref_mem_width)	};
-
-		local_ref_img[ local_index[lid] ]		= ref_img[ read_index + offset[lid] ];
+	global_index 							= floor( lookup_table[ get_global_id(0) + read_offset + local_size].z );
+	global_index 							= global_index -1 - 1*mm_cols; 												// Use lookup table to find correct starting read_index for the last 4 columns.
+	local_index								= lid + local_size;
+	for (uint row = 0; row<5; row++){																				// This wraps correctly for all layers of the image pyramid.
+		if (lid<2){
+			local_ref_img[local_index]		= ref_img[global_index];
+		}
+		global_index						+= mm_cols;
+		local_index 						+= local_ref_mem_width;
+		barrier(CLK_LOCAL_MEM_FENCE);
 	}
+
+
 	barrier(CLK_LOCAL_MEM_FENCE);
 
-	for(uint step=0; step<5; step++){
-		uint local_index						= 2 + lid		+ step		*local_warpmem_width;
-		uint global_index						= read_index 	+ (step-2)	*mm_cols;
-		local_warped_img[local_index]			= warped_img[global_index];
+	global_index 							= read_index -2 - 2*mm_cols;												// Offset from read_index, to top left of patch to copy to local mem.
+	local_index								= lid;
+	for (uint row = 0; row<5; row++){
+		local_warped_img[local_index]		=  warped_img[global_index];
+		global_index						+= mm_cols;
+		local_index 						+= local_warpmem_width;
 		barrier(CLK_LOCAL_MEM_FENCE);
 	}
 
-	if (lid < 16){
-		const int local_index[16]				= { 										(local_warpmem_width),				(2*local_warpmem_width),				(3*local_warpmem_width), 															\
-													(1),									(local_warpmem_width+1),			(2*local_warpmem_width+1),				(3*local_warpmem_width+1),					(4*local_warpmem_width+1),				\
-													(2+local_size),							(local_warpmem_width+2+local_size),	(2*local_warpmem_width+2+local_size),	(3*local_warpmem_width+2+local_size),		(4*local_warpmem_width+2+local_size),	\
-																							(local_warpmem_width+3+local_size), (2*local_warpmem_width+3+local_size),	(3*local_warpmem_width+3+local_size) 												};
+	global_index 							= floor( lookup_table[ get_global_id(0) + read_offset + local_size].z );
+	global_index 							= global_index -2 - 2*mm_cols; 												// Use lookup table to find correct starting read_index for the last 4 columns.
+	local_index								= lid + local_size;
+	for (uint row = 0; row<5; row++){																				// This wraps correctly for all layers of the image pyramid.
+		if (lid<4){
+			local_warped_img[local_index]	= warped_img[global_index];
+		}
+		global_index						+= mm_cols;
+		local_index 						+= local_warpmem_width;
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
 
-		const int offset[16]					= { 										(-2-mm_cols),						(-3), 									(-4+mm_cols), 																		\
-													(-4-2*mm_cols),							(-5-mm_cols),						(-6), 									(-7+mm_cols), 								(-8+2*mm_cols),							\
-													(-10-2*mm_cols+local_warpmem_width),	(-11-mm_cols+local_warpmem_width),	(-12+local_warpmem_width),				(-13+mm_cols+local_warpmem_width),			(-14+2*mm_cols+local_warpmem_width),	\
-																							(-13-mm_cols+local_warpmem_width),	(-14+local_warpmem_width), 				(-15+mm_cols+local_warpmem_width)													};
 
- 		local_warped_img[ local_index[lid] ]	= warped_img[ read_index + offset[lid] ];
- 	}
+// 	correlation[read_index]		= local_warped_img[lid + 4];
+// 	correlation[read_index]		= local_ref_img[lid + 2];
+//  	return;
+
+
+
 	barrier(CLK_LOCAL_MEM_FENCE);
 	{
 		{
@@ -432,6 +440,7 @@ __kernel void correlation_one_step(		// TODO add local memory for efficiency
 	//
 	// 		correlation[ write_index ]				= pvt_correlation[ sample ];
 			}
+			{
 // 			if (lid==0){
 // 				float4 green_f4 					= { 0.0f, 0.5f, 0.0f, 1.0f};
 // 				covariance[  write_index + 3]		= green_f4 ;
@@ -462,7 +471,7 @@ __kernel void correlation_one_step(		// TODO add local memory for efficiency
 // 				covariance[read_index+ i*mm_cols]	= local_ref_img[lid+ i*local_ref_mem_width]; // - temp;
 // 			}
 // 		}
-
+		}
 		write_index								+= mm_size;
 	}
 
