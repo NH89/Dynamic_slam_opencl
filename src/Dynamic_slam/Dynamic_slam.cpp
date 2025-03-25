@@ -212,7 +212,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 	runcl.loadFrame( image );																												// NB Nvidia GeForce have 'Tensor Compute" FP16, accessible by PTX. AMD have RDNA and CDNA. These need PTX/assembly code and may use BF16 instead of FP16.
 																																			// load a basic image in CV_8UC3, then convert on GPU to 'half'
 	runcl.cvt_color_space( );
-	runcl.blur_image();
+	runcl.blur_image();//runcl.imgmem, runcl.imgmem_blurred , "imgmem_blurred");
 	runcl.mipmap_linear(runcl.imgmem, "imgmem");
 	runcl.sum_image_variance();
 	runcl.img_gradients();

@@ -184,9 +184,9 @@ float2 compute_maximum(__private float4 A, __private float4 B, __private float4 
 		float a3 		= optimum_x - x3;
 		optimum_y = k1*a2*a3 + k2*a1*a3 + k3*a1*a2;
 	}else{																			// wrong concavity, use linear gradient
-		optimum_x = (1.0f-y2) * 0.5f*(y1-y3);
-		optimum_x = clamp(optimum_x, -1.0f, 1.0f);										// ### warp increment clamped to +/-1
-		optimum_y = 1.0f;
+// 		optimum_x = (1.0f-y2) * 0.5f*(y1-y3);
+// 		optimum_x = clamp(optimum_x, -1.0f, 1.0f);										// ### warp increment clamped to +/-1
+// 		optimum_y = 1.0f;
 	}
 																					// NB intuitively, "confidence in warp" = curvature of fit * correlation .
 
@@ -218,9 +218,9 @@ __kernel void correlation_one_step(
 	__global 	float4*	warped_img,				//7
 	//outputs
 	__global 	float4*	covariance,				//8
-	__global 	float4*	correlation,			//9
-	__global 	float2*	warp,					//10		// 2*float4*mm_size // float2*
-	__global 	float*	confidence				//11
+	__global 	float4*	correlation				//9
+// 	__global 	float2*	warp,					//10		// 2*float4*mm_size // float2*
+// 	__global 	float*	confidence				//11
 			  ){
 	// From YouTube Template Matching by  Correlation | Image Processing I, Columbia Univ.
 	// N_tf[i,j] = Sum_m,n( f[m,n] * t[m-i,n-j] ) / sqrt(Sum_m,n( f^2[m,n] ) * sqrt(Sum_m,n( t^2[m-i,n-j] ) )
@@ -333,6 +333,8 @@ __kernel void correlation_one_step(
 
 		float4 denominator 						= (pvt_sum_sq_ref_patch * pvt_sum_sq_warped_patch );
 		pvt_correlation[ sample ]				= pvt_covariance / denominator ;
+		pvt_correlation[ sample ]				= clamp( pvt_correlation[ sample ], 0.0f, 1.0f);						// also sets nan->0
+		pvt_correlation[ sample ]				= pown(pvt_correlation[ sample ], 4);									// improves appearance, but effect on optimization ?
 
 		covariance[  write_index ]				= pvt_covariance;
 		correlation[ write_index ]				= pvt_correlation[ sample ];
@@ -340,18 +342,134 @@ __kernel void correlation_one_step(
 	}
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////	// end of correlation computation. //////////////////////////////////////////////
 
+// 	float old_conf  							= confidence[read_index];
+// 	float2 warp2								= warp[read_index];
+//  	float2 opt_u								= compute_maximum( pvt_correlation[1], pvt_correlation[2], pvt_correlation[3] );//pvt_correlation[1].x - pvt_correlation[3].x; //does the work of PolyDisparity kernel in UG code.
+// 	float2 opt_v								= compute_maximum( pvt_correlation[0], pvt_correlation[2], pvt_correlation[4] );//pvt_correlation[0].x - pvt_correlation[4].x; //
+//
+// 	float2 warp_new;
+// 	warp_new.x									= warp2.x + opt_u.x;	// TODO currently only using channel .x of the correlation, from .x of the images.
+//  	warp_new.y									= warp2.y + opt_v.x;	// Need to decide how to blend the channels.
+// 	warp[read_index]							= warp_new;
+//
+// 	confidence[read_index]						= (0.75f*old_conf + 0.25f * opt_u.y * opt_v.y); // clamp( (0.75f*old_conf + 0.25f * opt_u.y * opt_v.y), 0.0f, 1.0f);		// ### clamped to 0.0 < confidence < 1.0
+
+}
+
+
+__kernel void blur_volume(
+	__private	uint	read_offset,		//0
+	__private	uint	mm_cols,			//1
+	__private	uint	mm_size,			//2
+	__private	uint 	vol_layers,			//3
+
+	__local	 	float4*	local_img_patch,	//4		// 5*(local_work_size+4)*sizeof(cl_float4)
+
+	__global 	float4*	lookup_table,		//5
+	__global 	float4*	img,				//6
+	__global	float4* img_blurred			//7
+){
+	uint	global_id 								= get_global_id(0);
+	uint 	read_index								= floor( lookup_table[ global_id + read_offset ].z );
+	if (read_index ==0 ) 							return;
+
+	uint 	write_index								= read_index;
+	uint 	lid										= get_local_id(0);
+	uint 	lid_1									= lid + 1;
+
+	uint	local_size								= get_local_size(0);
+	int 	patch_length 							= local_size + 4;
+
+
+	const float  gaussian[5]								= { 0.05227, 0.24197, 0.39894, 0.24197, 0.05227 };
+
+	__attribute__((opencl_unroll_hint))
+	for (uint vol_layer=0; vol_layer < vol_layers; vol_layer++){
+		// load local buffers
+		// load 5 rows
+		uint 	global_index 						= read_index -2 -2*mm_cols + vol_layer*mm_size;	 				// Offset from read_index, to top left of patch to copy to local mem.
+		uint 	local_index							= lid;
+
+
+		__attribute__((opencl_unroll_hint))
+		for (int row=0; row<5; row++){
+			local_img_patch[local_index]			=  img[global_index];
+			global_index							+= mm_cols;
+			local_index 							+= patch_length;
+			barrier(CLK_LOCAL_MEM_FENCE);
+		}
+
+		// load margins.
+		global_index 								= floor( lookup_table[ global_id + read_offset  + local_size ].z ) ;		// Offset from read_index
+		global_index 								= global_index -2 -2*mm_cols + vol_layer*mm_size;
+		local_index									= lid + local_size;
+		__attribute__((opencl_unroll_hint))
+		for (int row=0; row<5; row++){
+			if (lid <4){
+				local_img_patch[local_index]		=  img[global_index];
+				global_index						+= mm_cols;
+				local_index 						+= patch_length;
+			}
+			barrier(CLK_LOCAL_MEM_FENCE);
+		}
+
+		float4 	blurred_pixel						= zero_f4;
+		__attribute__((opencl_unroll_hint))
+		for (int row=0;row<5;row++){
+			float4 	blurred_row						= zero_f4;
+			__attribute__((opencl_unroll_hint))
+			for (int col=0;col<5;col++){
+				blurred_row							+= local_img_patch[ lid + row*patch_length + col] * gaussian[col];
+				barrier(CLK_LOCAL_MEM_FENCE);
+			}
+			blurred_pixel							+= blurred_row * gaussian[row];
+		}
+
+		img_blurred[write_index]					= blurred_pixel; //local_img_patch[lid + 4 + 4*patch_length] ; //temp_f4;//
+		write_index									+= mm_size;
+	}
+}
+
+
+__kernel void compute_warp(						// TODO could incorportate the blurring of the correlation, and skip one global save and read, plus the correlation_blurred buffer.
+	// inputs
+	__private	uint	read_offset,			//0
+	__private	uint 	mm_size,				//1
+	//global
+	__global 	float4*	lookup_table,			//2
+	__global 	float4*	correlation_blurred,	//3
+	//outputs
+ 	__global 	float2*	warp,					//4		// 2*float4*mm_size // float2*
+ 	__global 	float*	confidence				//5
+			  ){
+	// From YouTube Template Matching by  Correlation | Image Processing I, Columbia Univ.
+	// N_tf[i,j] = Sum_m,n( f[m,n] * t[m-i,n-j] ) / sqrt(Sum_m,n( f^2[m,n] ) * sqrt(Sum_m,n( t^2[m-i,n-j] ) )
+
+	uint 	read_index							= floor( lookup_table[ get_global_id(0) + read_offset ].z );
+	if (read_index ==0 ) return;																						// TODO this would cause the last workgroup to crash at the barriers.
+	uint 	lid									= get_local_id(0);
+	uint 	local_size							= get_local_size(0);
+	uint 	local_ref_mem_width					= local_size + 2;
+	uint 	local_warpmem_width					= local_size + 4;
+	uint 	gid									= get_group_id(0);
+	// TODO check local mem is large enough
+
 	float old_conf  							= confidence[read_index];
 	float2 warp2								= warp[read_index];
- 	float2 opt_u								= pvt_correlation[1].x - pvt_correlation[3].x; //compute_maximum( pvt_correlation[1], pvt_correlation[2], pvt_correlation[3] );//does the work of PolyDisparity kernel in UG code.
-	float2 opt_v								= pvt_correlation[0].x - pvt_correlation[4].x; //compute_maximum( pvt_correlation[0], pvt_correlation[2], pvt_correlation[4] );//
+	float4 pvt_correlation[5];
+	for (uint sample =0; sample <5; sample++){
+		pvt_correlation[sample]					= correlation_blurred[read_index + sample *mm_size];
+		barrier(CLK_GLOBAL_MEM_FENCE);																					// Should ensure coherent reads from this workgroup
+	}
+ 	float2 opt_u								= compute_maximum( pvt_correlation[1], pvt_correlation[2], pvt_correlation[3] );//pvt_correlation[1].x - pvt_correlation[3].x; //does the work of PolyDisparity kernel in UG code.
+	float2 opt_v								= compute_maximum( pvt_correlation[0], pvt_correlation[2], pvt_correlation[4] );//pvt_correlation[0].x - pvt_correlation[4].x; //
 
 	float2 warp_new;
-	warp_new.x									= /*opt_u.x +*/ warp2.x;	// TODO currently only using channel .x of the correlation, from .x of the images.
- 	warp_new.y									= /*opt_v.x +*/ warp2.y;	// Need to decide how to blend the channels.
+	warp_new.x									= warp2.x + opt_u.x;	// TODO currently only using channel .x of the correlation, from .x of the images.
+ 	warp_new.y									= warp2.y + opt_v.x;	// Need to decide how to blend the channels.
 	warp[read_index]							= warp_new;
 
 	confidence[read_index]						= (0.75f*old_conf + 0.25f * opt_u.y * opt_v.y); // clamp( (0.75f*old_conf + 0.25f * opt_u.y * opt_v.y), 0.0f, 1.0f);		// ### clamped to 0.0 < confidence < 1.0
-
 }
 
 __kernel void regularize_warp(					// Use local mem to avoid repeat loading of same data by different threads. // TODO handle margins.
@@ -379,10 +497,16 @@ __kernel void regularize_warp(					// Use local mem to avoid repeat loading of s
 	int patch_length 							= 2 + get_local_size(0);
 
 	__attribute__((opencl_unroll_hint))
-	for (int i=0; i<3; i++){  local_warp[      lid_1 + i*patch_length]		= warp[           read_index + (i-1) * mm_cols]; }
+	for (int i=0; i<3; i++){
+		local_warp[      lid_1 + i*patch_length]		= warp[           read_index + (i-1) * mm_cols];
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
 
 	__attribute__((opencl_unroll_hint))
-	for (int i=0; i<3; i++){  local_confidence[lid_1 + i*patch_length]		= confidence_buf[ read_index + (i-1) * mm_cols]; }
+	for (int i=0; i<3; i++){
+		local_confidence[lid_1 + i*patch_length]		= confidence_buf[ read_index + (i-1) * mm_cols];
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
 
 	// load margins. NB we only need the middle row.
 	int pix_offset[2] = {-1, patch_length};
@@ -391,6 +515,7 @@ __kernel void regularize_warp(					// Use local mem to avoid repeat loading of s
 		local_confidence[ lid_1 + pix_offset[lid] + patch_length ]			= confidence_buf[ read_index + pix_offset[lid] ];
 	}
 	barrier(CLK_LOCAL_MEM_FENCE);
+
 	// 5-way weighted sum of neighbopurs (i) conf*input,  and (ii) conf
 	uint	increment[5]						= { 0 , patch_length-1 , patch_length , patch_length+1 , 2*patch_length }; // where to sample local mem relative to lid_1 = lid+1.
 	float2	sum_warp 							= {0.0f, 0.0f};
@@ -402,7 +527,9 @@ __kernel void regularize_warp(					// Use local mem to avoid repeat loading of s
 		pvt_conf								= 	local_confidence[lid_1 + increment[sample] ];
 		sum_warp								+=  local_warp[lid_1 + increment[sample] ] * pvt_conf;
 		sum_conf								+=	pvt_conf;
+		barrier(CLK_LOCAL_MEM_FENCE);
 	}
+
 	new_warp[read_index]						=	sum_warp / sum_conf;
 	new_confidence[read_index]					=	sum_conf / 5.0f;
 }

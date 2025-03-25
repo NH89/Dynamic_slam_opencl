@@ -76,8 +76,8 @@ public:
 	cl_kernel			compute_lookup_table_kernel, disparity_load_frame_kernel, set_warp_new_image_kernel, warp_image_kernel;
 	cl_kernel			mean_sq_3rows_kernel, mean_sq_cols_kernel, sigma_3rows_kernel, sigma_3cols_kernel;
 	cl_kernel			covariance_3rows_kernel, covariance_cols_kernel, correlation_kernel;
-	cl_kernel			regularize_warp_kernel, propagate_warp_kernel;
-	cl_kernel			mipmap_3x3blur_flt4_kernel, correlation_one_step_kernel, correlation_2nd_step_kernel;
+	cl_kernel			compute_warp_kernel, regularize_warp_kernel, propagate_warp_kernel;
+	cl_kernel			mipmap_3x3blur_flt4_kernel, correlation_one_step_kernel, blur_volume_kernel, correlation_2nd_step_kernel;
 	
 	// GPU Buffers
 	cl_mem 				basemem, imgmem,  imgmem_blurred, gxmem, gymem, k_map_mem, dist_map_mem, SE3_grad_map_mem, SE3_incr_map_mem;
@@ -97,7 +97,7 @@ public:
 	cl_mem				ref_img_sigma_rows_buf,		ref_img_mean_sigma_buf,		warped_img_sigma_rows_buf,		warped_img_mean_sigma_buf;
 
 	cl_mem 				covariance_rows_buf,		covariance_buf;
-	cl_mem				correlation_buf;
+	cl_mem				correlation_buf,			correlation_blurred_buf;
 	cl_mem				warp_buf,					confidence_buf;
 	cl_mem				warp_buf_regularized,		confidence_buf_regularized;
 	//
@@ -184,12 +184,15 @@ public:
 	void zero_warp_buffer();
 	void set_warp_new_image(uint layer, float reduction);
 	void warp_image(uint layer, int iter);
-	void img_sq(         uint layer, uint iter, cl_mem img_buf,    cl_mem img_sq_buf,  std::string folder);
-	void img_variance(   uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder);
-	void compute_warp(   uint layer, uint iter);
+	//void img_sq(         uint layer, uint iter, cl_mem img_buf,    cl_mem img_sq_buf,  std::string folder);
+	//void img_variance(   uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder);
+
 	void propagate_warp( uint layer );
 
 	void correlation_one_step( uint layer, uint iter );
+	void blur_volume(cl_mem in_buff, cl_mem blurred_buf, std::string folder, uint vol_layers, uint mipmap_layer, uint iter );
+	void compute_warp(   uint layer, uint iter);
+
 	void correlation_2nd_step( uint layer, uint iter );
 					   // uint layer, uint iter, std::string folder_mean_rows, cl_mem img_buf, cl_mem mean_rows_buf
 	void mean_3rows (	  uint layer, uint iter, std::string folder_mean_rows,								cl_mem img_buf,			cl_mem mean_rows_buf);

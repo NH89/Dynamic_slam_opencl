@@ -217,6 +217,7 @@ __kernel void blur_image(
 	img_blurred[ read_index] = blurred_pixel;
 }
 
+
 __kernel void mipmap_linear_flt4(		// Mipmap layers must be executed sesequentially			// Nvidia Geforce GPUs cannot use "half"
 	__private	uint	layer,			//0
 	__constant 	uint8*	mipmap_params,	//1

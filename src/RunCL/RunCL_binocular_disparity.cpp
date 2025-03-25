@@ -145,7 +145,7 @@ void RunCL::set_warp_new_image(uint layer, float reduction){					// Computed onc
 																																				float max_range = -1.0f; 		// -ve or 0 -> gray = zero.  0 -> use max range from image.
 																																				uint vol_layers	= 1;
 																																				_cl_flush_finish(m_queue, fname);
-																																				DownloadAndSave_2Channel_volume( warp_buf,	ss.str( ), paths.at( "warp_buf"),  			2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, show,   max_range,   vol_layers );  // 1, 2D warp, 1DoF
+																																				DownloadAndSave_2Channel_volume( warp_buf,	ss.str( ), paths.at( "warp_buf"),  			2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, show,  /* max_range*/-10.0f,   vol_layers );  // 1, 2D warp, 1DoF
 																																				DownloadAndSave( 	keyframe_depth_mem,   	ss.str( ), paths.at( "keyframe_depth_mem"),   mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, false , fp32_params[MAX_INV_DEPTH]);
 
 																																				tiff 			= old_tiff;
@@ -185,7 +185,7 @@ void RunCL::warp_image( uint layer, int iter ){																					// computed 
 																																				tiff 			= true;
 																																				float max_range = 1.0f; 		// -1 -> gray = zero.
 																																				_cl_flush_finish(m_queue, fname);
-																																				DownloadAndSave_2Channel_volume( warp_buf,			ss.str( ), paths.at( "warp_buf"),  			2*mm_size_bytes_C1,	mm_Image_size,   CV_32FC2, show, max_range, 2 );  // 1, 2D warp, 1DoF
+																																				DownloadAndSave_2Channel_volume( warp_buf,			ss.str( ), paths.at( "warp_buf"),  			2*mm_size_bytes_C1,	mm_Image_size,   CV_32FC2, show, /*max_range*/-10.0f,	 2 );  // 1, 2D warp, 1DoF
 																																				DownloadAndSave_3Channel( 		 warped_img_buf,	ss.str( ), paths.at( "warped_img_buf"),  	mm_size_bytes_C4,	mm_Image_size,   CV_32FC4, show, max_range);
 																																				tiff 			= old_tiff;
 																																			}
@@ -216,8 +216,8 @@ void RunCL::correlation_one_step ( uint layer, uint iter ){
 	// output
 	_clSetKernelArg( correlation_one_step_kernel,  		 8, sizeof( cl_mem), 						&covariance_buf,		fname);			//__global 	float4*	covariance				//8
 	_clSetKernelArg( correlation_one_step_kernel,  		 9, sizeof( cl_mem), 						&correlation_buf,		fname);			//__global 	float4*	correlation				//9
-	_clSetKernelArg( correlation_one_step_kernel,  		10, sizeof( cl_mem), &warp_buf,				fname);									// __global 	float2*	warp				//10
-	_clSetKernelArg( correlation_one_step_kernel,  		11, sizeof( cl_mem), &confidence_buf,		fname);									// __global 	float*	confidence			//11
+	// _clSetKernelArg( correlation_one_step_kernel,  		10, sizeof( cl_mem), &warp_buf,				fname);									// __global 	float2*	warp				//10
+	// _clSetKernelArg( correlation_one_step_kernel,  		11, sizeof( cl_mem), &confidence_buf,		fname);									// __global 	float*	confidence			//11
 
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::correlation_one_step( ..)_chk1 ."<<flush;}
 	layer_call_kernel( correlation_one_step_kernel, m_queue, layer, local_work_size);
@@ -233,12 +233,243 @@ void RunCL::correlation_one_step ( uint layer, uint iter ){
 																																				_cl_flush_finish(m_queue, fname);
 																																				DownloadAndSave_3Channel_volume( 	covariance_buf,		ss.str( ), paths.at( "covariance_buf" ),  	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, 1.0f, 	vol_layers, tiff, iter, display);
 																																				DownloadAndSave_3Channel_volume( 	correlation_buf,	ss.str( ), paths.at( "correlation_buf" ),  	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, 1.0f, 	vol_layers, tiff, iter, display); // just the denominator
-																																				DownloadAndSave_2Channel_volume( 	warp_buf,			ss.str( ), paths.at( "warp_buf"),  		  2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, 	show, -1.0f, 		1 );
-																																				DownloadAndSave( 			  		confidence_buf,		ss.str( ), paths.at( "confidence_buf"),		mm_size_bytes_C1,   mm_Image_size,   CV_32FC1,  show, max_range);
+																																				// DownloadAndSave_2Channel_volume( 	warp_buf,			ss.str( ), paths.at( "warp_buf"),  		  2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, 	show, /*max_range*/-10.0f, 		1 );
+																																				// DownloadAndSave( 			  		confidence_buf,		ss.str( ), paths.at( "confidence_buf"),		mm_size_bytes_C1,   mm_Image_size,   CV_32FC1,  show, max_range);
 																																				tiff 			= old_tiff;
 																																			}
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::correlation_one_step( ..)_finished ."<<flush;}
 }
+
+
+
+void RunCL::blur_volume(cl_mem in_buff, cl_mem blurred_buf, std::string folder, uint vol_layers, uint mipmap_layer, uint iter  ){
+	string fname = "RunCL::blur_volume()";
+	int local_verbosity_threshold = V_RUNCL_IMG_VARIANCE;//verbosity_mp["RunCL::blur_volume"];// -1;
+
+	//inputs
+	//__private
+	//_clSetKernelArg( warp_image_kernel,  				0, sizeof( uint), 							&read_offset,			fname);			//__private	uint	read_offset,		//0
+	_clSetKernelArg( blur_volume_kernel,  				1, sizeof( uint), 							&mm_width,				fname);			//__private	uint	mm_cols,			//1
+	_clSetKernelArg( blur_volume_kernel,  				2, sizeof( uint), 							&mm_layerstep,			fname);			//__private	uint 	mm_size,			//2
+	_clSetKernelArg( blur_volume_kernel,  				3, sizeof( uint), 							&vol_layers,			fname);			//__private	uint 	vol_layers,			//3
+	//__local
+	_clSetKernelArg( blur_volume_kernel, 				4, 5*(local_work_size+4)*sizeof(cl_float4), NULL,					fname);			//__local	float4*	local_img_patch,	//4		// 5*(local_work_size+4)*sizeof(cl_float4)
+	//__global
+	_clSetKernelArg( blur_volume_kernel,  				5, sizeof( cl_mem), 						&lookup_table_buf,		fname);			//__global	float4*	lookup_table,		//5
+	_clSetKernelArg( blur_volume_kernel, 				6, sizeof(cl_mem), 							&in_buff,				fname );		//__global	float4*	img,				//6
+	// output
+	_clSetKernelArg( blur_volume_kernel, 				7, sizeof(cl_mem), 							&blurred_buf,			fname );		//__global	float4*	img,				//7
+
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::blur_volume_step( ..)_chk1 ."<<flush;}
+	layer_call_kernel( blur_volume_kernel, m_queue, mipmap_layer, local_work_size);
+																																			if( verbosity>local_verbosity_threshold /*&& layer==1*/ ) {cout<<"\n\nRunCL::correlation( ..)_chk2 ."<<flush;				// Save buffers to file ###########
+																																				stringstream ss;
+																																				ss << "_binoc_" <<fname<< save_index <<"_layer_"<<mipmap_layer<<"_iter_"<<iter ;
+																																				bool show 		= false;
+																																				bool display 	= false;
+																																				bool old_tiff 	= tiff;
+																																				tiff 			= true;
+																																				uint vol_layers = 5;			// NB 5 samples of possible warp.
+																																				float max_range = 1.0f; 		// -1 -> gray = zero.
+																																				_cl_flush_finish(m_queue, fname);
+																																				DownloadAndSave_3Channel_volume( 	blurred_buf,	ss.str( ), paths.at( folder ),	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, max_range, 	vol_layers, tiff, iter, display);
+																																				tiff 			= old_tiff;
+																																			}
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::blur_volume_step( ..)_finished ."<<flush;}
+}
+
+
+
+void RunCL::compute_warp(uint mipmap_layer, uint iter  ){
+	string fname = "RunCL::compute_warp()";
+	int local_verbosity_threshold = V_RUNCL_IMG_VARIANCE;//verbosity_mp["RunCL::compute_warp"];// -1;
+
+	//inputs
+	//__private
+	//_clSetKernelArg( warp_image_kernel,  			0, sizeof( uint), 				&read_offset,							fname);			//__private	uint	read_offset,		//0
+	_clSetKernelArg( compute_warp_kernel,  			1, sizeof( uint), 				&mm_layerstep,							fname);			//__private	uint 	mm_size,			//1
+	//__global
+	_clSetKernelArg( compute_warp_kernel,  			2, sizeof( cl_mem), 			&lookup_table_buf,						fname);			//__global	float4*	lookup_table,		//2
+	_clSetKernelArg( compute_warp_kernel, 			3, sizeof(cl_mem), 				&correlation_blurred_buf,				fname );		//__global	float4*	correlation_blurred,//3
+	// output
+	_clSetKernelArg( compute_warp_kernel,	  		4, sizeof( cl_mem), 			&warp_buf,								fname);			//__global	float2*	warp				//4
+	_clSetKernelArg( compute_warp_kernel,	  		5, sizeof( cl_mem), 			&confidence_buf,						fname);			//__global	float2*	confidence			//5
+
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_warp( ..)_chk1 ."<<flush;}
+	layer_call_kernel( compute_warp_kernel, m_queue, mipmap_layer, local_work_size);
+																																			if( verbosity>local_verbosity_threshold /*&& layer==1*/ ) {cout<<"\n\nRunCL::compute_warp( ..)_chk2 ."<<flush;				// Save buffers to file ###########
+																																				stringstream ss;
+																																				ss << "_binoc_" <<fname<< save_index <<"_layer_"<<mipmap_layer<<"_iter_"<<iter ;
+																																				bool show 		= false;
+																																				bool old_tiff 	= tiff;
+																																				tiff 			= true;
+																																				uint vol_layers = 1;			// NB 5 samples of possible warp.
+																																				float max_range = 1.0f; 		// -1 -> gray = zero.
+																																				_cl_flush_finish(m_queue, fname);
+																																				DownloadAndSave_2Channel_volume( 		  warp_buf,	ss.str( ), paths.at( "warp_buf"),  	 	2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, show, /*max_range*/-10.0f,		 vol_layers);
+																																				DownloadAndSave( 			  		confidence_buf,	ss.str( ), paths.at( "confidence_buf"),   mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, show, max_range);
+																																				tiff 			= old_tiff;
+																																			}
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_warp( ..)_finished ."<<flush;}
+}
+
+
+void RunCL::regularize_warp( uint layer, uint iter ){
+	    string fname = "RunCL::regularize_warp( )";
+	int local_verbosity_threshold = V_RUNCL_IMG_VARIANCE;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::regularize_warp( )( ..)_chk0 #############################################################"<<flush;
+																																				cout << "\t local_work_size = " << local_work_size
+																																				<< ",  layer = " << layer
+																																				<< flush;
+																																			}
+	// inputs
+	// __private
+	//_clSetKernelArg( warp_image_kernel,  			0, sizeof( uint), 						&read_offset,					fname);		// __private	uint	read_offset,			//0
+	_clSetKernelArg( regularize_warp_kernel,  		1, sizeof( uint), 						&mm_width,						fname);		// __private	uint	mm_cols,				//1
+	// __local
+	_clSetKernelArg( regularize_warp_kernel, 		2, (local_work_size+2)*4*sizeof(float), NULL,							fname);		// __local		float2*	local_warp				//2
+	_clSetKernelArg( regularize_warp_kernel, 		3, (local_work_size+2)*2*sizeof(float), NULL,							fname);		// __local		float*	local_confidence		//3
+	// __global
+	_clSetKernelArg( regularize_warp_kernel,  		4, sizeof( cl_mem), 					&lookup_table_buf,				fname);		// __global 	float4*	lookup_table,			//4
+	_clSetKernelArg( regularize_warp_kernel,  		5, sizeof( cl_mem), 					&warp_buf,						fname);		// __global 	float2*	warp					//5
+	_clSetKernelArg( regularize_warp_kernel,  		6, sizeof( cl_mem), 					&confidence_buf,				fname);		// __global 	float2*	confidence				//6
+
+	// outputs
+	_clSetKernelArg( regularize_warp_kernel,  		7, sizeof( cl_mem), 					&warp_buf_regularized,			fname);		// __global 	float2*	new_warp				//7
+	_clSetKernelArg( regularize_warp_kernel,  		8, sizeof( cl_mem), 					&confidence_buf_regularized,	fname);		// __global 	float*	new_confidence			//8
+																																		if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::regularize_warp( ..)_chk1 ."<<flush;}
+	layer_call_kernel( regularize_warp_kernel, m_queue, layer, local_work_size);
+																																			if( verbosity>local_verbosity_threshold /*&& layer==1*/ ) {cout<<"\n\nRunCL::regularize_warp( ..)_chk2 ."<<flush;				// Save buffers to file ###########
+																																				stringstream ss;
+																																				ss << "_binoc__regularize_warp_" << save_index <<"_layer_"<<layer<<"_iter_"<<iter ;
+																																				bool show 		= false;
+																																				bool old_tiff 	= tiff;
+																																				tiff 			= true;
+																																				float max_range = -1.0f; 		// -1 -> gray = zero.
+																																				uint vol_layers	= 1;
+																																				_cl_flush_finish(m_queue, fname);
+																																				DownloadAndSave_2Channel_volume( 	warp_buf_regularized,	ss.str( ), paths.at( "warp_buf_regularized"),  	 	2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, show, /*max_range*/-10.0f,		 vol_layers);
+																																				DownloadAndSave( 			  confidence_buf_regularized,	ss.str( ), paths.at( "confidence_buf_regularized"),   mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, show, max_range);
+																																				tiff 			= old_tiff;
+																																			}
+	// swap pointers
+	cl_mem_swap_ptr( warp_buf, 			warp_buf_regularized		);
+	cl_mem_swap_ptr( confidence_buf, 	confidence_buf_regularized	);
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::regularize_warp( ..)_finished ."<<flush;}
+}
+
+
+void RunCL::propagate_warp( uint layer ){
+	if (layer <= mm_start) return;
+	string fname = "RunCL::propagate_warp( )";
+	int local_verbosity_threshold = V_RUNCL_PROPAGATE_WARP;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::propagate_warp( ..)_chk0 #############################################################"<<flush;
+																																				cout << "\t local_work_size = " << local_work_size
+																																				<< ",  layer = " << layer
+																																				<< flush;
+																																			}
+	uint 	reduction 		= layer-1;
+	uint 	rows_in 		= MipMap[layer*8 + MiM_READ_ROWS];
+	uint 	cols_in 		= MipMap[layer*8 + MiM_READ_COLS];
+	uint 	write_offset	= lookup_table_offset[reduction];
+cout << "\nRunCL::propagate_warp : reduction="<<reduction<<",  rows_in="<<rows_in<<",  cols_in="<<cols_in<<",  write_offset="<<write_offset<<",  mm_width="<<mm_width<< flush;
+	// inputs
+	// __private
+	//_clSetKernelArg( warp_image_kernel,  			0, sizeof( uint), 						&read_offset,			fname);				//	__private	uint	read_offset,			//0
+	_clSetKernelArg( propagate_warp_kernel,  		1, sizeof( uint), 						&rows_in,				fname);				//	__private	uint 	rows_in,				//1
+	_clSetKernelArg( propagate_warp_kernel,  		2, sizeof( uint), 						&cols_in,				fname);				//	__private	uint	cols_in,				//2
+	_clSetKernelArg( propagate_warp_kernel,  		3, sizeof( uint),						&write_offset,			fname);				//	__private	uint	write_offset,			//3
+	_clSetKernelArg( propagate_warp_kernel,  		4, sizeof( uint),						&mm_width,				fname);				//	__private	uint	mm_cols,				//4
+	// __local
+	_clSetKernelArg( propagate_warp_kernel, 		5, (local_work_size+1)*4*sizeof(float), NULL,					fname);				// __local		float2*	local_warp				//5
+	// __global
+	_clSetKernelArg( propagate_warp_kernel,  		6, sizeof( cl_mem), 					&lookup_table_buf,		fname);				//	__global 	float4*	lookup_table,			//6
+
+	// input_output
+	_clSetKernelArg( propagate_warp_kernel,  		7, sizeof( cl_mem), 					&warp_buf,				fname);				//	__global 	float2*	warp					//7
+
+																																		if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::propagate_warp( ..)_chk1 ."<<flush;}
+	layer_call_kernel( propagate_warp_kernel, m_queue, layer, local_work_size);
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::propagate_warp( ..)_chk2 ."<<flush;								// Save buffers to file ###########
+																																				stringstream ss;
+																																				ss << "_binoc__propagate_warp_" << save_index <<"_layer_"<<layer<<"_" ;
+																																				bool show 				= false;
+																																				bool old_tiff 			= tiff;
+																																				tiff 					= true;
+																																				float max_range 		= -1.0f; 		// -1 -> gray = zero.
+																																				uint vol_layers			= 1;
+																																				_cl_flush_finish(m_queue, fname);
+
+																																				cout<<"\n\nRunCL::compute_warp( ..)_chk2.3 ."<<flush;
+																																				DownloadAndSave_2Channel_volume( 	warp_buf,		ss.str( ), paths.at( "warp_buf"),  		2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, 	show , /*max_range*/-10.0f, vol_layers /*1*/ /*2D warp, 1DoF */);
+																																				tiff 			= old_tiff;
+																																			}
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::propagate_warp( ..)_finished ."<<flush;}
+}
+
+
+
+////////////////////////////////////////////////////////////
+
+/*
+void RunCL::compute_warp( uint layer, uint iter ){
+    string fname = "RunCL::compute_warp( )";
+	int local_verbosity_threshold = V_RUNCL_COMPUTE_WARP;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_warp( ..)_chk0 #############################################################"<<flush;
+																																				cout << "\t local_work_size = " << local_work_size
+																																				<< ",  layer = " << layer
+																																				<< flush;
+																																			}
+	// inputs
+	// __private
+	//_clSetKernelArg( warp_image_kernel,  			0, sizeof( uint), 	&read_offset,			fname);										// 	__private	uint	read_offset,			//0
+	_clSetKernelArg( compute_warp_kernel,  			1, sizeof( uint), 	&mm_layerstep,			fname);										// 	__private	uint 	mm_size,				//1
+	_clSetKernelArg( compute_warp_kernel,  			2, sizeof( uint), 	&mm_width,				fname);										// 	__private	uint	mm_cols,				//2
+	// __global
+	_clSetKernelArg( compute_warp_kernel,  			3, sizeof( cl_mem), &lookup_table_buf,		fname);										// 	__global 	uint4*	lookup_table,			//3
+	_clSetKernelArg( compute_warp_kernel,  			4, sizeof( cl_mem), &curr_img_buf,			fname);										// 	__global 	float4*	curr_img,				//4
+	_clSetKernelArg( compute_warp_kernel,  			5, sizeof( cl_mem), &new_img_buf,			fname);										// 	__global 	float4*	new_img,				//5			// NB warped version of the new image.
+	_clSetKernelArg( compute_warp_kernel,  			6, sizeof( cl_mem), &curr_img_var_buf,		fname);										// 	__global 	float4*	curr_img_var,			//6
+	_clSetKernelArg( compute_warp_kernel,  			7, sizeof( cl_mem), &new_img_var_buf,		fname);										// 	__global 	float4*	new_img_var,			//7
+
+	// output
+	_clSetKernelArg( compute_warp_kernel,  			8, sizeof( cl_mem), &img_covar_buf,			fname);										// 	__global 	float4*	img_covar,				//8		// 5*float4*mm_size
+	_clSetKernelArg( compute_warp_kernel,  			9, sizeof( cl_mem), &img_corr_buf,			fname);										// 	__global 	float4*	img_corr,				//9		// 5*float4*mm_size
+	_clSetKernelArg( compute_warp_kernel,  		   10, sizeof( cl_mem), &warp_buf,				fname);										// 	__global 	float2*	warp					//10
+
+
+																																		if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_warp( ..)_chk1 ."<<flush;}
+	layer_call_kernel( compute_warp_kernel, m_queue, layer, local_work_size);
+																																			if( verbosity>local_verbosity_threshold  ) {cout<<"\n\nRunCL::compute_warp( ..)_chk2 ."<<flush;								// Save buffers to file ###########
+																																				stringstream ss;
+																																				ss << "_binoc_" << save_index <<"_layer_"<<layer<<"_iter_"<<iter<<"_" ;
+																																				bool show 				= false;
+																																				bool display 			= false;
+																																				bool old_tiff 			= tiff;
+																																				tiff 					= true;
+																																				uint vol_layers 		= 5;
+																																				float max_range 		= 1; 		// -1 -> gray = zero.
+
+																																				_cl_flush_finish(m_queue, fname);
+							   //DownloadAndSave_3Channel(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, cv::Mat *bufImg, float max_range / *=1* /, 					uint offset / *=0* /, bool exception_tiff / *=false* /){
+						//DownloadAndSave_3Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder,      size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, 				 float max_range, 		 uint vol_layers,  						bool exception_tiff / *=false* /,  float iter,  bool display){
+
+																																			  //DownloadAndSave_3Channel_volume(  SE3_rho_map_mem,  ss.str( ), paths.at( "SE3_rho_map_mem"),  	mm_size_bytes_C4, mm_Image_size,   CV_32FC4,	show, max_range, vol_layers, exception_tiff, count, display );
+																																				cout<<"\n\nRunCL::compute_warp( ..)_chk2.1 ."<<flush;
+																																				DownloadAndSave_3Channel_volume( 	img_covar_buf,	ss.str( ), paths.at( "img_covar_buf"),  mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, max_range, vol_layers, tiff, iter, display);
+
+																																				cout<<"\n\nRunCL::compute_warp( ..)_chk2.2 ."<<flush;
+																																				DownloadAndSave_3Channel_volume( 	img_corr_buf,	ss.str( ), paths.at( "img_corr_buf"),  	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, max_range, vol_layers, tiff, iter, display);
+
+																																				cout<<"\n\nRunCL::compute_warp( ..)_chk2.3 ."<<flush;
+																																			  //DownloadAndSave_2Channel_volume( SE3_map_mem, 		ss.str( ), paths.at( "SE3_map_mem"),    mm_size_bytes_C1*2,   mm_Image_size,   CV_32FC2,	false, 1.0, 6 ); / *SE3, 6DoF * /
+																																				DownloadAndSave_2Channel_volume( 	warp_buf,		ss.str( ), paths.at( "warp_buf"),  		2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, 	show , -1,  2 ); / *1* / / *2D warp, 1DoF * /
+
+																																				tiff 			= old_tiff;
+																																			}
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_warp( ..)_finished ."<<flush;}
+}
+*/
 
 
 void RunCL::correlation_2nd_step( uint layer, uint iter ){
@@ -541,159 +772,4 @@ void RunCL::correlation( uint layer, uint iter ){
 																																				tiff 			= old_tiff;
 																																			}
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::correlation( ..)_finished ."<<flush;}
-}
-
-
-void RunCL::regularize_warp( uint layer, uint iter ){
-	    string fname = "RunCL::regularize_warp( )";
-	int local_verbosity_threshold = V_RUNCL_IMG_VARIANCE;
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::regularize_warp( )( ..)_chk0 #############################################################"<<flush;
-																																				cout << "\t local_work_size = " << local_work_size
-																																				<< ",  layer = " << layer
-																																				<< flush;
-																																			}
-	// inputs
-	// __private
-	//_clSetKernelArg( warp_image_kernel,  			0, sizeof( uint), 						&read_offset,					fname);		// __private	uint	read_offset,			//0
-	_clSetKernelArg( regularize_warp_kernel,  		1, sizeof( uint), 						&mm_width,						fname);		// __private	uint	mm_cols,				//1
-	// __local
-	_clSetKernelArg( regularize_warp_kernel, 		2, (local_work_size+2)*4*sizeof(float), NULL,							fname);		// __local		float2*	local_warp				//2
-	_clSetKernelArg( regularize_warp_kernel, 		3, (local_work_size+2)*2*sizeof(float), NULL,							fname);		// __local		float*	local_confidence		//3
-	// __global
-	_clSetKernelArg( regularize_warp_kernel,  		4, sizeof( cl_mem), 					&lookup_table_buf,				fname);		// __global 	float4*	lookup_table,			//4
-	_clSetKernelArg( regularize_warp_kernel,  		5, sizeof( cl_mem), 					&warp_buf,						fname);		// __global 	float2*	warp					//5
-	_clSetKernelArg( regularize_warp_kernel,  		6, sizeof( cl_mem), 					&confidence_buf,				fname);		// __global 	float2*	confidence				//6
-
-	// outputs
-	_clSetKernelArg( regularize_warp_kernel,  		7, sizeof( cl_mem), 					&warp_buf_regularized,			fname);		// __global 	float2*	new_warp				//7
-	_clSetKernelArg( regularize_warp_kernel,  		8, sizeof( cl_mem), 					&confidence_buf_regularized,	fname);		// __global 	float*	new_confidence			//8
-																																		if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::regularize_warp( ..)_chk1 ."<<flush;}
-	layer_call_kernel( regularize_warp_kernel, m_queue, layer, local_work_size);
-																																			if( verbosity>local_verbosity_threshold /*&& layer==1*/ ) {cout<<"\n\nRunCL::regularize_warp( ..)_chk2 ."<<flush;				// Save buffers to file ###########
-																																				stringstream ss;
-																																				ss << "_binoc__regularize_warp_" << save_index <<"_layer_"<<layer<<"_iter_"<<iter ;
-																																				bool show 		= false;
-																																				bool old_tiff 	= tiff;
-																																				tiff 			= true;
-																																				float max_range = -1.0f; 		// -1 -> gray = zero.
-																																				uint vol_layers	= 1;
-																																				_cl_flush_finish(m_queue, fname);
-																																				DownloadAndSave_2Channel_volume( 	warp_buf_regularized,	ss.str( ), paths.at( "warp_buf_regularized"),  	 	2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, show, -1,		 vol_layers);
-																																				DownloadAndSave( 			  confidence_buf_regularized,	ss.str( ), paths.at( "confidence_buf_regularized"),   mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, show, max_range);
-																																				tiff 			= old_tiff;
-																																			}
-	// swap pointers
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::regularize_warp( ..)_finished ."<<flush;}
-}
-
-
-
-////////////////////////////////////////////////////////////
-
-/*
-void RunCL::compute_warp( uint layer, uint iter ){
-    string fname = "RunCL::compute_warp( )";
-	int local_verbosity_threshold = V_RUNCL_COMPUTE_WARP;
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_warp( ..)_chk0 #############################################################"<<flush;
-																																				cout << "\t local_work_size = " << local_work_size
-																																				<< ",  layer = " << layer
-																																				<< flush;
-																																			}
-	// inputs
-	// __private
-	//_clSetKernelArg( warp_image_kernel,  			0, sizeof( uint), 	&read_offset,			fname);										// 	__private	uint	read_offset,			//0
-	_clSetKernelArg( compute_warp_kernel,  			1, sizeof( uint), 	&mm_layerstep,			fname);										// 	__private	uint 	mm_size,				//1
-	_clSetKernelArg( compute_warp_kernel,  			2, sizeof( uint), 	&mm_width,				fname);										// 	__private	uint	mm_cols,				//2
-	// __global
-	_clSetKernelArg( compute_warp_kernel,  			3, sizeof( cl_mem), &lookup_table_buf,		fname);										// 	__global 	uint4*	lookup_table,			//3
-	_clSetKernelArg( compute_warp_kernel,  			4, sizeof( cl_mem), &curr_img_buf,			fname);										// 	__global 	float4*	curr_img,				//4
-	_clSetKernelArg( compute_warp_kernel,  			5, sizeof( cl_mem), &new_img_buf,			fname);										// 	__global 	float4*	new_img,				//5			// NB warped version of the new image.
-	_clSetKernelArg( compute_warp_kernel,  			6, sizeof( cl_mem), &curr_img_var_buf,		fname);										// 	__global 	float4*	curr_img_var,			//6
-	_clSetKernelArg( compute_warp_kernel,  			7, sizeof( cl_mem), &new_img_var_buf,		fname);										// 	__global 	float4*	new_img_var,			//7
-
-	// output
-	_clSetKernelArg( compute_warp_kernel,  			8, sizeof( cl_mem), &img_covar_buf,			fname);										// 	__global 	float4*	img_covar,				//8		// 5*float4*mm_size
-	_clSetKernelArg( compute_warp_kernel,  			9, sizeof( cl_mem), &img_corr_buf,			fname);										// 	__global 	float4*	img_corr,				//9		// 5*float4*mm_size
-	_clSetKernelArg( compute_warp_kernel,  		   10, sizeof( cl_mem), &warp_buf,				fname);										// 	__global 	float2*	warp					//10
-
-
-																																		if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_warp( ..)_chk1 ."<<flush;}
-	layer_call_kernel( compute_warp_kernel, m_queue, layer, local_work_size);
-																																			if( verbosity>local_verbosity_threshold  ) {cout<<"\n\nRunCL::compute_warp( ..)_chk2 ."<<flush;								// Save buffers to file ###########
-																																				stringstream ss;
-																																				ss << "_binoc_" << save_index <<"_layer_"<<layer<<"_iter_"<<iter<<"_" ;
-																																				bool show 				= false;
-																																				bool display 			= false;
-																																				bool old_tiff 			= tiff;
-																																				tiff 					= true;
-																																				uint vol_layers 		= 5;
-																																				float max_range 		= 1; 		// -1 -> gray = zero.
-
-																																				_cl_flush_finish(m_queue, fname);
-							   //DownloadAndSave_3Channel(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, cv::Mat *bufImg, float max_range / *=1* /, 					uint offset / *=0* /, bool exception_tiff / *=false* /){
-						//DownloadAndSave_3Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder,      size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, 				 float max_range, 		 uint vol_layers,  						bool exception_tiff / *=false* /,  float iter,  bool display){
-
-																																			  //DownloadAndSave_3Channel_volume(  SE3_rho_map_mem,  ss.str( ), paths.at( "SE3_rho_map_mem"),  	mm_size_bytes_C4, mm_Image_size,   CV_32FC4,	show, max_range, vol_layers, exception_tiff, count, display );
-																																				cout<<"\n\nRunCL::compute_warp( ..)_chk2.1 ."<<flush;
-																																				DownloadAndSave_3Channel_volume( 	img_covar_buf,	ss.str( ), paths.at( "img_covar_buf"),  mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, max_range, vol_layers, tiff, iter, display);
-
-																																				cout<<"\n\nRunCL::compute_warp( ..)_chk2.2 ."<<flush;
-																																				DownloadAndSave_3Channel_volume( 	img_corr_buf,	ss.str( ), paths.at( "img_corr_buf"),  	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, max_range, vol_layers, tiff, iter, display);
-
-																																				cout<<"\n\nRunCL::compute_warp( ..)_chk2.3 ."<<flush;
-																																			  //DownloadAndSave_2Channel_volume( SE3_map_mem, 		ss.str( ), paths.at( "SE3_map_mem"),    mm_size_bytes_C1*2,   mm_Image_size,   CV_32FC2,	false, 1.0, 6 ); / *SE3, 6DoF * /
-																																				DownloadAndSave_2Channel_volume( 	warp_buf,		ss.str( ), paths.at( "warp_buf"),  		2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, 	show , -1,  2 ); / *1* / / *2D warp, 1DoF * /
-
-																																				tiff 			= old_tiff;
-																																			}
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_warp( ..)_finished ."<<flush;}
-}
-*/
-
-void RunCL::propagate_warp( uint layer ){
-	if (layer <= mm_start) return;
-	string fname = "RunCL::propagate_warp( )";
-	int local_verbosity_threshold = V_RUNCL_PROPAGATE_WARP;
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::propagate_warp( ..)_chk0 #############################################################"<<flush;
-																																				cout << "\t local_work_size = " << local_work_size
-																																				<< ",  layer = " << layer
-																																				<< flush;
-																																			}
-	uint 	reduction 		= layer-1;
-	uint 	rows_in 		= MipMap[layer*8 + MiM_READ_ROWS];
-	uint 	cols_in 		= MipMap[layer*8 + MiM_READ_COLS];
-	uint 	write_offset	= lookup_table_offset[reduction];
-cout << "\nRunCL::propagate_warp : reduction="<<reduction<<",  rows_in="<<rows_in<<",  cols_in="<<cols_in<<",  write_offset="<<write_offset<<",  mm_width="<<mm_width<< flush;
-	// inputs
-	// __private
-	//_clSetKernelArg( warp_image_kernel,  			0, sizeof( uint), 						&read_offset,			fname);				//	__private	uint	read_offset,			//0
-	_clSetKernelArg( propagate_warp_kernel,  		1, sizeof( uint), 						&rows_in,				fname);				//	__private	uint 	rows_in,				//1
-	_clSetKernelArg( propagate_warp_kernel,  		2, sizeof( uint), 						&cols_in,				fname);				//	__private	uint	cols_in,				//2
-	_clSetKernelArg( propagate_warp_kernel,  		3, sizeof( uint),						&write_offset,			fname);				//	__private	uint	write_offset,			//3
-	_clSetKernelArg( propagate_warp_kernel,  		4, sizeof( uint),						&mm_width,				fname);				//	__private	uint	mm_cols,				//4
-	// __local
-	_clSetKernelArg( propagate_warp_kernel, 		5, (local_work_size+1)*4*sizeof(float), NULL,					fname);				// __local		float2*	local_warp				//5
-	// __global
-	_clSetKernelArg( propagate_warp_kernel,  		6, sizeof( cl_mem), 					&lookup_table_buf,		fname);				//	__global 	float4*	lookup_table,			//6
-
-	// input_output
-	_clSetKernelArg( propagate_warp_kernel,  		7, sizeof( cl_mem), 					&warp_buf,				fname);				//	__global 	float2*	warp					//7
-
-																																		if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::propagate_warp( ..)_chk1 ."<<flush;}
-	layer_call_kernel( propagate_warp_kernel, m_queue, layer, local_work_size);
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::propagate_warp( ..)_chk2 ."<<flush;								// Save buffers to file ###########
-																																				stringstream ss;
-																																				ss << "_binoc__propagate_warp_" << save_index <<"_layer_"<<layer<<"_" ;
-																																				bool show 				= false;
-																																				bool old_tiff 			= tiff;
-																																				tiff 					= true;
-																																				float max_range 		= -1.0f; 		// -1 -> gray = zero.
-																																				uint vol_layers			= 1;
-																																				_cl_flush_finish(m_queue, fname);
-
-																																				cout<<"\n\nRunCL::compute_warp( ..)_chk2.3 ."<<flush;
-																																				DownloadAndSave_2Channel_volume( 	warp_buf,		ss.str( ), paths.at( "warp_buf"),  		2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, 	show , max_range, vol_layers /*1*/ /*2D warp, 1DoF */);
-																																				tiff 			= old_tiff;
-																																			}
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::propagate_warp( ..)_finished ."<<flush;}
 }

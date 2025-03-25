@@ -170,7 +170,7 @@ void RunCL::sum_image_variance(){
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_chk3_Finished"<<flush;
 }
 
-void RunCL::blur_image(){
+void RunCL::blur_image(){//cl_mem in_buff, cl_mem blurred_buf, std::string folder ){
 	string fname = "RunCL::blur_image()";
 	int local_verbosity_threshold = V_RUNCL_BLUR_IMAGE;//verbosity_mp["RunCL::blur_image"];// -1;
 
@@ -179,8 +179,8 @@ void RunCL::blur_image(){
 	_clSetKernelArg(blur_image_kernel, 0, sizeof(uint), 						&layer, fname );											//__constant uint*		mipmap_params,	//0
     _clSetKernelArg(blur_image_kernel, 1, sizeof(cl_mem), 						&mipmap_buf, fname );										//__constant uint*		mipmap_params,	//1
 	_clSetKernelArg(blur_image_kernel, 2, sizeof(cl_mem), 						&uint_param_buf, fname );									//__constant uint*		uint_params,	//2
-	_clSetKernelArg(blur_image_kernel, 3, sizeof(cl_mem), 						&imgmem, fname );											//__global   float4*	img,			//3
-	_clSetKernelArg(blur_image_kernel, 4, sizeof(cl_mem), 						&imgmem_blurred, fname );									//__global   float4*	img,			//4
+	_clSetKernelArg(blur_image_kernel, 3, sizeof(cl_mem), 						&imgmem, fname );								//__global   float4*	img,			//3
+	_clSetKernelArg(blur_image_kernel, 4, sizeof(cl_mem), 						&imgmem_blurred, fname );					//__global   float4*	img,			//4
 	_clSetKernelArg(blur_image_kernel, 5, (local_size+4) *5*4* sizeof(float), 	NULL, fname );												//__local    float4*	local_img_patch //5
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_chk1,  global_work_size="<< global_work_size <<flush;
 	_clEnqueueNDRangeKernel(m_queue, blur_image_kernel, 1, 0, &global_work_size, &local_work_size, fname ); 								// run blur_image_kernel
