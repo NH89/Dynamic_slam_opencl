@@ -41,7 +41,8 @@ void RunCL::transform_depthmap( /*cv::Matx44f K2K_*/ float K2K_arry[16] , cl_mem
 	DownloadAndSave( 	keyframe_depth_mem,   	ss.str( ), 	paths.at( "keyframe_depth_mem"), mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , fp32_params[MAX_INV_DEPTH]); 	cout<<"\n\nRunCL::transform_depthmap( ..)_chk0.1 ."	<<flush;
 	DownloadAndSave( 	depth_mem_temp,   		ss.str( ), 	paths.at( "depth_mem_temp"),   	 mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , fp32_params[MAX_INV_DEPTH]); 	cout<<"\n\nRunCL::transform_depthmap( ..)_chk4 ."	<<flush;   // ### corrupted !
 
-	cl_mem_swap_ptr( 	keyframe_depth_mem, 	depth_mem_temp	);
+	//cl_mem_swap_ptr( 	keyframe_depth_mem, 	depth_mem_temp	);
+	swap(	keyframe_depth_mem,	depth_mem_temp );
 	clFlush( m_queue); status = clFinish( m_queue);																							if( status!= CL_SUCCESS){cout << " status = " << checkerror( status) <<", Error: RunCL::transform_depthmap( ..)_clfinish_clEnqueueCopyBuffer\n" << flush;exit_( status);}
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::transform_depthmap( ..)_finished ."<<flush;}
 }

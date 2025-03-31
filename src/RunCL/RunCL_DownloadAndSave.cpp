@@ -307,7 +307,7 @@ void RunCL::DownloadAndSave(cl_mem buffer, std::string count, std::filesystem::p
 		stringstream png_ss;
 		std::string  date_time_str = date_time_string();
 
-		ss 		<< "/" << folder_tiff.filename().string() << "_" << count <<"_sum"<<sum<<"type_"<<type_string<<"min"<<minVal<<"max"<<maxVal<<"maxRange"<<max_range;
+		ss 		<< "/" << folder_tiff.filename().string() << "_" << count <<"_sum"<<sum<<"type_"<<type_string<<"min"<<minVal<<"max"<<maxVal<<"maxRange"<<max_range<<"_"<<date_time_str;
 		png_ss 	<< "/" << folder_tiff.filename().string() << "_" << count << date_time_str;
 																																		//	if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave chk1.3 finished ReadOutput\n"<<flush;
 		std::filesystem::path folder_png = folder_tiff;
@@ -398,7 +398,7 @@ void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, st
 		string 			type_string 	= checkCVtype(type_mat);
 		string  		date_time_str 	= date_time_string();
 
-		ss 		<< "/" << folder_tiff.filename().string() << "_vol_layer_"<<layer<<"_UV_" << count <<"_sum_u_"<<sum_u<<"_sum_v_"<<sum_v<<"_type_"<<type_string<<"min"<<minVal_u<<"_max"<<maxVal_u<<"_maxRange"<<max_range;
+		ss 		<< "/" << folder_tiff.filename().string() << "_vol_layer_"<<layer<<"_UV_" << count <<"_sum_u_"<<sum_u<<"_sum_v_"<<sum_v<<"_type_"<<type_string<<"min"<<minVal_u<<"_max"<<maxVal_u<<"_maxRange"<<max_range<<"_"<<date_time_str;
 		png_ss 	<< "/" << folder_tiff.filename().string() << "_vol_layer_"<<layer<<"_UV_" << count << date_time_str;
 
 		std::filesystem::path folder_tiff_= folder_tiff;
@@ -458,7 +458,7 @@ void RunCL::DownloadAndSave_3Channel(cl_mem buffer, std::string count, std::file
 		stringstream png_ss;
 		std::string  date_time_str = date_time_string();
 
-		ss<<"/"<<folder_tiff.filename().string()<<"_"<<count<<"_sum"<<sum<<"type_"<<type_string<<"min("<<minVal[0]<<","<<minVal[1]<<","<<minVal[2]<<")_max("<<maxVal[0]<<","<<maxVal[1]<<","<<maxVal[2]<<")";
+		ss<<"/"<<folder_tiff.filename().string()<<"_"<<count<<"_sum"<<sum<<"type_"<<type_string<<"min("<<minVal[0]<<","<<minVal[1]<<","<<minVal[2]<<")_max("<<maxVal[0]<<","<<maxVal[1]<<","<<maxVal[2]<<")"<<"_"<<date_time_str;
 		png_ss<< "/" << folder_tiff.filename().string() << "_" << count << date_time_str;
 		if(show){
 			cv::Mat temp;
