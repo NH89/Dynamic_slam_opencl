@@ -412,7 +412,7 @@ float2 compute_maximum(__private float4 A, __private float4 B, __private float4 
 	}else{																			// wrong concavity, use linear gradient
 		optimum.x 	= (1.0f-y2) * 0.5f*(y1-y3);										// NB this will take step <1 if one input is too high.
  		optimum.x 	= clamp(optimum.x, -1.0f, 1.0f);									// ### warp increment clamped to +/-1
- 		optimum.y 	= 1.0f * clamp(concavity, -1.0f, 0.0f);
+ 		optimum.y 	= concavity; //1.0f * clamp(concavity, -1.0f, 0.0f);
 	}
 																					// NB intuitively, "confidence in warp" = curvature of fit * correlation .
 /*
@@ -482,7 +482,7 @@ __kernel void compute_warp(						// TODO could incorportate the blurring of the 
 	if( col<4 || col>=(read_cols_-4) || global_id < 4*read_cols_ || global_id >= (pixels_-(4*read_cols_)) ) {				// if (at margins) set confidence to zero.
 		confidence[read_index]					= 0.0f;
 	}else{
-		confidence[read_index]					= clamp( 100*(0.75f*old_conf + 0.25f * opt_u.y * opt_v.y), 0.0f, 1.0f );	// confidence derived from (correlation * curvature) to discount blank areas.
+		confidence[read_index]					= clamp( /* 100* */(/*0.75*/0.80f*old_conf + /*0.25f*/0.20f * opt_u.y * opt_v.y), 0.0f, 1.0f );	// confidence derived from (correlation * curvature) to discount blank areas.
 	}
 }
 
@@ -539,7 +539,7 @@ __kernel void regularize_warp(					// Use local mem to avoid repeat loading of s
 	local_index									= lid + local_size;
 
 	__attribute__((opencl_unroll_hint))
-	for (uint row = 0; row<3; row++){																					// This wraps correctly for all layers of the image pyramid.
+	for (uint row = 0; row<3; row++){																						// This wraps correctly for all layers of the image pyramid.
 		if (lid<2){
 			local_warp[local_index]				=  warp[global_index];
 			local_confidence[local_index]		=  confidence_buf[global_index];
@@ -548,30 +548,7 @@ __kernel void regularize_warp(					// Use local mem to avoid repeat loading of s
 		local_index 							+= local_ref_mem_width;
 		barrier(CLK_LOCAL_MEM_FENCE);
 	}
-/////////////////////////////
-// 	__attribute__((opencl_unroll_hint))
-// 	for (int i=0; i<3; i++){
-// 		local_warp[      lid_1 + i*patch_length]		= warp[           read_index + (i-1) * mm_cols];
-// 		barrier(CLK_LOCAL_MEM_FENCE);
-// 	}
-//
-// 	__attribute__((opencl_unroll_hint))
-// 	for (int i=0; i<3; i++){
-// 		local_confidence[lid_1 + i*patch_length]		= confidence_buf[ read_index + (i-1) * mm_cols];
-// 		barrier(CLK_LOCAL_MEM_FENCE);
-// 	}
 
-	// load margins. NB we only need the middle row.
-//	int pix_offset[2] = {-1, patch_length -1};
-	//for (int i=0; i<3; i++){
-// 		if (lid <2 && global_id>0 ){
-// 			uint read_index_2 	= floor( lookup_table[ global_id + read_offset + pix_offset[lid] ].z );
-// 			local_warp[       lid_1 + pix_offset[lid] + patch_length ]			= warp[           read_index_2 ];
-// 			local_confidence[ lid_1 + pix_offset[lid] + patch_length ]			= confidence_buf[ read_index_2 ];
-// 		}
-// 		barrier(CLK_LOCAL_MEM_FENCE);
-	//}
-//////////////////////////////
 	// 5-way weighted sum of neighbopurs (i) conf*input,  and (ii) conf
 	uint	increment[5]						= { 0 , patch_length-1 , patch_length , patch_length+1 , 2*patch_length }; // where to sample local mem relative to lid_1 = lid+1.
 	float2	sum_warp 							= {0.0f, 0.0f};
@@ -601,49 +578,85 @@ __kernel void regularize_warp(					// Use local mem to avoid repeat loading of s
 	__private	uint	mm_cols,				//4
 
 	__local		float2*	local_warp,				//5		// 2 rows + 1px halo at right end for both rows.
+	__local		float*	local_confidence,		//6
 
-	__global 	float4*	lookup_table,			//6
+	__global 	float4*	lookup_table,			//7
 	// input_output
-	__global 	float2*	warp					//7		// 2*float4*mm_size // float2* // NB reading & writing to a different regions of the same buffer.
+	__global 	float2*	warp,					//8		// 2*float4*mm_size // float2* // NB reading & writing to a different regions of the same buffer.
+	__global 	float*	confidence				//9
 ){
 	uint 	global_id			= get_global_id(0);
 	float 	global_id_flt 		= global_id;
 	float4 	lookup_in			= lookup_table[ global_id + read_offset  ];
-	uint read_col				= lookup_in.x;
-	uint read_row				= lookup_in.y;
-	uint read_index				= lookup_in.z;
+	uint 	read_col			= lookup_in.x;
+	uint 	read_row			= lookup_in.y;
+	uint 	read_index			= lookup_in.z;
 
-	uint row 					= global_id / cols_in;
-	uint col 					= fmod( global_id_flt, cols_in);
-	uint write_index			= col*2 + row*2*mm_cols +  lookup_table[ write_offset ].z;
+	uint 	pixels_ 			= rows_in * cols_in;
+
+	uint 	row 				= global_id / cols_in;
+	uint 	col 				= fmod( global_id_flt, cols_in);
+	uint 	write_index			= col*2 + row*2*mm_cols +  lookup_table[ write_offset ].z;
 
 	uint 	lid					= get_local_id(0);
 	// load local buffers
 	// load 3 rows
-	uint patch_length 			= 1 + get_local_size(0);
+	uint local_size				= get_local_size(0);
+	uint patch_length 			= 1 + local_size;
 
 	__attribute__((opencl_unroll_hint))
 	for (int i=0; i<2; i++){
-		local_warp[      lid + i*patch_length]		= warp[          read_index + i* mm_cols];
+		local_warp[      lid + i*patch_length]				= warp[          read_index + i* mm_cols];
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
+
+	__attribute__((opencl_unroll_hint))
+	for (int i=0; i<2; i++){
+		local_confidence[      lid + i*patch_length]		= confidence[    read_index + i* mm_cols];
 		barrier(CLK_LOCAL_MEM_FENCE);
 	}
 
 	// load margins. NB we only need the middle row.
-	int pix_offset[2] = {patch_length, 2*patch_length};
+	int local_pix_offset[2]  	= {local_size,		local_size + patch_length  };
+	int global_pix_offset[2] 	= {local_size,		local_size + cols_in };
+
 	if (lid <2){
-		local_warp[  pix_offset[lid] ]			= warp[ read_index + pix_offset[lid] ];
+		local_warp[ local_pix_offset[lid] ]			= warp[	(uint)lookup_table[ global_id + read_offset + global_pix_offset[lid] ].z ];
+		//local_warp[ local_size ]					= warp[	(uint)lookup_table[ global_id + read_offset +   local_size ].z 	];
+		//local_warp[ local_size + patch_length ]	= warp[	(uint)lookup_table[ global_id + read_offset +   local_size + cols_in ].z 	];
 	}
 	barrier(CLK_LOCAL_MEM_FENCE);
-	float2 warp_in00					= 2*local_warp[lid] ;					barrier(CLK_LOCAL_MEM_FENCE);
-	float2 warp_in10					= 2*local_warp[lid+1] ;					barrier(CLK_LOCAL_MEM_FENCE);
-	float2 warp_in01					= 2*local_warp[lid+patch_length] ;		barrier(CLK_LOCAL_MEM_FENCE);
-	float2 warp_in11					= 2*local_warp[lid+patch_length+1] ;	barrier(CLK_LOCAL_MEM_FENCE);
 
-	warp[write_index]					= warp_in00;
-	float2 warp_out10					= mix(warp_in00, warp_in10, 0.5f);
-	warp[write_index +1]				= warp_out10;
-	warp[write_index + mm_cols]			= mix(warp_in00, warp_in01, 0.5f);
-	warp[write_index + mm_cols +1]		= mix( mix(warp_in10, warp_in11, 0.5f), warp_out10, 0.5f);
+	if (lid <2){
+		local_confidence[ local_pix_offset[lid] ]	= confidence[	(uint)lookup_table[ global_id + read_offset + global_pix_offset[lid] ].z ];		// TODO causing artefacts
+	}
+	barrier(CLK_LOCAL_MEM_FENCE);
+
+	float2 warp_in00							= 2*local_warp[lid] ;							barrier(CLK_LOCAL_MEM_FENCE);
+	float2 warp_in10							= 2*local_warp[lid+1] ;							barrier(CLK_LOCAL_MEM_FENCE);
+	float2 warp_in01							= 2*local_warp[lid+patch_length] ;				barrier(CLK_LOCAL_MEM_FENCE);
+	float2 warp_in11							= 2*local_warp[lid+patch_length+1] ;			barrier(CLK_LOCAL_MEM_FENCE);
+
+	if ( global_id <  pixels_ /*& lid< get_local_size(0)*/ ){
+		warp[write_index]						= warp_in00;
+		float2 warp_out10						= mix(warp_in00, warp_in10, 0.5f);
+		warp[write_index +1]					= warp_out10;
+		warp[write_index + mm_cols]				= mix(warp_in00, warp_in01, 0.5f);
+		warp[write_index + mm_cols +1]			= mix( mix(warp_in10, warp_in11, 0.5f), warp_out10, 0.5f);
+	}
+
+	float confidence_in00						= local_confidence[lid] ;						barrier(CLK_LOCAL_MEM_FENCE);
+	float confidence_in10						= local_confidence[lid+1] ;						barrier(CLK_LOCAL_MEM_FENCE);
+	float confidence_in01						= local_confidence[lid+patch_length] ;			barrier(CLK_LOCAL_MEM_FENCE);
+	float confidence_in11						= local_confidence[lid+patch_length+1] ;		barrier(CLK_LOCAL_MEM_FENCE);
+
+	if ( global_id < pixels_ && lid< get_local_size(0)-1 ){
+		confidence[write_index]					= confidence_in00;
+ 		float confidence_out10					= mix(confidence_in00, confidence_in10, 0.5f);
+		confidence[write_index +1]				= confidence_out10;
+		confidence[write_index + mm_cols]		= mix(confidence_in00, confidence_in01, 0.5f);
+		confidence[write_index + mm_cols +1]	= mix( mix(confidence_in10, confidence_in11, 0.5f), confidence_out10, 0.5f);
+	}
 
 	if (fmod(global_id_flt,333.0f) ==0.0f ) {
 		printf("\n_kernel propagate_warp(..), global_id=%u, lid=%u,	read_offset=%u, rows_in=%u, cols_in=%u, write_offset=%u, write_index=%u, mm_cols=%u, read_col=%u, read_row=%u, col=%u, row=%u",\

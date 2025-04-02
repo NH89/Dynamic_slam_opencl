@@ -398,19 +398,20 @@ void RunCL::propagate_warp( uint layer ){
 cout << "\nRunCL::propagate_warp : reduction="<<reduction<<",  rows_in="<<rows_in<<",  cols_in="<<cols_in<<",  write_offset="<<write_offset<<",  mm_width="<<mm_width<< flush;
 	// inputs
 	// __private
-	//_clSetKernelArg( warp_image_kernel,  			0, sizeof( uint), 						&read_offset,			fname);				//	__private	uint	read_offset,			//0
-	_clSetKernelArg( propagate_warp_kernel,  		1, sizeof( uint), 						&rows_in,				fname);				//	__private	uint 	rows_in,				//1
-	_clSetKernelArg( propagate_warp_kernel,  		2, sizeof( uint), 						&cols_in,				fname);				//	__private	uint	cols_in,				//2
+	//_clSetKernelArg( warp_image_kernel,  			0, sizeof( uint),						&read_offset,			fname);				//	__private	uint	read_offset,			//0
+	_clSetKernelArg( propagate_warp_kernel,  		1, sizeof( uint),						&rows_in,				fname);				//	__private	uint 	rows_in,				//1
+	_clSetKernelArg( propagate_warp_kernel,  		2, sizeof( uint),						&cols_in,				fname);				//	__private	uint	cols_in,				//2
 	_clSetKernelArg( propagate_warp_kernel,  		3, sizeof( uint),						&write_offset,			fname);				//	__private	uint	write_offset,			//3
 	_clSetKernelArg( propagate_warp_kernel,  		4, sizeof( uint),						&mm_width,				fname);				//	__private	uint	mm_cols,				//4
 	// __local
-	_clSetKernelArg( propagate_warp_kernel, 		5, (local_work_size+1)*4*sizeof(float), NULL,					fname);				// __local		float2*	local_warp				//5
+	_clSetKernelArg( propagate_warp_kernel, 		5, (local_work_size+4)*6*sizeof(float), NULL,					fname);				//	__local		float2*	local_warp				//5
+	_clSetKernelArg( propagate_warp_kernel, 		6, (local_work_size+4)*2*sizeof(float), NULL,					fname);				//	__local		float2	local_confidence		//6
 	// __global
-	_clSetKernelArg( propagate_warp_kernel,  		6, sizeof( cl_mem), 					&lookup_table_buf,		fname);				//	__global 	float4*	lookup_table,			//6
+	_clSetKernelArg( propagate_warp_kernel,  		7, sizeof( cl_mem),						&lookup_table_buf,		fname);				//	__global	float4*	lookup_table,			//7
 
 	// input_output
-	_clSetKernelArg( propagate_warp_kernel,  		7, sizeof( cl_mem), 					&warp_buf,				fname);				//	__global 	float2*	warp					//7
-
+	_clSetKernelArg( propagate_warp_kernel,  		8, sizeof( cl_mem),						&warp_buf,				fname);				//	__global	float2*	warp					//8
+	_clSetKernelArg( propagate_warp_kernel,  		9, sizeof( cl_mem),						&confidence_buf,		fname);				//	__global	float*	confidence				//9
 																																		if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::propagate_warp( ..)_chk1 ."<<flush;}
 	layer_call_kernel( propagate_warp_kernel, m_queue, layer, local_work_size);
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::propagate_warp( ..)_chk2 ."<<flush;								// Save buffers to file ###########
@@ -419,18 +420,17 @@ cout << "\nRunCL::propagate_warp : reduction="<<reduction<<",  rows_in="<<rows_i
 																																				bool show 				= false;
 																																				bool old_tiff 			= tiff;
 																																				tiff 					= true;
-																																				float max_range 		= -1.0f; 		// -1 -> gray = zero.
+																																				float max_range 		= 1.0f; 		// -1 -> gray = zero.
 																																				uint vol_layers			= 1;
 																																				_cl_flush_finish(m_queue, fname);
 
 																																				cout<<"\n\nRunCL::compute_warp( ..)_chk2.3 ."<<flush;
-																																				DownloadAndSave_2Channel_volume( 	warp_buf,		ss.str( ), paths.at( "warp_buf"),  		2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, 	show , /*max_range*/-10.0f, vol_layers /*1*/ /*2D warp, 1DoF */);
-																																				tiff 			= old_tiff;
+																																				DownloadAndSave_2Channel_volume( 	warp_buf,	ss.str( ), paths.at( "warp_buf"),  		2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, show, /*max_range*/-10.0f, vol_layers /*1*/ /*2D warp, 1DoF */);
+																																				DownloadAndSave( 			  confidence_buf,	ss.str( ), paths.at( "confidence_buf"),   mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, show, max_range);
+																																				tiff 					= old_tiff;
 																																			}
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::propagate_warp( ..)_finished ."<<flush;}
 }
-
-
 
 ////////////////////////////////////////////////////////////
 

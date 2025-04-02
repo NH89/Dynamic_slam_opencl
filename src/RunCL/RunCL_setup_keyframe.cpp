@@ -29,9 +29,9 @@ void RunCL::transform_depthmap( /*cv::Matx44f K2K_*/ float K2K_arry[16] , cl_mem
 	_clSetKernelArg( transform_depthmap_kernel,  2, sizeof( cl_mem), &uint_param_buf, 	fname);												//__constant	uint*		uint_params,					//2
 	_clSetKernelArg( transform_depthmap_kernel,  3, sizeof( cl_mem), &k2kbuf, 			fname);												//__global		float* 		k2k,							//3
 	_clSetKernelArg( transform_depthmap_kernel,  4, sizeof( cl_mem), &keyframe_imgmem, 	fname);												//__global		float4* 	keyframe_imgmem,				//4		// uses alpha channel to check bounds
-	_clSetKernelArg( transform_depthmap_kernel,  5, sizeof( cl_mem), &depthmap_, 			fname);												//__global		float* 		keyframe_depth_mem,				//5
+	_clSetKernelArg( transform_depthmap_kernel,  5, sizeof( cl_mem), &depthmap_, 		fname);												//__global		float* 		keyframe_depth_mem,				//5
 	// output
-	_clSetKernelArg( transform_depthmap_kernel,  6, sizeof( cl_mem), &depth_mem_temp, 			fname);												//__global		float* 		depth_mem,						//6
+	_clSetKernelArg( transform_depthmap_kernel,  6, sizeof( cl_mem), &depth_mem_temp, 	fname);												//__global		float* 		depth_mem,						//6
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::transform_depthmap( ..)_chk1 ."<<flush;}
 	mipmap_call_kernel( transform_depthmap_kernel, m_queue );
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::transform_depthmap( ..)_chk3 ."<<flush;}
