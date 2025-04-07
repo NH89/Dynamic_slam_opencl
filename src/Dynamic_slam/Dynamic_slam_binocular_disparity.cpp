@@ -80,7 +80,7 @@ void Dynamic_slam::binocular_disparity(){
 
 	// compute warp for this frame  // can be until (layer > runcl.mm_start) but takes 3x longer.		(NB "SE3_start_layer":4,  "SE3_stop_layer":1, )
 	for (int layer = 3/*0*//*runcl.mm_stop*/ ; layer > -1/*runcl.mm_start+3*/ ; layer-- ){						if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::disparity() chk_1 layer="<<layer<<", runcl.mm_start+3="<<runcl.mm_start+3<<", runcl.mm_stop="<<runcl.mm_stop<<flush;}
-		for (int iter = 0 ; iter < 8   ; iter++ ){																if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::disparity() chk_2 layer="<<layer<<", iter="<<iter<<"_"<<flush;}
+		for (int iter = 0 ; iter < 2   ; iter++ ){																if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::disparity() chk_2 layer="<<layer<<", iter="<<iter<<"_"<<flush;}
 			runcl.warp_image(			layer, iter );
 			runcl.correlation_one_step( layer, iter );
 			runcl.blur_volume( runcl.correlation_buf, runcl.correlation_blurred_buf , "correlation_buf",  5/*vol_layers*/, layer, iter );
@@ -89,9 +89,10 @@ void Dynamic_slam::binocular_disparity(){
 			//runcl.cl_mem_swap_ptr(runcl.correlation_buf, runcl.correlation_blurred_buf );
 			for (int reg=0; reg<(8-iter); reg++){
 				runcl.regularize_warp(	layer, iter	);
-				// swap(runcl.warp_buf,			runcl.warp_buf_regularized);
-				// runcl.cl_mem_swap_ptr( runcl.warp_buf,			runcl.warp_buf_regularized			);			// swap pointers
-				// runcl.cl_mem_swap_ptr( runcl.confidence_buf,	runcl.confidence_buf_regularized	);
+
+				// // swap(runcl.warp_buf,			runcl.warp_buf_regularized);
+				// // runcl.cl_mem_swap_ptr( runcl.warp_buf,			runcl.warp_buf_regularized			);			// swap pointers
+				// // runcl.cl_mem_swap_ptr( runcl.confidence_buf,	runcl.confidence_buf_regularized	);
 			}
 		}
 		if (layer>runcl.mm_start){ runcl.propagate_warp( layer ); }

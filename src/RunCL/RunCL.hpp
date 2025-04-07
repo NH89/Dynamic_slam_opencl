@@ -100,6 +100,7 @@ public:
 	cl_mem				correlation_buf,			correlation_blurred_buf;
 	cl_mem				warp_buf,					confidence_buf;
 	cl_mem				warp_buf_regularized,		confidence_buf_regularized;
+	cl_mem				warp_ref_buf;
 	//
 	cv::Mat 			baseImage, key_frame;
 
