@@ -93,7 +93,8 @@ void RunCL::createFolders(){
 										"ref_img_sigma_3rows",			"ref_img_sigma_3cols",			"warped_img_sigma_3rows",		"warped_img_sigma_3cols",\
 										"covariance_rows_buf", 			"covariance_buf",\
 										"correlation_buf",				"warp_buf",						"confidence_buf",\
-										"warp_buf_regularized",			"confidence_buf_regularized"\
+										"warp_buf_regularized",			"confidence_buf_regularized",\
+										"binoc_depth"\
 	};
 										//"atomic_test1_buf", "atomic_test2_buf"
 	std::pair<std::string, std::filesystem::path> tempPair;

@@ -369,7 +369,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 																																		}
 		local_num_samples	= 2;
 		start_sample_idx	= 1;
-		runcl.se3_rho_sq( local_num_samples, start_sample_idx, Rho_sq_results, count, layer, layer+1, k2k_4_16 );															// Find Rho for the two sample steps
+		runcl.se3_rho_sq( local_num_samples, start_sample_idx, Rho_sq_results, count, layer, layer+1, k2k_4_16 );						// Find Rho for the two sample steps
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nDynamic_slam::estimateSE3(): k2k_4_16[tracking_tot_samples][16] : ";
 																																			for (int a=0; a<tracking_tot_samples; a++){
@@ -465,6 +465,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 	}
 																																		//  TODO Update all variables in frame_data.back()
 	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] 		= k2k_4_16[0][i]; }
+	runcl.update_k2k_buf(k2k_4_16[0]);																									// Sets values in k2k_buf, for depth stages of the algorithm.
 
 	uint 				keyframe_index						= frame_data.back().keyframe_index;		//.frame_data.key_frame_index;		// compute and record "pose_from_start"
 	cv::Matx44f			keyframe_pose 						= keyframe_data[keyframe_index].frame_data.frame_data.pose; 				// .pose_from_start
@@ -474,6 +475,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 	frame_data.back().frame_data.keyframe2pose  			= keyframe2pose;
 	frame_data.back().frame_data.keyframe2pose_algebra 		= PToLie(keyframe2pose);
 	frame_data.back().frame_data.K2K						= K * keyframe2pose * inv_K;
+
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nDynamic_slam::estimateSE3() Results" << flush;
 																																			print_pose_datum( frame_data.back().frame_data );

@@ -389,46 +389,47 @@ __kernel void blur_volume(
 	}
 }
 
-float2 compute_maximum(__private float4 A, __private float4 B, __private float4 C){
-	// from https://math.stackexchange.com/questions/2150199/is-there-a-method-for-estimating-the-parabolic-function-using-three-points-or-a
-	// Also incorporating ug_stereomatcher Matachlib.cu  PolyDisparity kenel concavity chk & confidence setting.
-	float x1=-1,	x2=0,	x3=1;
-	float y1=(A.x +A.y +A.z)/3.0f,	y2=(B.x +B.y +B.z)/3.0f,	 y3=(C.x +C.y +C.z)/3.0f;	// Mean of correlation of rgb channels.
-
-	float k1 		= y1/((x1-x2)*(x1-x3));
-	float k2 		= y2/((x2-x1)*(x2-x3));
-	float k3 		= y3/((x3-x2)*(x3-x1));
-
-	float2 optimum;
-	float concavity = mad(y2, -2.0f, (y1+y3) );
-
-	if ( concavity  <0.0f) {														// correct concavity, use parabolic curvature
-		optimum.x 	= (k1*(x2+x3) + k2*(x1+x3) + k3*(x2+x1)) / (2*(k1+k2+k3));
-		optimum.x 	= clamp(optimum.x, -1.0f, 1.0f);									// ### warp increment clamped to +/-1
- 		float a1 	= optimum.x - x1;
- 		float a2 	= optimum.x - x2;
- 		float a3 	= optimum.x - x3;
-		float predicted_correlation 	= clamp(k1*a2*a3 + k2*a1*a3 + k3*a1*a2, 0.0f, -1.0f);
-		optimum.y 						= -clamp(concavity, -1.0f, 0.0f) * predicted_correlation;
-	}else{																			// wrong concavity, use linear gradient
-		optimum.x 	= (1.0f-y2) * 0.5f*(y1-y3);										// NB this will take step <1 if one input is too high.
- 		optimum.x 	= clamp(optimum.x, -1.0f, 1.0f);									// ### warp increment clamped to +/-1
- 		optimum.y 	= concavity; //1.0f * clamp(concavity, -1.0f, 0.0f);
-	} // TODO uncomment else clause
-																					// NB intuitively, "confidence in warp" = curvature of fit * correlation .
 /*
-// 	if (optimum.y >1.0f){															// if predicted fit impossibly good
-// 		float d = optimum.y - y2;
-// 		if(d>1e-10){																// if predicted increase in fit is non-negligible
-// 			optimum.x = optimum.x * ((1.0 - y2) / d);								// scale the increment to reach correlation = 1.0f
-// 		}
-// 		optimum.y = 1.0f;
-// 	}else{
-// 		optimum.y = mad(0.3f , optimum.y , 0.7f);	// gradual increment of confidence.
-// 	}
-*/
-	return optimum;
-}
+// float2 compute_maximum(__private float4 A, __private float4 B, __private float4 C){
+// 	// from https://math.stackexchange.com/questions/2150199/is-there-a-method-for-estimating-the-parabolic-function-using-three-points-or-a
+// 	// Also incorporating ug_stereomatcher Matachlib.cu  PolyDisparity kenel concavity chk & confidence setting.
+// 	float x1=-1,	x2=0,	x3=1;
+// 	float y1=(A.x +A.y +A.z)/3.0f,	y2=(B.x +B.y +B.z)/3.0f,	 y3=(C.x +C.y +C.z)/3.0f;	// Mean of correlation of rgb channels.
+//
+// 	float k1 		= y1/((x1-x2)*(x1-x3));
+// 	float k2 		= y2/((x2-x1)*(x2-x3));
+// 	float k3 		= y3/((x3-x2)*(x3-x1));
+//
+// 	float2 optimum;
+// 	float concavity = mad(y2, -2.0f, (y1+y3) );
+//
+// 	if ( concavity  <0.0f) {														// correct concavity, use parabolic curvature
+// 		optimum.x 	= (k1*(x2+x3) + k2*(x1+x3) + k3*(x2+x1)) / (2*(k1+k2+k3));
+// 		optimum.x 	= clamp(optimum.x, -1.0f, 1.0f);									// ### warp increment clamped to +/-1
+//  		float a1 	= optimum.x - x1;
+//  		float a2 	= optimum.x - x2;
+//  		float a3 	= optimum.x - x3;
+// 		float predicted_correlation 	= clamp(k1*a2*a3 + k2*a1*a3 + k3*a1*a2, 0.0f, -1.0f);
+// 		optimum.y 						= -clamp(concavity, -1.0f, 0.0f) * predicted_correlation;
+// 	}else{																			// wrong concavity, use linear gradient
+// 		optimum.x 	= (1.0f-y2) * 0.5f*(y1-y3);										// NB this will take step <1 if one input is too high.
+//  		optimum.x 	= clamp(optimum.x, -1.0f, 1.0f);									// ### warp increment clamped to +/-1
+//  		optimum.y 	= concavity; //1.0f * clamp(concavity, -1.0f, 0.0f);
+// 	} // TODO uncomment else clause
+// 																					// NB intuitively, "confidence in warp" = curvature of fit * correlation .
+//
+// // 	if (optimum.y >1.0f){															// if predicted fit impossibly good
+// // 		float d = optimum.y - y2;
+// // 		if(d>1e-10){																// if predicted increase in fit is non-negligible
+// // 			optimum.x = optimum.x * ((1.0 - y2) / d);								// scale the increment to reach correlation = 1.0f
+// // 		}
+// // 		optimum.y = 1.0f;
+// // 	}else{
+// // 		optimum.y = mad(0.3f , optimum.y , 0.7f);	// gradual increment of confidence.
+// // 	}
+//
+// 	return optimum;
+// }
 
 
 // float2 compute_maximum(__private float4 A, __private float4 B, __private float4 C){  // from PolyDisparity UG stereo.
@@ -460,21 +461,22 @@ float2 compute_maximum(__private float4 A, __private float4 B, __private float4 
 // 	float2 temp_f2 = {grad, curv}; // (warp_incr, corr_incr); // TODO revert this debug line
 // 	return temp_f2;
 // }
-
+*/
 
 __kernel void compute_warp(						// TODO could incorportate the blurring of the correlation, and skip one global save and read, plus the correlation_blurred buffer.
 	// inputs
 	__private	uint	read_offset,			//0
 	__private	uint 	mm_size,				//1
 	__private	uint	layer,					//2
+	__private	uint 	iter,					//3
 
-	__constant 	uint8*	mipmap_params,			//3
+	__constant 	uint8*	mipmap_params,			//4
 	//global
-	__global 	float4*	lookup_table,			//4
-	__global 	float4*	correlation_blurred,	//5
+	__global 	float4*	lookup_table,			//5
+	__global 	float4*	correlation_blurred,	//6
 	//outputs
- 	__global 	float2*	warp,					//6		// 2*float4*mm_size // float2*
- 	__global 	float*	confidence				//7
+ 	__global 	float2*	warp,					//7		// 2*float4*mm_size // float2*
+ 	__global 	float*	confidence				//8
 ){
 	// From YouTube Template Matching by  Correlation | Image Processing I, Columbia Univ.
 	// N_tf[i,j] = Sum_m,n( f[m,n] * t[m-i,n-j] ) / sqrt(Sum_m,n( f^2[m,n] ) * sqrt(Sum_m,n( t^2[m-i,n-j] ) )
@@ -504,8 +506,8 @@ __kernel void compute_warp(						// TODO could incorportate the blurring of the 
 		pvt_correlation[sample]					= correlation_blurred[read_index + sample *mm_size];
 		barrier(CLK_GLOBAL_MEM_FENCE);																					// Should ensure coherent reads from this workgroup
 	}
- 	float2 opt_u								= compute_maximum( pvt_correlation[1], pvt_correlation[2], pvt_correlation[3] );//pvt_correlation[1].x - pvt_correlation[3].x; //does the work of PolyDisparity kernel in UG code.
-	float2 opt_v								= compute_maximum( pvt_correlation[0], pvt_correlation[2], pvt_correlation[4] );//pvt_correlation[0].x - pvt_correlation[4].x; //
+// 	float2 opt_u								= compute_maximum( pvt_correlation[1], pvt_correlation[2], pvt_correlation[3] );//pvt_correlation[1].x - pvt_correlation[3].x; //does the work of PolyDisparity kernel in UG code.
+// 	float2 opt_v								= compute_maximum( pvt_correlation[0], pvt_correlation[2], pvt_correlation[4] );//pvt_correlation[0].x - pvt_correlation[4].x; //
 
 	float2 warp_new;
 	//warp_new.x									= clamp( warp2.x + opt_u.x , -1.0f, 1.0f);	// Uses mean correlation over rgb channels.
@@ -517,13 +519,14 @@ __kernel void compute_warp(						// TODO could incorportate the blurring of the 
 	float mean_3	=	pvt_correlation[3].x	+ pvt_correlation[3].y	+ pvt_correlation[3].z;
 	float mean_4	=	pvt_correlation[4].x	+ pvt_correlation[4].y	+ pvt_correlation[4].z;
 
-	if		(mean_1 > mean_2)	{	warp_new.x	=	-0.5f;
-	}else if(mean_3 > mean_2)	{	warp_new.x	=	0.5f;
+	float step		=	1.0f/(1.0f+iter);					// Sequence  1/2, 1/3, 1/4, 1/5,  Max sum steps 1.2833, just enough to reverse a misstep.
+	if		(mean_1 > mean_2)	{	warp_new.x	=	-step;
+	}else if(mean_3 > mean_2)	{	warp_new.x	=	step;
 	}else						{	warp_new.x 	=	0.0f;
 	}
 
-	if		(mean_0 > mean_2)	{	warp_new.y	=	-0.5f;
-	}else if(mean_4 > mean_2)	{	warp_new.y	=	0.5f;
+	if		(mean_0 > mean_2)	{	warp_new.y	=	-step;
+	}else if(mean_4 > mean_2)	{	warp_new.y	=	step;
 	}else						{	warp_new.y 	=	0.0f;
 	}
 
@@ -532,7 +535,7 @@ __kernel void compute_warp(						// TODO could incorportate the blurring of the 
 	if( col<4 || col>=(read_cols_-4) || global_id < 4*read_cols_ || global_id >= (pixels_-(4*read_cols_)) ) {			// if (at margins) set confidence to zero.
 		confidence[read_index]					= 0.0f;
 	}else{
-		confidence[read_index]					= clamp( (0.75f*old_conf + 0.25f * opt_u.y * opt_v.y), 0.0f, 1.0f );	// confidence derived from (correlation * curvature) to discount blank areas.
+		confidence[read_index]					= clamp( (0.75f*old_conf + 0.25f * mean_2 ), 0.0f, 1.0f ); // opt_u.y * opt_v.y	// confidence derived from (correlation * curvature) to discount blank areas.
 	}
 }
 
@@ -715,7 +718,96 @@ __kernel void regularize_warp(					// Use local mem to avoid repeat loading of s
 		printf("\n_kernel propagate_warp(..), global_id=%u, lid=%u,	read_offset=%u, rows_in=%u, cols_in=%u, write_offset=%u, write_index=%u, mm_cols=%u, read_col=%u, read_row=%u, col=%u, row=%u",\
 		global_id, lid, read_offset, rows_in, cols_in, write_offset, write_index, mm_cols, read_col, read_row, col, row);
 	}
- }
+}
+
+
+
+__kernel void warp_and_depth_error(				// NB depth is handled as inv_depth to avoid inf.
+	// inputs
+	__private	uint	read_offset,			//0
+	__private	float	reduction,				//1
+
+	__global	float16*k2k,					//2		// keyframe2K[3]
+	__global 	float4*	lookup_table,			//3
+	__global 	float*	depth_GT,				//4
+	__global 	float2*	warp,					//5		// 2*float4*mm_size // float2* // NB reading & writing to a different regions of the same buffer.
+	__global 	float2*	warp_ref,				//6		// 2*float4*mm_size // float2* // NB reading & writing to a different regions of the same buffer.
+	// outputs
+	__global 	float2*	warp_error,				//7
+	__global 	float2*	depth_error,			//8
+	__global 	float2*	depth					//9
+){
+	uint 	global_id_uint 		= get_global_id(0);
+	float4 	lookup_ref			= lookup_table[global_id_uint + read_offset];
+	uint 	read_index			= floor(lookup_ref.z);
+
+	if (read_index ==0 ) return;
+
+	float	u_flt				= lookup_ref.x*reduction;	// NB reduction is used to enlarge the coords to layer zero, before k2k transform.
+	float	v_flt				= lookup_ref.y*reduction;
+	float 	inv_depth 			= depth_GT[read_index]; 	//1.0f;// mid point max-min inv depth	// Find new pixel position, h=homogeneous coords.//inv dept  //depth_index
+
+	int 	sample				= 0;
+	float16 k2k_pvt				= k2k[sample];															// NB we read  k2k[1] and  k2k[2]
+
+	float 	a 					= k2k_pvt[0]*u_flt + k2k_pvt[1]*v_flt + k2k_pvt[2]*1;
+	float 	b					= k2k_pvt[4]*u_flt + k2k_pvt[5]*v_flt + k2k_pvt[6]*1;
+	float 	c 					= k2k_pvt[8]*u_flt + k2k_pvt[9]*v_flt + k2k_pvt[10]*1;
+
+	float uh2 					= a + k2k_pvt[3]*inv_depth;
+	float vh2 					= b + k2k_pvt[7]*inv_depth;
+	float wh2 					= c + k2k_pvt[11]*inv_depth;
+	//float h/z  				= k2k_pvt[12]*u_flt + k2k_pvt[13]*v + k2k_pvt[14]*1; // +k2k_pvt[15]/z
+
+	float u2_flt				= ((uh2)/(wh2*reduction));	// + warp2.x;  	// NB Ideally we should have scaled versions of k2k, to avoid using reduction.
+	float v2_flt				= ((vh2)/(wh2*reduction));	// + warp2.y;	// NB need float u,v to compute interpolation.
+
+	float2 warp_GT				= {(u2_flt-lookup_ref.x), (v2_flt-lookup_ref.y)};
+
+	float2 warp_pvt				= warp[read_index] + warp_ref[read_index];
+	float2 warp_error_pvt		= { (warp_pvt.x-warp_GT.x)  , (warp_pvt.y-warp_GT.y)};  //  /warp_GT.x   /warp_GT.y
+	warp_error[read_index]		= warp_error_pvt;
+
+	float2 estimated_inv_depth	= {0.0f, 0.0f};
+	float2 inv_depth2 			= {inv_depth, inv_depth};
+/*
+// 	u2_flt															=  ((uh2)/(wh2*reduction))
+//
+// 	u2_flt															=  ((a + k2k_pvt[3]*inv_depth)   /   ((c + k2k_pvt[11]*inv_depth)*reduction))
+//
+// 	u2_flt * ((c + k2k_pvt[11]*inv_depth)*reduction))				=  (a + k2k_pvt[3]*inv_depth)
+//
+// 	u2_flt*c*reduction  +  u2_flt*k2k_pvt[11]*inv_depth*reduction	=  a + k2k_pvt[3]*inv_depth
+//
+// 	(u2_flt*k2k_pvt[11] - k2k_pvt[3])*inv_depth						=  a  -  u2_flt*c*reduction;
+*/
+	float u2_est	= warp_pvt.x + u_flt;	// pixel sample position adfter estimated warp
+	float v2_est	= warp_pvt.y + v_flt;
+
+	estimated_inv_depth.x		= ( a  - u2_est*c*reduction )  /  (u2_est*k2k_pvt[11] - k2k_pvt[3]);
+	estimated_inv_depth.y		= ( b  - v2_est*c*reduction )  /  (v2_est*k2k_pvt[11] - k2k_pvt[3]);
+
+	depth_error[read_index]		= (estimated_inv_depth - inv_depth2) ;	// Optionally divide by depth_GT to get a proportional error. // / inv_depth
+	depth[read_index]			= estimated_inv_depth;
+
+	if(global_id_uint ==0){printf("\n__kernel warp_and_depth_error(..) reduction=%f, a=%f, b=%f, c=%f, k2k=(%f, %f, %f, %f,   %f, %f, %f, %f,   %f, %f, %f, %f,   %f, %f, %f, %f   ) ", reduction, a,b,c, k2k_pvt[0], k2k_pvt[1], k2k_pvt[2], k2k_pvt[3],   k2k_pvt[4], k2k_pvt[5], k2k_pvt[6], k2k_pvt[7],    k2k_pvt[8], k2k_pvt[9], k2k_pvt[10], k2k_pvt[11],    k2k_pvt[12], k2k_pvt[13], k2k_pvt[14], k2k_pvt[15] );}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 //////////////////////////////////////////////////////////////////////////// TODO update this list

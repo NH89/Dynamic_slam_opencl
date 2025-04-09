@@ -316,6 +316,8 @@ void RunCL::createKernels(){
 	regularize_warp_kernel			= clCreateKernel(m_program, "regularize_warp", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'regularize_warp_kernel'  kernel not built.\n"		<<flush; exit_(0);   }
 	propagate_warp_kernel			= clCreateKernel(m_program, "propagate_warp", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'propagate_warp_kernel'  kernel not built.\n"		<<flush; exit_(0);   }
 
+	warp_and_depth_error_kernel		= clCreateKernel(m_program, "warp_and_depth_error", 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'warp_and_depth_error_kernel'  kernel not built.\n"		<<flush; exit_(0);   }
+
 }
 
 int RunCL::convertToString(const char *filename, std::string& s){
@@ -743,6 +745,10 @@ void RunCL::allocatemem(){
 	confidence_buf_regularized		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 
+	warp_GT_buf						= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, 2 * mm_size_bytes_C4/*C1*/,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	warp_error_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, 2 * mm_size_bytes_C4/*C1*/,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	depth_error_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, 2 * mm_size_bytes_C4/*C1*/,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	depth_est_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, 2 * mm_size_bytes_C4/*C1*/,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nRunCL::allocatemem_chk3\n\n" << flush;
@@ -970,6 +976,11 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	status = clReleaseMemObject(warp_buf_regularized);			if (status != CL_SUCCESS)	{ cout << "\nwarp_buf_regularized           status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(confidence_buf_regularized);	if (status != CL_SUCCESS)	{ cout << "\nconfidence_buf_regularized     status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 
+	status = clReleaseMemObject(warp_GT_buf);					if (status != CL_SUCCESS)	{ cout << "\nwarp_GT_buf                    status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+	status = clReleaseMemObject(warp_error_buf);				if (status != CL_SUCCESS)	{ cout << "\nwarp_error_buf                 status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+	status = clReleaseMemObject(depth_error_buf);				if (status != CL_SUCCESS)	{ cout << "\ndepth_error_buf                status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+	status = clReleaseMemObject(depth_est_buf);					if (status != CL_SUCCESS)	{ cout << "\ndepth_est_buf                  status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+
 
 	// release kernels
 	status = clReleaseKernel(cvt_color_space_linear_kernel);	if (status != CL_SUCCESS)	{ cout << "\ncvt_color_space_linear_kernel 	status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_49"<<flush;
@@ -1019,6 +1030,9 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	status = clReleaseKernel(compute_warp_kernel);				if (status != CL_SUCCESS)	{ cout << "\ncompute_warp_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(regularize_warp_kernel);			if (status != CL_SUCCESS)	{ cout << "\nregularize_warp_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(propagate_warp_kernel);			if (status != CL_SUCCESS)	{ cout << "\npropagate_warp_kernel			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+
+	status = clReleaseKernel(warp_and_depth_error_kernel);			if (status != CL_SUCCESS)	{ cout << "\nwarp_and_depth_error_kernel status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+
 
 	// release command queues
 	status = clReleaseCommandQueue(m_queue);                   if (status != CL_SUCCESS)	{ cout << "\nm_queue                        status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_67"<<flush;

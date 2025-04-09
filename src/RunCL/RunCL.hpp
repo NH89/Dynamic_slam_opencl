@@ -77,6 +77,7 @@ public:
 	cl_kernel			mean_sq_3rows_kernel, mean_sq_cols_kernel, sigma_3rows_kernel, sigma_3cols_kernel;
 	cl_kernel			covariance_3rows_kernel, covariance_cols_kernel, correlation_kernel;
 	cl_kernel			compute_warp_kernel, regularize_warp_kernel, propagate_warp_kernel;
+	cl_kernel			warp_and_depth_error_kernel;
 	cl_kernel			mipmap_3x3blur_flt4_kernel, correlation_one_step_kernel, blur_volume_kernel, correlation_2nd_step_kernel;
 	
 	// GPU Buffers
@@ -100,7 +101,8 @@ public:
 	cl_mem				correlation_buf,			correlation_blurred_buf;
 	cl_mem				warp_buf,					confidence_buf;
 	cl_mem				warp_buf_regularized,		confidence_buf_regularized;
-	cl_mem				warp_ref_buf;
+	cl_mem				warp_ref_buf,				warp_GT_buf;
+	cl_mem				warp_error_buf,				depth_error_buf,			depth_est_buf;
 	//
 	cv::Mat 			baseImage, key_frame;
 
@@ -188,11 +190,15 @@ public:
 	//void img_sq(         uint layer, uint iter, cl_mem img_buf,    cl_mem img_sq_buf,  std::string folder);
 	//void img_variance(   uint layer, uint iter, cl_mem img_sq_buf, cl_mem img_var_buf, std::string folder);
 
-	void propagate_warp( uint layer );
-
 	void correlation_one_step( uint layer, uint iter );
 	void blur_volume(cl_mem in_buff, cl_mem blurred_buf, std::string folder, uint vol_layers, uint mipmap_layer, uint iter );
 	void compute_warp(   uint layer, uint iter);
+
+	void regularize_warp( uint layer, uint iter);
+	void propagate_warp( uint layer );
+	void warp_and_depth_error( uint layer, float reduction );
+
+
 
 	void correlation_2nd_step( uint layer, uint iter );
 					   // uint layer, uint iter, std::string folder_mean_rows, cl_mem img_buf, cl_mem mean_rows_buf
@@ -203,7 +209,6 @@ public:
 	void covariance_3rows(uint layer, uint iter);
 	void covariance_cols( uint layer, uint iter);
 	void correlation( 	  uint layer, uint iter);
-	void regularize_warp( uint layer, uint iter);
 
 	/////////////////////////////////////// RunCL_DownloadAndSave.cpp
 
@@ -259,6 +264,7 @@ public:
 	
 	/////////////////////////////////////// RunCL_tracking.cpp
 	void update_tracking_depthmap(cl_mem depthmap_);
+	void update_k2k_buf(float k2k_3_16_[16]);
 	//void initialize_tracking_depthmap(float initial_depth);
 	void se3_rho_sq( const uint local_num_samples,  const uint start_sample_idx,  float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels],    const float count[4], uint start, uint stop, float k2k_3_16_[tracking_tot_samples][16]  ); //float k2k_[16]  );
 	void se3_rho_sq( 								float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels], 	const float count[4], uint start, uint stop, float k2k_3_16_[tracking_tot_samples][16]  );				// Tracking

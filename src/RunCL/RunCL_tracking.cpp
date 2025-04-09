@@ -47,6 +47,14 @@ void RunCL::update_tracking_depthmap( cl_mem depthmap_){
 // }
 */
 
+
+
+void RunCL::update_k2k_buf(float k2k_3_16_[16]) {
+	string fname = "RunCL::update_k2k_buf( ..)";
+	_clEnqueueWriteBuffer( uload_queue, k2kbuf,	CL_FALSE, 0, 16*sizeof( float), k2k_3_16_,  	fname);
+}
+
+
 void RunCL::se3_rho_sq( const uint local_num_samples,  const uint start_sample_idx,  float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels], const float count[4], uint start, uint stop,  float k2k_3_16_[tracking_tot_samples][16]   ){
 	string fname = "RunCL::se3_rho_sq( ..)";
 	int local_verbosity_threshold = V_RUNCL_SE3_RHO_SQ;
@@ -360,6 +368,8 @@ void RunCL::read_se3_incr( float SE3_results[max_mipmap_layers][num_SE3_DoF][tra
 																																				}cout << "\nRunCL::read_se3_incr( ..)_finish . ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"<<flush;
 																																			}
 }
+
+
 
 void RunCL::tracking_result( string result){
 	string fname = "RunCL::tracking_result( ..)";
