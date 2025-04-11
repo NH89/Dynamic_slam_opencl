@@ -145,7 +145,7 @@ void RunCL::set_warp_new_image(uint layer, float reduction){					// Computed onc
 																																				tiff 			= old_tiff;
 																																			}
 
-	_clSetKernelArg( set_warp_new_image_kernel,  	8, sizeof( cl_mem), &keyframe_depth_mem,	fname);										// __global		float* 	depth_map,				//8		// &keyframe_depth_mem
+	_clSetKernelArg( set_warp_new_image_kernel,  	8, sizeof( cl_mem), &keyframe_depth_mem_GT,	fname);										// __global		float* 	depth_map,				//8		// &keyframe_depth_mem
 	_clSetKernelArg( set_warp_new_image_kernel,  	9, sizeof( cl_mem), &warp_ref_buf,			fname);										// __global		float2*	warp,					//9
 
 	layer_call_kernel( set_warp_new_image_kernel, m_queue, layer, local_work_size);
@@ -209,8 +209,9 @@ void RunCL::warp_image( uint layer, int iter ){																					// computed 
 void RunCL::correlation_one_step ( uint layer, uint iter ){
     string fname = "RunCL::correlation_one_step( )";
 	int local_verbosity_threshold = V_RUNCL_IMG_VARIANCE;
+	size_t local_work_size__	= local_work_size/2;																						// reduced size required due to local mem limit,  48KB for Nvida cards.
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::correlation_one_step( ..)_chk0 #############################################################"<<flush;
-																																				cout << "\t local_work_size = " << local_work_size
+																																				cout << "\t local_work_size = " << local_work_size<< "\t local_work_size__ = " << local_work_size__
 																																				<< ",  layer = " << layer
 																																				<< flush;
 																																			}
@@ -220,8 +221,8 @@ void RunCL::correlation_one_step ( uint layer, uint iter ){
 	_clSetKernelArg( correlation_one_step_kernel,  		 1, sizeof( uint), 							&mm_width,				fname);			// 	__private	uint	mm_cols,			//1
 	_clSetKernelArg( correlation_one_step_kernel,  		 2, sizeof( uint), 							&mm_layerstep,			fname);			//	 __private	uint 	mm_size,			//2
 	// __local
-	_clSetKernelArg( correlation_one_step_kernel, 		 3, (local_work_size+2)*3*sizeof(cl_float4), NULL,					fname);			// __local		float4*	local_ref_img,		//3		// 3*(group_size + 2) * sizeof(float4)
-	_clSetKernelArg( correlation_one_step_kernel, 		 4, (local_work_size+4)*5*sizeof(cl_float4), NULL,					fname);			// __local		float*	local_confidence	//4		// 5*(group_size + 4) * sizeof(float4)
+	_clSetKernelArg( correlation_one_step_kernel, 		 3, (local_work_size__+4)*5*sizeof(cl_float4), NULL,					fname);			// __local		float4*	local_ref_img,		//3		// 3*(group_size + 2) * sizeof(float4)
+	_clSetKernelArg( correlation_one_step_kernel, 		 4, (local_work_size__+6)*7*sizeof(cl_float4), NULL,					fname);			// __local		float*	local_confidence	//4		// 5*(group_size + 4) * sizeof(float4)
 	// __global
 	_clSetKernelArg( correlation_one_step_kernel,  		 5, sizeof( cl_mem), 						&lookup_table_buf,		fname);			//__global 	float4*	lookup_table,			//5
 	_clSetKernelArg( correlation_one_step_kernel,  		 6, sizeof( cl_mem), 						&ref_img_buf,			fname);			//__global 	float4*	ref_img,				//6
@@ -233,7 +234,7 @@ void RunCL::correlation_one_step ( uint layer, uint iter ){
 	// _clSetKernelArg( correlation_one_step_kernel,  		11, sizeof( cl_mem), &confidence_buf,		fname);									// __global 	float*	confidence			//11
 
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::correlation_one_step( ..)_chk1 ."<<flush;}
-	layer_call_kernel( correlation_one_step_kernel, m_queue, layer, local_work_size);
+	layer_call_kernel( correlation_one_step_kernel, m_queue, layer, local_work_size__);
 																																			if( verbosity>local_verbosity_threshold /*&& layer==1*/ ) {cout<<"\n\nRunCL::correlation( ..)_chk2 ."<<flush;				// Save buffers to file ###########
 																																				stringstream ss;
 																																				ss << "_binoc_" <<fname<< save_index <<"_layer_"<<layer<<"_iter_"<<iter ;
@@ -308,7 +309,7 @@ void RunCL::compute_warp(uint mipmap_layer, uint iter  ){
 	_clSetKernelArg( compute_warp_kernel,  			4, sizeof( cl_mem), 			&mipmap_buf,							fname);			//__constant	uint8*	mipmap_params,		//4
 	//__global
 	_clSetKernelArg( compute_warp_kernel,  			5, sizeof( cl_mem), 			&lookup_table_buf,						fname);			//__global		float4*	lookup_table,		//5
-	_clSetKernelArg( compute_warp_kernel, 			6, sizeof(cl_mem), 				&correlation_blurred_buf,				fname );		//__global		float4*	correlation_blurred,//6
+	_clSetKernelArg( compute_warp_kernel, 			6, sizeof(cl_mem), 				&correlation_blurred_buf,				fname );		//__global		float4*	correlation_blurred,//6  //  correlation_blurred_buf,
 	// output
 	_clSetKernelArg( compute_warp_kernel,	  		7, sizeof( cl_mem), 			&warp_buf,								fname);			//__global		float2*	warp				//7
 	_clSetKernelArg( compute_warp_kernel,	  		8, sizeof( cl_mem), 			&confidence_buf,						fname);			//__global		float2*	confidence			//8
@@ -322,10 +323,10 @@ void RunCL::compute_warp(uint mipmap_layer, uint iter  ){
 																																				bool old_tiff 	= tiff;
 																																				tiff 			= true;
 																																				uint vol_layers = 1;			// NB 5 samples of possible warp.
-																																				float max_range = 1.0f; 		// -1 -> gray = zero.
+																																				float max_range = -1.0f; 		// -1 -> gray = zero.
 																																				_cl_flush_finish(m_queue, fname);
-																																				DownloadAndSave_2Channel_volume( 		  warp_buf,	ss.str( ), paths.at( "warp_buf"),  	 	2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, show, /*max_range*/-10.0f,		 vol_layers);
-																																				DownloadAndSave( 			  		confidence_buf,	ss.str( ), paths.at( "confidence_buf"),   mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, show, max_range);
+																																				DownloadAndSave_2Channel_volume(		  warp_buf,	ss.str( ), paths.at( "warp_buf"),  	 	2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, show, /*max_range*/-1.0f,		 vol_layers);
+																																				DownloadAndSave(					confidence_buf,	ss.str( ), paths.at( "confidence_buf"),   mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, show, max_range);
 																																				tiff 			= old_tiff;
 																																			}
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_warp( ..)_finished ."<<flush;}
