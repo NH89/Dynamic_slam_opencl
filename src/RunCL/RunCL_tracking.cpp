@@ -54,6 +54,88 @@ void RunCL::update_k2k_buf(float k2k_3_16_[16]) {
 	_clEnqueueWriteBuffer( uload_queue, k2kbuf,	CL_FALSE, 0, 16*sizeof( float), k2k_3_16_,  	fname);
 }
 
+void RunCL::se3_rho_sq( const uint local_num_samples,  const uint start_sample_idx,  float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels], const float count[4], uint start, uint stop,  float k2k_3_16_[tracking_tot_samples][16]   ){
+	string fname = "RunCL::rho_sq( ..)";
+	int local_verbosity_threshold = V_RUNCL_SE3_RHO_SQ;
+	const int num_samples  = 1; //tracking_num_samples;
+
+	cl_kernel rho_sq_kernel;// TODO declare, create, release kernel in Run_cl.h etc.
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::se3_rho_sq( ..)_chk0 .##################################################################"<<flush;
+																																				cout << "\nRunCL::se3_rho_sq( ..)__chk_0.3: K2K= ";
+																																				for ( int i=0; i<16; i++){ cout << ",  "<< fp32_k2keyframe[i];  }	cout << flush;
+
+																																				for ( int sample=start_sample_idx; sample<( start_sample_idx + local_num_samples); sample++){
+																																					cout << "\n\nk2k_3_16_["<<sample<<"][16]= ";
+																																					print_float_16( k2k_3_16_[sample] );
+																																					cout << "\n\n" <<flush;
+																																				}
+																																				cout<<"\n\nRunCL::se3_rho_sq( ..)_chk0.4 ,  dataset_frame_num="<<dataset_frame_num<<",   count="<<count[0]<<flush;
+																																			}
+																													if ( local_num_samples > tracking_num_samples) {
+																														cerr  << "\n\n void RunCL::se3_rho_sq( ..) : Error! ( local_num_samples > tracking_num_samples), nee dto allocate a larger buffer." << flush;
+																														exit_( 1);
+																													}
+	_clEnqueueWriteBuffer( uload_queue, k2kbuf,	CL_FALSE, 0, local_num_samples*16*sizeof( float), k2k_3_16_[start_sample_idx],  	fname);
+	float zero  = 0;
+	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, 		&zero, sizeof( float), 0, num_samples*2*mm_size_bytes_C4, 	fname);
+	_clEnqueueFillBuffer( uload_queue, se3_sum_rho_sq_mem, 	&zero, sizeof( float), 0, num_samples*pix_sum_size_bytes, 	fname);
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::se3_rho_sq( ..)_chk0.7 "<<flush;}
+																																			// NB GT_depth loaded to depth_mem by void RunCL::loadFrameData( ..)
+	const uint wg_divisor =2;  // 1,2,4,8  reduction in workgroup size for this kernel.
+
+	// __kernel void Rho_sq						// To be launched with 1 thread per col for 32x32 patches, and an integer multiple of 32 threads.
+	// 											// Needs 16 elements of local mem per 32x32 patch, to pass data between threads in recursive square reduction.
+	// 											// Needs 32 elem array of private mem per thread.
+	// 											// Writes answer at
+
+	//input integers
+	//      __private	 uint layer, set in mipmap_call_kernel( ..) below                                                                      __private	uint		layer,					//0
+	_clSetKernelArg( rho_sq_kernel, 1, sizeof( uint),   &local_num_samples, 	fname);														//__private		uint 		out_block_size,			//1
+
+	_clSetKernelArg( rho_sq_kernel, 2, sizeof( cl_mem), &mipmap_buf, 			fname);														//__constant	uint8*		mipmap_params,			//2
+	_clSetKernelArg( rho_sq_kernel, 3, sizeof( cl_mem), &uint_param_buf, 		fname);														//__constant	uint*		uint_params,			//3
+	_clSetKernelArg( rho_sq_kernel, 4, sizeof( cl_mem), &fp32_param_buf, 		fname);														//__constant	float*		fp32_params,			//4
+	_clSetKernelArg( rho_sq_kernel, 5, sizeof( cl_mem), &k2kbuf, 				fname);														//__constant	float16*	inv_k2k,				//5		// transforms for 4 past frames
+
+	_clSetKernelArg( rho_sq_kernel, 6, sizeof( cl_mem), &imgmem,		 		fname);														//__global		float4*		img_cur,				//6		// keyframe				// will need multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
+	_clSetKernelArg( rho_sq_kernel, 7, sizeof( cl_mem), &past_img0mem,			fname);														//__global		float4*		img_past_0,				//7
+	_clSetKernelArg( rho_sq_kernel, 8, sizeof( cl_mem), &past_img1mem,			fname);														//__global		float4*		img_past_1,				//8
+	_clSetKernelArg( rho_sq_kernel, 9, sizeof( cl_mem), &past_img2mem,			fname);														//__global		float4*		img_past_2,				//9
+	_clSetKernelArg( rho_sq_kernel,10, sizeof( cl_mem), &past_img3mem,			fname);														// __global		float4*		img_past_3,				//10
+	_clSetKernelArg( rho_sq_kernel,11, sizeof( cl_mem), &depth_mem,				fname);														// __global		float* 		depth_map,				//11	// NB keyframe GT_depth, now stored as inv_depth
+	_clSetKernelArg( rho_sq_kernel,12, sizeof( cl_mem), &g1mem, 				fname);														// __global		float8* 	g1p,					//12	// keyframe_g1mem
+
+	//output
+	_clSetKernelArg( rho_sq_kernel,13, sizeof( cl_mem), 													&SE3_rho_map_mem, 		fname);	//__global		float2* 	Rho_,					//13	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
+	_clSetKernelArg( rho_sq_kernel,14, ( local_num_samples*local_work_size*4/wg_divisor)*sizeof( float),	 NULL, 					fname);	//__local		float4*	local_sum_rho_sq			//14	// 1 DoF, float4 channels
+
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::se3_rho_sq( ..)_chk1 .  start="<<start<<",  stop="<<stop<<flush;}
+	mipmap_call_kernel( rho_sq_kernel, m_queue, start, stop, false, local_work_size/wg_divisor);
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::se3_rho_sq( ..)_chk3 ."<<flush;
+																																				stringstream ss;	ss << dataset_frame_num <<"_iter_"<<count[0]<<"_layer"<<count[1]<<"_n_samples"<<local_num_samples<<"_factor"<<count[2]<<"_se3_rho_sq_";
+																																				stringstream ss_path;
+
+																																				bool show 				= false;
+																																				float max_range 		= -1; 					// i.e. gray = zero.
+																																				uint vol_layers 		= local_num_samples;	// i.e. 3 samples.
+																																				bool exception_tiff 	= false;
+																																				bool display 			= false; 				//obj["sample_se3_incr"].asBool( );
+																																				cout << "\nRunCL::se3_rho_sq( ..)_chk3.5   display="<< display<< endl << flush;
+
+																																				DownloadAndSave_3Channel_volume(  SE3_rho_map_mem,  ss.str( ), paths.at( "SE3_rho_map_mem"),  mm_size_bytes_C4, mm_Image_size, CV_32FC4, show, max_range, vol_layers, exception_tiff, count[0], display );
+																																			}
+																																			// void RunCL::DownloadAndSave_3Channel_volume( cl_mem buffer,   std::string count,   std::filesystem::path folder,   size_t image_size_bytes,   cv::Size size_mat,   int type_mat,   bool show,   float max_range,   uint vol_layers,    bool exception_tiff /*=false*/,   float iter,   bool display)
+
+	for ( int sample = 0; sample<local_num_samples; sample++){
+		read_Rho_sq(  Rho_sq_results[sample + start_sample_idx], sample  );
+	}
+}
+
+
+
+
+
+
 
 void RunCL::se3_rho_sq( const uint local_num_samples,  const uint start_sample_idx,  float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels], const float count[4], uint start, uint stop,  float k2k_3_16_[tracking_tot_samples][16]   ){
 	string fname = "RunCL::se3_rho_sq( ..)";
