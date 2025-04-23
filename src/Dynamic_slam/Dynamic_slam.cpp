@@ -101,7 +101,7 @@ void Dynamic_slam::initialize_camera_vec(){
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 2:" <<flush;
 																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);  // gets corrupted by getFrameData_vec()
 																																			}
-	getFrameData_vec();													// TODO if( GT available )
+	getFrameData_vec();													// TODO if( GT available ){getFrameData_vec();}
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 3:" <<flush;
 																																				PRINT_MATX44F(frame_data.back().frame_data_GT.keyframe2pose,);
 																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);
@@ -157,6 +157,7 @@ int Dynamic_slam::nextFrame() {
 	if(obj["Artif_pose_err_bool"].asBool() == true ){ 	artificial_pose_error_vec();}	auto step_5 = high_resolution_clock::now();
 
 	estimateSE3();
+	estimateSLAM();
 																						auto step_6 = high_resolution_clock::now();			// own thread ? num iter ?
 	//disparity();
 	//binocular_reference_frame();
@@ -213,7 +214,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 																																			// load a basic image in CV_8UC3, then convert on GPU to 'half'
 	runcl.cvt_color_space( );
 	runcl.blur_image();//runcl.imgmem, runcl.imgmem_blurred , "imgmem_blurred");
-	runcl.mipmap_linear(runcl.imgmem, "imgmem");
+	runcl.mipmap_linear(runcl.current_frames[ runcl.current_frames_idx[0] ].img_buf, "imgmem");
 	runcl.sum_image_variance();
 	runcl.img_gradients();
 																																			// # Get 1st & 2nd order image gradients of MipMap

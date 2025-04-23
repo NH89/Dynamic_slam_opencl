@@ -123,7 +123,7 @@ void RunCL::initializeDepthCostVol( cl_mem key_frame_depth_map_src){			 								
 	int local_verbosity_threshold = V_RUNCL_INITIALIZEDEPTHCOSTVOL;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initializeDepthCostVol( ..)_chk0 ."<<flush;}
 	costvol_frame_num = 0;
-	_clEnqueueCopyBuffer( m_queue, imgmem, 			keyframe_imgmem, 			0, 0, mm_size_bytes_C4, 	fname);							// Load keyframe
+	_clEnqueueCopyBuffer( m_queue, current_frames[current_frames_idx[0]].img_buf, 			keyframe_imgmem, 			0, 0, mm_size_bytes_C4, 	fname);							// Load keyframe
 	_clEnqueueCopyBuffer( m_queue, HSV_grad_mem, 	keyframe_imgmem_HSV_grad, 	0, 0, mm_size_bytes_C8, 	fname);
 
 	/*if( vtp==true)*/ Store_keyframe( );
@@ -176,10 +176,10 @@ void RunCL::initializeFirstDepthCostVol( float default_depth ){			 													
 	_clEnqueueFillBuffer( uload_queue,	depth_mem_temp,			&default_depth, 			sizeof( float), 0,		mm_size_bytes_C1, 		fname);			// TODO one of depth_mem, or keyframe_depth_mem is redundant.
 	_clEnqueueFillBuffer( uload_queue,	keyframe_depth_mem, 	&default_depth, 			sizeof( float), 0,		mm_size_bytes_C1, 		fname);
 
-	_clEnqueueCopyBuffer( m_queue,		depth_mem_GT, 			keyframe_depth_mem_GT,		0, 				0,		mm_size_bytes_C1, 		fname);
-	_clEnqueueCopyBuffer( m_queue,		SE3_grad_map_mem, 		keyframe_SE3_grad_map_mem, 	0, 				0,		mm_size_bytes_C1*6*8, 	fname);
-	_clEnqueueCopyBuffer( m_queue,		imgmem,					keyframe_imgmem, 			0, 				0,		mm_size_bytes_C4, 		fname);			// Load keyframe
-	_clEnqueueCopyBuffer( m_queue,		HSV_grad_mem,			keyframe_imgmem_HSV_grad, 	0, 				0,		mm_size_bytes_C8, 		fname);
+	_clEnqueueCopyBuffer( m_queue,		depth_mem_GT, 									keyframe_depth_mem_GT,		0, 				0,		mm_size_bytes_C1, 		fname);
+	_clEnqueueCopyBuffer( m_queue,		SE3_grad_map_mem, 								keyframe_SE3_grad_map_mem, 	0, 				0,		mm_size_bytes_C1*6*8, 	fname);
+	_clEnqueueCopyBuffer( m_queue,		current_frames[current_frames_idx[0]].img_buf,	keyframe_imgmem, 			0, 				0,		mm_size_bytes_C4, 		fname);			// Load keyframe
+	_clEnqueueCopyBuffer( m_queue,		HSV_grad_mem,									keyframe_imgmem_HSV_grad, 	0, 				0,		mm_size_bytes_C8, 		fname);
 
 	Store_keyframe( );																														// if( vtp==true)
 

@@ -440,7 +440,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 			}
 			case 1:{														// Use sample 1
 																																		if(verbosity>local_verbosity_threshold) { cout <<"\ncostvol_frame_num="<<runcl.costvol_frame_num<<",  case 1,  stepsize="<<stepsize <<",  halve stepsize for next iteration."<<flush;}
-				keyframe2pose  = keyframe2pose * LieToP_Matx( update * stepsize  );
+				keyframe2pose = keyframe2pose * LieToP_Matx( update * stepsize );
 				stepsize  /=2;
 				break;
 			}
@@ -452,10 +452,10 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 			}
 			case 3:{														// The predicted optimum is best
 																																		if(verbosity>local_verbosity_threshold) { cout <<"\ncostvol_frame_num="<<runcl.costvol_frame_num<<",  case 3" <<flush; }
-				keyframe2pose  = keyframe2pose  *  LieToP_Matx(optimum1*update*stepsize );
+				keyframe2pose = keyframe2pose * LieToP_Matx( optimum1*update*stepsize );
 				break;
 			}
-			default: {
+			default:{
 																																cerr << "\n\nDynamic_slam::estimateSE3()error, invalid index " << index << flush;
 				runcl.exit_(1);
 			}
@@ -481,4 +481,28 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 																																			print_pose_datum( frame_data.back().frame_data );
 																																			cout << "\n\nDynamic_slam::estimateSE3() Finished  ##############################################################\f"<< flush;
 																																		}
+}
+
+
+void Dynamic_slam::estimateSLAM(){																										// Adaptive step size LM tracking and halting
+	int 	local_verbosity_threshold 		= V_DYNAMIC_SLAM_ESTIMATESE3;//verbosity_mp["Dynamic_slam::estimateSE3"];
+																																		if(verbosity>local_verbosity_threshold) {
+																																			cout << "\fDynamic_slam::estimate_SLAM() chk_0"
+																																			<<"  ##############################################################"<< flush;
+																																		}
+	float count[4];
+	count[2]  = obj["SE_factor"].asFloat();;
+	count[3]  = 0;
+
+	for (uint  	layer = SE3_start_layer; layer<= SE3_start_layer;	layer--){ 															// NB when uint passes zero it becomes UINT_MAX
+		count[1]  = layer;
+		for (uint out_block_size = 32; out_block_size > 2; out_block_size /=2){
+			for (uint iter = 0; iter<SE_iter/2; iter++){
+				count[0]  = iter;
+																																		cout << "\nDynamic_slam::estimate_SLAM() chk_1: layer="<<layer<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
+				runcl.rho_sq( out_block_size, count, layer, layer+1  );		// uint out_block_size, const float count[4], uint start, uint stop
+			}
+		}
+	}
+
 }

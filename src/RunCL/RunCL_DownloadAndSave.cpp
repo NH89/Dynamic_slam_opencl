@@ -351,7 +351,7 @@ void RunCL::DownloadAndSave(cl_mem buffer, std::string count, std::filesystem::p
 void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers ){
 	int local_verbosity_threshold = V_RUNCL_DOWNLOADANDSAVE_2CHANNEL_VOLUME;
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_2Channel_volume() vol_layers="<<vol_layers\
-																																				<<", max_range="<<max_range<<", folder = ["<<folder_tiff.filename().string()<<"] "<<flush;
+																																				<<", max_range="<<max_range<<", folder = ["<<folder_tiff.filename().string()<<"],   tiff="<<tiff<<flush;
 	if (type_mat != CV_32FC2){cout <<"Error (type_mat != CV_32FC2)"<<flush; return;}
 
 	for (uint layer=0; layer<vol_layers; layer++  ) {
@@ -404,15 +404,15 @@ void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, st
 
 		std::filesystem::path folder_tiff_= folder_tiff;
 		std::filesystem::path folder_png  = folder_tiff;
-		folder_tiff_ += "/tiff/";
+		folder_tiff_ += "/tiff";
 		folder_tiff_ += ss.str();
 		folder_tiff_ += ".tiff";
 
 		folder_png  += png_ss.str();
 		folder_png  += ".png";
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_2Channel_volume()_Chk_4, max_range="<<max_range\
-																																				<<",   filepath = ["<<folder_png.string()<<" ,\t "<<folder_tiff_.string()<<"]";
-		if(tiff==true)	cv::imwrite( folder_tiff_.string(), 	temp_mat );
+																																				<<",   filepath = ["<<folder_png.string()<<" ,\t "<<folder_tiff_.string()<<"],  tiff="<<tiff<<",  true="<<true<<flush;
+		if(tiff==true)	cv::imwrite( folder_tiff_.string(), temp_mat );
 		if(png==true)	cv::imwrite( folder_png.string(), (	temp_mat*256) );
 		if(show)		cv::imshow(  ss.str(), 				temp_mat );
 	}

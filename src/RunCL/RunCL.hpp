@@ -79,9 +79,63 @@ public:
 	cl_kernel			compute_warp_kernel, regularize_warp_kernel, propagate_warp_kernel;
 	cl_kernel			warp_and_depth_error_kernel;
 	cl_kernel			mipmap_3x3blur_flt4_kernel, correlation_one_step_kernel, blur_volume_kernel, correlation_2nd_step_kernel;
+
+	cl_kernel			rho_sq_kernel;// TODO declare, create, release kernel in Run_cl.h etc.
 	
 	// GPU Buffers
-	cl_mem 				basemem, imgmem,  imgmem_blurred, gxmem, gymem, k_map_mem, dist_map_mem, SE3_grad_map_mem, SE3_incr_map_mem;
+	static const uint 	num_current_frames	= 5;																												// static = same for all instances of class Dynamic_slam.
+	cl_mem 				imgmem[num_current_frames], velmap[num_current_frames], depth_mem, g1mem;
+	/////////////////////////////
+	struct frame{
+		cl_mem			img_buf;
+		cl_mem			depth_buf;
+		cl_mem			r_vel_buf;
+		uint			frame_data_index;
+	};
+
+	std::array<frame, num_current_frames> 					current_frames;			// Needs to be initialized after the buffers are created.
+	uint current_frames_idx[num_current_frames]				= {0,1,2,3,4};			// NB always access via:    current_frames[  current_frames_idx[ idx ]].img_buf   or   runcl.current_frames[ runcl.current_frames_idx[0] ].img_buf...
+	uint new_current_frames_idx[num_current_frames]			= {0};
+
+	void initialize_current_frames(){
+		for (uint idx = 0; idx < num_current_frames; idx++){
+		current_frames[idx].img_buf				= imgmem[idx];
+		//current_frames[idx].depth_buf			= depth_mem[idx];
+		current_frames[idx].r_vel_buf			= velmap[idx];						// velocity _relative_ to the camera.
+		current_frames[idx].frame_data_index	= idx;
+		}
+	}
+
+	void update_current_frames_idx(){												// Call immediately _before_ loading new frame.
+		int frame_count = dataset_frame_num;
+		if ( !(fmod(frame_count,2)==0) ) {return;
+		}else if ( !(fmod(frame_count,4)==0) ){
+			new_current_frames_idx[0] = current_frames_idx[1];
+			new_current_frames_idx[1] = current_frames_idx[0];
+
+		}else if ( !(fmod(frame_count,8)==0) ){
+			new_current_frames_idx[0] = current_frames_idx[2];
+			new_current_frames_idx[1] = current_frames_idx[0];
+			new_current_frames_idx[2] = current_frames_idx[1];
+
+		}else if ( !(fmod(frame_count,16)==0) ){
+			new_current_frames_idx[0] = current_frames_idx[3];
+			new_current_frames_idx[1] = current_frames_idx[0];
+			new_current_frames_idx[2] = current_frames_idx[1];
+			new_current_frames_idx[3] = current_frames_idx[2];
+
+		}else {
+			new_current_frames_idx[0] = current_frames_idx[4];
+			new_current_frames_idx[1] = current_frames_idx[0];
+			new_current_frames_idx[2] = current_frames_idx[1];
+			new_current_frames_idx[3] = current_frames_idx[2];
+			new_current_frames_idx[4] = current_frames_idx[3];
+		}
+		swap( new_current_frames_idx, current_frames_idx);
+		return;
+	};
+
+	cl_mem 				basemem, imgmem_blurred, gxmem, gymem, k_map_mem, dist_map_mem, SE3_grad_map_mem, SE3_incr_map_mem;
 	cl_mem				cdatabuf, temp_cdatabuf, cdatabuf_8chan, hdatabuf, temp_hdatabuf, dbg_databuf;
 	cl_mem 				dmem, amem, qmem, qmem2, lomem, himem, mean_mem, img_sum_buf, depth_mem_temp, depth_mem_GT;												// 'depth_mem_temp' is use to load & prepare data for depth_mem_GT and transform_depthmap
 
@@ -151,6 +205,8 @@ public:
 	
 	cv::Size 			baseImage_size, mm_Image_size;
 	std::map< std::string, std::filesystem::path > paths;
+
+
 
 	///////////////////////////////////// RunCL_class.cpp
 
@@ -266,8 +322,11 @@ public:
 	void update_tracking_depthmap(cl_mem depthmap_);
 	void update_k2k_buf(float k2k_3_16_[16]);
 	//void initialize_tracking_depthmap(float initial_depth);
-	void se3_rho_sq( const uint local_num_samples,  const uint start_sample_idx,  float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels],    const float count[4], uint start, uint stop, float k2k_3_16_[tracking_tot_samples][16]  ); //float k2k_[16]  );
-	void se3_rho_sq( 								float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels], 	const float count[4], uint start, uint stop, float k2k_3_16_[tracking_tot_samples][16]  );				// Tracking
+
+	void rho_sq( uint out_block_size, const float count[4], uint start, uint stop );
+
+	void se3_rho_sq( const uint local_num_samples,  const uint start_sample_idx,  float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels],	const float count[4], uint start, uint stop,	float k2k_3_16_[tracking_tot_samples][16]  ); //float k2k_[16]  );
+	//void se3_rho_sq( 								float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels], 	const float count[4], uint start, uint stop, float k2k_3_16_[tracking_tot_samples][16]  );				// Tracking
 	void estimateSE3_LK(float local_k2k[16], float SE3_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels], float SE3_weights_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels], float Rho_sq_results[max_mipmap_layers][tracking_num_colour_channels], int count, uint start, uint stop);
 
 	void read_Rho_sq(float Rho_sq_results[max_mipmap_layers][tracking_num_colour_channels], int offset=0);

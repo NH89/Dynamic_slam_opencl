@@ -106,6 +106,62 @@ class Dynamic_slam
 
     float SE3_k2k[6*16];                          // used for param_maps, minimal steps in SE3
 
+    ///////////////////// current frames held on GPU.
+
+    // struct frame{
+    //   cl_mem  img_buf;
+    //   cl_mem  rel_vel_buf;
+    //   uint    frame_data_index;
+    // };
+    // static const uint num_current_frames					= RunCL::num_current_frames;//5;					// static = same for all instances of class Dynamic_slam.
+    // std::array<frame, num_current_frames> 					current_frames;			// Needs to be initialized after the buffers are created.
+    //
+    // uint current_frames_idx[num_current_frames]				= {0,1,2,3,4};			// NB always access via:    current_frames[  current_frames_idx[ idx ]].img_buf   etc...
+    // uint new_current_frames_idx[num_current_frames]			= {0};
+    //
+    //
+    //
+    // void initialize_current_frames(){
+    //   for (uint idx = 0; idx < num_current_frames; idx++){
+    //     current_frames[idx].img_buf				= runcl.imgmem[idx];
+    //     current_frames[idx].rel_vel_buf			= runcl.velmap[idx];
+    //     current_frames[idx].frame_data_index	= idx;
+    //   }
+    // }
+    //
+    // //current_frames[current_frames_idx[0]].img_buf;
+    //
+    // void update_current_frames_idx(){										// Call immediately _before_ loading new frame.
+    //   int frame_count = runcl.dataset_frame_num;
+    //   if ( !(fmod(frame_count,2)==0) ) {return;
+    //   }else if ( !(fmod(frame_count,4)==0) ){
+    //     new_current_frames_idx[0] = current_frames_idx[1];
+    //     new_current_frames_idx[1] = current_frames_idx[0];
+    //
+    //   }else if ( !(fmod(frame_count,8)==0) ){
+    //     new_current_frames_idx[0] = current_frames_idx[2];
+    //     new_current_frames_idx[1] = current_frames_idx[0];
+    //     new_current_frames_idx[2] = current_frames_idx[1];
+    //
+    //   }else if ( !(fmod(frame_count,16)==0) ){
+    //     new_current_frames_idx[0] = current_frames_idx[3];
+    //     new_current_frames_idx[1] = current_frames_idx[0];
+    //     new_current_frames_idx[2] = current_frames_idx[1];
+    //     new_current_frames_idx[3] = current_frames_idx[2];
+    //
+    //   }else {
+    //     new_current_frames_idx[0] = current_frames_idx[4];
+    //     new_current_frames_idx[1] = current_frames_idx[0];
+    //     new_current_frames_idx[2] = current_frames_idx[1];
+    //     new_current_frames_idx[3] = current_frames_idx[2];
+    //     new_current_frames_idx[4] = current_frames_idx[3];
+    //
+    //   }
+    //   swap( new_current_frames_idx, current_frames_idx);
+    //   return;
+    // };
+
+
     // functions ////////////////////////////////////////
     /////////////////////////////////////// Dynamic_slam_class.cpp
     void initialize_resultsMat();
@@ -168,6 +224,8 @@ class Dynamic_slam
     void compute_optimum( float steps[3], float Rho_sq_results_3[tracking_num_samples][8][tracking_num_colour_channels], int layer, int channel, float *prediction, float *optimum, float *stepsize );
 
     void estimateSE3();                         // version with adaptive step and halting
+
+    void estimateSLAM();
   
     // return the filenames of all files that have the specified extension
     // in the specified directory and all subdirectories

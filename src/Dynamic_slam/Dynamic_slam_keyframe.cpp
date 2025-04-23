@@ -10,6 +10,8 @@ using namespace std;
 void Dynamic_slam::initialize_keyframe_vec(  ){
 	string fname = "Dynamic_slam::initialize_keyframe_vec()";
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_INITIALIZE_KEYFRAME;
+
+	const cl_mem imgmem_   = runcl.current_frames[ runcl.current_frames_idx[0] ].img_buf;
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::initialize_keyframe_vec()_chk 0,  runcl.dataset_frame_num = "
 																																				<< runcl.dataset_frame_num << flush;
 																																				PRINT_MATX44F( frame_data.back().frame_data.inv_pose , );
@@ -97,7 +99,7 @@ void Dynamic_slam::initialize_keyframe_vec(  ){
 	keyframe_data.back().reference_image	= cv::Mat::zeros(		runcl.uint_params[MM_ROWS], 	runcl.uint_params[MM_ROWS],  CV_32FC4	);
 
 	runcl.ReadOutput(  keyframe_data.back().depthmap.data, 			runcl.amem,  	runcl.image_size_bytes );								// Saves "amem" and "reference_image" buffers to CV::Mat in current elem of vector<> Keyframe_data.
-	runcl.ReadOutput(  keyframe_data.back().reference_image.data, 	runcl.imgmem,	runcl.image_size_bytes );								// These can be used for loop closure later on.
+	runcl.ReadOutput(  keyframe_data.back().reference_image.data, 	imgmem_,		runcl.image_size_bytes );								// These can be used for loop closure later on.
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::initialize_keyframe_vec()_chk 3"<< flush;
 																																				stringstream ss;	ss << fname << "_chk3_frame_num" << runcl.dataset_frame_num << "_estimateSE3_LK_";
 																																				runcl.DownloadAndSave( 	runcl.keyframe_depth_mem,   	ss.str( ), 	runcl.paths.at( "keyframe_depth_mem"), runcl.mm_size_bytes_C1,   runcl.mm_Image_size,   CV_32FC1, 	false , 1); // runcl.fp32_params[MAX_INV_DEPTH]

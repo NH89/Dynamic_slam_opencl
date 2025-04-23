@@ -14,6 +14,8 @@ void RunCL::loadFrame(cv::Mat image){ //getFrame();																							// Wri
 void RunCL::cvt_color_space(){ //getFrame(); basemem(CV_8UC3, RGB)->imgmem(CV16FC3, HSV), NB we will use basemem for image upload, and imgmem for the MipMap. RGB is default for .png standard.
 	string fname = "RunCL::cvt_color_space()";
 	int local_verbosity_threshold = V_RUNCL_CVT_COLOR_SPACE;
+	//const cl_mem imgmem_   = current_frames[ current_frames_idx[0] ].img_buf;
+	const cl_mem imgmem_   = current_frames[ current_frames_idx[0] ].img_buf;
                                                                                                                                             if(verbosity>local_verbosity_threshold) {
                                                                                                                                                 cout<<"\n\nRunCL::cvt_color_space()_chk0"<<flush;
                                                                                                                                                 cout << "\n";
@@ -30,7 +32,7 @@ void RunCL::cvt_color_space(){ //getFrame(); basemem(CV_8UC3, RGB)->imgmem(CV16F
                                                                                                                                                 cout << "\n" 					<< flush;
                                                                                                                                             }
 	_clSetKernelArg(cvt_color_space_linear_kernel, 0, sizeof(cl_mem), &basemem, fname);														//__global uchar3*		base,			//0
-	_clSetKernelArg(cvt_color_space_linear_kernel, 1, sizeof(cl_mem), &imgmem, fname);	   													//__global float4*		img,			//1
+	_clSetKernelArg(cvt_color_space_linear_kernel, 1, sizeof(cl_mem), &imgmem_, fname);	   												//__global float4*		img,			//1
 	_clSetKernelArg(cvt_color_space_linear_kernel, 2, sizeof(cl_mem), &uint_param_buf, fname);												//__global uint*		uint_params		//2
 	_clSetKernelArg(cvt_color_space_linear_kernel, 3, sizeof(cl_mem), &mipmap_buf, fname);													//__constant uint*		mipmap_params,	//3 // NB layer = 0.
 	_clSetKernelArg(cvt_color_space_linear_kernel, 4, local_work_size*4*sizeof(float), 	NULL, fname);										//__local  float4*		local_sum_pix	//4
@@ -45,7 +47,7 @@ void RunCL::cvt_color_space(){ //getFrame(); basemem(CV_8UC3, RGB)->imgmem(CV16F
                                                                                                                                                 cv::Size new_Image_size = cv::Size(mm_width, mm_height);
                                                                                                                                                 size_t   new_size_bytes = mm_width * mm_height * 4* 4;
 
-                                                                                                                                                cout << "imgmem="<< imgmem << endl << flush;
+                                                                                                                                                cout << "imgmem="<< imgmem_ << endl << flush;
                                                                                                                                                 cout <<", ss.str()="<< ss.str() << endl << flush;
                                                                                                                                                 cout <<", paths.at(\"imgmem\")="<< paths.at("imgmem") << endl << flush;
 
@@ -53,7 +55,7 @@ void RunCL::cvt_color_space(){ //getFrame(); basemem(CV_8UC3, RGB)->imgmem(CV16F
                                                                                                                                                 cout <<", new_size_bytes="<< new_size_bytes << endl << flush;
                                                                                                                                                 cout <<", new_Image_size="<< new_Image_size <<"" << endl << flush;
 
-                                                                                                                                                DownloadAndSave_3Channel(	imgmem, ss.str(), paths.at( ss_path.str() ), new_size_bytes/*mm_size_bytes_C4*/, new_Image_size/*mm_Image_size*/,  CV_32FC4 /*mm_Image_type*/, 	false );
+                                                                                                                                                DownloadAndSave_3Channel(	imgmem_, ss.str(), paths.at( ss_path.str() ), new_size_bytes/*mm_size_bytes_C4*/, new_Image_size/*mm_Image_size*/,  CV_32FC4 /*mm_Image_type*/, 	false );
                                                                                                                                                 /*
                                                                                                                                                 cout<<"\n\n,chk2.3,"<<flush;
                                                                                                                                                 cout<<"\n img_sum_buf="<< img_sum_buf <<flush;
@@ -117,9 +119,11 @@ void RunCL::sum_image_variance(){
 	string fname = "RunCL::img_variance()";
 	int local_verbosity_threshold = V_RUNCL_SUM_IMAGE_VARIANCE;//verbosity_mp["RunCL::img_variance"];//-1;
 	// TODO ? create a class for data, holding buffer, CPU data, stats about the data object, functions for write, read, save, display, & set_kernel_arg ?
+
+	const cl_mem imgmem_   = current_frames[ current_frames_idx[0] ].img_buf;
 																																			// cvt_color_space_kernel  or  img_variance_kernel
 	_clSetKernelArg(sum_image_variance_kernel, 0, sizeof(cl_mem), &img_stats_buf, fname);															//__global uchar3*		img_stats,		//0
-	_clSetKernelArg(sum_image_variance_kernel, 1, sizeof(cl_mem), &imgmem, fname);																//__global float4*		img,			//1
+	_clSetKernelArg(sum_image_variance_kernel, 1, sizeof(cl_mem), &imgmem_, fname);																//__global float4*		img,			//1
 	_clSetKernelArg(sum_image_variance_kernel, 2, sizeof(cl_mem), &uint_param_buf, fname);														//__global uint*		uint_params		//2
 	_clSetKernelArg(sum_image_variance_kernel, 3, sizeof(cl_mem), &mipmap_buf, fname);															//__constant uint*		mipmap_params,	//3 // NB layer = 0.
 	_clSetKernelArg(sum_image_variance_kernel, 4, local_work_size*4*sizeof(float), 	NULL, fname);												//__local  float4*		local_sum_pix	//4
@@ -174,13 +178,15 @@ void RunCL::blur_image(){//cl_mem in_buff, cl_mem blurred_buf, std::string folde
 	string fname = "RunCL::blur_image()";
 	int local_verbosity_threshold = V_RUNCL_BLUR_IMAGE;//verbosity_mp["RunCL::blur_image"];// -1;
 
+	const cl_mem imgmem_   = current_frames[ current_frames_idx[0] ].img_buf;
+
 	size_t local_size = local_work_size;
 	uint layer = 0;
 	_clSetKernelArg(blur_image_kernel, 0, sizeof(uint), 						&layer, fname );											//__constant uint*		mipmap_params,	//0
     _clSetKernelArg(blur_image_kernel, 1, sizeof(cl_mem), 						&mipmap_buf, fname );										//__constant uint*		mipmap_params,	//1
 	_clSetKernelArg(blur_image_kernel, 2, sizeof(cl_mem), 						&uint_param_buf, fname );									//__constant uint*		uint_params,	//2
-	_clSetKernelArg(blur_image_kernel, 3, sizeof(cl_mem), 						&imgmem, fname );								//__global   float4*	img,			//3
-	_clSetKernelArg(blur_image_kernel, 4, sizeof(cl_mem), 						&imgmem_blurred, fname );					//__global   float4*	img,			//4
+	_clSetKernelArg(blur_image_kernel, 3, sizeof(cl_mem), 						&imgmem_, fname );											//__global   float4*	img,			//3
+	_clSetKernelArg(blur_image_kernel, 4, sizeof(cl_mem), 						&imgmem_blurred, fname );									//__global   float4*	img,			//4
 	_clSetKernelArg(blur_image_kernel, 5, (local_size+4) *5*4* sizeof(float), 	NULL, fname );												//__local    float4*	local_img_patch //5
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_chk1,  global_work_size="<< global_work_size <<flush;
 	_clEnqueueNDRangeKernel(m_queue, blur_image_kernel, 1, 0, &global_work_size, &local_work_size, fname ); 								// run blur_image_kernel
@@ -206,7 +212,7 @@ void RunCL::blur_image(){//cl_mem in_buff, cl_mem blurred_buf, std::string folde
 	_clEnqueueCopyBuffer(
 		m_queue,							// cl_command_queue command_queue
 		imgmem_blurred, 					// cl_mem src_buffer
-		imgmem, 							// cl_mem dst_buffer
+		imgmem_, 							// cl_mem dst_buffer
 		0,									// size_t src_offset
 		0,									// size_t dst_offset
 		mm_size_bytes_C4,					// size_t size
@@ -277,12 +283,14 @@ void RunCL::img_gradients(){ //getFrame();
 	string fname = "RunCL::img_gradients()";
 	int local_verbosity_threshold = V_RUNCL_IMG_GRADIENTS;																					if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::img_gradients(..)_chk0"<<flush;}
 	size_t num_threads = ceil( (float)(mm_layerstep)/(float)local_work_size ) * local_work_size ;
+
+	const cl_mem imgmem_   = current_frames[ current_frames_idx[0] ].img_buf;
 																																			if(verbosity>local_verbosity_threshold) {cout << "\n num_threads = " << num_threads << ",   mm_layerstep = " << mm_layerstep << ",  local_work_size = " << local_work_size  <<endl << flush;}
 	//      __private	 uint layer, set in mipmap_call_kernel(..) below                                                                      __private	 uint	    layer,		//0
     _clSetKernelArg(img_grad_kernel,  1, sizeof(cl_mem), &mipmap_buf, fname);																//__constant uint*	mipmap_params,	//1
 	_clSetKernelArg(img_grad_kernel,  2, sizeof(cl_mem), &uint_param_buf, fname);															//__constant uint*	uint_params		//2
 	_clSetKernelArg(img_grad_kernel,  3, sizeof(cl_mem), &fp32_param_buf, fname);															//__constant float*	fp32_params		//3
-	_clSetKernelArg(img_grad_kernel,  4, sizeof(cl_mem), &imgmem, fname);																	//__global   float4*	img,		//4
+	_clSetKernelArg(img_grad_kernel,  4, sizeof(cl_mem), &imgmem_, fname);																	//__global   float4*	img,		//4
 	_clSetKernelArg(img_grad_kernel,  5, sizeof(cl_mem), &SE3_map_mem, fname);																//__constant float2*	SE3_map,	//8
 	_clSetKernelArg(img_grad_kernel,  6, sizeof(cl_mem), &SE3_grad_map_mem, fname);															//__global 	 float4*	SE3_grad_map//9
 	_clSetKernelArg(img_grad_kernel,  7, sizeof(cl_mem), &HSV_grad_mem, fname);																//__global 	 float4*	HSV_grad_mem//10

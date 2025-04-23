@@ -96,9 +96,9 @@ __kernel void DepthCostVol(
 			w  = hdata[cv_idx];																// count of updates of this costvol element. w = 001 initially
 
 			// c = img[read_index_new];																// nearest neighbour
-			c = bilinear(img, u2/reduction, v2/reduction, mm_cols, read_offset_, reduction); 		// bilinear(float8* img, float u_flt, float v_flt, int cols)
+			c = bilinear(img, u2/reduction, v2/reduction, mm_cols, read_offset_, reduction); 		// float8 c = bilinear(float8* img, float u_flt, float v_flt, int cols)
 
-			rho						= Tau_HSV_grad(B, c);								// Compute rho photometic cost
+			rho						= Tau_HSV_grad(B, c);								// Compute rho photometic cost:  sum sq diff over 8 channels   float8 HSV_grad = { sin(H) , cos(H), S, V, gx[1], gy[1], gx[2], gy[2] };  gradients of saturation and value, in both x&y directions.
 			rho_8chan				= Tau_HSV_grad_8chan(B, c);
 			cost[layer] 			= (cost[layer]*w + rho) / (w + 1);	 				// Compute update of cost vol element, taking account of 'w  = hdata[cv_idx];' number of hits to this element.
 			cost_8chan[layer] 		= (cost_8chan[layer]*w + rho_8chan) / (w + 1);
