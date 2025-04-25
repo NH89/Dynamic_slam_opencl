@@ -423,7 +423,18 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																			// Get the maximum work group size for executing the kernel on the device ///////
 																																			// From https://github.com/rsnemmen/OpenCL-examples/blob/e2c34f1dfefbd265cfb607c2dd6c82c799eb322a/square_array/square.c
 	cl_int 				status;
-	status = clGetKernelWorkGroupInfo(cvt_color_space_linear_kernel, deviceId, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_work_size), &local_work_size, NULL); 	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
+	status = clGetKernelWorkGroupInfo(cvt_color_space_linear_kernel, deviceId, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_work_size), &local_work_size, NULL); 										if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
+	status = clGetKernelWorkGroupInfo(cvt_color_space_linear_kernel, deviceId, CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE, sizeof(kernel_work_size_multiple), &kernel_work_size_multiple, NULL); 	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
+	status = clGetDeviceInfo( deviceId, CL_DEVICE_PREFERRED_WORK_GROUP_SIZE_MULTIPLE, sizeof(device_work_size_multiple), &device_work_size_multiple, NULL); 										if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
+
+	// cl_int clGetDeviceInfo(
+	// 	cl_device_id 	device,
+	// 	cl_device_info 	param_name,
+	// 	size_t 			param_value_size,
+	// 	void* 			param_value,
+	// 	size_t* 		param_value_size_ret
+	// );
+
 																																			// Number of total work items, calculated here after 1st image is loaded &=> know the size.
 																																			// NB localSize must be devisor
 																																			// NB global_work_size must be a whole number of "Preferred work group size multiple" for Nvidia.
