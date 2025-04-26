@@ -60,7 +60,6 @@ void RunCL::rho_sq(uint out_block_size, const float count[4], uint start, uint s
 	int local_verbosity_threshold = V_RUNCL_SE3_RHO_SQ;
 	const int num_samples  = 1; //tracking_num_samples;
 
-
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk0 .##################################################################"<<flush;
 																																				cout << "\nRunCL::rho_sq( ..)__chk_1: K2K= ";
 																																				for ( int i=0; i<16; i++){ cout << ",  "<< fp32_k2keyframe[i];  }	cout << flush;

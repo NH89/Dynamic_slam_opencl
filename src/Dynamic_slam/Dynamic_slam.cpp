@@ -200,7 +200,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 																																				cout << "\nruncl.mm_Image_size =" 		<< runcl.mm_Image_size ;
 																																				cout << "\n" << flush ;
 																																			}
-
+	runcl.update_current_frames_idx();
 	image = imread(png[runcl.dataset_frame_num].string());																					if(verbosity>local_verbosity_threshold){
 																																				cout << "\n Dynamic_slam::getFrame_chk 0.5, Image file = " << png[runcl.dataset_frame_num].string() << "\t" << flush;
 																																			}
