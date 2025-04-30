@@ -119,11 +119,11 @@ void RunCL::_clEnqueueCopyBuffer(
 
 	if (status 	!= CL_SUCCESS)	{
 		cout << "\n"<<fname << ":_clEnqueueCopyBuffer(..)"
-		<<"  src_buffer="		<<src_buffer
-		<<",  dst_buffer="		<<dst_buffer
-		<<",  src_offset="		<<src_offset
-		<<",  dst_offset="		<<dst_offset
-		<<",  size="			<<size
+		<<"  src_buffer="		<< src_buffer
+		<<",  dst_buffer="		<< dst_buffer
+		<<",  src_offset="		<< src_offset
+		<<",  dst_offset="		<< dst_offset
+		<<",  size="			<< size
 		<<",  status = " 		<< checkerror(status)
 		<< "Error1: failed to enqueue\n" << endl;
 		exit_(status);

@@ -209,7 +209,7 @@ __kernel void Rho_sq(						// To be launched with 1 thread per col for 32x32 pat
 			intersection 			= (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2_1>2) && (u2_1<=read_cols_-2) \
 									&& (v2_1>2) && (v2_1<=read_rows_-2)  &&  (global_id_u<=layer_pixels) && (inv_depth_1>=min_inv_depth) && (inv_depth_1<=max_inv_depth);						// if images overlap
 			if (intersection){
-				rho_pvt_flt4		= /*img_cur_pvt[row_in_block]		-*/	img_past[past_frame_idx][read_index_row]  /*bilinear_flt4( img_past[past_frame_idx], u2_flt_1, v2_flt_1,  mm_cols, read_offset_ )*/	;									// find 1st row pixel rho
+				rho_pvt_flt4		= img_cur_pvt[row_in_block]		-	bilinear_flt4( img_past[past_frame_idx], u2_flt_1, v2_flt_1,  mm_cols, read_offset_ )	;								// find 1st row pixel rho	// img_past[past_frame_idx][read_index_row]
 			}
 			barrier(CLK_GLOBAL_MEM_FENCE );
 			rho_pvt_flt2.x			= rho_pvt_flt4.x*rho_pvt_flt4.x  + rho_pvt_flt4.y*rho_pvt_flt4.y  +rho_pvt_flt4.z*rho_pvt_flt4.z;															// sum rho^2
@@ -222,7 +222,7 @@ __kernel void Rho_sq(						// To be launched with 1 thread per col for 32x32 pat
 			intersection 			= (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2_2>2) && (u2_2<=read_cols_-2) \
 									&& (v2_2>2) && (v2_2<=read_rows_-2)  &&  (global_id_u<=layer_pixels) && (inv_depth_2>=min_inv_depth) && (inv_depth_2<=max_inv_depth);						// if images overlap
 			if (intersection){
-				rho_pvt_flt4		= /*img_cur_pvt[row_in_block+1]	-*/	bilinear_flt4( img_past[past_frame_idx], u2_flt_2, v2_flt_2,  mm_cols, read_offset_ );										// find 2nd row pixel rho
+				rho_pvt_flt4		= img_cur_pvt[row_in_block+1]	-	bilinear_flt4( img_past[past_frame_idx], u2_flt_2, v2_flt_2,  mm_cols, read_offset_ );									// find 2nd row pixel rho
 			}
 			barrier(CLK_GLOBAL_MEM_FENCE );
 			rho_pvt_flt2.x			= rho_pvt_flt4.x*rho_pvt_flt4.x  + rho_pvt_flt4.y*rho_pvt_flt4.y  +rho_pvt_flt4.z*rho_pvt_flt4.z;															// sum rho^2

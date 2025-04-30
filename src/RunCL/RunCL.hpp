@@ -94,46 +94,104 @@ public:
 	};
 
 	std::array<frame, num_current_frames> 					current_frames;			// Needs to be initialized after the buffers are created.
-	uint current_frames_idx[num_current_frames]				= {0,1,2,3,4};			// NB always access via:    current_frames[  current_frames_idx[ idx ]].img_buf   or   runcl.current_frames[ runcl.current_frames_idx[0] ].img_buf...
-	uint new_current_frames_idx[num_current_frames]			= {0};
+	uint current_frames_idx[num_current_frames]				= {4,3,2,1,0};			// NB always access via:    current_frames[  current_frames_idx[ idx ]].img_buf   or   runcl.current_frames[ runcl.current_frames_idx[0] ].img_buf...
+	uint new_current_frames_idx[num_current_frames]			= {4,3,2,1,0};			// Must be set correctly, because it will be swaped to current_frames_idx[.idx.]
 
 	void initialize_current_frames(){
 		for (uint idx = 0; idx < num_current_frames; idx++){
-		current_frames[idx].img_buf				= imgmem[idx];
-		//current_frames[idx].depth_buf			= depth_mem[idx];
-		current_frames[idx].r_vel_buf			= velmap[idx];						// velocity _relative_ to the camera.
-		current_frames[idx].frame_data_index	= idx;
+			current_frames[idx].img_buf				= imgmem[idx];
+			//current_frames[idx].depth_buf			= depth_mem[idx];
+			current_frames[idx].r_vel_buf			= velmap[idx];						// velocity _relative_ to the camera.
+			current_frames[idx].frame_data_index	= idx;
 		}
 	}
 
 	void update_current_frames_idx(){												// Call immediately _before_ loading new frame.
 		int frame_count = dataset_frame_num;
-		if ( !(fmod(frame_count,2)==0) ) {return;
-		}else if ( !(fmod(frame_count,4)==0) ){
-			new_current_frames_idx[0] = current_frames_idx[1];
-			new_current_frames_idx[1] = current_frames_idx[0];
+/*
+		// if ( !(fmod(frame_count,2)==0) ) {return;									// every odd  frame
+		// }else if ( !(fmod(frame_count,4)==0) ){										// every even frame
+		// 																			cout<<"\neven"<<flush;
+		// 	new_current_frames_idx[0] = current_frames_idx[1];
+		// 	new_current_frames_idx[1] = current_frames_idx[0];
+  //
+		// }else if ( !(fmod(frame_count,8)==0) ){										// every 4th frame
+		// 																			cout<<"\n!(fmod(frame_count,8)==0)"<<flush;
+		// 	new_current_frames_idx[0] = current_frames_idx[2];
+		// 	new_current_frames_idx[1] = current_frames_idx[0];
+		// 	new_current_frames_idx[2] = current_frames_idx[1];
+  //
+		// }else if ( !(fmod(frame_count,16)==0) ){									// every 8th frame
+		// 																			cout<<"\n!(fmod(frame_count,16)==0)"<<flush;
+		// 	new_current_frames_idx[0] = current_frames_idx[3];
+		// 	new_current_frames_idx[1] = current_frames_idx[0];
+		// 	new_current_frames_idx[2] = current_frames_idx[1];
+		// 	new_current_frames_idx[3] = current_frames_idx[2];
+  //
+		// }else {																		// every 16th frame
+		// 																			cout<<"\nevery 16th frame"<<flush;
+		// 	new_current_frames_idx[0] = current_frames_idx[4];
+		// 	new_current_frames_idx[1] = current_frames_idx[0];
+		// 	new_current_frames_idx[2] = current_frames_idx[1];
+		// 	new_current_frames_idx[3] = current_frames_idx[2];
+		// 	new_current_frames_idx[4] = current_frames_idx[3];
+		// }
+*/
+		uint mod_16	= fmod(frame_count,16); // NB fastest way would be a nested if sequence, using bit shift to test the last bit.
+		uint mod_8  = fmod(mod_16,8);
+		uint mod_4	= fmod(mod_8,4);
+		uint mod_2	= fmod(mod_4,2);
 
-		}else if ( !(fmod(frame_count,8)==0) ){
-			new_current_frames_idx[0] = current_frames_idx[2];
-			new_current_frames_idx[1] = current_frames_idx[0];
-			new_current_frames_idx[2] = current_frames_idx[1];
-
-		}else if ( !(fmod(frame_count,16)==0) ){
-			new_current_frames_idx[0] = current_frames_idx[3];
-			new_current_frames_idx[1] = current_frames_idx[0];
-			new_current_frames_idx[2] = current_frames_idx[1];
-			new_current_frames_idx[3] = current_frames_idx[2];
-
-		}else {
+		if (mod_16==0){																cout<<"\n(mod_16==0) ";
 			new_current_frames_idx[0] = current_frames_idx[4];
 			new_current_frames_idx[1] = current_frames_idx[0];
 			new_current_frames_idx[2] = current_frames_idx[1];
 			new_current_frames_idx[3] = current_frames_idx[2];
 			new_current_frames_idx[4] = current_frames_idx[3];
+		}else if (mod_8==0){														cout<<"\n(mod_8==0) ";
+			new_current_frames_idx[0] = current_frames_idx[3];
+			new_current_frames_idx[1] = current_frames_idx[0];
+			new_current_frames_idx[2] = current_frames_idx[1];
+			new_current_frames_idx[3] = current_frames_idx[2];
+			new_current_frames_idx[4] = current_frames_idx[4];
+		}else if (mod_4==0){														cout<<"\n(mod_4==0) ";
+			new_current_frames_idx[0] = current_frames_idx[2];
+			new_current_frames_idx[1] = current_frames_idx[0];
+			new_current_frames_idx[2] = current_frames_idx[1];
+			new_current_frames_idx[3] = current_frames_idx[3];
+			new_current_frames_idx[4] = current_frames_idx[4];
+		}else if (mod_2==0){														cout<<"\n(mod_2==0) ";
+			new_current_frames_idx[0] = current_frames_idx[1];
+			new_current_frames_idx[1] = current_frames_idx[0];
+			new_current_frames_idx[2] = current_frames_idx[2];
+			new_current_frames_idx[3] = current_frames_idx[3];
+			new_current_frames_idx[4] = current_frames_idx[4];
+		}else {																		cout<<"\nodd ";
+			new_current_frames_idx[0] = current_frames_idx[0];
+			new_current_frames_idx[1] = current_frames_idx[1];
+			new_current_frames_idx[2] = current_frames_idx[2];
+			new_current_frames_idx[3] = current_frames_idx[3];
+			new_current_frames_idx[4] = current_frames_idx[4];
 		}
+
 		swap( new_current_frames_idx, current_frames_idx);
 		return;
 	};
+
+	void test_update_current_frames_idx(uint num_iter){
+		cout << "\n\n RunCL::test_update_current_frames_idx(uint "<<num_iter<<")";
+		for (uint iter=0; iter<=num_iter; iter++){
+			dataset_frame_num++;
+			update_current_frames_idx();
+			current_frames[current_frames_idx[0]].frame_data_index = dataset_frame_num;			//iter;
+
+			cout<<"\niter="<<iter;
+			for (uint idx=0; idx<5; idx++){
+				cout<<"\t\t current_frames_idx["<<idx<<"]="<<current_frames_idx[idx]<<", frame="<< current_frames[current_frames_idx[idx]].frame_data_index<<",";
+			}
+			cout << flush;
+		}
+	}
 
 	cl_mem 				basemem, imgmem_blurred, gxmem, gymem, k_map_mem, dist_map_mem, SE3_grad_map_mem, SE3_incr_map_mem;
 	cl_mem				cdatabuf, temp_cdatabuf, cdatabuf_8chan, hdatabuf, temp_hdatabuf, dbg_databuf;
