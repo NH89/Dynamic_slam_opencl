@@ -133,13 +133,19 @@ void RunCL::rho_sq(uint out_block_size, const float count[4], uint start, uint s
 	_clSetKernelArg( rho_sq_kernel, 0, sizeof( uint),   				&layer,	 												fname);		//__private		uint 		layer,					//0
 	_clSetKernelArg( rho_sq_kernel, 1, sizeof( uint),   				&cols_per_row,											fname);		//__private		uint 		cols_per_row,			//1
 
-
+																									auto step_0 = high_resolution_clock::now();
 	res 	= clSetKernelArg(kernel_to_call, 0, sizeof(int), &reduction);							if (res    !=CL_SUCCESS)	{ cout <<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}	;
 	res 	= clEnqueueNDRangeKernel(queue_to_call, kernel_to_call, 1, 0, &threads_to_launch, &device_work_size_multiple, 0, NULL, &ev); 	// run mipmap_float4_kernel, NB wait for own previous iteration.
 																									if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
 	status 	= clFlush(queue_to_call);																if (status != CL_SUCCESS)	{ cout << "\nRunCL::mipmap_call_kernel( cl_kernel "<<kernel_to_call<<",  clFlush(queue_to_call) status  = "		<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
+																									auto step_1 = high_resolution_clock::now();
 	status 	= clWaitForEvents (1, &ev);																if (status != CL_SUCCESS)	{ cout << "\nRunCL::mipmap_call_kernel( cl_kernel "<<kernel_to_call<<") final,  clWaitForEventsh(1, &ev) ="		<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 
+																									auto step_2 = high_resolution_clock::now();
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_4.5 . "<<\
+																																				"Execution time = "<<  duration_cast<microseconds>(step_1 - step_0).count() \
+																																				<<" , "<<duration_cast<microseconds>(step_1 - step_2).count() <<flush;
+																																			}
 
 																																				if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_5 ."<<flush;
 																																				stringstream ss;	ss << dataset_frame_num <<"_iter_"<<count[0]<<"_layer"<<count[1]<<"_factor"<<count[2]<<"_rho_sq_";
@@ -283,10 +289,15 @@ void RunCL::estimateSE3_LK( float local_k2k[16], float SE3_results[max_mipmap_la
 	_clSetKernelArg( se3_lk_grad_kernel,19, sizeof( cl_mem), 									&keyframe_g1mem, 		fname);					//__global 	 	float8*		g1p								//19
 
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK( ..)_chk_3 ."<<flush;}
+																									auto step_0 = high_resolution_clock::now();
 	mipmap_call_kernel( se3_lk_grad_kernel, m_queue, start, stop, true, local_work_size/wg_divisor); 										// false // reduced worksize to allow for local memory limit 4kb on rtx 3030
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK( ..)_chk_4 ."<<flush;
+																									auto step_1 = high_resolution_clock::now();
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::estimateSE3_LK( ..)_chk_3.5 . "<<\
+																																				"Execution time = "<<  duration_cast<microseconds>(step_1 - step_0).count() <<flush;
+																																			}
+																																			if( verbosity>local_verbosity_threshold-2) {cout<<"\n\nRunCL::estimateSE3_LK( ..)_chk_4 ."<<flush;
 																																				stringstream ss;	ss << dataset_frame_num << "_iter_"<< count << "_estimateSE3_LK_";
-                                                                                                                                                stringstream ss_path;
+																																				stringstream ss_path;
 																																				bool show 				= false;
 																																				bool display 			= false;
 																																				bool exception_tiff 	= false;

@@ -141,7 +141,7 @@ void Dynamic_slam::initialize_camera_vec(){
 
 int Dynamic_slam::nextFrame() {
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_NEXTFRAME;
-																																			if(verbosity>local_verbosity_threshold) cout << "\f Dynamic_slam::nextFrame_chk 0,  runcl.dataset_frame_num="<<runcl.dataset_frame_num
+																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::nextFrame_chk 0,  runcl.dataset_frame_num="<<runcl.dataset_frame_num
 																																				<<",\t depth = runcl.amem  \n" << flush; //  runcl.frame_bool_idx="<<runcl.frame_bool_idx<<"
 																						auto step_0 = high_resolution_clock::now();
 	frame_data.push_back( frame_data.back() ); //////////////////////////////////////////   new_frame										// duplicate last frame, as basis for new frame.
@@ -150,13 +150,14 @@ int Dynamic_slam::nextFrame() {
 																																			// This would update keyframe_depth_mem ith the raw amem, every frame.
 
 	getFrameData_vec();		/*Only IF GT available*/									auto step_1 = high_resolution_clock::now();			// updates pose2pose for next frame in cost volume.
-	predictFrame_vec();																	auto step_2 = high_resolution_clock::now();			// Loads GT depth of the new frame. NB depends on image.size from getFrame().
-
+	if (runcl.costvol_frame_num>1)					{ 	predictFrame_vec(); }			auto step_2 = high_resolution_clock::now();			// Loads GT depth of the new frame. NB depends on image.size from getFrame().
 	if(obj["use_GT_pose"].asBool() == true )		{	use_GT_pose_vec();	}			auto step_3 = high_resolution_clock::now();			// use_GT_pose();
 	getFrame();																			auto step_4 = high_resolution_clock::now();
 	if(obj["Artif_pose_err_bool"].asBool() == true ){ 	artificial_pose_error_vec();}	auto step_5 = high_resolution_clock::now();
 
-	estimateSE3();
+	//estimateSE3(); // original tracking
+
+	patch_slam();		// new tracking prototype.
 	estimateSLAM();
 																						auto step_6 = high_resolution_clock::now();			// own thread ? num iter ?
 	//disparity();

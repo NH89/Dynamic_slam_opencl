@@ -74,6 +74,7 @@ add_executable(Dynamic_slam
          src/Dynamic_slam/Dynamic_slam_binocular_disparity.cpp
          src/Dynamic_slam/Dynamic_slam_keyframe.cpp
          src/Dynamic_slam/Dynamic_slam_mapping.cpp
+         src/Dynamic_slam/Dynamic_slam_patch_slam.cpp
          src/Dynamic_slam/Dynamic_slam_tracking.cpp
 
          src/Dynamic_slam/testing/Dynamic_slam_ground_truth.cpp

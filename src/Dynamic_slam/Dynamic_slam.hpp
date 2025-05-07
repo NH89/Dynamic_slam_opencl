@@ -166,11 +166,9 @@ class Dynamic_slam
 
     void update_k2k_4(float steps[3], cv::Matx16f update_,  Matx44f K,  Matx44f keyframe2pose,  Matx44f inv_K,  Matx44f keyframe_k2k,  float local_k2k_4_16[4][16] );
 
-    void compute_optimum( float steps[3], float Rho_sq_results_3[tracking_num_samples][8][tracking_num_colour_channels], int layer, int channel, float *prediction, float *optimum, float *stepsize );
+    void compute_optimum( float steps[3], float Rho_sq_results_[tracking_num_samples][8][tracking_num_colour_channels], int layer, int channel, float *prediction, float *optimum, float *stepsize );
 
     void estimateSE3();                         // version with adaptive step and halting
-
-    void estimateSLAM();
   
     // return the filenames of all files that have the specified extension
     // in the specified directory and all subdirectories
@@ -195,6 +193,10 @@ class Dynamic_slam
         }
       }
     }
+
+    //////////////////////////////////// Dynamic_slam_patch_slam.cpp
+    void patch_slam();
+    void estimateSLAM();
 
     ///////////////////////////////////// Dynamic_slam_pose_vec_print_fns.cpp
     void print_pose_datum(      Dynamic_slam::pose_datum datum );

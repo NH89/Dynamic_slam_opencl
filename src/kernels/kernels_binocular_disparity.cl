@@ -744,10 +744,10 @@ __kernel void regularize_warp(					// Use local mem to avoid repeat loading of s
 		confidence[write_index + mm_cols +1]	= mix( mix(confidence_in10, confidence_in11, 0.5f), confidence_out10, 0.5f);
 	}
 
-	if (fmod(global_id_flt,333.0f) ==0.0f ) {
-		printf("\n_kernel propagate_warp(..), global_id=%u, lid=%u,	read_offset=%u, rows_in=%u, cols_in=%u, write_offset=%u, write_index=%u, mm_cols=%u, read_col=%u, read_row=%u, col=%u, row=%u",\
-		global_id, lid, read_offset, rows_in, cols_in, write_offset, write_index, mm_cols, read_col, read_row, col, row);
-	}
+// 	if (fmod(global_id_flt,333.0f) ==0.0f ) {
+// 		printf("\n_kernel propagate_warp(..), global_id=%u, lid=%u,	read_offset=%u, rows_in=%u, cols_in=%u, write_offset=%u, write_index=%u, mm_cols=%u, read_col=%u, read_row=%u, col=%u, row=%u",\
+// 		global_id, lid, read_offset, rows_in, cols_in, write_offset, write_index, mm_cols, read_col, read_row, col, row);
+// 	}
 }
 
 
@@ -820,7 +820,7 @@ __kernel void warp_and_depth_error(				// NB depth is handled as inv_depth to av
 	depth_error[read_index]		= (estimated_inv_depth - inv_depth2) ;	// Optionally divide by depth_GT to get a proportional error. // / inv_depth
 	depth[read_index]			= estimated_inv_depth;
 
-	if(global_id_uint ==0){printf("\n__kernel warp_and_depth_error(..) reduction=%f, a=%f, b=%f, c=%f, k2k=(%f, %f, %f, %f,   %f, %f, %f, %f,   %f, %f, %f, %f,   %f, %f, %f, %f   ) ", reduction, a,b,c, k2k_pvt[0], k2k_pvt[1], k2k_pvt[2], k2k_pvt[3],   k2k_pvt[4], k2k_pvt[5], k2k_pvt[6], k2k_pvt[7],    k2k_pvt[8], k2k_pvt[9], k2k_pvt[10], k2k_pvt[11],    k2k_pvt[12], k2k_pvt[13], k2k_pvt[14], k2k_pvt[15] );}
+	//if(global_id_uint ==0){printf("\n__kernel warp_and_depth_error(..) reduction=%f, a=%f, b=%f, c=%f, k2k=(%f, %f, %f, %f,   %f, %f, %f, %f,   %f, %f, %f, %f,   %f, %f, %f, %f   ) ", reduction, a,b,c, k2k_pvt[0], k2k_pvt[1], k2k_pvt[2], k2k_pvt[3],   k2k_pvt[4], k2k_pvt[5], k2k_pvt[6], k2k_pvt[7],    k2k_pvt[8], k2k_pvt[9], k2k_pvt[10], k2k_pvt[11],    k2k_pvt[12], k2k_pvt[13], k2k_pvt[14], k2k_pvt[15] );}
 }
 
 

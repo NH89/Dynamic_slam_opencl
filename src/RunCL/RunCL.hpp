@@ -42,7 +42,7 @@
 
 using namespace std::chrono;
 const uint tracking_num_colour_channels = TRACKING_NUM_COLOR_CHANNELS;
-const uint tracking_num_samples 		= TRACKING_NUM_SAMPLES;			// One more on host, for original Rho sample.
+const uint tracking_num_samples 		= TRACKING_NUM_SAMPLES +1;			// One more on host, for original Rho sample.
 const uint tracking_tot_samples 		= 4;
 const uint max_mipmap_layers 			= 8;
 const uint num_SE3_DoF					= 6;
@@ -91,11 +91,15 @@ public:
 		cl_mem			depth_buf;
 		cl_mem			r_vel_buf;
 		uint			frame_data_index;
+		float			pose[16];			// Absolute pose of the frame. i.e. relative to initial frame. Computed from the local sample frames. Will req adjustment at loop closure.
+		float			invk2k[16];			// Reprojection matrix to the current img. Estimated, then fitted for each new frame, also with updates of camera inrinsic mattix.
 	};
 
 	std::array<frame, num_current_frames> 					current_frames;			// Needs to be initialized after the buffers are created.
 	uint current_frames_idx[num_current_frames]				= {4,3,2,1,0};			// NB always access via:    current_frames[  current_frames_idx[ idx ]].img_buf   or   runcl.current_frames[ runcl.current_frames_idx[0] ].img_buf...
 	uint new_current_frames_idx[num_current_frames]			= {4,3,2,1,0};			// Must be set correctly, because it will be swaped to current_frames_idx[.idx.]
+
+	const float identity_flt16[16]	=	{1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1};
 
 	void initialize_current_frames(){
 		for (uint idx = 0; idx < num_current_frames; idx++){
@@ -103,77 +107,51 @@ public:
 			//current_frames[idx].depth_buf			= depth_mem[idx];
 			current_frames[idx].r_vel_buf			= velmap[idx];						// velocity _relative_ to the camera.
 			current_frames[idx].frame_data_index	= idx;
+			for(uint i=0; i<16; i++){
+				current_frames[idx].pose[i]	= identity_flt16[i];
+				current_frames[idx].pose[i]	= identity_flt16[i];
+			}
 		}
 	}
 
 	void update_current_frames_idx(){												// Call immediately _before_ loading new frame.
 		int frame_count = dataset_frame_num;
-/*
-		// if ( !(fmod(frame_count,2)==0) ) {return;									// every odd  frame
-		// }else if ( !(fmod(frame_count,4)==0) ){										// every even frame
-		// 																			cout<<"\neven"<<flush;
-		// 	new_current_frames_idx[0] = current_frames_idx[1];
-		// 	new_current_frames_idx[1] = current_frames_idx[0];
-  //
-		// }else if ( !(fmod(frame_count,8)==0) ){										// every 4th frame
-		// 																			cout<<"\n!(fmod(frame_count,8)==0)"<<flush;
-		// 	new_current_frames_idx[0] = current_frames_idx[2];
-		// 	new_current_frames_idx[1] = current_frames_idx[0];
-		// 	new_current_frames_idx[2] = current_frames_idx[1];
-  //
-		// }else if ( !(fmod(frame_count,16)==0) ){									// every 8th frame
-		// 																			cout<<"\n!(fmod(frame_count,16)==0)"<<flush;
-		// 	new_current_frames_idx[0] = current_frames_idx[3];
-		// 	new_current_frames_idx[1] = current_frames_idx[0];
-		// 	new_current_frames_idx[2] = current_frames_idx[1];
-		// 	new_current_frames_idx[3] = current_frames_idx[2];
-  //
-		// }else {																		// every 16th frame
-		// 																			cout<<"\nevery 16th frame"<<flush;
-		// 	new_current_frames_idx[0] = current_frames_idx[4];
-		// 	new_current_frames_idx[1] = current_frames_idx[0];
-		// 	new_current_frames_idx[2] = current_frames_idx[1];
-		// 	new_current_frames_idx[3] = current_frames_idx[2];
-		// 	new_current_frames_idx[4] = current_frames_idx[3];
-		// }
-*/
-		uint mod_16	= fmod(frame_count,16); // NB fastest way would be a nested if sequence, using bit shift to test the last bit.
-		uint mod_8  = fmod(mod_16,8);
-		uint mod_4	= fmod(mod_8,4);
-		uint mod_2	= fmod(mod_4,2);
+		uint mod_16		= fmod(frame_count,16); // NB fastest way would be a nested if sequence, using bit shift to test the last bit.
+		uint mod_8  	= fmod(mod_16,8);
+		uint mod_4		= fmod(mod_8,4);
+		uint mod_2		= fmod(mod_4,2);
 
-		if (mod_16==0){																cout<<"\n(mod_16==0) ";
+		if (mod_16==0){																//cout<<"\n(mod_16==0) ";
 			new_current_frames_idx[0] = current_frames_idx[4];
 			new_current_frames_idx[1] = current_frames_idx[0];
 			new_current_frames_idx[2] = current_frames_idx[1];
 			new_current_frames_idx[3] = current_frames_idx[2];
 			new_current_frames_idx[4] = current_frames_idx[3];
-		}else if (mod_8==0){														cout<<"\n(mod_8==0) ";
+		}else if (mod_8==0){														//cout<<"\n(mod_8==0) ";
 			new_current_frames_idx[0] = current_frames_idx[3];
 			new_current_frames_idx[1] = current_frames_idx[0];
 			new_current_frames_idx[2] = current_frames_idx[1];
 			new_current_frames_idx[3] = current_frames_idx[2];
 			new_current_frames_idx[4] = current_frames_idx[4];
-		}else if (mod_4==0){														cout<<"\n(mod_4==0) ";
+		}else if (mod_4==0){														//cout<<"\n(mod_4==0) ";
 			new_current_frames_idx[0] = current_frames_idx[2];
 			new_current_frames_idx[1] = current_frames_idx[0];
 			new_current_frames_idx[2] = current_frames_idx[1];
 			new_current_frames_idx[3] = current_frames_idx[3];
 			new_current_frames_idx[4] = current_frames_idx[4];
-		}else if (mod_2==0){														cout<<"\n(mod_2==0) ";
+		}else if (mod_2==0){														//cout<<"\n(mod_2==0) ";
 			new_current_frames_idx[0] = current_frames_idx[1];
 			new_current_frames_idx[1] = current_frames_idx[0];
 			new_current_frames_idx[2] = current_frames_idx[2];
 			new_current_frames_idx[3] = current_frames_idx[3];
 			new_current_frames_idx[4] = current_frames_idx[4];
-		}else {																		cout<<"\nodd ";
+		}else {																		//cout<<"\nodd ";
 			new_current_frames_idx[0] = current_frames_idx[0];
 			new_current_frames_idx[1] = current_frames_idx[1];
 			new_current_frames_idx[2] = current_frames_idx[2];
 			new_current_frames_idx[3] = current_frames_idx[3];
 			new_current_frames_idx[4] = current_frames_idx[4];
 		}
-
 		swap( new_current_frames_idx, current_frames_idx);
 		return;
 	};

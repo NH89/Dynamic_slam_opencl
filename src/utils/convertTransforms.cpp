@@ -44,9 +44,9 @@ void LieToRT(InputArray Lie, OutputArray _R, OutputArray _T){
 void RTToLie(Matx33f R, Matx13f T, Matx16f &Lie ){
                                                                                                                                             //std::cout << "\n\nRTToLie(Matx33f R, Matx13f T, Matx16f Lie ) chk_0 #############"<<std::flush;
     Matx13f r(0,0,0);
-    cv::Rodrigues(R, r);                         PRINT_MATX13F(r,);  PRINT_MATX13F(T,);                                                   // Makes so3 algebra from SO3 Matx33f
+    cv::Rodrigues(R, r);                      //   PRINT_MATX13F(r,);  PRINT_MATX13F(T,);                                                   // Makes so3 algebra from SO3 Matx33f
     Matx16f temp(r.operator()(0,0), r.operator()(0,1), r.operator()(0,2),   T.operator()(0,0), T.operator()(0,1), T.operator()(0,2) );
-    Lie = temp.get_minor<1,6>(0,0);              PRINT_MATX16F(Lie, RTToLie(..));
+    Lie = temp.get_minor<1,6>(0,0);           //   PRINT_MATX16F(Lie, RTToLie(..));
 }
 
 Matx16f RTToLie(Matx33f _R, Matx13f _T){
@@ -56,11 +56,11 @@ Matx16f RTToLie(Matx33f _R, Matx13f _T){
     return P;
 }
 
-void PToLie(Matx44f P, Matx16f &Lie){           PRINT_MATX44F(P,);
-                                                                                                                                            std::cout << "\n\nPToLie(Matx44f P, Matx16f Lie) chk_0 #############"<<std::flush;
+void PToLie(Matx44f P, Matx16f &Lie){         //  PRINT_MATX44F(P,);
+                                                                                                                                            //std::cout << "\n\nPToLie(Matx44f P, Matx16f Lie) chk_0 #############"<<std::flush;
     Matx33f R( P.get_minor<3,3>(0,0) );         //PRINT_MATX33F(R,);
-    Matx31f T( P.get_minor<3,1>(0,3) );         PRINT_MATX13F(T.t(),);
-    RTToLie(R,T.t(),Lie);                       PRINT_MATX16F(Lie, PToLie(Matx44f P, Matx16f Lie));
+    Matx31f T( P.get_minor<3,1>(0,3) );       //  PRINT_MATX13F(T.t(),);
+    RTToLie(R,T.t(),Lie);                     //  PRINT_MATX16F(Lie, PToLie(Matx44f P, Matx16f Lie));
 }
 
 Matx16f PToLie(Matx44f P){

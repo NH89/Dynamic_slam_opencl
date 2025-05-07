@@ -425,11 +425,12 @@ void RunCL::DownloadAndSave_3Channel(cl_mem buffer, std::string count, std::file
 	if (exception_tiff == true) tiff = exception_tiff;
 																																			//cout<<"\nDownloadAndSave_3Channel_Chk_0"<<flush;
 																																			//cout<<"\nverbosity="<< verbosity <<",   = "<< local_verbosity_threshold <<flush;
-																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_3Channel_Chk_0    filename = ["<<folder_tiff.filename()
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\nDownloadAndSave_3Channel_Chk_0    filename = ["<<folder_tiff.filename()
 																																				<<"] folder="<<folder_tiff<<", image_size_bytes="<<image_size_bytes<<", size_mat="<<size_mat
 																																				<<", type_mat="<<type_mat<<" : "<<checkCVtype(type_mat)<<",   exception_tiff="<<exception_tiff<<"  tiff="<< tiff<<flush;
-																																			if (exception_tiff == true) cout <<"\nexception_tiff == true "<<flush;
-																																			else 						cout <<"\nexception_tiff == false "<<flush;
+																																				if (exception_tiff == true) cout <<"\nexception_tiff == true "<<flush;
+																																				else 						cout <<"\nexception_tiff == false "<<flush;
+																																			}
 		cv::Mat temp_mat, temp_mat2;
 
 		if (type_mat == CV_16FC3)	{
@@ -495,8 +496,12 @@ void RunCL::DownloadAndSave_3Channel(cl_mem buffer, std::string count, std::file
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_3Channel_Chk_3, "<<flush;
 		cv::Mat outMat;
 		if ((type_mat == CV_32FC3) || (type_mat == CV_32FC4)){
-																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_3Channel_Chk_4,  folder_tiff.string()="<< folder_tiff.string()<<", tiff="<<tiff <<flush;
-			if(tiff==true) {cout<<"\nWriting tiff"<< flush;    cv::imwrite(folder_tiff.string(), temp_mat );   cout<<"\nWrote tiff"<< flush; } else cout<<"\ntiff=false="<<tiff<<flush;
+																																			if(verbosity>local_verbosity_threshold){ cout<<"\nDownloadAndSave_3Channel_Chk_4,  folder_tiff.string()="<< folder_tiff.string()<<", tiff="<<tiff <<flush;
+																																				if(tiff==true) {cout<<"\nWriting tiff"<< flush;    cv::imwrite(folder_tiff.string(), temp_mat );   cout<<"\nWrote tiff"<< flush; }
+																																				else cout<<"\ntiff=false="<<tiff<<flush;
+																																			}
+			if(tiff==true) cv::imwrite(folder_tiff.string(), temp_mat );
+
 			temp_mat *=256;
 			temp_mat.convertTo(outMat, CV_8U);
 
