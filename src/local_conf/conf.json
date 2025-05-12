@@ -64,7 +64,7 @@
     "SE3_start_layer":4,
     "SE3_stop_layer":1,
     "SE_iter_per_layer":1,//10 //5
-    "SE_iter":10, //25,//10//50//25,               //1 //10
+    "SE_iter":12, //25,//10//50//25,               //1 //10
     "SE_factor":0.003,          //0.5
     "SE_factor_iter_multiplier":0.9,
     "SE_factor_layer_multiplier":0.75,

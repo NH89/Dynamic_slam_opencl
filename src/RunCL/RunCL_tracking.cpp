@@ -78,30 +78,38 @@ void RunCL::rho_sq(uint out_block_size, const float count[4], uint start, uint s
 
 	//input integers
 	//      __private	 uint layer, set in mipmap_call_kernel( ..) below                                                                      __private	uint		layer,					//0
-	_clSetKernelArg( rho_sq_kernel, 2, sizeof( uint),   				&out_block_size,	 									fname);		//__private		uint 		out_block_size,			//1
+	_clSetKernelArg( rho_sq_kernel, 2, sizeof( uint),   						&out_block_size,	 									fname);		//__private		uint 		out_block_size,			//1
 
-	_clSetKernelArg( rho_sq_kernel, 3, sizeof( cl_mem), 				&mipmap_buf, 											fname);		//__constant	uint8*		mipmap_params,			//2
-	_clSetKernelArg( rho_sq_kernel, 4, sizeof( cl_mem), 				&uint_param_buf, 										fname);		//__constant	uint*		uint_params,			//3
-	_clSetKernelArg( rho_sq_kernel, 5, sizeof( cl_mem), 				&fp32_param_buf, 										fname);		//__constant	float*		fp32_params,			//4
-	_clSetKernelArg( rho_sq_kernel, 6, sizeof( cl_mem), 				&k2kbuf, 												fname);		//__constant	float16*	inv_k2k,				//5		// transforms for 4 past frames
+	_clSetKernelArg( rho_sq_kernel, 3, sizeof( cl_mem), 						&mipmap_buf, 											fname);		//__constant	uint8*		mipmap_params,			//2
+	_clSetKernelArg( rho_sq_kernel, 4, sizeof( cl_mem), 						&uint_param_buf, 										fname);		//__constant	uint*		uint_params,			//3
+	_clSetKernelArg( rho_sq_kernel, 5, sizeof( cl_mem), 						&fp32_param_buf, 										fname);		//__constant	float*		fp32_params,			//4
+	_clSetKernelArg( rho_sq_kernel, 6, sizeof( cl_mem), 						&k2kbuf, 												fname);		//__constant	float16*	inv_k2k,				//5		// transforms for 4 past frames
 
-	_clSetKernelArg( rho_sq_kernel, 7, sizeof( cl_mem),					&current_frames[current_frames_idx[0]].img_buf,		 	fname);		//__global		float4*		img_cur,				//6		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
-	_clSetKernelArg( rho_sq_kernel, 8, sizeof( cl_mem), 				&current_frames[current_frames_idx[1]].img_buf,			fname);		//__global		float4*		img_past_0,				//7
-	_clSetKernelArg( rho_sq_kernel, 9, sizeof( cl_mem), 				&current_frames[current_frames_idx[2]].img_buf,			fname);		//__global		float4*		img_past_1,				//8
-	_clSetKernelArg( rho_sq_kernel,10, sizeof( cl_mem), 				&current_frames[current_frames_idx[3]].img_buf,			fname);		//__global		float4*		img_past_2,				//9
-	_clSetKernelArg( rho_sq_kernel,11, sizeof( cl_mem), 				&current_frames[current_frames_idx[4]].img_buf,			fname);		//__global		float4*		img_past_3,				//10
-	_clSetKernelArg( rho_sq_kernel,12, sizeof( cl_mem), 				&depth_mem,												fname);		//__global		float* 		depth_map,				//11	// current frame depth, now stored as inv_depth
-	_clSetKernelArg( rho_sq_kernel,13, sizeof( cl_mem), 				&g1mem,													fname);		//__global		float8* 	g1p,					//12	// current frame g1mem
-	_clSetKernelArg( rho_sq_kernel,14, sizeof( cl_mem), 				&current_frames[current_frames_idx[0]].r_vel_buf,		fname);		//__global		float4*		img_cur,				//13	// multiple past frames.
-	_clSetKernelArg( rho_sq_kernel,15, sizeof( cl_mem), 				&current_frames[current_frames_idx[1]].r_vel_buf,		fname);		//__global		float4*		img_past_0,				//14
-	_clSetKernelArg( rho_sq_kernel,16, sizeof( cl_mem), 				&current_frames[current_frames_idx[2]].r_vel_buf,		fname);		//__global		float4*		img_past_1,				//15
-	_clSetKernelArg( rho_sq_kernel,17, sizeof( cl_mem), 				&current_frames[current_frames_idx[3]].r_vel_buf,		fname);		//__global		float4*		img_past_2,				//16
-	_clSetKernelArg( rho_sq_kernel,18, sizeof( cl_mem), 				&current_frames[current_frames_idx[4]].r_vel_buf,		fname);		//__global		float4*		img_past_3,				//17
+	_clSetKernelArg( rho_sq_kernel, 7, sizeof( cl_mem),							&current_frames[current_frames_idx[0]].img_buf,		 	fname);		//__global		float4*		img_cur,				//6		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
+	_clSetKernelArg( rho_sq_kernel, 8, sizeof( cl_mem), 						&current_frames[current_frames_idx[1]].img_buf,			fname);		//__global		float4*		img_past_0,				//7
+	_clSetKernelArg( rho_sq_kernel, 9, sizeof( cl_mem), 						&current_frames[current_frames_idx[2]].img_buf,			fname);		//__global		float4*		img_past_1,				//8
+	_clSetKernelArg( rho_sq_kernel,10, sizeof( cl_mem), 						&current_frames[current_frames_idx[3]].img_buf,			fname);		//__global		float4*		img_past_2,				//9
+	_clSetKernelArg( rho_sq_kernel,11, sizeof( cl_mem), 						&current_frames[current_frames_idx[4]].img_buf,			fname);		//__global		float4*		img_past_3,				//10
+
+	_clSetKernelArg( rho_sq_kernel,12, sizeof( cl_mem), 						&depth_mem,												fname);		//__global		float* 		depth_map,				//11	// current frame depth, now stored as inv_depth
+	_clSetKernelArg( rho_sq_kernel,13, sizeof( cl_mem), 						&g1mem,													fname);		//__global		float8* 	g1p,					//12	// current frame g1mem
+	_clSetKernelArg( rho_sq_kernel,14, sizeof( cl_mem), 						&SE3_grad_map_mem,										fname);		//__global 		float8*		SE3_grad_map_cur_frame,	//14
+
+	_clSetKernelArg( rho_sq_kernel,15, sizeof( cl_mem), 						&current_frames[current_frames_idx[0]].r_vel_buf,		fname);		//__global		float4*		img_cur,				//13	// multiple past frames.
+	_clSetKernelArg( rho_sq_kernel,16, sizeof( cl_mem), 						&current_frames[current_frames_idx[1]].r_vel_buf,		fname);		//__global		float4*		img_past_0,				//14
+	_clSetKernelArg( rho_sq_kernel,17, sizeof( cl_mem), 						&current_frames[current_frames_idx[2]].r_vel_buf,		fname);		//__global		float4*		img_past_1,				//15
+	_clSetKernelArg( rho_sq_kernel,18, sizeof( cl_mem), 						&current_frames[current_frames_idx[3]].r_vel_buf,		fname);		//__global		float4*		img_past_2,				//16
+	_clSetKernelArg( rho_sq_kernel,19, sizeof( cl_mem), 						&current_frames[current_frames_idx[4]].r_vel_buf,		fname);		//__global		float4*		img_past_3,				//17
 
 	//output
-	_clSetKernelArg( rho_sq_kernel,19, sizeof( cl_mem), 				&SE3_rho_map_mem, 										fname);		//__global		float2* 	Rho_,					//18	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
-	_clSetKernelArg( rho_sq_kernel,20, sizeof( float)*local_work_size,	NULL, 													fname);		//__local		float2*		local_rho				//19	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
+	_clSetKernelArg( rho_sq_kernel,20, sizeof( cl_mem), 						&SE3_rho_map_mem, 										fname);		//__global		float2* 	Rho_,					//18	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
+	_clSetKernelArg( rho_sq_kernel,21, sizeof( float)*local_work_size,			NULL, 													fname);		//__local		float2*		local_rho				//19	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
 
+	_clSetKernelArg( rho_sq_kernel,22, sizeof( cl_mem), 						&SE3_weight_map_mem,									fname);		//__global		float4* 	weights_map,			//22
+	_clSetKernelArg( rho_sq_kernel,23, sizeof( float)*local_work_size*6,		NULL,													fname);		//__local		float4* 	local_weights,			//23	// float4 local_weights[ local_work_size/2 ]  hence sizeof( float)*local_work_size*4 NB only used as a message between threads.
+
+	_clSetKernelArg( rho_sq_kernel,24, sizeof( cl_mem), 						&SE3_incr_map_mem,										fname);		//__global 		float4*		SE3_incr_map_,			//24
+	_clSetKernelArg( rho_sq_kernel,25, sizeof( float)*local_work_size*6,		NULL,													fname);		//__local 		float4*		local_SE3_incr			//25
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_4 .  start="<<start<<",  stop="<<stop<<flush;}
 	//mipmap_call_kernel( rho_sq_kernel, m_queue, start, stop, false, local_work_size );
 
@@ -153,14 +161,16 @@ void RunCL::rho_sq(uint out_block_size, const float count[4], uint start, uint s
 
 																																				bool show 				= false;
 																																				float max_range 		= 1; 					// i.e. gray = zero.
-																																				uint vol_layers 		= 1;
+																																				uint vol_layers 		= 6;
 																																				bool exception_tiff 	= false;
 																																				bool display 			= false; 				//obj["sample_se3_incr"].asBool( );
 																																				cout << "\nRunCL::rho_sq( ..)_chk_6   display="<< display<< endl << flush;
 
 																																				bool old_tiff = tiff;
 																																				tiff = true;
-																																				DownloadAndSave_2Channel_volume(  SE3_rho_map_mem,	ss.str( ), paths.at( "SE3_rho_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	 vol_layers);
+																																				DownloadAndSave_2Channel_volume(  SE3_rho_map_mem,		ss.str( ), paths.at( "SE3_rho_map_mem"),	  2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	 1);
+																																				DownloadAndSave_2Channel_volume(  SE3_weight_map_mem,	ss.str( ), paths.at( "SE3_weight_map_mem"),	6*2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	 vol_layers);
+																																				DownloadAndSave_2Channel_volume(  SE3_incr_map_mem,		ss.str( ), paths.at( "SE3_incr_map_mem"),	6*2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	 vol_layers);
 																																				tiff = old_tiff;
 																																				cout<<"\n\nRunCL::rho_sq( ..) finished"<< flush;
 																																			}

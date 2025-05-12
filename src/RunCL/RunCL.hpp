@@ -21,7 +21,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/utility.hpp>
 #include <opencv2/imgcodecs.hpp>
-#include <opencv2/imgproc/imgproc_c.h> 				// req for types e.g. CV_BGR2GRAY
+#include <opencv2/imgproc/imgproc_c.h> 			// req for types e.g. CV_BGR2GRAY
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/highgui.hpp>
 
