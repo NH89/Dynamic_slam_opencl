@@ -271,13 +271,13 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 	count[2]  = obj["SE_factor"].asFloat();;
 	count[3]  = 0;
 
-	for (uint  	layer = SE3_start_layer; layer<= SE3_start_layer;	layer--){ 															// NB when uint passes zero it becomes UINT_MAX
+	for (uint  	layer = SE3_start_layer; layer>= SE3_stop_layer;	layer--){ 															// NB when uint passes zero it becomes UINT_MAX
 		count[1]  = layer;
 		for (uint out_block_size = 32; out_block_size > 2; out_block_size /=2){
-			for (uint iter = 0; iter<SE_iter/2; iter++){
+			for (uint iter = 0; iter</*SE_iter/2*/1; iter++){
 				count[0]  = iter;
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_1: layer="<<layer<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
-				runcl.rho_sq( out_block_size, count, layer, layer+1  );		// uint out_block_size, const float count[4], uint start, uint stop
+				runcl.rho_sq( out_block_size, iter, layer  );		// uint out_block_size, const float count[4], uint start, uint stop
 			}
 		}
 	}

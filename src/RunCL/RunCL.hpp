@@ -360,7 +360,7 @@ public:
 	void update_k2k_buf(float k2k_3_16_[16]);
 	//void initialize_tracking_depthmap(float initial_depth);
 
-	void rho_sq( uint out_block_size, const float count[4], uint start, uint stop );
+	void rho_sq( uint out_block_size, uint iter, uint layer);
 
 	void se3_rho_sq( const uint local_num_samples,  const uint start_sample_idx,  float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels],	const float count[4], uint start, uint stop,	float k2k_3_16_[tracking_tot_samples][16]  ); //float k2k_[16]  );
 	//void se3_rho_sq( 								float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels], 	const float count[4], uint start, uint stop, float k2k_3_16_[tracking_tot_samples][16]  );				// Tracking

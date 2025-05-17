@@ -159,7 +159,7 @@ __kernel void Rho_sq(						// To be launched with 1 thread per col for 32x32 pat
 	uint read_index 	= read_offset_ + row_col + block_row*block_size*mm_cols;
 
 	uint write_spacing	= block_size/out_block_size;
-	uint write_index 	=  row_col/out_block_size + block_row*write_spacing*mm_cols; 	//fmod((float)global_id_u, blocks_cols * out_block_size)	+ (global_id_u / (uint)(blocks_cols * out_block_size)) * out_block_size;;
+	uint write_index 	= row_col/out_block_size + block_row*write_spacing*mm_cols; 	//fmod((float)global_id_u, blocks_cols * out_block_size)	+ (global_id_u / (uint)(blocks_cols * out_block_size)) * out_block_size;;
 
 	float2 rho[block_size]				= {0.0f};																	// pvt variable for values in this column.
 	float4 rho_pvt_flt4;
@@ -177,6 +177,7 @@ __kernel void Rho_sq(						// To be launched with 1 thread per col for 32x32 pat
 	float8 g1p_pvt[block_size];
 
 	bool intersection;
+	float2 temp2	= {1.0f,1.0f};
 																								// PATCH KERNEL //
 	////////////////////////////////////////////////////////////////////////////				// transfer data from global memory.
 	for (uint row_in_block=0; row_in_block<block_size; row_in_block +=2){						// step through pairs of rows of the patch, /////////////////////////////////////////////////////////////
@@ -222,6 +223,9 @@ __kernel void Rho_sq(						// To be launched with 1 thread per col for 32x32 pat
 			int  v2_2				= floor(v2_flt_2 + 0.5f) ;
 			//////////////////////////////////////////////////
 			rho_pvt_flt4			= zero_f4;
+
+			SE3_incr_map_[read_index ]			= temp2;//SE3_incr_pvt_flt2; // TODO remove this debug line
+
 			intersection 			= (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2_1>2) && (u2_1<=read_cols_-2) \
 									&& (v2_1>2) && (v2_1<=read_rows_-2)  &&  (global_id_u<=layer_pixels) && (inv_depth_1>=min_inv_depth) && (inv_depth_1<=max_inv_depth);						// if images overlap
 			if (intersection){
@@ -243,6 +247,8 @@ __kernel void Rho_sq(						// To be launched with 1 thread per col for 32x32 pat
 					SE3_incr_pvt_flt2.y										= 1.0f;
 					SE3_incr[ se3_dim*block_size + row_in_block ]			= SE3_incr_pvt_flt2;		//local_sum_grads[se3_dim*local_size + lid]  in __kernel void se3_LK_grad				// pixelwise increment for this SE3 DoF
 
+
+
 					weights_pvt_flt2.x 										= ( weights_pvt_flt4.x * weights_pvt_flt4.x + weights_pvt_flt4.y * weights_pvt_flt4.y + weights_pvt_flt4.z * weights_pvt_flt4.z );
 					weights_pvt_flt2.y										= 1.0f;
 					weights[ se3_dim*block_size + row_in_block ]			= weights_pvt_flt2;			//local_sum_weight[se3_dim*local_size + lid] in __kernel void se3_LK_grad				// save the SE3_grad^2, to use as divisor for this SE3 DoF, after summing.
@@ -253,24 +259,14 @@ __kernel void Rho_sq(						// To be launched with 1 thread per col for 32x32 pat
 			rho_pvt_flt2.x			*= (1.0f - g1p[read_index].s3);																																// Weight rho by edges. // TODO choose/ refine which edges to use.
 			rho_pvt_flt2.y			= 1.0f;
 			rho[row_in_block]		+= rho_pvt_flt2;																																			// save to pvt mem for this column
-
-
-
-
-
-
-
-
+////
 			//////////////////////////////////////////////////
 			rho_pvt_flt4			= zero_f4;
 			intersection 			= (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2_2>2) && (u2_2<=read_cols_-2) \
 									&& (v2_2>2) && (v2_2<=read_rows_-2)  &&  (global_id_u<=layer_pixels) && (inv_depth_2>=min_inv_depth) && (inv_depth_2<=max_inv_depth);						// if images overlap
 			if (intersection){
 				rho_pvt_flt4		= img_cur_pvt[row_in_block+1]	-	bilinear_flt4( img_past[past_frame_idx], u2_flt_2, v2_flt_2,  mm_cols, read_offset_ );									// find 2nd row pixel rho
-
-
-
-
+// TODO second row....
 			}
 			barrier(CLK_GLOBAL_MEM_FENCE );
 			rho_pvt_flt2.x			= rho_pvt_flt4.x*rho_pvt_flt4.x  + rho_pvt_flt4.y*rho_pvt_flt4.y  +rho_pvt_flt4.z*rho_pvt_flt4.z;															// sum rho^2
@@ -291,7 +287,8 @@ __kernel void Rho_sq(						// To be launched with 1 thread per col for 32x32 pat
 	//__local float2 local_rho[local_size/2];																		// Created once and shared across the workgroup. One element per second thread. Reused each row to transfer data to sum adjactent columns.
 																													// Patches per workgroup = threads per work group / patch size. NB local mem usage is small, so not limiting.
 	}
-	for (uint step=2; step<out_block_size; step *=2){																																			// for each step size, (multiples of 2)
+	uint step;
+	for ( step=2; step<out_block_size; step *=2){																																			// for each step size, (multiples of 2)
 // 		if (global_id_u==0){printf("\n__kernel void Rho_sq() chk 2,  step=%u  ############",step);}//#############################################
 																																																// selects pairs of columns to sum  i.e. threads within the workgroup
 		for (uint block_row=0; block_row<block_size ; block_row += step){																														// step through rows in column
@@ -306,7 +303,7 @@ __kernel void Rho_sq(						// To be launched with 1 thread per col for 32x32 pat
 			}
 
 			if( !(fmod((float)lid,step)==0) &&  (fmod((float)lid,step/2)==0)    ){																												// selects 2nd column, sends data
-																						local_rho[		lid/step ] 						= rho[block_row];
+																						local_rho[		lid/step ] 						= rho[		 block_row];
 				for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
 																						local_SE3_incr[ lid/step + se3_dim*local_size ]	= SE3_incr[  block_row + se3_dim*block_size ];			// NB integer division. Hence both threads use the same index to local memory.
 																						local_weights[  lid/step + se3_dim*local_size ]	= weights[   block_row + se3_dim*block_size ];
@@ -315,7 +312,7 @@ __kernel void Rho_sq(						// To be launched with 1 thread per col for 32x32 pat
 			barrier(CLK_LOCAL_MEM_FENCE );																																						// Using barrier as a semaphore, for local mem messages between threads.
 
 			if( (fmod((float)lid,step)==0)  ){																																					// selects 1st column, adds data. Sum of patch now held in top left element of patch.
-																						rho[block_row] 									+= local_rho[lid/step];
+																						rho[block_row] 									+= local_rho[ lid/step ];
 				for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
 																						SE3_incr[  block_row + se3_dim*block_size ]		+= local_SE3_incr[ lid/step + se3_dim*local_size ];
 																						weights[   block_row + se3_dim*block_size ]		+= local_weights[  lid/step + se3_dim*local_size ];
@@ -328,18 +325,24 @@ __kernel void Rho_sq(						// To be launched with 1 thread per col for 32x32 pat
 // 	if (global_id_u==0){printf("\n__kernel void Rho_sq() chk 4");}									//#############################################
 
 	/// Write ouptut to global mem.																																								// Writes dense blocks. Reduces required transfer to host. // TODO need kernel update depth map
-	float2 temp2a											= { (float)block_row, (float)block_col };
+	float2 temp2a											= { (float)/*block_row*/group_id, (float)/*block_col*/lid };
 	if ( read_index < mm_pixels )	{	Rho_[read_index ] 	= temp2a;	}
 
 	barrier(CLK_GLOBAL_MEM_FENCE );
 	uint write_block_row=0;
 	if( fmod((float)lid,out_block_size) ==0 ){																																					// selects columns i.e. threads within the workgroup
-		for (uint block_row=0; block_row<block_size ; block_row += out_block_size, write_block_row++){
- 																						Rho_[			write_index + write_block_row*mm_cols]							= rho[		 block_row ];
-// 			for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
-// 																						SE3_incr_map_[	write_index + write_block_row*mm_cols + se3_dim*layer_pixels ] 	= SE3_incr[  block_row + se3_dim*block_size ];
-// 																						weights[		write_index + write_block_row*mm_cols + se3_dim*layer_pixels ] 	= weights[   block_row + se3_dim*block_size ];
-// 			}
+
+		//uint write_index 	=  row_col / out_block_size   +   block_row * write_spacing * mm_cols;
+		//if(group_id==0) printf("\n__kernel void Rho_sq() lid=%u, step=%u",lid, step );
+
+		for (uint block_row=0; block_row < block_size ; block_row += step, write_block_row++){
+																						printf("\n__kernel void Rho_sq()  group_id=%u,  lid=%u,  step=%u,  write_index=%u,  write_block_row=%u,  mm_cols=%u,  layer_pixels=%u,  mm_pixels=%u,  [write_index + write_block_row*mm_cols]=%u   block_row=%u,  se3_dim=0, block_size=%u,  SE3_incr[  block_row + se3_dim*block_size ]=%f, %f",\
+																							group_id, lid, step, write_index, write_block_row, mm_cols, layer_pixels, mm_pixels, (write_index + write_block_row*mm_cols),   block_row,  block_size,  SE3_incr[block_row].x,  SE3_incr[block_row].y );
+																						Rho_[			write_index + write_block_row*mm_cols]							= rho[		 block_row ];
+			for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
+																						SE3_incr_map_[	write_index + write_block_row*mm_cols + se3_dim*(read_rows_/block_size)*mm_cols ] 	=  temp2a; //SE3_incr[  block_row + se3_dim*block_size ];
+																						weights_map[	write_index + write_block_row*mm_cols + se3_dim*(read_rows_/block_size)*mm_cols ] 	=  weights[   block_row + se3_dim*block_size ];			/*mm_pixels*/
+			}
 		}
 	}
 /*

@@ -155,9 +155,9 @@ void RunCL::ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t o
 											0,				// num_events_in_wait_list
 											NULL,			// event_waitlist				needs to know about preceeding events:
 											&readEvt);		// event
+		_cl_flush_finish(dload_queue, fname);
 														if (status != CL_SUCCESS) { cout << "\nclEnqueueReadBuffer(..) status=" << checkerror(status) <<"\n"<<flush; exit_(status);}
 														else 																				if(verbosity>local_verbosity_threshold) cout << "\nRunCL::ReadOutput chk_1"<<flush;
-		_cl_flush_finish(dload_queue, fname);
 		clReleaseEvent(readEvt);
 																																			if(verbosity>local_verbosity_threshold) cout << "\nRunCL::ReadOutput finish"<<flush;
 }
@@ -354,6 +354,7 @@ void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, st
 																																				<<", max_range="<<max_range<<", folder = ["<<folder_tiff.filename().string()<<"],   tiff="<<tiff<<flush;
 	if (type_mat != CV_32FC2){cout <<"Error (type_mat != CV_32FC2)"<<flush; return;}
 
+
 	for (uint layer=0; layer<vol_layers; layer++  ) {
 
 		uint 	offset 		= layer * image_size_bytes; // 0;	//
@@ -364,7 +365,6 @@ void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, st
 		split(temp_mat, channels);
 		channels.push_back( cv::Mat::zeros( size_mat, CV_32FC1 ) );
 		channels.push_back( cv::Mat::ones(  size_mat, CV_32FC1 ) );
-
 		cv::Scalar 	sum_u 	= cv::sum(channels[0]);
 		cv::Scalar 	sum_v 	= cv::sum(channels[1]);
 
@@ -399,8 +399,8 @@ void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, st
 		string 			type_string 	= checkCVtype(type_mat);
 		string  		date_time_str 	= date_time_string();
 
-		ss 		<< "/" << folder_tiff.filename().string() << "_vol_layer_"<<layer<<"_UV_" << count <<"_sum_u_"<<sum_u<<"_sum_v_"<<sum_v<<"_type_"<<type_string<<"min"<<minVal_u<<"_max"<<maxVal_u<<"_maxRange"<<max_range<<"_"<<date_time_str;
-		png_ss 	<< "/" << folder_tiff.filename().string() << "_vol_layer_"<<layer<<"_UV_" << count << date_time_str;
+		ss 		<< "/" << folder_tiff.filename().string() << date_time_str << "_vol_layer_"<<layer<<"_UV_" << count <<"_sum_u_"<<sum_u<<"_sum_v_"<<sum_v<<"_type_"<<type_string<<"min"<<minVal_u<<"_max"<<maxVal_u<<"_maxRange"<<max_range;
+		png_ss 	<< "/" << folder_tiff.filename().string() << date_time_str << "_vol_layer_"<<layer<<"_UV_" << count;
 
 		std::filesystem::path folder_tiff_= folder_tiff;
 		std::filesystem::path folder_png  = folder_tiff;

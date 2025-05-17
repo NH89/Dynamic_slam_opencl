@@ -54,20 +54,23 @@ void RunCL::update_k2k_buf(float k2k_3_16_[16]) {
 	_clEnqueueWriteBuffer( uload_queue, k2kbuf,	CL_FALSE, 0, 16*sizeof( float), k2k_3_16_,  	fname);
 }
 
-void RunCL::rho_sq(uint out_block_size, const float count[4], uint start, uint stop  ){
+void RunCL::rho_sq(uint out_block_size, uint iter, uint layer  ){
 	//  const uint local_num_samples,  const uint start_sample_idx,  float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels], const float count[4], uint start, uint stop,  float k2k_3_16_[tracking_tot_samples][16]
 	string fname = "RunCL::rho_sq( ..)";
 	int local_verbosity_threshold = V_RUNCL_SE3_RHO_SQ;
-	const int num_samples  = 1; //tracking_num_samples;
+	const int se3_dof  = 6;
 
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk0 .##################################################################"<<flush;
 																																				cout << "\nRunCL::rho_sq( ..)__chk_1: K2K= ";
 																																				for ( int i=0; i<16; i++){ cout << ",  "<< fp32_k2keyframe[i];  }	cout << flush;
-																																				cout<<"\n\nRunCL::rho_sq( ..)_chk_2 ,  dataset_frame_num="<<dataset_frame_num<<",   count="<<count[0]<<flush;
+																																				cout<<"\n\nRunCL::rho_sq( ..)_chk_2 ,  dataset_frame_num="<<dataset_frame_num<<",   out_block_size="<<out_block_size<<" , iter="<<iter<<" , layer="<<layer<<flush;
 																																			}
 	//_clEnqueueWriteBuffer( uload_queue, k2kbuf,	CL_FALSE, 0, local_num_samples*16*sizeof( float), k2k_3_16_[start_sample_idx],  	fname);
 	float zero  = 0;
-	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, 	&zero, sizeof( float), 0, num_samples*2*mm_size_bytes_C4, 	fname);
+	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, 	&zero, sizeof( float), 0, 		  2*mm_size_bytes_C1, 	fname);
+	_clEnqueueFillBuffer( uload_queue, SE3_weight_map_mem, 	&zero, sizeof( float), 0, se3_dof*2*mm_size_bytes_C1, 	fname);
+	_clEnqueueFillBuffer( uload_queue, SE3_incr_map_mem, 	&zero, sizeof( float), 0, se3_dof*2*mm_size_bytes_C1, 	fname);
+
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_3 "<<flush;}
 																																			// NB GT_depth loaded to depth_mem by void RunCL::loadFrameData( ..)
 
@@ -106,19 +109,17 @@ void RunCL::rho_sq(uint out_block_size, const float count[4], uint start, uint s
 	_clSetKernelArg( rho_sq_kernel,21, sizeof( float)*local_work_size,			NULL, 													fname);		//__local		float2*		local_rho				//19	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
 
 	_clSetKernelArg( rho_sq_kernel,22, sizeof( cl_mem), 						&SE3_weight_map_mem,									fname);		//__global		float4* 	weights_map,			//22
-	_clSetKernelArg( rho_sq_kernel,23, sizeof( float)*local_work_size*6,		NULL,													fname);		//__local		float4* 	local_weights,			//23	// float4 local_weights[ local_work_size/2 ]  hence sizeof( float)*local_work_size*4 NB only used as a message between threads.
+	_clSetKernelArg( rho_sq_kernel,23, sizeof( float)*local_work_size*se3_dof,	NULL,													fname);		//__local		float4* 	local_weights,			//23	// float4 local_weights[ local_work_size/2 ]  hence sizeof( float)*local_work_size*4 NB only used as a message between threads.
 
 	_clSetKernelArg( rho_sq_kernel,24, sizeof( cl_mem), 						&SE3_incr_map_mem,										fname);		//__global 		float4*		SE3_incr_map_,			//24
-	_clSetKernelArg( rho_sq_kernel,25, sizeof( float)*local_work_size*6,		NULL,													fname);		//__local 		float4*		local_SE3_incr			//25
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_4 .  start="<<start<<",  stop="<<stop<<flush;}
+	_clSetKernelArg( rho_sq_kernel,25, sizeof( float)*local_work_size*se3_dof,	NULL,													fname);		//__local 		float4*		local_SE3_incr			//25
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_4 .  "<<flush;}
 	//mipmap_call_kernel( rho_sq_kernel, m_queue, start, stop, false, local_work_size );
 
-	uint 				layer				= start;
 	const uint			patch_size 			= 32;																							// generally:  device_work_size_multiple = patch_size * integer,   eg 32, 64, 128
 	if (fmod(device_work_size_multiple, patch_size)!=0)   { cout <<"\nRunCL::rho_sq( ..)  Error: fmod(device_work_size_multiple, patch_size) != 0 \n"<<flush;exit_(0);}
 
 	uint				reduction 			= layer;
-
 	uint				read_rows			= MipMap[layer * 8 + MiM_READ_ROWS] ;
 	uint				read_cols			= MipMap[layer * 8 + MiM_READ_COLS] ;
 	uint				rows_blocks			= read_rows/patch_size  + (fmod(read_rows, patch_size) != 0) ;
@@ -138,16 +139,17 @@ void RunCL::rho_sq(uint out_block_size, const float count[4], uint start, uint s
 		cout << "\n reduction = "<< reduction  <<"  num_threads[reduction] = "<< num_threads[reduction] << flush;
 	}
 
+	cout<<"\nRunCL::rho_sq( ..)_chk_4.6 	tracking_num_samples*2*mm_size_bytes_C4="<<tracking_num_samples*2*mm_size_bytes_C4<<"     24 * mm_size_bytes_C1="<<24 * mm_size_bytes_C1<<flush;
+
 	_clSetKernelArg( rho_sq_kernel, 0, sizeof( uint),   				&layer,	 												fname);		//__private		uint 		layer,					//0
 	_clSetKernelArg( rho_sq_kernel, 1, sizeof( uint),   				&cols_per_row,											fname);		//__private		uint 		cols_per_row,			//1
 
 																									auto step_0 = high_resolution_clock::now();
-	res 	= clSetKernelArg(kernel_to_call, 0, sizeof(int), &reduction);							if (res    !=CL_SUCCESS)	{ cout <<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}	;
 	res 	= clEnqueueNDRangeKernel(queue_to_call, kernel_to_call, 1, 0, &threads_to_launch, &device_work_size_multiple, 0, NULL, &ev); 	// run mipmap_float4_kernel, NB wait for own previous iteration.
 																									if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
-	status 	= clFlush(queue_to_call);																if (status != CL_SUCCESS)	{ cout << "\nRunCL::mipmap_call_kernel( cl_kernel "<<kernel_to_call<<",  clFlush(queue_to_call) status  = "		<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
+	status 	= clFlush(queue_to_call);																if (status != CL_SUCCESS)	{ cout << "\nRunCL::rho_sq( ..) call_kernel( cl_kernel "<<kernel_to_call<<",  clFlush(queue_to_call) status  = "		<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
 																									auto step_1 = high_resolution_clock::now();
-	status 	= clWaitForEvents (1, &ev);																if (status != CL_SUCCESS)	{ cout << "\nRunCL::mipmap_call_kernel( cl_kernel "<<kernel_to_call<<") final,  clWaitForEventsh(1, &ev) ="		<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
+	status 	= clWaitForEvents (1, &ev);																if (status != CL_SUCCESS)	{ cout << "\nRunCL::rho_sq( ..) call_kernel( cl_kernel "<<kernel_to_call<<") final,  clWaitForEventsh(1, &ev) ="		<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 
 																									auto step_2 = high_resolution_clock::now();
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_4.5 . "<<\
@@ -156,21 +158,21 @@ void RunCL::rho_sq(uint out_block_size, const float count[4], uint start, uint s
 																																			}
 
 																																				if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_5 ."<<flush;
-																																				stringstream ss;	ss << dataset_frame_num <<"_iter_"<<count[0]<<"_layer"<<count[1]<<"_factor"<<count[2]<<"_rho_sq_";
+																																				stringstream ss;	ss << "_ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_iter"<<iter<<"_out_bock_size"<<out_block_size<<"_rho_sq()";
 																																				stringstream ss_path;
 
 																																				bool show 				= false;
 																																				float max_range 		= 1; 					// i.e. gray = zero.
-																																				uint vol_layers 		= 6;
+																																				uint vol_layers 		= 1;//se3_dof;
 																																				bool exception_tiff 	= false;
 																																				bool display 			= false; 				//obj["sample_se3_incr"].asBool( );
 																																				cout << "\nRunCL::rho_sq( ..)_chk_6   display="<< display<< endl << flush;
 
 																																				bool old_tiff = tiff;
 																																				tiff = true;
-																																				DownloadAndSave_2Channel_volume(  SE3_rho_map_mem,		ss.str( ), paths.at( "SE3_rho_map_mem"),	  2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	 1);
-																																				DownloadAndSave_2Channel_volume(  SE3_weight_map_mem,	ss.str( ), paths.at( "SE3_weight_map_mem"),	6*2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	 vol_layers);
-																																				DownloadAndSave_2Channel_volume(  SE3_incr_map_mem,		ss.str( ), paths.at( "SE3_incr_map_mem"),	6*2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	 vol_layers);
+																																				DownloadAndSave_2Channel_volume(  SE3_rho_map_mem,		ss.str( ), paths.at( "SE3_rho_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	 1);
+																																				DownloadAndSave_2Channel_volume(  SE3_weight_map_mem,	ss.str( ), paths.at( "SE3_weight_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	 vol_layers);
+																																				DownloadAndSave_2Channel_volume(  SE3_incr_map_mem,		ss.str( ), paths.at( "SE3_incr_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	 vol_layers);
 																																				tiff = old_tiff;
 																																				cout<<"\n\nRunCL::rho_sq( ..) finished"<< flush;
 																																			}
