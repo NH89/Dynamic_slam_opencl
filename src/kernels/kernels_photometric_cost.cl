@@ -80,7 +80,7 @@ float8 bilinear_SE3_grad (__global float8* img, float u_flt, float v_flt, int co
 	int int_u2 = ceil(u_flt);
 	int int_v2 = ceil(v_flt);
 																			// compute adjacent pixel indices & sample adjacent pixels
-	c_11 = img[ read_offset_ + int_v2     * cols +  int_u2     ];
+	c_11 = img[ read_offset_ + int_v2     * cols +  int_u2     ];			// TODO use opencl C  mix( value_1 , value_2, ratio );
 	c_10 = img[ read_offset_ + (int_v2-1) * cols +  int_u2     ];
 	c_01 = img[ read_offset_ + int_v2     * cols + (int_u2 -1) ];
 	c_00 = img[ read_offset_ + (int_v2-1) * cols + (int_u2 -1) ];
