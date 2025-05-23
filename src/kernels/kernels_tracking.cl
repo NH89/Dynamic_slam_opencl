@@ -293,19 +293,22 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 			}
 			barrier(CLK_LOCAL_MEM_FENCE );
 		}
-
-		if (step==out_block_size){	// save ST3 a out_block_size
-			uint frame_offset = past_frame_idx * 100 + 25 ; // NB 100 works for current img size . // stacks frame ST3 maps in adjacent collumns..
-			uint write_block_row=0;
-			if( fmod((float)lid,out_block_size) ==0 ){																																			// selects columns i.e. threads within the workgroup
+		////////////////////////////////
+		if (step==out_block_size){																																								// save ST3 map at out_block_size, to use for updating depth_map and rel_vel_map
+			uint frame_offset 		= write_index + past_frame_idx * 100 + 25 ; // NB 100 works for current img size . // stacks frame ST3 maps in adjacent collumns..
+			uint write_block_row	= 0;
+			if( fmod((float)lid,out_block_size) == 0 ){																																			// selects columns i.e. threads within the workgroup
 
 				for (uint block_row=0; block_row < block_size ; block_row += step, write_block_row++){
-																						Rho_[			frame_offset + write_index + write_block_row*mm_cols]																		= rho[		 block_row ];
+																						uint offset_1 				= frame_offset  + write_block_row*mm_cols;
+																						Rho_[			offset_1]	= rho[		 block_row ];
 					for (uint se3_dim=3; se3_dim<se3_dof; se3_dim++) {// select only ST3
-																						SE3_incr_map_[	frame_offset + write_index + write_block_row*mm_cols + (se3_dim-3)*((4*block_size+read_rows_)/out_block_size)*mm_cols ] 	=  SE3_incr[  block_row + se3_dim*block_size ];
-																						weights_map[	frame_offset + write_index + write_block_row*mm_cols + (se3_dim-3)*((4*block_size+read_rows_)/out_block_size)*mm_cols ] 	=  weights[   block_row + se3_dim*block_size ];
+																						uint offset_2 				= offset_1 		+ (se3_dim-3)*((4*block_size+read_rows_)/out_block_size)*mm_cols;
+																						uint offset_3 				= block_row 	+ se3_dim*block_size;
+																						SE3_incr_map_[	offset_2 ] 	= SE3_incr[  offset_3 ];
+																						weights_map[	offset_2 ] 	= weights[   offset_3 ];
 					}
-				}
+				}	// weights_map[	frame_offset  + write_block_row*mm_cols + (se3_dim-3)*((4*block_size+read_rows_)/out_block_size)*mm_cols ] 	=  weights[   block_row + se3_dim*block_size ];
 			}
 		}
 	}
@@ -314,32 +317,144 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 
 	/// Write ouptut to global mem.																																								// Writes dense blocks. Reduces required transfer to host. // TODO need kernel update depth map
 	float2 temp2a											= { (float)/*block_row*/group_id, (float)/*block_col*/lid };
-	if ( read_index < mm_pixels )	{	Rho_[read_index ] 	= temp2a;	}
-
+	if ( read_index < mm_pixels )	{	Rho_[read_index ] 	= temp2a;	}																														// Marks the area where the img buf is read, lines show top row of each patch.
+																																																// Breaks show bondaries of patches.
 	barrier(CLK_GLOBAL_MEM_FENCE );
 	uint write_block_row=0;
-	if( fmod((float)lid,block_size) ==0 ){		//out_block_size																															// selects columns i.e. threads within the workgroup
+	if( fmod((float)lid,block_size) ==0 ){		//out_block_size																																// selects columns i.e. threads within the workgroup
 
-		uint frame_offset_1 = 0;//past_frame_idx * 75 * mm_cols; // NB 75 works for current img size . // stacks frame SE3 results vertically.
-		uint frame_offset_2 = 0;//past_frame_idx * 75 + 600 * mm_cols; // NB 75 works for current img size . // stacks frame SE3 results vertically.
+		uint frame_offset_1 = write_index_2;	//past_frame_idx * 75 * mm_cols; 			// NB 75 works for current img size . 	// stacks frame SE3 results vertically.
 
-// 		step = block_size / out_block_size;
-		for ( step=2; step<block_size; step *=2){}
+		//for ( step=2; step<block_size; step *=2){}
+		step = block_size/2;
 
 		for (uint block_row=0; block_row < block_size ; block_row += step, write_block_row++){
 																						printf("\n__kernel void Rho_sq()  group_id=%u,  lid=%u,  step=%u,  write_index=%u,  write_index_2=%u,  write_block_row=%u,  mm_cols=%u,  layer_pixels=%u,  mm_pixels=%u,  [write_index + write_block_row*mm_cols]=%u   block_row=%u,  se3_dim=0, block_size=%u,  SE3_incr[  block_row + se3_dim*block_size ]=%f, %f",\
 																							group_id, lid, step, write_index, write_index_2, write_block_row, mm_cols, layer_pixels, mm_pixels, (write_index + write_block_row*mm_cols),   block_row,  block_size,  SE3_incr[block_row].x,  SE3_incr[block_row].y );
 
-																						Rho_[			frame_offset_2 + write_index_2 + write_block_row*mm_cols ]															= rho[		 block_row ];
+																						uint offset_2 				= frame_offset_1 + write_block_row*mm_cols;
+																						Rho_[			offset_2  ]	= rho[		 block_row ];
 			for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
-																						SE3_incr_map_[	frame_offset_2 + write_index_2 + write_block_row*mm_cols + se3_dim*((4*block_size+read_rows_)/block_size)*mm_cols ]	=  SE3_incr[  block_row + se3_dim*block_size ];		//out_block_size
-																						weights_map[	frame_offset_2 + write_index_2 + write_block_row*mm_cols + se3_dim*((4*block_size+read_rows_)/block_size)*mm_cols ]	=  weights[   block_row + se3_dim*block_size ];		//out_block_size
+																						uint offset_3 				= offset_2 		+ se3_dim*((4*block_size+read_rows_)/block_size)*mm_cols;
+																						uint offset_4				= block_row 	+ se3_dim*block_size;
+																						SE3_incr_map_[	offset_3 ]	= SE3_incr[  offset_4 ];
+																						weights_map[	offset_3 ]	= weights[   offset_4 ];
 			}
 		}
 	}
 	barrier(CLK_GLOBAL_MEM_FENCE );
 
 }
+
+__kernel void update_SE3(									// call just one workgroup to sum the whole image maps from the patch kernel.
+
+	__private	uint		cols,					//0
+	__private	uint 		rows,					//1
+	__private	uint 		row_offset,				//2
+	__private	uint		thread_offset,			//3
+	__private	uint		mm_cols,				//4
+	__private	float		img_var,				//5
+	__private	float2		delta_SE3,				//6
+
+	__global	float2*		Rho_,					//7		// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
+	__global	float2*		weights_map,			//8
+	__global	float2*		SE3_incr_map_,			//9
+
+	__local		float2*		local_Rho_,				//10		// used for sum-reduce. Need to be [groupsize/2], set in host fn.
+	__local		float2*		local_weights_map,		//11
+	__local		float2*		local_SE3_incr_map_,	//12
+
+	// out
+	__global	float*		pose_update,			//13	// 6_DoF
+	__global	float*		distorsion_update,		//14
+	__global	float*		old_result				//15
+	)
+{
+	float  global_id_u 		= get_global_id(0);
+	float  global_id_f 		= global_id_u;
+	uint   lid 				= get_local_id(0);
+																								// read in global data : Rho, weights, SE3_incr
+																								// NB 10x8 pactch for each SE3.
+																								// Read & sum pixels in column, NB img overlap pixel count
+	uint   SE3				= global_id_u / thread_offset;
+	float2 pvt_rho 			= {0.0f,0.0f};
+	float2 pvt_weights 		= {0.0f,0.0f};
+	float2 pvt_incr			= {0.0f,0.0f};
+	float  delta_SE3_[2]	= {delta_SE3.x, delta_SE3.y};
+
+	if ( fmod(global_id_u, thread_offset) < cols ){
+		row_offset *=SE3;
+		for(uint idx = row_offset; idx<rows+row_offset; idx += mm_cols){
+			pvt_rho			+= Rho_[idx];
+			pvt_weights		+= weights_map[idx];
+			pvt_incr		+= SE3_incr_map_[idx];
+		}
+	}
+																								// sum reduce  columns of each 10x8 patch (1ayer 1), 5x5 layer 2, 3x3 layer 3, 2x2 layer 4, 1x1 layer 5.
+	uint max_iter								= log2((float)rows);
+	uint step									= 2;
+	float col									= global_id_u - SE3*thread_offset;
+
+	for ( uint iter=0; iter<max_iter; iter++, step*=2 ){
+		if(fmod(col, step)!= 0 && fmod(col, step/2)==0){
+			local_Rho_[				lid/step]	= pvt_rho;
+			local_weights_map[		lid/step]	= pvt_weights;
+			local_SE3_incr_map_[	lid/step]	= pvt_incr;
+		}
+		barrier(CLK_LOCAL_MEM_FENCE );
+
+		if(fmod(col, step)== 0){
+			pvt_rho								+= local_Rho_[				lid/step];
+			pvt_weights							+= local_weights_map[		lid/step];
+			pvt_incr							+= local_SE3_incr_map_[		lid/step];
+		}
+		barrier(CLK_LOCAL_MEM_FENCE );
+	}
+	if (fmod(col, step)== 0){	local_Rho_[SE3]	= pvt_rho/pvt_rho.y; }
+	barrier(CLK_LOCAL_MEM_FENCE );
+
+	if (fmod(col, step)== 0){																														// compute updates
+		pvt_rho.x								/= pvt_rho.y;
+		pvt_weights.x							/= pvt_rho.y;
+		pvt_incr.x								/= pvt_rho.y;																						// TODO reduce SE3_incr_map & weights_map to float1, to save data read/writes.
+
+		uint offset 							= 3 * floor((float)SE3/3);																			// offset = 0 for SO3, 3 for ST3.
+		float mag_S3							= fabs(local_Rho_[0+offset].x) + fabs(local_Rho_[1+offset].x) + fabs(local_Rho_[2+offset].x);		//float rho_ST3_mag		= fabs(local_Rho_[3].x) + fabs(local_Rho_[4].x) + fabs(local_Rho_[5].x);
+																																					// result_[iter][SE3] 	= SE3_results[layer][SE3][channel]  / (SE3_weights[layer][SE3][channel] * runcl.img_stats[IMG_VAR+channel] )
+		float result							= pvt_rho.x / ( pvt_weights.x  * img_var );
+		float update;
+		float old_pose_update 					= pose_update[SE3];																					// will be zero if 1st iteration.
+		if ( old_pose_update==0 ){
+			update								= result * delta_SE3_[ SE3/3 ] / mag_S3;															// NB integer division SE3/3 => 0=SO3, 1=ST3
+		}else{
+			float rho_S3_delta					=      local_Rho_[0+offset].x  -  old_result[0+offset] \
+												   +   local_Rho_[1+offset].x  -  old_result[1+offset] \
+												   +   local_Rho_[2+offset].x  -  old_result[2+offset] ;
+			update								= result * rho_S3_delta / mag_S3;
+		}
+		old_result[SE3]							= local_Rho_[SE3].x;
+		pose_update[SE3]						= clamp(    update, -delta_SE3_[ SE3/3 ], +delta_SE3_[ SE3/3 ] );
+		//distorsion_update[..]	=  ;
+	}
+}
+
+__kernel void update_maps(  // ? integrate with patch kernel ?
+
+
+
+
+
+	)
+{
+	// given global ST3 direction vector, fit depth map
+
+
+	// given residual of local ST3 map, after depth update, fit rel_vel_map
+
+
+}
+
+
 
 
 

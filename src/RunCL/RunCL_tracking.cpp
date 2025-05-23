@@ -174,13 +174,65 @@ void RunCL::rho_sq(uint out_block_size, uint iter, uint layer  ){
 																																				DownloadAndSave_2Channel_volume(  SE3_weight_map_mem,	ss.str( ), paths.at( "SE3_weight_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	 vol_layers);
 																																				DownloadAndSave_2Channel_volume(  SE3_incr_map_mem,		ss.str( ), paths.at( "SE3_incr_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	 vol_layers);
 
-
-
-
 																																				tiff = old_tiff;
 																																				cout<<"\n\nRunCL::rho_sq( ..) finished"<< flush;
 																																			}
 }
+
+void RunCL::update_SE3(   )
+{
+	string fname = "RunCL::se3_rho_sq( ..)";
+	int local_verbosity_threshold = V_RUNCL_SE3_RHO_SQ;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::se3_rho_sq( ..)_chk0 .##################################################################"<<flush;
+
+																																			}
+	cl_kernel	kernel = update_SE3_kernel;
+
+
+	__kernel void update_SE3									// call just one workgroup to sum the whole image maps from the patch kernel.
+	uint 		cols;					//0
+	uint		rows;					//1
+	uint 		row_offset;				//2
+	uint		thread_offset;			//3
+	uint		mm_cols;				//4
+	float		img_var;				//5
+	cl_float2	delta_SE3;				//6
+
+	_clSetKernelArg( kernel, 0, sizeof( uint),			&cols,				fname);																	//__private	uint		cols,					//0
+	_clSetKernelArg( kernel, 1, sizeof( uint),			&rows,				fname);																	//__private	uint 		rows,					//1
+	_clSetKernelArg( kernel, 2, sizeof( uint),			&row_offset,		fname);																	//__private	uint 		row_offset,				//2
+	_clSetKernelArg( kernel, 3, sizeof( uint),			&thread_offset,		fname);																	//__private	uint		thread_offset,			//3
+	_clSetKernelArg( kernel, 4, sizeof( uint),			&mm_cols,			fname);																	//__private	uint		mm_cols,				//4
+	_clSetKernelArg( kernel, 5, sizeof( float),			&img_var,		 	fname);																	//__private	float		img_var,				//5
+	_clSetKernelArg( kernel, 6, sizeof( cl_float2),		&delta_SE3,			fname);																	//__private	float2		delta_SE3,				//6
+
+	_clSetKernelArg( kernel, 7, sizeof( cl_mem), &mipmap_buf, 			fname);														//__global	float2*		Rho_,					//7		// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
+	_clSetKernelArg( kernel, 8, sizeof( cl_mem), &mipmap_buf, 			fname);														//__global	float2*		weights_map,			//8
+	_clSetKernelArg( kernel, 9, sizeof( cl_mem), &mipmap_buf, 			fname);														//__global	float2*		SE3_incr_map_,			//9
+
+	_clSetKernelArg( kernel,10, ( local_num_samples*local_work_size*4/wg_divisor)*sizeof( float),	 NULL, 					fname);	//__local		float2*		local_Rho_,				//10		// used for sum-reduce. Need to be [groupsize/2], set in host fn.
+	_clSetKernelArg( kernel,11, ( local_num_samples*local_work_size*4/wg_divisor)*sizeof( float),	 NULL, 					fname);	//__local		float2*		local_weights_map,		//11
+	_clSetKernelArg( kernel,12, ( local_num_samples*local_work_size*4/wg_divisor)*sizeof( float),	 NULL, 					fname);	//__local		float2*		local_SE3_incr_map_,	//12
+
+	// out
+	_clSetKernelArg( kernel, 13, sizeof( cl_mem), &mipmap_buf, 			fname);														//__global	float*		pose_update,			//13	// 6_DoF
+	_clSetKernelArg( kernel, 14, sizeof( cl_mem), &mipmap_buf, 			fname);														//__global	float*		distorsion_update,		//14
+	_clSetKernelArg( kernel, 15, sizeof( cl_mem), &mipmap_buf, 			fname);														//__global	float*		old_result				//15
+
+		_clEnqueueWriteBuffer( uload_queue, k2kbuf,	CL_FALSE, 0, local_num_samples*16*sizeof( float), k2k_3_16_[start_sample_idx],  	fname);
+	float zero  = 0;
+	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, 	&zero, sizeof( float), 0, num_samples*2*mm_size_bytes_C4, 	fname);
+	_clEnqueueFillBuffer( uload_queue, se3_sum_rho_sq_mem, 	&zero, sizeof( float), 0, num_samples*pix_sum_size_bytes, 	fname);
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::se3_rho_sq( ..)_chk0.7 "<<flush;}
+																																			// NB GT_depth loaded to depth_mem by void RunCL::loadFrameData( ..)
+
+
+
+
+
+
+}
+
 
 
 
