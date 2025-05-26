@@ -56,6 +56,12 @@ class Dynamic_slam
     std::vector<fs::path>   depth;
 
     // camera & pose params
+	float f;			//= ( obj["cameraMatrix"][0].asFloat() + obj["cameraMatrix"][4].asFloat() ) /2.0;	// focal length in pixels.
+	float delta;		//= obj["ST3_delta"].asFloat() * obj["min_depth"].asFloat()  / f ;					// ST3_delta * (Translation to cause 1 pixel of parallax at min_depth)  //1.0;//0.01; //0.001;  //  * obj["min_depth"].asFloat()
+	float delta_theta;	//= obj["SO3_delta_theta"].asFloat() / f;											// SO3_delta_theta * (Rotation to cause 1 pixel of rotation flow) //0.01; //0.001;
+	float cos_theta;	//= cos(delta_theta);
+	float sin_theta;	//= sin(delta_theta);
+
     const cv::Matx44f       Matx44f_zero = {0,0,0,0,  0,0,0,0,  0,0,0,0,  0,0,0,0};   //  = cv::Matx44f::zeros();//
     const cv::Matx44f       Matx44f_eye  = {1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1};
     #define                 MATX44F_EYE    {1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1}

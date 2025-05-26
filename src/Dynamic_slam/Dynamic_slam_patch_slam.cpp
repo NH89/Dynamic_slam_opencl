@@ -60,11 +60,9 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 	Matx44f_To_float16arry( keyframe_k2k,  k2k_4_16[0] );																				// NB float float 	k2k_4_16[..][16]  is passed by RunCL to kernels.
 	// uint 	local_num_samples, start_sample_idx;
 
-
-	const float f			= ( obj["cameraMatrix"][0].asFloat() + obj["cameraMatrix"][4].asFloat() ) /2.0;									// focal length in pixels.
-	const float delta 	  	= obj["ST3_delta"].asFloat() * obj["min_depth"].asFloat()  / f ;												// ST3_delta * (Translation to cause 1 pixel of parallax at min_depth)  	//1.0;//0.01; //0.001;  //  * obj["min_depth"].asFloat()
-	const float delta_theta = obj["SO3_delta_theta"].asFloat() / f;																			// SO3_delta_theta * (Rotation to cause 1 pixel of rotation flow) //0.01; //0.001;
-
+	// const float f			= ( obj["cameraMatrix"][0].asFloat() + obj["cameraMatrix"][4].asFloat() ) /2.0;									// focal length in pixels.
+	// const float delta 	  	= obj["ST3_delta"].asFloat() * obj["min_depth"].asFloat()  / f ;												// ST3_delta * (Translation to cause 1 pixel of parallax at min_depth)  	//1.0;//0.01; //0.001;  //  * obj["min_depth"].asFloat()
+	// const float delta_theta = obj["SO3_delta_theta"].asFloat() / f;																			// SO3_delta_theta * (Rotation to cause 1 pixel of rotation flow) //0.01; //0.001;
 
 	//float	old_update_[num_SE3_DoF]		={0};
 	float 	result_[max_iter][num_SE3_DoF]	={{0}};
@@ -113,8 +111,8 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 																																		}
 		runcl.estimateSE3_LK( k2k_4_16[ iter ], SE3_results, SE3_weights, Rho_sq_results[ iter ], iter, layer, layer );		// NB processes largest layer first.		// Find the gradient "update" wrt SE3
 
-
-		for (int SE3=0; SE3<num_SE3_DoF; SE3++) {	result_[iter][SE3] = SE3_results[layer][SE3][channel]  / (SE3_weights[layer][SE3][channel] * runcl.img_stats[IMG_VAR+channel] ) ;  }  // NB divide by total edge weighting, and image variance.
+																																		//TODO NB currently runcl.img_stats[..] only for layer"0"
+		for (int SE3=0; SE3<num_SE3_DoF; SE3++) {	result_[iter][SE3] = SE3_results[layer][SE3][channel]  / (SE3_weights[layer][SE3][channel] * runcl.img_stats[/*layer*8 +*/ IMG_VAR*4 + channel] ) ;  }  // NB divide by total edge weighting, and image variance.
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nDynamic_slam::patch_slam() :chk_3"<<flush;
 																																			Rho_valid_pixels[iter]	= Rho_sq_results[iter][layer][channel] / Rho_sq_results[iter][layer][3];
@@ -145,8 +143,8 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 			float delta_SO3								= result_[iter][0]-result_[iter-1][0] 	+ result_[iter][1]-result_[iter-1][1] 	+ result_[iter][2]-result_[iter-1][2];
 			float delta_ST3								= result_[iter][3]-result_[iter-1][3] 	+ result_[iter][4]-result_[iter-1][4] 	+ result_[iter][5]-result_[iter-1][5];
 			for (uint i=0; i<3; i++){
-				update_[iter][i]						= result_[iter][i]		* delta_SO3/mag_SO3; 		//( mag_SO3	/ delta_SO3 * 2 );
-				update_[iter][i+3]						= result_[iter][i+3]	* delta_ST3/mag_ST3; 		//( mag_ST3	/ delta_ST3 * 2 );
+				update_[iter][i]						= result_[iter][i]		* delta_SO3/mag_SO3; 						//( mag_SO3	/ delta_SO3 * 2 );
+				update_[iter][i+3]						= result_[iter][i+3]	* delta_ST3/mag_ST3; 						//( mag_ST3	/ delta_ST3 * 2 );
 				if ( update_[iter][i] 	< -delta_theta	|| update_[iter][i] 	<	delta_theta	){		cout << "\n update_["<<i<<"]="		<<update_[i]	<<",  delta_theta="<<delta_theta<<flush; }
 				if ( update_[iter][i+3] < -delta		|| update_[iter][i+3] 	<	delta		){		cout << "\n update_["<<i+3<<"]="	<<update_[i+3]	<<",  delta="<<delta<<flush; }
 
@@ -278,6 +276,8 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 				count[0]  = iter;
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_1: layer="<<layer<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
 				runcl.rho_sq( out_block_size, iter, layer  );		// uint out_block_size, const float count[4], uint start, uint stop
+
+				runcl.update_SE3( layer, delta_theta, delta );
 			}
 		}
 	}

@@ -95,7 +95,7 @@ void RunCL::cvt_color_space(){ //getFrame(); basemem(CV_8UC3, RGB)->imgmem(CV16F
 	}
 	uint layer =0;
 	for (int i=0; i<3; i++){
-		img_stats[layer*4 + IMG_MEAN + i ]	=	pix_sum_reults[i] / pix_sum_reults[3];
+		img_stats[layer*8 + IMG_MEAN*4 + i ]	=	pix_sum_reults[i] / pix_sum_reults[3];
 	}
 
 	_clEnqueueWriteBuffer(uload_queue, img_stats_buf, CL_FALSE, 0, img_stats_size_bytes, img_stats, fname);									// Upload img_mean to GPU
@@ -130,7 +130,9 @@ void RunCL::sum_image_variance(){
 	_clSetKernelArg(sum_image_variance_kernel, 5, sizeof(cl_mem), &var_sum_mem, fname);															//__local  float4*		global_sum_pix	//5
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_chk1,  global_work_size="<< global_work_size <<flush;
 	_clEnqueueNDRangeKernel(m_queue, sum_image_variance_kernel, 1, 0, &global_work_size, &local_work_size, fname); 								// run img_variance _kernel  aka img_variance(..) ##### TODO which CommandQueue to use ? What events to check ?
-                                                                                                                                            if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_chk2"<<flush;
+
+	//mipmap_call_kernel( sum_image_variance_kernel, m_queue );  To run on all layers would req kernel edits.
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_chk2"<<flush;
 	cv::Mat var_sum_mat = cv::Mat::zeros (pix_sum_size, 1, CV_32FC4); // cv::Mat::zeros (int rows, int cols, int type)						// NB the data returned is one float4 per group, for the base image, holding hsv channels plus entry[3]=pixel count.
 	ReadOutput( var_sum_mat.data, var_sum_mem, pix_sum_size_bytes );                                                                        // se3_sum_size_bytes
                                                                                                                                             if(verbosity>local_verbosity_threshold+2) {cout<<"\n\nRunCL::img_variance(..)_chk2 ."<<flush;
@@ -157,9 +159,9 @@ void RunCL::sum_image_variance(){
 	}
 	uint layer = 0; // TODO convert to mimpap version.
 	for (int i=0; i<3; i++){
-		img_stats[layer*4 + IMG_VAR + i ]	=	var_sum_results[i] / var_sum_results[3];
+		img_stats[layer*8 + IMG_VAR*4 + i ]	=	var_sum_results[i] / var_sum_results[3];
 	}
-	_clEnqueueWriteBuffer(uload_queue, img_stats_buf, CL_FALSE, 0, img_stats_size_bytes, img_stats, fname);									// Upload img_variance to GPU
+	_clEnqueueWriteBuffer( uload_queue, img_stats_buf, CL_FALSE, 0, img_stats_size_bytes, img_stats, fname);									// Upload img_variance to GPU
 																																			if(verbosity>local_verbosity_threshold){
 																																				cout << "\n Var_sum_results = (";
 																																				for (int k=0; k<4; k++){

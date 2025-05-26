@@ -24,6 +24,13 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 	SE_iter_per_layer 				= obj["SE_iter_per_layer"].asUInt();
     SE_iter 						= obj["SE_iter"].asUInt();
 	SE_factor						= obj["SE_factor"].asFloat();
+
+	f								= ( obj["cameraMatrix"][0].asFloat() + obj["cameraMatrix"][4].asFloat() ) /2.0;		// focal length in pixels.
+	delta							= obj["ST3_delta"].asFloat() * obj["min_depth"].asFloat()  / f ;					// ST3_delta * (Translation to cause 1 pixel of parallax at min_depth)  	//1.0;//0.01; //0.001;  //  * obj["min_depth"].asFloat()
+	delta_theta						= obj["SO3_delta_theta"].asFloat() / f;												// SO3_delta_theta * (Rotation to cause 1 pixel of rotation flow) //0.01; //0.001;
+	cos_theta						= cos(delta_theta);
+	sin_theta						= sin(delta_theta);
+
 																																			if(verbosity>local_verbosity_threshold) cout << "\n  Dynamic_slam::Dynamic_slam_chk -0.5\n" << flush;
 
 	for (int layer=0; layer<MAX_LAYERS; layer++){for (int chan=0; chan<3; chan++)	SE3_Rho_sq_threshold[layer][chan]  	= obj["SE3_Rho_sq_threshold"][layer][chan].asFloat();  }

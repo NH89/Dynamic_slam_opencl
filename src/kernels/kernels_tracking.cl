@@ -350,8 +350,8 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 
 	__private	uint		cols,					//0
 	__private	uint 		rows,					//1
-	__private	uint 		row_offset,				//2
-	__private	uint		thread_offset,			//3
+	__private	uint 		row_offset,				//2		// index of 1st pixel of the 2nd patch, i.e. spacing between patches
+	__private	uint		thread_offset,			//3		// smallest 2^n > rows * cols NB rows=3, cols=4, -> 12 ->16 for layer 1.  6*8=48 -> 64 for layer 0, where base image has 640*480 pixels. NB for larger images may need a patch approach to update_SE3, to kep each SE3 DoF within
 	__private	uint		mm_cols,				//4
 	__private	float		img_var,				//5
 	__private	float2		delta_SE3,				//6
@@ -367,22 +367,25 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 	// out
 	__global	float*		pose_update,			//13	// 6_DoF
 	__global	float*		distorsion_update,		//14
-	__global	float*		old_result				//15
+	__global	float*		old_result				//15	// 1 rho value
 	)
 {
-	float  global_id_u 		= get_global_id(0);
+	uint   global_id_u 		= get_global_id(0);
 	float  global_id_f 		= global_id_u;
 	uint   lid 				= get_local_id(0);
 																								// read in global data : Rho, weights, SE3_incr
 																								// NB 10x8 pactch for each SE3.
 																								// Read & sum pixels in column, NB img overlap pixel count
-	uint   SE3				= global_id_u / thread_offset;
+	uint   SE3				= 0;
+	bool in_range 			= fmod(global_id_f, thread_offset) < cols  &&  (global_id_u / thread_offset < 6);	  // 6 DoF for SE3
+	if (in_range){	SE3 	= global_id_u / thread_offset; }
+
 	float2 pvt_rho 			= {0.0f,0.0f};
 	float2 pvt_weights 		= {0.0f,0.0f};
 	float2 pvt_incr			= {0.0f,0.0f};
 	float  delta_SE3_[2]	= {delta_SE3.x, delta_SE3.y};
 
-	if ( fmod(global_id_u, thread_offset) < cols ){
+	if (in_range){
 		row_offset *=SE3;
 		for(uint idx = row_offset; idx<rows+row_offset; idx += mm_cols){
 			pvt_rho			+= Rho_[idx];
@@ -395,25 +398,28 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 	uint step									= 2;
 	float col									= global_id_u - SE3*thread_offset;
 
+	bool mod_step;
 	for ( uint iter=0; iter<max_iter; iter++, step*=2 ){
-		if(fmod(col, step)!= 0 && fmod(col, step/2)==0){
+		mod_step 							= fmod(col, step)== 0;
+		if( !mod_step  && fmod(col, step/2)==0 && in_range){
 			local_Rho_[				lid/step]	= pvt_rho;
 			local_weights_map[		lid/step]	= pvt_weights;
 			local_SE3_incr_map_[	lid/step]	= pvt_incr;
 		}
 		barrier(CLK_LOCAL_MEM_FENCE );
 
-		if(fmod(col, step)== 0){
+		if( mod_step  && in_range){
 			pvt_rho								+= local_Rho_[				lid/step];
 			pvt_weights							+= local_weights_map[		lid/step];
 			pvt_incr							+= local_SE3_incr_map_[		lid/step];
 		}
 		barrier(CLK_LOCAL_MEM_FENCE );
 	}
-	if (fmod(col, step)== 0){	local_Rho_[SE3]	= pvt_rho/pvt_rho.y; }
+
+	if (mod_step && in_range){	local_Rho_[SE3]	= pvt_rho/pvt_rho.y; }
 	barrier(CLK_LOCAL_MEM_FENCE );
 
-	if (fmod(col, step)== 0){																														// compute updates
+	if (mod_step && in_range){																											// compute updates
 		pvt_rho.x								/= pvt_rho.y;
 		pvt_weights.x							/= pvt_rho.y;
 		pvt_incr.x								/= pvt_rho.y;																						// TODO reduce SE3_incr_map & weights_map to float1, to save data read/writes.
@@ -425,8 +431,10 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 		float update;
 		float old_pose_update 					= pose_update[SE3];																					// will be zero if 1st iteration.
 		if ( old_pose_update==0 ){
+			printf("\n__kernel void update_SE3()_1  global_id_u=%u,  (old_pose_update==0)   pose_update[SE3]=%f,  SE3=%u", global_id_u,  pose_update[SE3], SE3 );
 			update								= result * delta_SE3_[ SE3/3 ] / mag_S3;															// NB integer division SE3/3 => 0=SO3, 1=ST3
 		}else{
+			printf("\n__kernel void update_SE3()_2  global_id_u=%u,  old_pose_update!=0,  SE3=%u", global_id_u, SE3 );
 			float rho_S3_delta					=      local_Rho_[0+offset].x  -  old_result[0+offset] \
 												   +   local_Rho_[1+offset].x  -  old_result[1+offset] \
 												   +   local_Rho_[2+offset].x  -  old_result[2+offset] ;
@@ -434,6 +442,7 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 		}
 		old_result[SE3]							= local_Rho_[SE3].x;
 		pose_update[SE3]						= clamp(    update, -delta_SE3_[ SE3/3 ], +delta_SE3_[ SE3/3 ] );
+		printf("\n__kernel void update_SE3()_3  global_id_u=%u,  pose_update[SE3]=%f,  SE3=%u, delta_SE3_[SE3/3]=%f", global_id_u, pose_update[SE3], SE3, delta_SE3_[SE3/3] );
 		//distorsion_update[..]	=  ;
 	}
 }

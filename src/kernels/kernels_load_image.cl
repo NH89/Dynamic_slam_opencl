@@ -94,6 +94,7 @@ __kernel void sum_image_variance(
 	__global	float4*	global_sum_var	//5
 		)
 {
+	uint layer 		= 0;
 	int global_id 	= (int)get_global_id(0);
 	uint pixels 	= uint_params[PIXELS];
 	if (global_id > pixels) return;
@@ -117,7 +118,7 @@ __kernel void sum_image_variance(
 
 	uint read_index = read_offset_  +  base_row  * mm_cols  + base_col  ;							// NB 4 channels.  + margin
 
-	float4 variance = powr( (img[read_index]-img_stats[IMG_MEAN]), 2);								// TODO why does this cause NaNs ?
+	float4 variance = powr( (img[read_index]-img_stats[layer*2 + IMG_MEAN]), 2);					// TODO why does this cause NaNs ?  // img_stats[8*4*2]	= {0};	// 8 layers, 4 channels, 2 variables.
 
 	int4 var_isnan = isnan(variance);
 	if (global_id <= pixels && !var_isnan.x && !var_isnan.y && !var_isnan.z) {

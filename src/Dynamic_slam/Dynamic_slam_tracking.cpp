@@ -55,11 +55,11 @@ void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {															
 																																			if(verbosity>local_verbosity_threshold) cout << "\nDynamic_slam::generate_SE3_k2k( float _SE3_k2k[6*16] ) chk_0" << endl << flush;
 	// SE3
 	//const float res			= ( obj["cameraMatrix"][2].asFloat() + obj["cameraMatrix"][5].asFloat() ) /2.0;
-	const float f			= ( obj["cameraMatrix"][0].asFloat() + obj["cameraMatrix"][4].asFloat() ) /2.0;									// focal length in pixels.
-	const float delta 	  	= obj["ST3_delta"].asFloat() * obj["min_depth"].asFloat()  / f ;												// ST3_delta * (Translation to cause 1 pixel of parallax at min_depth)  	//1.0;//0.01; //0.001;  //  * obj["min_depth"].asFloat()
-	const float delta_theta = obj["SO3_delta_theta"].asFloat() / f;																			// SO3_delta_theta * (Rotation to cause 1 pixel of rotation flow) //0.01; //0.001;
-	const float cos_theta   = cos(delta_theta);
-	const float sin_theta   = sin(delta_theta);
+	// const float f			= ( obj["cameraMatrix"][0].asFloat() + obj["cameraMatrix"][4].asFloat() ) /2.0;									// focal length in pixels.
+	// const float delta 	  	= obj["ST3_delta"].asFloat() * obj["min_depth"].asFloat()  / f ;												// ST3_delta * (Translation to cause 1 pixel of parallax at min_depth)  	//1.0;//0.01; //0.001;  //  * obj["min_depth"].asFloat()
+	// const float delta_theta = obj["SO3_delta_theta"].asFloat() / f;																			// SO3_delta_theta * (Rotation to cause 1 pixel of rotation flow) //0.01; //0.001;
+	// const float cos_theta   = cos(delta_theta);
+	// const float sin_theta   = sin(delta_theta);
 																																			// Old :  Rotate 0.01 radians i.e 0.573  degrees.  Translate 0.001 'units' of distance
 																																			if(verbosity>local_verbosity_threshold){ cout << "\nDynamic_slam::generate_SE3_k2k( ) chk_1,"<<endl << flush;
 																																				print_json_float_9(obj, "cameraMatrix");
@@ -337,7 +337,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\nDynamic_slam::estimateSE3() : update.operator()(SE3) = 	SE3_update_dof_weights[SE3] * SE3_update_layer_weights[layer] * factor * SE3_results[layer][SE3][channel] "
-																																			<< " / (SE3_weights[layer][SE3][channel] * runcl.img_stats[IMG_VAR+channel] )";
+																																			<< " / (SE3_weights[layer][SE3][channel] * runcl.img_stats[layer*8 + IMG_VAR*4 +channel] )";
 																																			for (int SE3=0; SE3<6; SE3++) {
 																																				cout << "\n update.operator()("<<SE3<<") = " << update.operator()(SE3)
 																																				<< "  =  "   <<  SE3_update_dof_weights[SE3]
@@ -345,7 +345,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 																																				<< " * " << factor
 																																				<< " * " << SE3_results[layer][SE3][channel]
 																																				<< " /  () " << SE3_weights[layer][SE3][channel]
-																																				<< " * " << runcl.img_stats[IMG_VAR+channel]
+																																				<< " * " << runcl.img_stats[layer*8 + IMG_VAR*4 +channel]
 																																				<< ")" << flush;
 																																			}
 																																		}

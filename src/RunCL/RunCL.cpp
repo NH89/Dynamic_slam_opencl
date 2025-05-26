@@ -319,7 +319,7 @@ void RunCL::createKernels(){
 	warp_and_depth_error_kernel		= clCreateKernel(m_program, "warp_and_depth_error", 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'warp_and_depth_error_kernel'  kernel not built.\n"	<<flush; exit_(0);   }
 	//
 	rho_sq_kernel					= clCreateKernel(m_program, "Rho_sq",				 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'rho_sq_kernel'  kernel not built.\n"				<<flush; exit_(0);   }
-
+	update_SE3_kernel				= clCreateKernel(m_program, "update_SE3",			 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'update_SE3'  kernel not built.\n"					<<flush; exit_(0);   }
 }
 
 int RunCL::convertToString(const char *filename, std::string& s){
@@ -772,6 +772,11 @@ void RunCL::allocatemem(){
 	warp_error_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, 2 * mm_size_bytes_C4/*C1*/,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	depth_error_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, 2 * mm_size_bytes_C4/*C1*/,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	depth_est_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, 2 * mm_size_bytes_C4/*C1*/,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	// buffers for patch kernel based Dynamic_slam
+	pose_update_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, sizeof(float)*6,				0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	distorsion_update_buf			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, sizeof(float)*6,				0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	old_result_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, sizeof(float)*6,				0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+
 
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nRunCL::allocatemem_chk3\n\n" << flush;
@@ -1011,6 +1016,10 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	status = clReleaseMemObject(warp_error_buf);				if (status != CL_SUCCESS)	{ cout << "\nwarp_error_buf                 status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(depth_error_buf);				if (status != CL_SUCCESS)	{ cout << "\ndepth_error_buf                status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(depth_est_buf);					if (status != CL_SUCCESS)	{ cout << "\ndepth_est_buf                  status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+	// buffers for patch kernel based Dynamic_slam
+	status = clReleaseMemObject(pose_update_buf);				if (status != CL_SUCCESS)	{ cout << "\npose_update_buf                status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+	status = clReleaseMemObject(distorsion_update_buf);			if (status != CL_SUCCESS)	{ cout << "\ndistorsion_update_buf          status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+	status = clReleaseMemObject(old_result_buf);				if (status != CL_SUCCESS)	{ cout << "\nold_result_buf                 status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 
 
 	// release kernels
@@ -1065,6 +1074,7 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	status = clReleaseKernel(warp_and_depth_error_kernel);		if (status != CL_SUCCESS)	{ cout << "\nwarp_and_depth_error_kernel	status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	//
 	status = clReleaseKernel(rho_sq_kernel);					if (status != CL_SUCCESS)	{ cout << "\nrho_sq_kernel					status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(update_SE3_kernel);				if (status != CL_SUCCESS)	{ cout << "\nupdate_SE3_kernel				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 	// release command queues
 	status = clReleaseCommandQueue(m_queue);                   if (status != CL_SUCCESS)	{ cout << "\nm_queue                        status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_67"<<flush;
