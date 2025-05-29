@@ -124,8 +124,8 @@ void RunCL::rho_sq(uint out_block_size, uint iter, uint layer  ){
 	uint				reduction 			= layer;
 	uint				read_rows			= MipMap[layer * 8 + MiM_READ_ROWS] ;
 	uint				read_cols			= MipMap[layer * 8 + MiM_READ_COLS] ;
-	uint				rows_blocks			= read_rows/patch_size  + (fmod(read_rows, patch_size) != 0) ;
-	uint				cols_blocks			= read_cols/patch_size  + (fmod(read_cols, patch_size) != 0) ;
+	uint				rows_blocks			= ceil( (float) read_rows / patch_size );
+	uint				cols_blocks			= ceil( (float) read_cols / patch_size );
 	uint				cols_per_row		= cols_blocks * patch_size;
 
 	size_t				threads_required 	= rows_blocks * cols_blocks * patch_size ;
@@ -192,22 +192,35 @@ void RunCL::update_SE3( uint layer, float delta_theta, float delta )									// 
 																																			}
 	cl_kernel		kernel 				= update_SE3_kernel;																			//NB call just one workgroup to sum the whole image maps from the patch kernel.
 	const uint		patch_size 			= 32;																							//TODO set global patch size from device parameters // generally:  device_work_size_multiple = patch_size * integer,   eg 32, 64, 128
+	const uint		SE3_DoF				= 6;
 	uint			read_rows			= MipMap[layer * 8 + MiM_READ_ROWS] ;
 	uint			read_cols			= MipMap[layer * 8 + MiM_READ_COLS] ;
-	uint			rows_blocks			= read_rows/patch_size  + (fmod(read_rows, patch_size) != 0) ;									// num rows in the fully reduced map
-	uint			cols_blocks			= read_cols/patch_size  + (fmod(read_cols, patch_size) != 0) ;									// num cols in the fully reduced map
+	uint			rows_blocks			= ceil( (float) read_rows/patch_size );															// num rows in the fully reduced map
+	uint			cols_blocks			= ceil( (float) read_cols/patch_size );															// num cols in the fully reduced map
 
-	size_t			threads_required 	= cols_blocks * rows_blocks;//																	// num pixels in fully reduced map. Req per SE3 DoF.
-	size_t			threads_to_launch	= (threads_required/device_work_size_multiple  +  ( fmod( threads_required, device_work_size_multiple ) != 0 ) )  * device_work_size_multiple ; 	// smallest integer multiple of "device_work_size_multiple" >= threads_required;
+	uint			threads_per_DoF		= powf(2,ceil( log2((float)cols_blocks) )); // 10 layer 1 =>  pown(2,ciel(log2(10.0f) ))=16; 6*16=96.      // * rows_blocks  ;//	8x10=80 layer1 => 96 threads to launch?			// num pixels in fully reduced map. Req per SE3 DoF.
+	uint 			DoF_per_workgroup	= device_work_size_multiple / threads_per_DoF;
+	size_t			threads_required	= (device_work_size_multiple * SE3_DoF) / DoF_per_workgroup;		// NB device_work_size_multiple is usually a poer of 2, DoF_per_workgroup will also be a power of 2.
+	uint 			workgroups_required	= ceil( (float)threads_required / device_work_size_multiple );
+	size_t			threads_to_launch	= workgroups_required  *  device_work_size_multiple;
 
-	uint 			row_offset			= patch_size; 																									//2
-	uint 			n					= ceil( log2((float)threads_required) );
-	uint			thread_offset		= powf(2, n );																									//3     2^n  > pixels in fully reduced patc
+	uint 			row_offset			= rows_blocks + 4;																								//2
+	uint			thread_offset		= threads_per_DoF;																								//3     2^n  > pixels in fully reduced patch
 	uint			mm_cols				= uint_params[MM_COLS];																							//4
 	float			img_var				= img_stats[ layer*4 + IMG_VAR ] + img_stats[ layer*4 + IMG_VAR +1 ] + img_stats[ layer*4 + IMG_VAR +2 ];		//5		sum image variance over 3channels, for this layer.
 	cl_float2		delta_SE3			= {{delta_theta, delta}};																						//6
 
-	cout<<"\nRunCL::update_SE3(..) thread_offset="<<thread_offset<<",  cols_blocks="<<cols_blocks<<",  rows_blocks="<<rows_blocks<<",  threads_to_launch="<<threads_to_launch<<",  threads_required="<<threads_required<<flush;
+	cout<<"\nRunCL::update_SE3(..)"\
+	<<"   thread_offset="				<<thread_offset\
+	<<",  cols_blocks="					<<cols_blocks\
+	<<",  rows_blocks="					<<rows_blocks\
+	<<",  threads_required="			<<threads_required\
+	<<",  workgroups_required="			<<workgroups_required\
+	<<",  threads_to_launch="			<<threads_to_launch\
+	<<",  threads_per_DoF="				<<threads_per_DoF\
+	<<",  DoF_per_workgroup="			<<DoF_per_workgroup\
+	<<",  device_work_size_multiple="	<<device_work_size_multiple\
+	<<flush;
 	//private
 	_clSetKernelArg( kernel, 0, sizeof( uint),							&cols_blocks,				fname);								//__private	uint		cols,					//0
 	_clSetKernelArg( kernel, 1, sizeof( uint),							&rows_blocks,				fname);								//__private	uint 		rows,					//1
@@ -248,9 +261,9 @@ void RunCL::update_SE3( uint layer, float delta_theta, float delta )									// 
 																																				ReadOutput( (uchar*)pose_update_ary, pose_update_buf, sizeof(float)*6, 0);	//ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
 																																				cout<<"\n pose_update_ary = {"; for (int i=0; i<6; i++){ cout<<pose_update_ary[i]<<", "; }cout<<"}"<<flush;
 
-																																				float old_result_bu_arry[6];
-																																				ReadOutput( (uchar*)old_result_bu_arry, old_result_buf, sizeof(float), 0);	//ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
-																																				cout<<"\n old_result_bu_arry = " <<old_result_bu_arry[0]<<flush;
+																																				float old_result_arry[6];
+																																				ReadOutput( (uchar*)old_result_arry, old_result_buf, sizeof(float), 0);	//ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
+																																				cout<<"\n old_result_arry = " <<old_result_arry[0]<<flush;
 																																			}
 	// _clEnqueueWriteBuffer( uload_queue, k2kbuf,	CL_FALSE, 0, local_num_samples*16*sizeof( float), k2k_3_16_[start_sample_idx],  	fname);
 	// float zero  = 0;
@@ -258,11 +271,6 @@ void RunCL::update_SE3( uint layer, float delta_theta, float delta )									// 
 	// _clEnqueueFillBuffer( uload_queue, se3_sum_rho_sq_mem,	&zero, sizeof( float), 0, num_samples*pix_sum_size_bytes, 	fname);
 	// 																																		if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::se3_rho_sq( ..)_chk0.7 "<<flush;}
 	// 																																		// NB GT_depth loaded to depth_mem by void RunCL::loadFrameData( ..)
-
-
-
-
-
 
 }
 
