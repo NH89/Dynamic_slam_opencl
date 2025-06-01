@@ -371,9 +371,11 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 	)
 {
 	const uint	SE3_DoF		= 6;
-	uint   global_id_u 		= get_global_id(0);
-	float  global_id_f 		= global_id_u;
-	uint   lid 				= get_local_id(0);
+	uint   global_id_u		= get_global_id(0);
+	float  global_id_f		= global_id_u;
+	uint   lid				= get_local_id(0);
+	uint   local_group_size = get_local_size(0);
+	uint   group_id			= get_group_id(0);
 																								// read in global data : Rho, weights, SE3_incr
 																								// NB 10x8 pactch for each SE3.
 																								// Read & sum pixels in column, NB img overlap pixel count
@@ -381,53 +383,76 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 	uint	read_col		= fmod(global_id_f, thread_offset);
 	bool	in_range		= read_col < cols  &&  (SE3 < SE3_DoF);	// NB integer division.
 
-	float2 pvt_rho 			= {0.0f,0.0f};
-	float2 pvt_weights 		= {0.0f,0.0f};
+	printf("\n__kernel void update_SE3()_0    global_id_u=,%u,   SE3=,%u,  read_col=,%u,  thread_offset=,%u,  lid=,%u,   local_group_size=,%u,   group_id=,%u,   in_range=,%u "\
+											,   global_id_u,   SE3,  read_col,  thread_offset,  lid,   local_group_size,   group_id,   in_range  );
+
+	float2 pvt_rho			= {0.0f,0.0f};
+	float2 pvt_weights		= {0.0f,0.0f};
 	float2 pvt_incr			= {0.0f,0.0f};
+
+	if( lid < local_group_size/2){
+		local_Rho_[lid]			= pvt_rho;
+		local_weights_map[lid]	= pvt_weights;
+		local_SE3_incr_map_[lid]= pvt_incr;
+	}
+
 	float  delta_SE3_[2]	= {delta_SE3.x, delta_SE3.y};
 
-	if (in_range){
-		row_offset 			*=(SE3 * mm_cols);
+	if (in_range){																				//
+		row_offset			*=(SE3 * mm_cols);
 
-		for(uint idx = 0; idx<rows; idx ++){
+		for(uint idx = 0; idx<rows; idx ++){													// NB patch sum could be used for rows, BUT most iterations have too few rows to justify the ovehead.
 			uint idx_2		= read_col + (idx * mm_cols);
 			pvt_rho			+= Rho_[idx_2];														// NB only one Rho[], but 6 DoF for weights_map[] & SE3_incr_map_[]
 			uint idx_3		= row_offset + idx_2;
 			pvt_weights		+= weights_map[idx_3];
 			pvt_incr		+= SE3_incr_map_[idx_3];											// pvt variable will hold sum for column in Rho_, weights_map, SE3_incr_map_  // TODO should these be combined BEFORE bering summed ?
 
-			printf("\n__kernel void update_SE3()_0  global_id_u=%u,   SE3=%u,   idx=%u, idx_2=%u,   Rho_[idx_2]={%f,%f},   weights_map[idx_2].x=%f,   SE3_incr_map_[idx_2].x=%f,   row_offset=%u",global_id_u, SE3, idx, idx_2, Rho_[idx_2].x, Rho_[idx_2].y, weights_map[idx_2].x, SE3_incr_map_[idx_2].x, row_offset );
+//			printf("\n__kernel void update_SE3()_0  global_id_u=,%u,   SE3=,%u,   idx=,%u, idx_2=,%u,   Rho_[idx_2]={%f,%f},   weights_map[idx_2].x=,%f,   SE3_incr_map_[idx_2].x=,%f,   row_offset=,%u",global_id_u, SE3, idx, idx_2, Rho_[idx_2].x, Rho_[idx_2].y, weights_map[idx_2].x, SE3_incr_map_[idx_2].x, row_offset );
 		}
-/*
-// 		for(uint idx = row_offset; idx<rows+row_offset; idx += mm_cols){
-// 			pvt_rho			= Rho_[idx];
-// 			pvt_weights		+= weights_map[idx];
-// 			pvt_incr		+= SE3_incr_map_[idx];
-// 		}
-*/
 	}
+				if( in_range){ printf("\n__kernel void update_SE3()_0.2  global_id_u=,%u,   SE3=,%u,   pvt_rho={,%f,%f,},  lid=,%u,   local_group_size=,%u,   group_id=,%u,   rows=,%u   , read_col=,%u"\
+																		,  global_id_u,  SE3,  pvt_rho.x,  pvt_rho.y,  lid,  local_group_size,  group_id,  rows,  read_col  ); }
+
+	barrier(CLK_GLOBAL_MEM_FENCE);
 																								// sum reduce  columns of each 10x8 patch (1ayer 1), 5x5 layer 2, 3x3 layer 3, 2x2 layer 4, 1x1 layer 5.
-	uint max_iter								= log2((float)rows);
+	uint max_iter								= ceil(log2((float)cols));
 	uint step									= 2;
+	uint old_step								= 1;
 	float col									= global_id_u - SE3*thread_offset;
 
-	bool mod_step;
+	bool mod_step, mod_step_1, mod_step_2;;
 	for ( uint iter=0; iter<max_iter; iter++, step*=2 ){
-		mod_step 							= fmod(col, step)== 0;
-		if( !mod_step  && fmod(col, step/2)==0 && in_range){
+		uint cols_2 = cols/step;
+		mod_step								= fmod(col				, step)== 0;
+		mod_step_1								= fmod((col-old_step)	, step)== 0;
+		float upper_lid = ceil((float)lid/step);
+
+		if( mod_step_1 && in_range  ){
 			local_Rho_[				lid/step]	= pvt_rho;
 			local_weights_map[		lid/step]	= pvt_weights;
 			local_SE3_incr_map_[	lid/step]	= pvt_incr;
 		}
 		barrier(CLK_LOCAL_MEM_FENCE);
 
-		if( mod_step  && in_range){
+				if(/* mod_step_1 &&*/ in_range ){ printf("\n__kernel void update_SE3()_0.3  global_id_u=,%u,   SE3=,%u,   pvt_rho={,%f,%f,},  lid=,%u,  group_id=,%u,   read_col=,%u,   step=,%u,  old_step=,%u,  lid/step=,%u,  iter=,%u,  upper_lid=,%f,  cols=,%u,  cols_2=,%u,  col=,%f,  mod_step_1=,%u"\
+																							,  global_id_u,    SE3,      pvt_rho.x, pvt_rho.y,  lid,    group_id,       read_col,       step,       old_step,     lid/step,      iter,      upper_lid,      cols,      cols_2,      col,      mod_step_1  ); }
+
+
+		if( mod_step  /*&& in_range*/ && col+old_step<cols  ){															// && fmod( upper_lid, thread_offset)<(cols/2)
 			pvt_rho								+= local_Rho_[				lid/step];
 			pvt_weights							+= local_weights_map[		lid/step];
 			pvt_incr							+= local_SE3_incr_map_[		lid/step];
 		}
 		barrier(CLK_LOCAL_MEM_FENCE);
+
+				if( /*mod_step  &&*/ in_range /*&& col<cols*/ /*lid/step<cols_2*/){ printf("\n__kernel void update_SE3()_0.4  global_id_u=,%u,   SE3=,%u,   pvt_rho={,%f,%f,},  lid=,%u,  group_id=,%u,   read_col=,%u,   step=,%u,  lid/step=,%u,  iter=,%u,  upper_lid=,%f,  mod_step=,%u,  col<cols=%u,  col=%f"\
+																													, global_id_u, SE3,  pvt_rho.x, pvt_rho.y,  lid,  group_id,  read_col,  step, lid/step,  iter,  upper_lid,  mod_step,  col<cols,  col  ); }
+
+		old_step = step;
 	}
+
+
 
 	if (mod_step && in_range){
 		pvt_rho.x								/= pvt_rho.y;																						// Divide by number of valid overlapping pixels in original image pair.
@@ -437,9 +462,12 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 	}
 	barrier(CLK_LOCAL_MEM_FENCE);
 
+				if (mod_step && in_range) { printf("\n__kernel void update_SE3()_0.5  global_id_u=,%u,   SE3=,%u,   pvt_rho={,%f,%f,}  local_Rho_[SE3]={%f,%f,%f,  %f,%f,%f}"\
+																					,global_id_u, SE3,  pvt_rho.x, pvt_rho.y, local_Rho_[0].x,local_Rho_[1].x,local_Rho_[2].x,  local_Rho_[3].x,local_Rho_[4].x,local_Rho_[5].x ); }
+
 	float old_pose_update	= -1;
 	if (mod_step && in_range){
-		old_pose_update 						= pose_update[SE3];																					// will be zero if 1st iteration. }
+		old_pose_update							= pose_update[SE3];																					// will be zero if 1st iteration. }
 	}
 	barrier(CLK_GLOBAL_MEM_FENCE);
 
@@ -451,10 +479,10 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 		float update;
 
 		if ( old_pose_update==0.0f ){
-			printf("\n__kernel void update_SE3()_1  global_id_u=%u,  (old_pose_update==0)   pose_update[SE3]=%f,  SE3=%u", global_id_u,  pose_update[SE3], SE3 );
+			printf("\n__kernel void update_SE3()_1  global_id_u=,%u,  (old_pose_update==0)   old_pose_update=,%f,  SE3=,%u", global_id_u,  old_pose_update, SE3 );
 			update								= result * delta_SE3_[ SE3/3 ] / mag_S3;															// NB integer division SE3/3 => 0=SO3, 1=ST3
 		}else{
-			printf("\n__kernel void update_SE3()_2  global_id_u=%u,  old_pose_update!=0.0f,   pose_update[SE3]=%f,  SE3=%u", global_id_u,  pose_update[SE3], SE3 );
+			printf("\n__kernel void update_SE3()_2  global_id_u=,%u,  (old_pose_update != 0.0f),   old_pose_update=,%f,  SE3=,%u", global_id_u,  old_pose_update, SE3 );
 			float rho_S3_delta					=      local_Rho_[0+offset].x  -  old_result[0+offset] \
 												   +   local_Rho_[1+offset].x  -  old_result[1+offset] \
 												   +   local_Rho_[2+offset].x  -  old_result[2+offset] ;
@@ -462,7 +490,8 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 		}
 		old_result[SE3]							= local_Rho_[SE3].x;
 		pose_update[SE3]						= clamp(    update, -delta_SE3_[ SE3/3 ], +delta_SE3_[ SE3/3 ] );
-		printf("\n__kernel void update_SE3()_3  global_id_u=%u,  pose_update[SE3]=%f,  SE3=%u, delta_SE3_[SE3/3]=%f", global_id_u, pose_update[SE3], SE3, delta_SE3_[SE3/3] );
+		printf("\n__kernel void update_SE3()_3  global_id_u=,%u,  pose_update[SE3]=,%f,  SE3=,%u, delta_SE3_[SE3/3]=,%f, cols=,%u, max_iter=,%u, pvt_rho={,%f,%f,}"\
+												, global_id_u, pose_update[SE3], SE3, delta_SE3_[SE3/3], cols, max_iter, pvt_rho.x, pvt_rho.y );
 		//distorsion_update[..]	=  ;
 	}
 	barrier(CLK_GLOBAL_MEM_FENCE);

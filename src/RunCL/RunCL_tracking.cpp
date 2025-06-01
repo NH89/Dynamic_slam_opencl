@@ -223,8 +223,8 @@ void RunCL::update_SE3( uint layer, float delta_theta, float delta )									// 
 	<<flush;
 	//private
 	_clSetKernelArg( kernel, 0, sizeof( uint),							&cols_blocks,				fname);								//__private	uint		cols,					//0
-	_clSetKernelArg( kernel, 1, sizeof( uint),							&rows_blocks,				fname);								//__private	uint 		rows,					//1
-	_clSetKernelArg( kernel, 2, sizeof( uint),							&row_offset,				fname);								//__private	uint 		row_offset,				//2
+	_clSetKernelArg( kernel, 1, sizeof( uint),							&rows_blocks,				fname);								//__private	uint		rows,					//1
+	_clSetKernelArg( kernel, 2, sizeof( uint),							&row_offset,				fname);								//__private	uint		row_offset,				//2
 	_clSetKernelArg( kernel, 3, sizeof( uint),							&thread_offset,				fname);								//__private	uint		thread_offset,			//3
 	_clSetKernelArg( kernel, 4, sizeof( uint),							&mm_cols,					fname);								//__private	uint		mm_cols,				//4
 	_clSetKernelArg( kernel, 5, sizeof( float),							&img_var,		 			fname);								//__private	float		img_var,				//5
