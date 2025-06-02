@@ -347,7 +347,6 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 }
 
 __kernel void update_SE3(									// call just one workgroup to sum the whole image maps from the patch kernel.
-
 	__private	uint		cols,					//0
 	__private	uint 		rows,					//1
 	__private	uint 		row_offset,				//2		// index of 1st pixel of the 2nd patch, i.e. spacing between patches
@@ -367,7 +366,13 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 	// out
 	__global	float*		pose_update,			//13	// 6_DoF
 	__global	float*		distorsion_update,		//14
-	__global	float*		old_result				//15	// 1 rho value
+	__global	float*		old_result,				//15	// 1 rho value
+
+	//
+	__global	float*		Pose,					//16
+	__global	float*		K,						//17
+	__global	float*		inv_K,					//18
+	__global	float*		k2k						//19
 	)
 {
 	const uint	SE3_DoF		= 6;
@@ -383,8 +388,8 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 	uint	read_col		= fmod(global_id_f, thread_offset);
 	bool	in_range		= read_col < cols  &&  (SE3 < SE3_DoF);	// NB integer division.
 
-	printf("\n__kernel void update_SE3()_0    global_id_u=,%u,   SE3=,%u,  read_col=,%u,  thread_offset=,%u,  lid=,%u,   local_group_size=,%u,   group_id=,%u,   in_range=,%u "\
-											,   global_id_u,   SE3,  read_col,  thread_offset,  lid,   local_group_size,   group_id,   in_range  );
+//	printf("\n__kernel void update_SE3()_0    global_id_u=,%u,   SE3=,%u,  read_col=,%u,  thread_offset=,%u,  lid=,%u,   local_group_size=,%u,   group_id=,%u,   in_range=,%u "\
+//											,   global_id_u,   SE3,  read_col,  thread_offset,  lid,   local_group_size,   group_id,   in_range  );
 
 	float2 pvt_rho			= {0.0f,0.0f};
 	float2 pvt_weights		= {0.0f,0.0f};
@@ -411,8 +416,8 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 //			printf("\n__kernel void update_SE3()_0  global_id_u=,%u,   SE3=,%u,   idx=,%u, idx_2=,%u,   Rho_[idx_2]={%f,%f},   weights_map[idx_2].x=,%f,   SE3_incr_map_[idx_2].x=,%f,   row_offset=,%u",global_id_u, SE3, idx, idx_2, Rho_[idx_2].x, Rho_[idx_2].y, weights_map[idx_2].x, SE3_incr_map_[idx_2].x, row_offset );
 		}
 	}
-				if( in_range){ printf("\n__kernel void update_SE3()_0.2  global_id_u=,%u,   SE3=,%u,   pvt_rho={,%f,%f,},  lid=,%u,   local_group_size=,%u,   group_id=,%u,   rows=,%u   , read_col=,%u"\
-																		,  global_id_u,  SE3,  pvt_rho.x,  pvt_rho.y,  lid,  local_group_size,  group_id,  rows,  read_col  ); }
+//				if( in_range){ printf("\n__kernel void update_SE3()_0.2  global_id_u=,%u,   SE3=,%u,   pvt_rho={,%f,%f,},  lid=,%u,   local_group_size=,%u,   group_id=,%u,   rows=,%u   , read_col=,%u"\
+//																		,  global_id_u,  SE3,  pvt_rho.x,  pvt_rho.y,  lid,  local_group_size,  group_id,  rows,  read_col  ); }
 
 	barrier(CLK_GLOBAL_MEM_FENCE);
 																								// sum reduce  columns of each 10x8 patch (1ayer 1), 5x5 layer 2, 3x3 layer 3, 2x2 layer 4, 1x1 layer 5.
@@ -435,9 +440,8 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 		}
 		barrier(CLK_LOCAL_MEM_FENCE);
 
-				if(/* mod_step_1 &&*/ in_range ){ printf("\n__kernel void update_SE3()_0.3  global_id_u=,%u,   SE3=,%u,   pvt_rho={,%f,%f,},  lid=,%u,  group_id=,%u,   read_col=,%u,   step=,%u,  old_step=,%u,  lid/step=,%u,  iter=,%u,  upper_lid=,%f,  cols=,%u,  cols_2=,%u,  col=,%f,  mod_step_1=,%u"\
-																							,  global_id_u,    SE3,      pvt_rho.x, pvt_rho.y,  lid,    group_id,       read_col,       step,       old_step,     lid/step,      iter,      upper_lid,      cols,      cols_2,      col,      mod_step_1  ); }
-
+//				if(/* mod_step_1 &&*/ in_range ){ printf("\n__kernel void update_SE3()_0.3  global_id_u=,%u,   SE3=,%u,   pvt_rho={,%f,%f,},  lid=,%u,  group_id=,%u,   read_col=,%u,   step=,%u,  old_step=,%u,  lid/step=,%u,  iter=,%u,  upper_lid=,%f,  cols=,%u,  cols_2=,%u,  col=,%f,  mod_step_1=,%u"\
+//																							,  global_id_u,    SE3,      pvt_rho.x, pvt_rho.y,  lid,    group_id,       read_col,       step,       old_step,     lid/step,      iter,      upper_lid,      cols,      cols_2,      col,      mod_step_1  ); }
 
 		if( mod_step  /*&& in_range*/ && col+old_step<cols  ){															// && fmod( upper_lid, thread_offset)<(cols/2)
 			pvt_rho								+= local_Rho_[				lid/step];
@@ -446,13 +450,11 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 		}
 		barrier(CLK_LOCAL_MEM_FENCE);
 
-				if( /*mod_step  &&*/ in_range /*&& col<cols*/ /*lid/step<cols_2*/){ printf("\n__kernel void update_SE3()_0.4  global_id_u=,%u,   SE3=,%u,   pvt_rho={,%f,%f,},  lid=,%u,  group_id=,%u,   read_col=,%u,   step=,%u,  lid/step=,%u,  iter=,%u,  upper_lid=,%f,  mod_step=,%u,  col<cols=%u,  col=%f"\
-																													, global_id_u, SE3,  pvt_rho.x, pvt_rho.y,  lid,  group_id,  read_col,  step, lid/step,  iter,  upper_lid,  mod_step,  col<cols,  col  ); }
+//				if( /*mod_step  &&*/ in_range /*&& col<cols*/ /*lid/step<cols_2*/){ printf("\n__kernel void update_SE3()_0.4  global_id_u=,%u,   SE3=,%u,   pvt_rho={,%f,%f,},  lid=,%u,  group_id=,%u,   read_col=,%u,   step=,%u,  lid/step=,%u,  iter=,%u,  upper_lid=,%f,  mod_step=,%u,  col<cols=%u,  col=%f"\
+//																													, global_id_u, SE3,  pvt_rho.x, pvt_rho.y,  lid,  group_id,  read_col,  step, lid/step,  iter,  upper_lid,  mod_step,  col<cols,  col  ); }
 
 		old_step = step;
 	}
-
-
 
 	if (mod_step && in_range){
 		pvt_rho.x								/= pvt_rho.y;																						// Divide by number of valid overlapping pixels in original image pair.
@@ -471,12 +473,13 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 	}
 	barrier(CLK_GLOBAL_MEM_FENCE);
 
+	float update								= 0;
 	if (mod_step && in_range){																														// compute updates. NB different for SO3 vs ST3, hence offset.
 		uint offset 							= 3 * floor((float)SE3/3);																			// offset = 0 for SO3, 3 for ST3.
 		float mag_S3							= fabs(local_Rho_[0+offset].x)  + fabs(local_Rho_[1+offset].x)  + fabs(local_Rho_[2+offset].x);		// float rho_ST3_mag  = fabs(local_Rho_[3].x) + fabs(local_Rho_[4].x) + fabs(local_Rho_[5].x);
 																																					// result_[iter][SE3] = SE3_results[layer][SE3][channel]  / (SE3_weights[layer][SE3][channel] * runcl.img_stats[IMG_VAR+channel] )
 		float result							= pvt_rho.x / ( pvt_weights.x  * img_var );
-		float update;
+
 
 		if ( old_pose_update==0.0f ){
 			printf("\n__kernel void update_SE3()_1  global_id_u=,%u,  (old_pose_update==0)   old_pose_update=,%f,  SE3=,%u", global_id_u,  old_pose_update, SE3 );
@@ -489,13 +492,54 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 			update								= result * rho_S3_delta / mag_S3;
 		}
 		old_result[SE3]							= local_Rho_[SE3].x;
-		pose_update[SE3]						= clamp(    update, -delta_SE3_[ SE3/3 ], +delta_SE3_[ SE3/3 ] );
+		update									= clamp(    update, -delta_SE3_[ SE3/3 ], +delta_SE3_[ SE3/3 ] );
+		// if (verbose)
+		pose_update[SE3]						= update;
 		printf("\n__kernel void update_SE3()_3  global_id_u=,%u,  pose_update[SE3]=,%f,  SE3=,%u, delta_SE3_[SE3/3]=,%f, cols=,%u, max_iter=,%u, pvt_rho={,%f,%f,}"\
 												, global_id_u, pose_update[SE3], SE3, delta_SE3_[SE3/3], cols, max_iter, pvt_rho.x, pvt_rho.y );
 		//distorsion_update[..]	=  ;
 	}
 	barrier(CLK_GLOBAL_MEM_FENCE);
+	///  Now compute the update to k2k ///  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	 __local float local_update_vec[9];	//local_SE3[9];
+
+	if ( get_num_groups(0) > 1){
+		pose_update[SE3]									= update;
+		barrier(CLK_GLOBAL_MEM_FENCE);
+
+		if (group_id == 0){
+			if (lid < 6) { local_update_vec[lid]			= pose_update[lid]; }
+		}
+	}else{
+		if (mod_step && in_range){ local_update_vec[SE3]	= update; }
+	}
+	barrier(CLK_LOCAL_MEM_FENCE);
+
+	__local float local_K_update[ 	2* SE3_elems];
+	__local float local_pose_inv_K[ 2* SE3_elems];
+	__local float local_A_B[ 		2* SE3_elems];
+	__local float local_k2k[	SE3_elems];
+
+	if (group_id == 0){// All except workgroup[0] return here; ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		if (lid < 3) { 	local_update_vec[	lid + 6]		= 3.0f - lid;	}																	// sets local_update_vec[6,7,8] to -1, 0, 1
+		if (lid < 32){ 	local_A_B[ 			lid]			= 0.0f;			}
+		if (lid < 16){
+						local_K_update[		lid]			= K[lid];
+						local_K_update[		lid + 16]		= 0.0f;
+						local_pose_inv_K[ 	lid]			= Pose[lid];
+						local_pose_inv_K[ 	lid + 16]		= inv_K[lid];
+						local_k2k[lid]						= 0.0f;
+		}																					barrier(CLK_LOCAL_MEM_FENCE);
+
+		LieToP( lid, local_update_vec, local_K_update );									barrier(CLK_LOCAL_MEM_FENCE);
+
+		update_k2k( lid, local_K_update, local_pose_inv_K, local_A_B, local_k2k ); 			barrier(CLK_LOCAL_MEM_FENCE);		// (local_update, local_Pose, local_K, local_inv_K, A, B, local_k2k );
+
+		if(lid<16){ k2k[lid] 	= local_k2k[lid]; }											barrier(CLK_LOCAL_MEM_FENCE);
+	}
 }
+
 
 __kernel void update_maps(  // ? integrate with patch kernel ?
 

@@ -111,6 +111,12 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 																																		}
 		runcl.estimateSE3_LK( k2k_4_16[ iter ], SE3_results, SE3_weights, Rho_sq_results[ iter ], iter, layer, layer );		// NB processes largest layer first.		// Find the gradient "update" wrt SE3
 
+		/////////////////////////////////////////////////// testing kernel baased tracking
+		uint out_block_size = 32;
+		runcl.rho_sq( out_block_size, iter, layer  );
+		runcl.update_SE3( layer, delta_theta, delta );
+		///////////////////////////////////////////////////
+
 																																		//TODO NB currently runcl.img_stats[..] only for layer"0"
 		for (int SE3=0; SE3<num_SE3_DoF; SE3++) {	result_[iter][SE3] = SE3_results[layer][SE3][channel]  / (SE3_weights[layer][SE3][channel] * runcl.img_stats[/*layer*8 +*/ IMG_VAR*4 + channel] ) ;  }  // NB divide by total edge weighting, and image variance.
 																																		if(verbosity>local_verbosity_threshold) {
@@ -278,6 +284,8 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 				runcl.rho_sq( out_block_size, iter, layer  );		// uint out_block_size, const float count[4], uint start, uint stop
 
 				runcl.update_SE3( layer, delta_theta, delta );
+
+
 			}
 		}
 	}

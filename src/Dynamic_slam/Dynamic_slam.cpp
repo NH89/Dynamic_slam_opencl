@@ -165,7 +165,7 @@ int Dynamic_slam::nextFrame() {
 	//estimateSE3(); // original tracking
 
 	patch_slam();		// new tracking prototype.
-	estimateSLAM();
+//	estimateSLAM();		// kernel basedtracking - no data offload. nor CPU computing.
 																						auto step_6 = high_resolution_clock::now();			// own thread ? num iter ?
 	//disparity();
 	//binocular_reference_frame();
