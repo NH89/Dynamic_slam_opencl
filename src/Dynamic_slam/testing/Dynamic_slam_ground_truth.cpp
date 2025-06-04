@@ -13,9 +13,9 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 	delete [] ch; //free(ch);
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\n Dynamic_slam::getFrameData_vec_chk 1";
-																																				cout << "\n\n R = " << R;
-																																				cout << "\n\n T = " << T;
-																																				cout << "\n cameraMatrix = " << cameraMatrix;
+																																				cout << "\n\n R = \n" << R;
+																																				cout << "\n\n T = \n" << T;
+																																				cout << "\n\n cameraMatrix = \n" << cameraMatrix;
 																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);		// correct here
 																																				cout << endl << flush;
 																																			}

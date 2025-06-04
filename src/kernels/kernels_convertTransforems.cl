@@ -20,29 +20,30 @@
 #define	SIN_THETA				2
 #define	ZERO_VAR				3
 #define ONE_VAR					4
+#define MINUS_ONE_VAR			5
 
 void LieToP( uint lid, __local float SE3[9], __local float Pose[32/*16*/] ){
 
 	const uint LtoP[16][6] = { /*	Indices for SE3[8] and vars[4], to compose the elements of 4x4 SE3 transformation matrix, from SE3 Lie vector.	*/\
-								{ ONE_		, ONE,		COS_THETA, 		SO3_x, SO3_x, ONE_MINUS_COS_THETA 	},	/*	1*1   *cos(theta)    +    w_x w_x (1 - cos_theta)	= SE3[6] * vars[0]   +   SE3[0] * SE3[0] * vars[1]  */\
-								{ ONE_		, SO3_z,	SIN_THETA, 		SO3_y, SO3_y, ONE_MINUS_COS_THETA	},	/*	1*w_z *sin(theta)    +    w_x w_y (1 - cos_theta) 	*/\
-								{ ONE_		, SO3_y,	SIN_THETA, 		SO3_x, SO3_z, ONE_MINUS_COS_THETA	},	/*	1*w_y *sin(theta)    +    w_x w_z (1 - cos_theta)	*/\
-								{ ONE_		, ONE,		ST3_x, 			ZERO,  ZERO,  ZERO_VAR				},	/*	t_x	*/\
+								{ ONE_VAR		, ONE,		COS_THETA, 		SO3_x, SO3_x, ONE_MINUS_COS_THETA 	},	/*	1*1   *cos(theta)    +    w_x w_x (1 - cos_theta)	= SE3[6] * vars[0]   +   SE3[0] * SE3[0] * vars[1]  */\
+								{ ONE_VAR		, SO3_z,	SIN_THETA, 		SO3_y, SO3_y, ONE_MINUS_COS_THETA	},	/*	1*w_z *sin(theta)    +    w_x w_y (1 - cos_theta) 	*/\
+								{ ONE_VAR		, SO3_y,	SIN_THETA, 		SO3_x, SO3_z, ONE_MINUS_COS_THETA	},	/*	1*w_y *sin(theta)    +    w_x w_z (1 - cos_theta)	*/\
+								{ ONE_VAR		, ONE,		ST3_x, 			ZERO,  ZERO,  ZERO_VAR				},	/*	t_x	*/\
 	\
-								{ ONE_		, SO3_z,	SIN_THETA,		SO3_x, SO3_y, ONE_MINUS_COS_THETA	},	/*	1*w_z *sin(theta)    +    w_x w_y (1 - cos_theta)	*/\
-								{ ONE_		, ONE, 		COS_THETA,		SO3_y, SO3_y, ONE_MINUS_COS_THETA	},	/*	1*1   *cos(theta)    +    w_y w_y (1 - cos_theta)	*/\
-								{ MINUS_ONE_, SO3_x, 	SIN_THETA, 		SO3_y, SO3_z, ONE_MINUS_COS_THETA	},	/*	-1*w_x*sin(theta)    +    w_y w_z (1 - cos_theta)	*/\
-								{ ONE_		, ONE,		ST3_y, 			ZERO,  ZERO,  ZERO_VAR				},	/*	t_y	*/\
+								{ ONE_VAR		, SO3_z,	SIN_THETA,		SO3_x, SO3_y, ONE_MINUS_COS_THETA	},	/*	1*w_z *sin(theta)    +    w_x w_y (1 - cos_theta)	*/\
+								{ ONE_VAR		, ONE, 		COS_THETA,		SO3_y, SO3_y, ONE_MINUS_COS_THETA	},	/*	1*1   *cos(theta)    +    w_y w_y (1 - cos_theta)	*/\
+								{ MINUS_ONE_VAR	, SO3_x, 	SIN_THETA, 		SO3_y, SO3_z, ONE_MINUS_COS_THETA	},	/*	-1*w_x*sin(theta)    +    w_y w_z (1 - cos_theta)	*/\
+								{ ONE_VAR		, ONE,		ST3_y, 			ZERO,  ZERO,  ZERO_VAR				},	/*	t_y	*/\
 	\
-								{ MINUS_ONE_, SO3_y,	SIN_THETA,		SO3_x, SO3_z, ONE_MINUS_COS_THETA	},	/*	-1*w_y *sin(theta)   +    w_x w_z (1 - cos_theta)	*/\
-								{ ONE_		, SO3_x,	SIN_THETA,		SO3_y, SO3_z, ONE_MINUS_COS_THETA	},	/*	1*w_x  *sin(theta)   +    w_y w_z (1 - cos_theta)	*/\
-								{ ONE_		, ONE,		COS_THETA,		SO3_z, SO3_z, ONE_MINUS_COS_THETA	},	/*	1*1    *cos(theta)   +    w_z w_z (1 - cos_theta)	*/\
-								{ ONE_		, ONE,		ST3_z,			ZERO,  ZERO,  ZERO_VAR				},	/*	t_z	*/\
+								{ MINUS_ONE_VAR	, SO3_y,	SIN_THETA,		SO3_x, SO3_z, ONE_MINUS_COS_THETA	},	/*	-1*w_y *sin(theta)   +    w_x w_z (1 - cos_theta)	*/\
+								{ ONE_VAR		, SO3_x,	SIN_THETA,		SO3_y, SO3_z, ONE_MINUS_COS_THETA	},	/*	1*w_x  *sin(theta)   +    w_y w_z (1 - cos_theta)	*/\
+								{ ONE_VAR		, ONE,		COS_THETA,		SO3_z, SO3_z, ONE_MINUS_COS_THETA	},	/*	1*1    *cos(theta)   +    w_z w_z (1 - cos_theta)	*/\
+								{ ONE_VAR		, ONE,		ST3_z,			ZERO,  ZERO,  ZERO_VAR				},	/*	t_z	*/\
 	\
-								{ ONE_		, ZERO,		ZERO_VAR,		ZERO,  ZERO,  ZERO_VAR				},	/*	0	*/\
-								{ ONE_		, ZERO,		ZERO_VAR,		ZERO,  ZERO,  ZERO_VAR				},	/*	0	*/\
-								{ ONE_		, ZERO,		ZERO_VAR,		ZERO,  ZERO,  ZERO_VAR				},	/*	0	*/\
-								{ ONE_		, ZERO,		ZERO_VAR,		ONE,   ONE,   ONE_VAR				},	/*	1	*/\
+								{ ONE_VAR		, ZERO,		ZERO_VAR,		ZERO,  ZERO,  ZERO_VAR				},	/*	0	*/\
+								{ ONE_VAR		, ZERO,		ZERO_VAR,		ZERO,  ZERO,  ZERO_VAR				},	/*	0	*/\
+								{ ONE_VAR		, ZERO,		ZERO_VAR,		ZERO,  ZERO,  ZERO_VAR				},	/*	0	*/\
+								{ ONE_VAR		, ZERO,		ZERO_VAR,		ONE,   ONE,   ONE_VAR				},	/*	1	*/\
 	};
 
 	float3	So3 			= (float3)( SE3[0], SE3[1], SE3[2] );
@@ -51,19 +52,29 @@ void LieToP( uint lid, __local float SE3[9], __local float Pose[32/*16*/] ){
 	float	one_cos_theta	= 1.0f - cos_theta;
 	float	sin_theta		= sin(theta);
 
-	float	vars[5];
+	float	vars[6];
 	vars[0]					= cos_theta;
 	vars[1]					= one_cos_theta;
 	vars[2]					= sin_theta;
 	vars[3]					= 0;
 	vars[4]					= 1;
+	vars[5]					= -1;
 
 	const uint * L2P;
 	if (lid < 16){
 		L2P					= LtoP[lid];
-		Pose[lid +16]		= L2P[0] * SE3[L2P[1]] * vars[L2P[2]]   +   SE3[L2P[3]] * SE3[L2P[4]] * vars[L2P[5]] ;
-	}
-}
+		Pose[lid +16]		= vars[L2P[0]] * SE3[L2P[1]] * vars[L2P[2]]   +   SE3[L2P[3]] * SE3[L2P[4]] * vars[L2P[5]] ;
+
+		uint idx_L2P = fmod((float)lid, 6);
+		uint idx_SE3 = fmod((float)lid, 16);
+
+		printf( "\nLieToP(..) lid=%u,  theta=%f,  cos_theta=%f,  one_cos_theta=%f,   sin_theta=%f,   L2P[%u]={%u},  SE3[%u]={%f},  Pose[lid +16]=%f ", \
+		lid,  theta,  cos_theta,  one_cos_theta,  sin_theta, \
+		idx_L2P,  L2P[ idx_L2P ], \
+		idx_SE3,  SE3[ idx_SE3 ], \
+		Pose[lid +16] );
+	}	// L2P[1], L2P[2],   L2P[3], L2P[4], L2P[5],   // SE3[1], SE3[2],   SE3[3], SE3[4], SE3[5],   SE3[6], SE3[7], SE3[8],
+}		// ,%u,%u,   %u,%u,%u    // ,%f,%f,  %f,%f,%f,  %f,%f,%f
 
 
 void update_k2k(

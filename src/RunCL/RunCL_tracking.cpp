@@ -183,9 +183,9 @@ void RunCL::rho_sq(uint out_block_size, uint iter, uint layer  ){
 
 void RunCL::update_SE3( uint layer, float delta_theta, float delta )									// NB good for images upto 640x480 layer zero, above that need a patch kernel approach to ensure each DoF fits in 1 workgroup. see device_work_size_multiple
 {
-	string fname = "RunCL::se3_rho_sq( ..)";
+	string fname = "RunCL::update_SE3( ..)";
 	int local_verbosity_threshold = V_RUNCL_SE3_RHO_SQ;
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::se3_rho_sq( ..)_chk0 .##################################################################"<<flush;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_SE3( ..)_chk0 .##################################################################"<<flush;
 																																				float pose_update_ary[6];
 																																				ReadOutput( (uchar*)pose_update_ary, pose_update_buf, sizeof(float)*6, 0);	//ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
 																																				cout<<"\n pose_update_ary = {"; for (int i=0; i<6; i++){ cout<<pose_update_ary[i]<<", "; }cout<<"}"<<flush;
@@ -222,26 +222,32 @@ void RunCL::update_SE3( uint layer, float delta_theta, float delta )									// 
 	<<",  device_work_size_multiple="	<<device_work_size_multiple\
 	<<flush;
 	//private
-	_clSetKernelArg( kernel, 0, sizeof( uint),							&cols_blocks,				fname);								//__private	uint		cols,					//0
-	_clSetKernelArg( kernel, 1, sizeof( uint),							&rows_blocks,				fname);								//__private	uint		rows,					//1
-	_clSetKernelArg( kernel, 2, sizeof( uint),							&row_offset,				fname);								//__private	uint		row_offset,				//2
-	_clSetKernelArg( kernel, 3, sizeof( uint),							&thread_offset,				fname);								//__private	uint		thread_offset,			//3
-	_clSetKernelArg( kernel, 4, sizeof( uint),							&mm_cols,					fname);								//__private	uint		mm_cols,				//4
-	_clSetKernelArg( kernel, 5, sizeof( float),							&img_var,		 			fname);								//__private	float		img_var,				//5
-	_clSetKernelArg( kernel, 6, sizeof( cl_float2),						&delta_SE3,					fname);								//__private	float2		delta_SE3,				//6
+	_clSetKernelArg( kernel,  0, sizeof( uint),							&cols_blocks,				fname);								//__private	uint		cols,					//0
+	_clSetKernelArg( kernel,  1, sizeof( uint),							&rows_blocks,				fname);								//__private	uint		rows,					//1
+	_clSetKernelArg( kernel,  2, sizeof( uint),							&row_offset,				fname);								//__private	uint		row_offset,				//2
+	_clSetKernelArg( kernel,  3, sizeof( uint),							&thread_offset,				fname);								//__private	uint		thread_offset,			//3
+	_clSetKernelArg( kernel,  4, sizeof( uint),							&mm_cols,					fname);								//__private	uint		mm_cols,				//4
+	_clSetKernelArg( kernel,  5, sizeof( float),						&img_var,		 			fname);								//__private	float		img_var,				//5
+	_clSetKernelArg( kernel,  6, sizeof( cl_float2),					&delta_SE3,					fname);								//__private	float2		delta_SE3,				//6
 	//global
-	_clSetKernelArg( kernel, 7, sizeof( cl_mem),						&SE3_rho_map_mem,			fname);								//__global	float2*		Rho_,					//7		// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
-	_clSetKernelArg( kernel, 8, sizeof( cl_mem),						&SE3_weight_map_mem,		fname);								//__global	float2*		weights_map,			//8
-	_clSetKernelArg( kernel, 9, sizeof( cl_mem),						&SE3_incr_map_mem,			fname);								//__global	float2*		SE3_incr_map_,			//9
+	_clSetKernelArg( kernel,  7, sizeof( cl_mem),						&SE3_rho_map_mem,			fname);								//__global	float2*		Rho_,					//7		// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
+	_clSetKernelArg( kernel,  8, sizeof( cl_mem),						&SE3_weight_map_mem,		fname);								//__global	float2*		weights_map,			//8
+	_clSetKernelArg( kernel,  9, sizeof( cl_mem),						&SE3_incr_map_mem,			fname);								//__global	float2*		SE3_incr_map_,			//9
 	//local
-	_clSetKernelArg( kernel,10, ( local_work_size/2 )*sizeof( float),	 NULL, 						fname);								//__local	float2*		local_Rho_,				//10		// used for sum-reduce. Need to be [groupsize/2], set in host fn.
-	_clSetKernelArg( kernel,11, ( local_work_size/2 )*sizeof( float),	 NULL, 						fname);								//__local	float2*		local_weights_map,		//11
-	_clSetKernelArg( kernel,12, ( local_work_size/2 )*sizeof( float),	 NULL, 						fname);								//__local	float2*		local_SE3_incr_map_,	//12
+	_clSetKernelArg( kernel, 10, ( local_work_size/2 )*sizeof( float),	NULL, 						fname);								//__local	float2*		local_Rho_,				//10		// used for sum-reduce. Need to be [groupsize/2], set in host fn.
+	_clSetKernelArg( kernel, 11, ( local_work_size/2 )*sizeof( float),	NULL, 						fname);								//__local	float2*		local_weights_map,		//11
+	_clSetKernelArg( kernel, 12, ( local_work_size/2 )*sizeof( float),	NULL, 						fname);								//__local	float2*		local_SE3_incr_map_,	//12
 
 	// input/output, global
 	_clSetKernelArg( kernel, 13, sizeof( cl_mem), 						&pose_update_buf,			fname);								//__global	float*		pose_update,			//13	// 6_DoF
 	_clSetKernelArg( kernel, 14, sizeof( cl_mem), 						&distorsion_update_buf, 	fname);								//__global	float*		distorsion_update,		//14
 	_clSetKernelArg( kernel, 15, sizeof( cl_mem), 						&old_result_buf, 			fname);								//__global	float*		old_result				//15
+
+
+	_clSetKernelArg( kernel, 16, sizeof( cl_mem), 						&pose_buf,					fname);								//__global	float*		Pose,					//16
+	_clSetKernelArg( kernel, 17, sizeof( cl_mem), 						&K_buf,						fname);								//__global	float*		K,						//17
+	_clSetKernelArg( kernel, 18, sizeof( cl_mem), 						&inv_K_buf,					fname);								//__global	float*		inv_K,					//18
+	_clSetKernelArg( kernel, 19, sizeof( cl_mem), 						&k2kbuf,					fname);								//__global	float*		k2k						//19
 
 	cl_command_queue 	queue_to_call		= m_queue;
 	cl_int				res, status;
@@ -249,9 +255,9 @@ void RunCL::update_SE3( uint layer, float delta_theta, float delta )									// 
 																									auto step_0 = high_resolution_clock::now();
 	res 	= clEnqueueNDRangeKernel(queue_to_call, kernel, 1, 0, &threads_to_launch, &device_work_size_multiple, 0, NULL, &ev); 	// run mipmap_float4_kernel, NB wait for own previous iteration.
 																									if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
-	status 	= clFlush(queue_to_call);																if (status != CL_SUCCESS)	{ cout << "\nRunCL::rho_sq( ..) call_kernel( cl_kernel "<<kernel<<",  clFlush(queue_to_call) status  = "<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
+	status 	= clFlush(queue_to_call);																if (status != CL_SUCCESS)	{ cout << "\nRunCL::update_SE3( ..) call_kernel( cl_kernel "<<kernel<<",  clFlush(queue_to_call) status  = "<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
 																									auto step_1 = high_resolution_clock::now();
-	status 	= clWaitForEvents(1, &ev);																if (status != CL_SUCCESS)	{ cout << "\nRunCL::rho_sq( ..) call_kernel( cl_kernel "<<kernel<<") final,  clWaitForEventsh(1, &ev) ="<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
+	status 	= clWaitForEvents(1, &ev);																if (status != CL_SUCCESS)	{ cout << "\nRunCL::update_SE3( ..) call_kernel( cl_kernel "<<kernel<<") final,  clWaitForEventsh(1, &ev) ="<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 																									auto step_2 = high_resolution_clock::now();
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_SE3( ..)_chk_4.5 . "<<\
 																																				"Execution time = "<<  duration_cast<microseconds>(step_1 - step_0).count() \
@@ -273,7 +279,6 @@ void RunCL::update_SE3( uint layer, float delta_theta, float delta )									// 
 	// 																																		// NB GT_depth loaded to depth_mem by void RunCL::loadFrameData( ..)
 
 }
-
 
 
 

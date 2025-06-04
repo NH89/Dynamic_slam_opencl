@@ -390,6 +390,8 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 
 //	printf("\n__kernel void update_SE3()_0    global_id_u=,%u,   SE3=,%u,  read_col=,%u,  thread_offset=,%u,  lid=,%u,   local_group_size=,%u,   group_id=,%u,   in_range=,%u "\
 //											,   global_id_u,   SE3,  read_col,  thread_offset,  lid,   local_group_size,   group_id,   in_range  );
+	if (lid==0) printf("\n__kernel void update_SE3()_0     K={%f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f}",\
+			K[0], K[1], K[2], K[3],       K[4], K[5], K[6], K[7],     K[8], K[9], K[10], K[11],       K[12], K[13], K[14], K[15]	);
 
 	float2 pvt_rho			= {0.0f,0.0f};
 	float2 pvt_weights		= {0.0f,0.0f};
@@ -481,7 +483,7 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 		float result							= pvt_rho.x / ( pvt_weights.x  * img_var );
 
 
-		if ( old_pose_update==0.0f ){
+		if ( old_pose_update==0.0f ){			// NB reset to zero for new img pyramid layer, because old result is not valid for comparison.
 			printf("\n__kernel void update_SE3()_1  global_id_u=,%u,  (old_pose_update==0)   old_pose_update=,%f,  SE3=,%u", global_id_u,  old_pose_update, SE3 );
 			update								= result * delta_SE3_[ SE3/3 ] / mag_S3;															// NB integer division SE3/3 => 0=SO3, 1=ST3
 		}else{
@@ -515,8 +517,8 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 	}
 	barrier(CLK_LOCAL_MEM_FENCE);
 
-	__local float local_K_update[ 	2* SE3_elems];
-	__local float local_pose_inv_K[ 2* SE3_elems];
+	__local float local_K_update[ 	2* SE3_elems];			// Buffers [32] elem, hold two 4x4 matrices.
+	__local float local_pose_inv_K[ 2* SE3_elems];			// Enable two matrix multiplications simultaneously in one work group of 32 trheads.
 	__local float local_A_B[ 		2* SE3_elems];
 	__local float local_k2k[	SE3_elems];
 
@@ -537,8 +539,20 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 		update_k2k( lid, local_K_update, local_pose_inv_K, local_A_B, local_k2k ); 			barrier(CLK_LOCAL_MEM_FENCE);		// (local_update, local_Pose, local_K, local_inv_K, A, B, local_k2k );
 
 		if(lid<16){ k2k[lid] 	= local_k2k[lid]; }											barrier(CLK_LOCAL_MEM_FENCE);
+
+		if (lid==0) printf("\n__kernel void update_SE3()_4  local_update_vec[SE3]={%f,%f,%f,  %f,%f,%f}   local_update[]={%f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f}    K={%f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f}",\
+			local_update_vec[0], local_update_vec[1], local_update_vec[2], local_update_vec[3], local_update_vec[4], local_update_vec[5],\
+			local_K_update[16],  local_K_update[17],  local_K_update[18],  local_K_update[19],    local_K_update[20],  local_K_update[21],  local_K_update[22],  local_K_update[23],\
+			local_K_update[24],  local_K_update[25],  local_K_update[26],  local_K_update[27],    local_K_update[28],  local_K_update[29],  local_K_update[30],  local_K_update[31],\
+			\
+			K[0], K[1], K[2], K[3],       K[4], K[5], K[6], K[7],\
+			K[8], K[9], K[10], K[11],       K[12], K[13], K[14], K[15]
+		);
 	}
 }
+
+//local_K_update[0],  local_K_update[1],  local_K_update[2],   local_K_update[3],       local_K_update[4],   local_K_update[5],   local_K_update[6],   local_K_update[7],\
+			//local_K_update[8],  local_K_update[9],  local_K_update[10],  local_K_update[11],      local_K_update[12],  local_K_update[13],  local_K_update[14],  local_K_update[15]\
 
 
 __kernel void update_maps(  // ? integrate with patch kernel ?

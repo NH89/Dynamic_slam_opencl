@@ -8,7 +8,7 @@
 #include <filesystem>
 #include <set>
 
-#include "../utils/convertTransforms.hpp"
+//#include "../utils/convertTransforms.hpp"
 #include "../utils/convertAhandaPovRayToStandard.hpp"
 
 

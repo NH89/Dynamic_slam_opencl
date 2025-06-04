@@ -10,6 +10,7 @@
 
 #include <jsoncpp/json/json.h>
 
+#include "../utils/convertTransforms.hpp"
 #include "../utils/conf_params.hpp"
 #include "../utils/print_functions.hpp"
 #include "../utils/CV_chk.hpp"
@@ -189,7 +190,7 @@ public:
 	cl_mem				warp_error_buf,				depth_error_buf,			depth_est_buf;
 
 	// buffers for patch kernel based Dynamic_slam
-	cl_mem				pose_update_buf, distorsion_update_buf, old_result_buf;
+	cl_mem				pose_buf, pose_update_buf, distorsion_update_buf, old_result_buf, K_buf, inv_K_buf;
 
 	//
 	cv::Mat 			baseImage, key_frame;
@@ -253,6 +254,7 @@ public:
 	void createAndBulidProgramFromSource(cl_device_id *devices);
 	void createKernels();
 
+	void set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k );
 
 	void mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_to_call, uint start, uint stop, bool layers_sequential, const size_t local_work_size);						// Call kernels on mipmap: start,stop allow running specific layers.
 

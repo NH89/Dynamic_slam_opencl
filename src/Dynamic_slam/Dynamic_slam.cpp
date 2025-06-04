@@ -101,19 +101,22 @@ void Dynamic_slam::initialize_camera_vec(){
 	frame_datum 			datum 	= {};																									// default initialization, to values in header, or zero if not set in header.
 	datum.keyframe_index			= 0 ;								// Expects that this frame will be used for new vector of keyframes.
 																																			cout << "\n\n datum.keyframe_index = "<< datum.keyframe_index << flush;
+																																			PRINT_MATX44F( k ,  );
 	datum.frame_data.K 				= k;
-	datum.frame_data.inv_K 			= generate_invK_( k , verbosity);																		// Current frame must be set as the new keyframe.
+	cv::Matx44f inv_k				= generate_invK_( k , verbosity);
+	datum.frame_data.inv_K 			= inv_k;																								// Current frame must be set as the new keyframe.
 
 	frame_data.push_back( datum );																											// pushback a pose_datum, ready for getFrameData_vec() to write to.
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 2:" <<flush;
 																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);  // gets corrupted by getFrameData_vec()
 																																			}
 	getFrameData_vec();													// TODO if( GT available ){getFrameData_vec();}
+	runcl.set_cam_bufs( k , inv_k, frame_data.back().frame_data.keyframe2pose,  frame_data.back().frame_data.K2K );							// NB uses camera matrix from conf.json. We use orthographic matrix, then convert to perspectiveby dividing by depth. See notes in convertTransforms.cpp
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 3:" <<flush;
 																																				PRINT_MATX44F(frame_data.back().frame_data_GT.keyframe2pose,);
 																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);
 																																			}
-	frame_data.back().frame_data 	= frame_data.back().frame_data_GT;  // TODO if( use_GT )
+	frame_data.back().frame_data 	= frame_data.back().frame_data_GT;	// TODO if( use_GT )
 	frame_data.push_back( frame_data.back() );																								// Propagate the initialization over the first three entries in the "frame_data" vector.
 	frame_data.push_back( frame_data.back() );																								// Required because predictFrame_vec() samples previous pose and inverse pose.
 																																			if(verbosity>local_verbosity_threshold) {
@@ -164,8 +167,8 @@ int Dynamic_slam::nextFrame() {
 
 	//estimateSE3(); // original tracking
 
-	patch_slam();		// new tracking prototype.
-//	estimateSLAM();		// kernel basedtracking - no data offload. nor CPU computing.
+//	patch_slam();		// new tracking prototype.
+	estimateSLAM();		// kernel basedtracking - no data offload. nor CPU computing.
 																						auto step_6 = high_resolution_clock::now();			// own thread ? num iter ?
 	//disparity();
 	//binocular_reference_frame();

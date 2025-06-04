@@ -597,6 +597,68 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																			if(verbosity>local_verbosity_threshold) cout <<"\nRunCL::initialize_RunCL_chk finished ############################################################\n"<<flush;
 }
 
+
+void RunCL::set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k ){
+	int local_verbosity_threshold = -2; //V_RUNCL_SET_CAM_BUFS;
+	string fname = "RunCL::set_cam_bufs( )";
+																																			if(verbosity>local_verbosity_threshold) {
+																																				cout<<"\nRunCL::"<<fname<<"(  )_chk0"<<flush;
+																																			}
+																																			// NB Orthographic camera, See notes in convertTransforms.cpp , cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){..}
+																																			// 4x4 perspective matrix is not invertable for points at infinity. We correct ortho->perspective in the kernel by dividing by Z.
+
+	//Matx44f_To_float16arry(Matx44f matx, float arry[16]);
+	//PRINT_FLOAT_16(a, txt)
+	float k_arry[16], inv_k_arry[16], pose_arry[16], k2k_arry[16];
+	Matx44f_To_float16arry( k,		k_arry		);		PRINT_FLOAT_16(k_arry, )
+	Matx44f_To_float16arry( inv_k,	inv_k_arry	);
+	Matx44f_To_float16arry( pose,	pose_arry	);
+	Matx44f_To_float16arry( k2k,	k2k_arry	);
+
+	float k_buf_arr[16];
+	void * ptr = k_buf_arr;
+																																			PRINT_MATX44F(k,);
+	_clEnqueueWriteBuffer( uload_queue, 	K_buf,		CL_FALSE, 0, 16 * sizeof( float), k_arry, 			fname);							cout<<"\nRunCL::"<<fname<<"(  )_chk1"<<flush;
+	//ReadOutput( (uchar*)ptr, K_buf, sizeof(float)*16, 0 );
+	//PRINT_FLOAT_16(k_buf_arr, )
+																																			PRINT_MATX44F(inv_k,);
+	_clEnqueueWriteBuffer( uload_queue, 	inv_K_buf,	CL_FALSE, 0, 16 * sizeof( float), inv_k_arry, 		fname);							cout<<"\nRunCL::"<<fname<<"(  )_chk2"<<flush;
+																																			PRINT_MATX44F(pose,);
+	_clEnqueueWriteBuffer( uload_queue, 	pose_buf,	CL_FALSE, 0, 16 * sizeof( float), pose_arry, 		fname);							cout<<"\nRunCL::"<<fname<<"(  )_chk3"<<flush;
+																																			PRINT_MATX44F(k2k,);
+	_clEnqueueWriteBuffer( uload_queue, 	k2kbuf,		CL_FALSE, 0, 16 * sizeof( float), k2k_arry,			fname);							cout<<"\nRunCL::"<<fname<<"(  )_chk4"<<flush;
+
+	// void RunCL::ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
+
+	ReadOutput( (uchar*)ptr, K_buf, sizeof(float)*16, 0 );
+	PRINT_FLOAT_16(k_buf_arr, )
+
+	/*
+	clEnqueueReadBuffer(cl_command_queue    command_queue,
+                    cl_mem              buffer,
+                    cl_bool             blocking_read,
+                    size_t              offset,
+                    size_t              size,
+                    void *              ptr,
+                    cl_uint             num_events_in_wait_list,
+                    const cl_event *    event_wait_list,
+                    cl_event *          event)
+	*//*
+	cl_event readEvt;
+	cl_int status;
+
+	status = clEnqueueReadBuffer( uload_queue,  K_buf, CL_FALSE, (size_t)0, (size_t)16*sizeof(float), ptr, 0, NULL, &readEvt);
+	_cl_flush_finish(dload_queue, fname);
+	if (status != CL_SUCCESS) { cout << "\nclEnqueueReadBuffer(..) status=" << checkerror(status) <<"\n"<<flush; exit_(status);}
+	clReleaseEvent(readEvt);
+
+	PRINT_FLOAT_16(k_buf_arr, )
+	*/
+
+
+}
+
+
 void RunCL::mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_to_call, uint start, uint stop, bool layers_sequential, const size_t local_work_size){
 	int local_verbosity_threshold = V_RUNCL_MIPMAP_CALL_KERNEL;//verbosity_mp["RunCL::mipmap_call_kernel"];// -2;
 																																			if(verbosity>local_verbosity_threshold) {
@@ -772,11 +834,15 @@ void RunCL::allocatemem(){
 	warp_error_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, 2 * mm_size_bytes_C4/*C1*/,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	depth_error_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, 2 * mm_size_bytes_C4/*C1*/,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	depth_est_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, 2 * mm_size_bytes_C4/*C1*/,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+
 	// buffers for patch kernel based Dynamic_slam
-	pose_update_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, sizeof(float)*6,				0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	pose_buf						= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, sizeof(float)*16,				0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	pose_update_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, sizeof(float)*16,				0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	distorsion_update_buf			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, sizeof(float)*6,				0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	old_result_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, sizeof(float)*6,				0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
+	K_buf							= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, sizeof(float)*16,				0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	inv_K_buf						= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, sizeof(float)*16,				0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nRunCL::allocatemem_chk3\n\n" << flush;
@@ -1016,11 +1082,15 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	status = clReleaseMemObject(warp_error_buf);				if (status != CL_SUCCESS)	{ cout << "\nwarp_error_buf                 status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(depth_error_buf);				if (status != CL_SUCCESS)	{ cout << "\ndepth_error_buf                status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(depth_est_buf);					if (status != CL_SUCCESS)	{ cout << "\ndepth_est_buf                  status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+
 	// buffers for patch kernel based Dynamic_slam
+	status = clReleaseMemObject(pose_buf);						if (status != CL_SUCCESS)	{ cout << "\npose_buf                       status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(pose_update_buf);				if (status != CL_SUCCESS)	{ cout << "\npose_update_buf                status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(distorsion_update_buf);			if (status != CL_SUCCESS)	{ cout << "\ndistorsion_update_buf          status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(old_result_buf);				if (status != CL_SUCCESS)	{ cout << "\nold_result_buf                 status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 
+	status = clReleaseMemObject(K_buf);							if (status != CL_SUCCESS)	{ cout << "\nK_buf                          status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+	status = clReleaseMemObject(inv_K_buf);						if (status != CL_SUCCESS)	{ cout << "\ninv_K_buf                      status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 
 	// release kernels
 	status = clReleaseKernel(cvt_color_space_linear_kernel);	if (status != CL_SUCCESS)	{ cout << "\ncvt_color_space_linear_kernel 	status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_49"<<flush;
