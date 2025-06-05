@@ -390,8 +390,8 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 
 //	printf("\n__kernel void update_SE3()_0    global_id_u=,%u,   SE3=,%u,  read_col=,%u,  thread_offset=,%u,  lid=,%u,   local_group_size=,%u,   group_id=,%u,   in_range=,%u "\
 //											,   global_id_u,   SE3,  read_col,  thread_offset,  lid,   local_group_size,   group_id,   in_range  );
-	if (lid==0) printf("\n__kernel void update_SE3()_0     K={%f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f}",\
-			K[0], K[1], K[2], K[3],       K[4], K[5], K[6], K[7],     K[8], K[9], K[10], K[11],       K[12], K[13], K[14], K[15]	);
+// 	if (lid==0) printf("\n__kernel void update_SE3()_0     K={%f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f}",\
+// 			K[0], K[1], K[2], K[3],       K[4], K[5], K[6], K[7],     K[8], K[9], K[10], K[11],       K[12], K[13], K[14], K[15]	);
 
 	float2 pvt_rho			= {0.0f,0.0f};
 	float2 pvt_weights		= {0.0f,0.0f};
@@ -505,6 +505,9 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 	///  Now compute the update to k2k ///  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	 __local float local_update_vec[9];	//local_SE3[9];
 
+// 	 	if (lid==0) printf("\n__kernel void update_SE3()_3.2     K={%f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f}",\
+// 			K[0], K[1], K[2], K[3],       K[4], K[5], K[6], K[7],     K[8], K[9], K[10], K[11],       K[12], K[13], K[14], K[15]	);
+
 	if ( get_num_groups(0) > 1){
 		pose_update[SE3]									= update;
 		barrier(CLK_GLOBAL_MEM_FENCE);
@@ -539,20 +542,34 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 		update_k2k( lid, local_K_update, local_pose_inv_K, local_A_B, local_k2k ); 			barrier(CLK_LOCAL_MEM_FENCE);		// (local_update, local_Pose, local_K, local_inv_K, A, B, local_k2k );
 
 		if(lid<16){ k2k[lid] 	= local_k2k[lid]; }											barrier(CLK_LOCAL_MEM_FENCE);
-
-		if (lid==0) printf("\n__kernel void update_SE3()_4  local_update_vec[SE3]={%f,%f,%f,  %f,%f,%f}   local_update[]={%f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f}    K={%f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f}",\
+/*
+			if (lid==0) printf("\n__kernel void update_SE3()_4.0     K={%f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f}",\
+				K[0], K[1], K[2], K[3],       K[4], K[5], K[6], K[7],     K[8], K[9], K[10], K[11],       K[12], K[13], K[14], K[15]	);
+*/
+		if (lid==0) printf("\n__kernel void update_SE3()_4  local_update_vec[SE3]={%f,%f,%f,  %f,%f,%f}   local_update[]={%f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f,  %f,%f,%f,%f}   ",\
 			local_update_vec[0], local_update_vec[1], local_update_vec[2], local_update_vec[3], local_update_vec[4], local_update_vec[5],\
 			local_K_update[16],  local_K_update[17],  local_K_update[18],  local_K_update[19],    local_K_update[20],  local_K_update[21],  local_K_update[22],  local_K_update[23],\
-			local_K_update[24],  local_K_update[25],  local_K_update[26],  local_K_update[27],    local_K_update[28],  local_K_update[29],  local_K_update[30],  local_K_update[31],\
-			\
-			K[0], K[1], K[2], K[3],       K[4], K[5], K[6], K[7],\
-			K[8], K[9], K[10], K[11],       K[12], K[13], K[14], K[15]
-		);
+			local_K_update[24],  local_K_update[25],  local_K_update[26],  local_K_update[27],    local_K_update[28],  local_K_update[29],  local_K_update[30],  local_K_update[31] );
+
+		if (lid==0) printf("\n local_pose_inv_K = { %f, %f, %f, %f,    %f, %f, %f, %f,    %f, %f, %f, %f,    %f, %f, %f, %f }  ,  { %f, %f, %f, %f,    %f, %f, %f, %f,    %f, %f, %f, %f,    %f, %f, %f, %f }",\
+			local_pose_inv_K[ 0], local_pose_inv_K[ 1], local_pose_inv_K[ 2], local_pose_inv_K[ 3],     local_pose_inv_K[ 4], local_pose_inv_K[ 5], local_pose_inv_K[ 6], local_pose_inv_K[ 7],    \
+			local_pose_inv_K[ 8], local_pose_inv_K[ 9], local_pose_inv_K[10], local_pose_inv_K[11],     local_pose_inv_K[12], local_pose_inv_K[13], local_pose_inv_K[14], local_pose_inv_K[15], \
+			local_pose_inv_K[16], local_pose_inv_K[17], local_pose_inv_K[18], local_pose_inv_K[19],     local_pose_inv_K[20], local_pose_inv_K[21], local_pose_inv_K[22], local_pose_inv_K[23],    \
+			local_pose_inv_K[24], local_pose_inv_K[25], local_pose_inv_K[26], local_pose_inv_K[27],     local_pose_inv_K[28], local_pose_inv_K[29], local_pose_inv_K[30], local_pose_inv_K[31]  );
+
+
+		if (lid==0) printf("\n local_A_B = { %f, %f, %f, %f,    %f, %f, %f, %f,    %f, %f, %f, %f,    %f, %f, %f, %f }  ,  { %f, %f, %f, %f,    %f, %f, %f, %f,    %f, %f, %f, %f,    %f, %f, %f, %f }",\
+			local_A_B[ 0], local_A_B[ 1], local_A_B[ 2], local_A_B[ 3],    local_A_B[ 4], local_A_B[ 5], local_A_B[ 6], local_A_B[ 7],    \
+			local_A_B[ 8], local_A_B[ 9], local_A_B[10], local_A_B[11],    local_A_B[12], local_A_B[13], local_A_B[14], local_A_B[15],  \
+			local_A_B[16], local_A_B[17], local_A_B[18], local_A_B[19],    local_A_B[20], local_A_B[21], local_A_B[22], local_A_B[23],    \
+			local_A_B[24], local_A_B[25], local_A_B[26], local_A_B[27],    local_A_B[28], local_A_B[29], local_A_B[30], local_A_B[31]   );
+
+		if (lid==0) printf("\n local_k2k = { %f, %f, %f, %f,    %f, %f, %f, %f,    %f, %f, %f, %f,    %f, %f, %f, %f }",\
+			local_k2k[ 0], local_k2k[ 1], local_k2k[ 2], local_k2k[ 3],     local_k2k[ 4], local_k2k[ 5], local_k2k[ 6], local_k2k[ 7],     \
+			local_k2k[ 8], local_k2k[ 9], local_k2k[10], local_k2k[11],     local_k2k[12], local_k2k[13], local_k2k[14], local_k2k[15] );
 	}
 }
 
-//local_K_update[0],  local_K_update[1],  local_K_update[2],   local_K_update[3],       local_K_update[4],   local_K_update[5],   local_K_update[6],   local_K_update[7],\
-			//local_K_update[8],  local_K_update[9],  local_K_update[10],  local_K_update[11],      local_K_update[12],  local_K_update[13],  local_K_update[14],  local_K_update[15]\
 
 
 __kernel void update_maps(  // ? integrate with patch kernel ?

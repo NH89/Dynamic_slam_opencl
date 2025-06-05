@@ -91,14 +91,21 @@ void update_k2k(
 
 	if(lid<32){
 		for (uint i =0; i<4; i++){
-			local_A_B[ lid ]		+=	local_K_update[ offset + row * 4 + i ] 		* local_pose_inv_K[ offset + row * i + col  ] ;
+			local_A_B[ lid ]		+=	local_K_update[ offset + row * 4 + i ] 		* local_pose_inv_K[ offset + i * 4  + col  ] ;
+
+//			printf("\n updatek2k() lid=%u, elem=%u, offset=%u, col=%u, row=%u,  local_K_update[ offset + row * 4 + i ]=[ %u ]= %f,  local_pose_inv_K[ offset + row * i + col  ]=[ %u ]= %f  product= %f ", \
+//			lid, elem, offset, col, row, (offset + row * 4 + i), local_K_update[ offset + row * 4 + i ],  (offset + row * i + col),  local_pose_inv_K[ offset + row * i + col  ],  (local_K_update[offset+row*4+i] * local_pose_inv_K[offset+row*i+col]) );
+
+// 			printf("\n updatek2k() lid=%u local_K_update[offset+row*4+i]=[ %u ]= %f,  local_pose_inv_K[offset+row*i+col]=[ %u ]= %f", \
+// 			lid, (offset + row * 4 + i), local_K_update[ offset + row * 4 + i ],  (offset + i * 4  + col),  local_pose_inv_K[ offset + i * 4  + col  ] );
 		}
+
 	}
 	barrier(CLK_LOCAL_MEM_FENCE);
 
 	if (lid<16){
 		for (uint i =0; i<4; i++){
-			local_k2k[lid]			+=	local_A_B[ row * 4 + i ] 					* local_A_B[ SE3_elems + row * 4 + i ] ;
+			local_k2k[lid]			+=	local_A_B[ row * 4 + i ] 					* local_A_B[ SE3_elems + i * 4 + col ] ;		// SE3_elems = 16
 		}
 	}
 }
