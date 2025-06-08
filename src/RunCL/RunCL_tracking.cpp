@@ -270,6 +270,9 @@ void RunCL::update_SE3( uint layer, float delta_theta, float delta )									// 
 																																				float old_result_arry[6];
 																																				ReadOutput( (uchar*)old_result_arry, old_result_buf, sizeof(float), 0);	//ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
 																																				cout<<"\n old_result_arry = " <<old_result_arry[0]<<flush;
+
+
+
 																																			}
 	// _clEnqueueWriteBuffer( uload_queue, k2kbuf,	CL_FALSE, 0, local_num_samples*16*sizeof( float), k2k_3_16_[start_sample_idx],  	fname);
 	// float zero  = 0;

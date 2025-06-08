@@ -68,7 +68,7 @@ void LieToP( uint lid, __local float SE3[9], __local float Pose[32/*16*/] ){
 		uint idx_L2P = fmod((float)lid, 6);
 		uint idx_SE3 = fmod((float)lid, 16);
 
-		printf( "\nLieToP(..) lid=%u,  theta=%f,  cos_theta=%f,  one_cos_theta=%f,   sin_theta=%f,   L2P[%u]={%u},  SE3[%u]={%f},  Pose[lid +16]=%f ", \
+		//printf( "\nLieToP(..) lid=%u,  theta=%f,  cos_theta=%f,  one_cos_theta=%f,   sin_theta=%f,   L2P[%u]={%u},  SE3[%u]={%f},  Pose[lid +16]=%f ", \
 		lid,  theta,  cos_theta,  one_cos_theta,  sin_theta, \
 		idx_L2P,  L2P[ idx_L2P ], \
 		idx_SE3,  SE3[ idx_SE3 ], \
