@@ -135,21 +135,100 @@ __kernel void sum_image_variance(
 	}
 	if (lid==0) {
 		uint group_id 			= get_group_id(0);
-		uint global_sum_offset 	= 0; //read_offset_ / local_size ;		// only the base layer								// Compute offset for this layer
+		uint global_sum_offset 	= 0; //read_offset_ / local_size ;		// only the base layer		// Compute offset for this layer
 		uint num_groups 		= get_num_groups(0);
 
-		float4 layer_data = {num_groups, reduction, 0.0f, 0.0f };			// Write layer data to first entry
+		float4 layer_data 		= {num_groups, reduction, 0.0f, 0.0f };								// Write layer data to first entry
 		if (global_id == 0) {global_sum_var[global_sum_offset] = layer_data; }
-		global_sum_offset += 1+ group_id;
+		global_sum_offset 		+= 1+ group_id;
 
 		if (local_sum_var[0][3] >0){																// Using alpha channel local_sum_var[0][3], to count valid pixels being summed.
-			global_sum_var[global_sum_offset] = local_sum_var[0] / local_sum_var[0][3];				// Save to global_sum_var // Count hits, and divide group by num hits, without using atomics!
+			global_sum_var[global_sum_offset] 	= local_sum_var[0] / local_sum_var[0][3];			// Save to global_sum_var // Count hits, and divide group by num hits, without using atomics!
 		}else global_sum_var[global_sum_offset] = 0;
 	}
 }
 
+__kernel void sample_image_variance(  // sample based, single workgroup per image pyramid layer. 32 * local_size samples.
+	__private	uint	start_layer,	//0
+	__global	float4*	img_stats,		//1
+	__global	float4*	img,			//2
+	__constant	uint*	uint_params,	//3
+	__constant 	uint8*	mipmap_params,	//4
+	__local		float4*	local_sum_var	//5
+		)
+{
+	int global_id				= (int)get_global_id(0);
+	uint layer					= get_group_id(0) + start_layer;
+	const uint num_row_samples	= 32;
+
+	uint lid					= get_local_id(0);
+	float lid_f					= lid;
+	uint local_size				= get_local_size(0);
+	uint group_size				= local_size;
+
+	uint8 mipmap_params_		= mipmap_params[layer];
+	uint mim_pixels				= mipmap_params_[MiM_PIXELS];										// pixels in this layer of the image pyramid.
+	uint read_offset_			= mipmap_params_[MiM_READ_OFFSET];
+	uint cols					= mipmap_params_[MiM_READ_COLS];
+	uint rows					= mipmap_params_[MiM_READ_ROWS];
+
+	uint pixels					= uint_params[PIXELS];												// pixels in the base image.
+
+	uint margin					= uint_params[MARGIN];
+	uint mm_cols				= uint_params[MM_COLS];
+	uint mm_pixels				= uint_params[MM_PIXELS];											// pixels in the entire mip-map image buffer.
+
+	uint row_step				= rows / num_row_samples;											// /*(cols + 2*margin) * */
+	uint col					= lid * cols / group_size;											// NB here use cols not mm_cols    /*+  cols / (2*group_size)*/
+
+	uint read_step				= row_step * mm_cols;
+	uint read_index				= read_offset_  +  col ;											// NB 4 channels.   /*+  read_step/2*/
+
+
+	float4 variance[num_row_samples];
+	float4 mean 				= img_stats[IMG_MEAN];												// NB mean should be the same for all layers. Here we use the layer 0 mean.
+
+	//if (lid==0) printf("\nglobal_id=%u,  row_step(%u) =  rows(%u) / num_row_samples(%u),  mean={%f, %f, %f, %f}  read_index(%u)	= read_offset_(%u)  +  col(%u) +  read_step(%u)/2"\
+	//	,global_id, row_step, rows, num_row_samples, mean.x, mean.y, mean.z, mean.w,  read_index, read_offset_,  col,  read_step );
+
+	for (uint row=0; row<num_row_samples; row++){
+		//if (lid==0) printf("\nglobal_id=%u, read_index=%u,  pixels=%u,  mm_pixels=%u,  mim_pixels=%u, img[read_index]={%f,%f,%f,%f}"\
+			,global_id, read_index, pixels, mm_pixels, mim_pixels, img[read_index].x, img[read_index].y, img[read_index].z, img[read_index].w );
+		variance[row] = pown( (img[read_index] - mean), 2);											// Compute variance sample, and check for NaNs  // powr( (   ), 2)
+/*
+// 		if ( isnan( variance[row].x ) ) variance[row].x =0;
+// 		if ( isnan( variance[row].y ) ) variance[row].y =0;
+// 		if ( isnan( variance[row].z ) ) variance[row].z =0;
+// 		if ( isnan( variance[row].w ) ) variance[row].w =0;
+*/
+		read_index += read_step;
+	}
+	//if (lid==0)for(uint row=0; row<num_row_samples; row++) printf("\nglobal_id=%u,  variance[%u]={%f,%f,%f,%f}",global_id, row, variance[row].x, variance[row].y, variance[row].z, variance[row].w );
+
+	for (uint step=1; step<num_row_samples; step *=2){											// Sum the column of samples in private memory
+		//if(global_id==0)printf("\nstep=%u",step);
+		for ( uint row_idx=0; row_idx<num_row_samples; row_idx += step*2 ){
+			variance[row_idx] 	+= variance[row_idx+step];
+			//if (global_id==0) printf("\n[row_idx]=%u,  [row_idx+step]=%u", row_idx, row_idx+step);
+		}
+	}
+	local_sum_var[lid] = variance[0];
+	for (uint step=1; step<num_row_samples/2; step *=2){											// Sum the columns, using local mem to pass message.
+		bool 							mod_step 						=  fmod(lid_f, step)==0;
+		if ( mod_step )					local_sum_var[lid]	 			+= local_sum_var[lid + step];
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
+	if(lid==0){
+		variance[0]						= local_sum_var[0] / local_sum_var[0].w;
+		img_stats[layer*2 + IMG_VAR]	= variance[0];												// Write layer result to global memory.
+
+		//printf("\nlayer=%u, local_sum_var[0] = {%f,%f,%f,%f}, variance[1]={%f,%f,%f,%f}, variance[0]={%f,%f,%f,%f} ", \
+		//layer, local_sum_var[0].x, local_sum_var[0].y, local_sum_var[0].z, local_sum_var[0].w,     variance[1].x, variance[1].y, variance[1].z, variance[1].w,    variance[0].x, variance[0].y, variance[0].z, variance[0].w  );
+	}
+}
+
 __kernel void blur_image(
-	__private	uint	layer,			//0															// Intitial lyer bluring needs a different buffer to write blurred image to.
+	__private	uint	layer,			//0															// Intitial layer bluring needs a different buffer to write blurred image to.
 	__constant 	uint8*	mipmap_params,	//1															// => the original loading should be to an interim buffer.
 	//__constant 	float* 	gaussian,		//2
 	__constant 	uint*	uint_params,	//2
@@ -252,6 +331,8 @@ __kernel void mipmap_linear_flt4(		// Mipmap layers must be executed sesequentia
 
 	uint read_index 	= read_offset_  +  read_row  * mm_cols  + read_column  ;					// NB 4 channels.  + margin
 	uint write_index 	= write_offset_ +  write_row * mm_cols  + write_column ;					// write_cols_, use read_cols_ as multiplier to preserve images  + margin
+
+	if (read_column==0 && fmod((float)read_row,10)==0)  printf("\n__kernel mipmap_linear_flt4, layer=%u, global_id_u=%u, read_index=%u", layer, global_id_u, read_index);
 
 	//float4 white = {1.0f,1.0f,1.0f,1.0f};
 	//float4 black = {0.0f,0.0f,0.0f,0.0f};

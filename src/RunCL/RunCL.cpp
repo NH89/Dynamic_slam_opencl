@@ -266,8 +266,9 @@ void RunCL::createKernels(){
 	cl_int err_code;
 
     cvt_color_space_linear_kernel 	= clCreateKernel(m_program, "cvt_color_space_linear", 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'cvt_color_space_linear'  kernel not built.\n"	<<flush; exit_(0);   }
-	sum_image_variance_kernel		= clCreateKernel(m_program, "sum_image_variance", 			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'image_variance'  kernel not built.\n"			<<flush; exit_(0);   }
-	blur_image_kernel				= clCreateKernel(m_program, "blur_image", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'blur_image'  kernel not built.\n"				<<flush; exit_(0);   }
+	sum_image_variance_kernel		= clCreateKernel(m_program, "sum_image_variance",			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'sum_image_variance'  kernel not built.\n"		<<flush; exit_(0);   }
+	sample_image_variance_kernel	= clCreateKernel(m_program, "sample_image_variance",		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'sample_image_variance'  kernel not built.\n"	<<flush; exit_(0);   }
+	blur_image_kernel				= clCreateKernel(m_program, "blur_image",					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'blur_image'  kernel not built.\n"				<<flush; exit_(0);   }
 	reduce_kernel					= clCreateKernel(m_program, "reduce", 						&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'reduce'  kernel not built.\n"					<<flush; exit_(0);   }
 	mipmap_float4_kernel			= clCreateKernel(m_program, "mipmap_linear_flt4", 			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'mipmap_linear_flt4'  kernel not built.\n"		<<flush; exit_(0);   }
 	mipmap_float_kernel				= clCreateKernel(m_program, "mipmap_linear_flt", 			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'mipmap_linear_flt'  kernel not built.\n"		<<flush; exit_(0);   }
@@ -877,7 +878,7 @@ void RunCL::allocatemem(){
 
 	status = clEnqueueWriteBuffer(uload_queue, basemem, 		CL_FALSE, 0, image_size_bytes, 	baseImage.data, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.6\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 																																		if(verbosity>local_verbosity_threshold) cout <<"\n\nRunCL::allocatemem_chk4.2\n\n" << flush;
-	//float depth = 1/( obj["max_depth"].asFloat() - obj["min_depth"].asFloat() );
+	float depth = 1/( obj["max_depth"].asFloat() - (obj["min_depth"].asFloat() / 2)  );
 	float zero  = 0;
 	float one   = 1;
 	float default_depth = fp32_params[MAX_INV_DEPTH] / 2.0f;
@@ -886,6 +887,9 @@ void RunCL::allocatemem(){
 	status = clEnqueueFillBuffer(uload_queue, gxmem, 				&zero, 			sizeof(float), 	0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueFillBuffer(uload_queue, gymem, 				&zero, 			sizeof(float), 	0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 																																		if(verbosity>local_verbosity_threshold) cout <<"\n\nRunCL::allocatemem_chk4.1\n\n" << flush;
+
+	status = clEnqueueFillBuffer(uload_queue, depth_mem, 			&depth, 		sizeof(float),   0, mm_size_bytes_C1,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.6\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	status = clEnqueueFillBuffer(uload_queue, dmem, 				&default_depth, sizeof(float),   0, mm_size_bytes_C1, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 
 	status = clEnqueueFillBuffer(uload_queue, depth_mem_temp, 		&default_depth, sizeof(float),   0, mm_size_bytes_C1, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueFillBuffer(uload_queue, depth_mem_GT, 		&default_depth, sizeof(float),   0, mm_size_bytes_C1, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
@@ -921,7 +925,6 @@ void RunCL::allocatemem(){
 	status = clEnqueueFillBuffer(uload_queue, warp_buf,		 		&zero, 			sizeof(float),   0, mm_size_bytes_C1 * 2,	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 
 
-	//status = clEnqueueFillBuffer(uload_queue, depth_mem, 	&depth, sizeof(float),  0, mm_size_bytes_C1,  0, NULL, &writeEvt);			if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.6\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	clFlush(uload_queue); status = clFinish(uload_queue); 																				if (status != CL_SUCCESS)	{ cout << "\nclFinish(uload_queue)=" << status << checkerror(status) <<"\n"  << flush; exit_(status);}
 
 																																		if(verbosity>local_verbosity_threshold) {
@@ -1095,6 +1098,7 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	// release kernels
 	status = clReleaseKernel(cvt_color_space_linear_kernel);	if (status != CL_SUCCESS)	{ cout << "\ncvt_color_space_linear_kernel 	status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_49"<<flush;
 	status = clReleaseKernel(sum_image_variance_kernel);		if (status != CL_SUCCESS)	{ cout << "\nsum_image_variance_kernel 		status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_50"<<flush;
+	status = clReleaseKernel(sample_image_variance_kernel);		if (status != CL_SUCCESS)	{ cout << "\nsample_image_variance_kernel	status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_50"<<flush;
 	status = clReleaseKernel(reduce_kernel);					if (status != CL_SUCCESS)	{ cout << "\nreduce_kernel 					status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_51"<<flush;
 	status = clReleaseKernel(mipmap_float4_kernel);				if (status != CL_SUCCESS)	{ cout << "\nmipmap_float4_kernel 			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_52"<<flush;
 	status = clReleaseKernel(mipmap_3x3blur_flt4_kernel);		if (status != CL_SUCCESS)	{ cout << "\nmipmap_3x3blur_flt4 			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_52"<<flush;

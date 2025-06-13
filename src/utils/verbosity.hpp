@@ -136,8 +136,9 @@
 
 	////////////////////////////////////// RUNCL_LOAD_IMAGE.CPP
 	#define	V_RUNCL_LOADFRAME   1
-	#define	V_RUNCL_CVT_COLOR_SPACE   1
+	#define	V_RUNCL_CVT_COLOR_SPACE   0
 	#define	V_RUNCL_SUM_IMAGE_VARIANCE   1
+	#define	V_RUNCL_SAMPLE_IMAGE_VARIANCE   0
 	#define	V_RUNCL_BLUR_IMAGE   1
 	#define	V_RUNCL_MIPMAP_LINEAR   -1
 	#define	V_RUNCL_IMG_GRADIENTS   -1

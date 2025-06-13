@@ -226,7 +226,8 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 	runcl.cvt_color_space( );
 	runcl.blur_image();//runcl.imgmem, runcl.imgmem_blurred , "imgmem_blurred");
 	runcl.mipmap_linear(runcl.current_frames[ runcl.current_frames_idx[0] ].img_buf, "imgmem");
-	runcl.sum_image_variance();
+	//runcl.sum_image_variance();
+	runcl.sample_image_variance();
 	runcl.img_gradients();
 																																			// # Get 1st & 2nd order image gradients of MipMap
 																																			// see CostVol::cacheGValues(), RunCL::cacheGValue2 & __kernel void CacheG3

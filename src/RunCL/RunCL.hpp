@@ -70,7 +70,7 @@ public:
 	cl_kernel			disparity_kernel;
 	cl_kernel			convert_depth_kernel, invert_depth_kernel, transform_depthmap_kernel, transform_costvolume_kernel;
 	cl_kernel 			depth_cost_vol_kernel, cost_kernel, cache3_kernel, cache4_kernel, updateQD_kernel, updateG_kernel, updateA_kernel, measureDepthFit_kernel;
-	cl_kernel			cvt_color_space_kernel, cvt_color_space_linear_kernel, sum_image_variance_kernel, blur_image_kernel;
+	cl_kernel			cvt_color_space_kernel, cvt_color_space_linear_kernel, sum_image_variance_kernel, sample_image_variance_kernel, blur_image_kernel;
 	cl_kernel 			reduce_kernel, mipmap_float4_kernel, mipmap_float_kernel, img_grad_kernel, se3_rho_sq_kernel, comp_param_maps_kernel;
 	cl_kernel			se3_lk_grad_kernel, atomic_test1_kernel, atomic_test2_kernel;
 	// stereo disparity kernels
@@ -203,16 +203,17 @@ public:
 
 	cl_device_id 		deviceId;
 	
-	size_t				img_stats_size_bytes 	= sizeof(float)*8*4*2;
-	float				img_stats[8*4*2]		= {0};		// 8 layers, 4 channels, 2 variables.
-	size_t 				num_threads[8]			= {0};
-	size_t 				lookup_table_offset[8] 	= {0};
-	uint				MipMap[8*8]				= {0};
-	uint				uint_params[8]			= {0};
+	static const uint	img_stats_size				= 8*4*2;							// 8 layers, 4 channels, 2 variables.
+	size_t				img_stats_size_bytes 		= sizeof(float)*img_stats_size;
+	float				img_stats[img_stats_size]	= {0};
+	size_t 				num_threads[8]				= {0};
+	size_t 				lookup_table_offset[8] 		= {0};
+	uint				MipMap[8*8]					= {0};
+	uint				uint_params[8]				= {0};
 	
-	float				fp32_params[16]			= {0};
-	float				fp32_so3_k2k[9]			= {0};
-	float 				fp32_k2keyframe[16]		= {0};
+	float				fp32_params[16]				= {0};
+	float				fp32_so3_k2k[9]				= {0};
+	float 				fp32_k2keyframe[16]			= {0};
 	
 	uint	 			mm_num_reductions;				//	
 	int 				mm_gaussian_size;				//	
@@ -346,6 +347,7 @@ public:
 	void loadFrame(cv::Mat image);
 	void cvt_color_space();
 	void sum_image_variance();
+	void sample_image_variance();
 	void blur_image();
 	void mipmap_linear(cl_mem image_buf, std::string folder);
 	void mipmap_3x3blur_linear(cl_mem image_buf, std::string folder);

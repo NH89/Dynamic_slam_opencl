@@ -101,51 +101,52 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	__global float4*	img_past[num_past_frames]		= { img_past_0, img_past_1, img_past_2, img_past_3 };
 	__global float4*	vel_past[num_past_frames]		= { vel_past_0, vel_past_1, vel_past_2, vel_past_3 };
 
-	uint  global_id_u 		= get_global_id(0);
-	//float global_id_flt 	= global_id_u;
-	uint  lid 				= get_local_id(0);
-	uint  group_id			= get_group_id(0);
-	const uint local_size 	= get_local_size(0);
+	uint  global_id_u 			= get_global_id(0);
+	//float global_id_flt 		= global_id_u;
+	uint  lid 					= get_local_id(0);
+	uint  group_id				= get_group_id(0);
+	const uint local_size 		= get_local_size(0);
 
-	uint8 mipmap_params_ 	= mipmap_params[layer];
-	uint read_offset_ 		= mipmap_params_[MiM_READ_OFFSET];
-	uint read_cols_ 		= mipmap_params_[MiM_READ_COLS];
-	uint read_rows_ 		= mipmap_params_[MiM_READ_ROWS];
-	uint layer_pixels		= mipmap_params_[MiM_PIXELS];
+	const uint8 mipmap_params_ 	= mipmap_params[layer];
+	uint read_offset_ 			= mipmap_params_[MiM_READ_OFFSET];
+	uint read_cols_ 			= mipmap_params_[MiM_READ_COLS];
+	uint read_rows_ 			= mipmap_params_[MiM_READ_ROWS];
+	uint layer_pixels			= mipmap_params_[MiM_PIXELS];
 
-	uint mm_cols			= uint_params[MM_COLS];
-	uint mm_pixels			= uint_params[MM_PIXELS];
+	uint mm_cols				= uint_params[MM_COLS];
+	uint mm_pixels				= uint_params[MM_PIXELS];
 
-	float min_inv_depth		= fp32_params[MIN_INV_DEPTH];										//+ inv_d_step;
-	float max_inv_depth		= fp32_params[MAX_INV_DEPTH];										//- inv_d_step;
+	float min_inv_depth			= fp32_params[MIN_INV_DEPTH];										//+ inv_d_step;
+	float max_inv_depth			= fp32_params[MAX_INV_DEPTH];										//- inv_d_step;
 
-	float reduction			= mm_cols/read_cols_;
-	uint row_length			= cols_per_row; 													// blocks_cols * block_size;
-	uint row_col			= fmod((float)global_id_u, row_length);
-	uint block_row			= global_id_u / row_length;
-	uint read_index			= read_offset_ + row_col + block_row*block_size*mm_cols;
-	uint row_offset			= read_offset_/mm_cols;
+	float reduction				= mm_cols/read_cols_;
+	uint row_length				= cols_per_row; 													// blocks_cols * block_size;
+	uint row_col				= fmod((float)global_id_u, row_length);
+	uint block_row				= global_id_u / row_length;
+	uint read_index				= read_offset_ + row_col + block_row*block_size*mm_cols;
+	uint row_offset				= read_offset_/mm_cols;
 
-	uint write_spacing		= block_size/out_block_size;
-	uint write_index 		= row_col/out_block_size + block_row*write_spacing*mm_cols; 		//fmod((float)global_id_u, blocks_cols * out_block_size)	+ (global_id_u / (uint)(blocks_cols * out_block_size)) * out_block_size;;
+	uint write_spacing			= block_size/out_block_size;
+	uint write_index 			= row_col/out_block_size + block_row*write_spacing*mm_cols; 		//fmod((float)global_id_u, blocks_cols * out_block_size)	+ (global_id_u / (uint)(blocks_cols * out_block_size)) * out_block_size;;
 
-	uint write_index_2 		= row_col/block_size + block_row*mm_cols; 		//fmod((float)global_id_u, blocks_cols * out_block_size)	+ (global_id_u / (uint)(blocks_cols * out_block_size)) * out_block_size;;
+	uint write_index_2 			= row_col/block_size + block_row*mm_cols; 		//fmod((float)global_id_u, blocks_cols * out_block_size)	+ (global_id_u / (uint)(blocks_cols * out_block_size)) * out_block_size;;
 
 
-	float2 rho[block_size]				= {0.0f};												// pvt variable for values in this column.
+	float2 rho_pvt_arr[block_size]				= {0.0f};										// pvt variable for values in this column.
 	float4 rho_pvt_flt4;
 	float2 rho_pvt_flt2;
 
-	float2 weights[block_size*se3_dof]	= {0.0f};												// pvt variable for values in this column.
-	float4 weights_pvt_flt4;
-	float2 weights_pvt_flt2;
+	float2 grad_pvt_arr[block_size*se3_dof]		= {0.0f};										// pvt variable for values in this column.
+	float4 grad_pvt_flt4;
+	float2 grad_pvt_flt2;
 
-	float2 SE3_incr[block_size*se3_dof]	= {0.0f};												// pvt variable for values in this column.
+	float2 SE3_incr_pvt_arr[block_size*se3_dof]	= {0.0f};										// pvt variable for values in this column.
 	float4 SE3_incr_pvt_flt4;
 	float2 SE3_incr_pvt_flt2;
 
 	float4 img_cur_pvt[block_size];																// pvt variable for values in this column.
 	float8 g1p_pvt[block_size];
+	float4 new_px;
 
 	bool intersection;
 	//float2 temp2	= {1.0f,1.0f};
@@ -153,11 +154,11 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	////////////////////////////////////////////////////////////////////////////				// transfer data from global memory.
 	for (uint past_frame_idx=0; past_frame_idx</*num_past_frames*/1; past_frame_idx++){		// step though past frames ///////////////////////////////////////////////////////////////////////////////
 
-		for (uint row_in_block=0; row_in_block<block_size; row_in_block +=2){						// step through pairs of rows of the patch, /////////////////////////////////////////////////////////////
+		for (uint row_in_block=0; row_in_block<block_size; row_in_block +=2){					// step through pairs of rows of the patch, /////////////////////////////////////////////////////////////
 			// current frame
 			uint read_index_row 		= read_index + row_in_block * mm_cols;
 			img_cur_pvt[row_in_block]	= img_cur[read_index_row];
-			img_cur_pvt[row_in_block+1]	= img_cur[read_index_row + mm_cols];											// sum two source pixels elem from column.
+			img_cur_pvt[row_in_block+1]	= img_cur[read_index_row + mm_cols];										// sum two source pixels elem from column.
 
 			g1p_pvt[row_in_block]		= g1p[read_index_row];
 			g1p_pvt[row_in_block+1]		= g1p[read_index_row + mm_cols];
@@ -169,7 +170,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 			uint index 					= read_index_row - read_offset_;
 			uint v 						= index / mm_cols;
 			uint u 						= fmod((float)index, mm_cols);
-			float u_flt					= (float)u * reduction;																// NB this causes sparse sampling of the original space, to use the same k2k at every scale.
+			float u_flt					= (float)u * reduction;														// NB this causes sparse sampling of the original space, to use the same k2k at every scale.
 			float v_flt_1				= (float)v * reduction;
 			float v_flt_2				= ((float)v+1.0f) * reduction;
 
@@ -198,65 +199,76 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 			int  v2_2				= floor(v2_flt_2 + 0.5f) ;
 			//////////////////////////////////////////////////
 			rho_pvt_flt4			= zero_f4;
+			float edge_weight		= 0;																			// Helps IF e.g. images vary in brightness.
 			intersection 			= (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2_1>2) && (u2_1<=read_cols_-2)  \
 									&& (v2_1>2) && (v2_1<=read_rows_-2)  &&  (global_id_u<=layer_pixels) && (inv_depth_1>=min_inv_depth) && (inv_depth_1<=max_inv_depth);						// if images overlap
 			if (intersection){
-				rho_pvt_flt4		= img_cur_pvt[row_in_block]		 -	bilinear_flt4( img_past[past_frame_idx],  u2_flt_1,  v2_flt_1,  mm_cols,  read_offset_ )	;							// find 1st row pixel rho	// img_past[past_frame_idx][read_index_row]
-				//rho_sq_pvt_flt4		*= rho_pvt_flt4 * (1.0f - g1p[read_index].s3);																											// rho_sq weighted by img edges.
+				edge_weight			= (1.0f - g1p_pvt[row_in_block].s3);
+				new_px				= bilinear_flt4( img_past[past_frame_idx],  u2_flt_1,  v2_flt_1,  mm_cols,  read_offset_ )	;
+				rho_pvt_flt4		= (img_cur_pvt[row_in_block] - new_px) * 	edge_weight;					// find 1st row pixel rho	// img_past[past_frame_idx][read_index_row]			// rho_sq weighted by img edges.
+				float multiplier 	= fp32_params[MAX_INV_DEPTH] / ((inv_depth_1 + 0.01)*5); 					// NB beware if inf depth, i.e. subnormal inv_depth, then div by zero error !	// de-weight foreground for rotation, & de-weight backgroud for translation.
 
-				float multiplier = fp32_params[MAX_INV_DEPTH]/((inv_depth_1 + 0.01) *5); 	// NB beware if inf depth, i.e. subnormal inv_depth, then div by zero error !						// de-weight foreground for rotation, & de-weight backgroud for translation.
-				for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {																																	// for each SE3 DoF
-					float8 grad_v8 											= SE3_grad_map_cur_frame[ read_index_row + (se3_dim * mm_pixels) ] ;												// TODO change SE3_grad_map_cur_frame[] to float4 or less.
-					weights_pvt_flt4										= grad_v8.hi + grad_v8.lo;																							// i.e. sum the u and v components of the gradient, for the four colour channels.
-					SE3_incr_pvt_flt4										= weights_pvt_flt4 * rho_pvt_flt4;																					// TODO collapse to single float
-
-					if (se3_dim>=3){multiplier 								= inv_depth_1/fp32_params[MAX_INV_DEPTH] ;}			// For ST3 only to emphasize foreground pixels for parallax motion: multiply pixel inv_depth by min depth in scene.  Office scene depth is in cm from approx 90 to 450cm.
-
-					SE3_incr_pvt_flt2.x										= ( SE3_incr_pvt_flt4.x + SE3_incr_pvt_flt4.y + SE3_incr_pvt_flt4.z ) * multiplier   ;
-					SE3_incr_pvt_flt2.y										= 1.0f;
-					SE3_incr[ se3_dim*block_size + row_in_block ]			= SE3_incr_pvt_flt2;																								// pixelwise increment for this SE3 DoF
-
-					weights_pvt_flt2.x 										= ( weights_pvt_flt4.x * weights_pvt_flt4.x + weights_pvt_flt4.y * weights_pvt_flt4.y + weights_pvt_flt4.z * weights_pvt_flt4.z );
-					weights_pvt_flt2.y										= 1.0f;
-					weights[ se3_dim*block_size + row_in_block ]			= weights_pvt_flt2;																									// save the SE3_grad^2, to use as divisor for this SE3 DoF, after summing.
-				}
-			}
-			barrier(CLK_GLOBAL_MEM_FENCE );
-
-			rho_pvt_flt2.x			= rho_pvt_flt4.x*rho_pvt_flt4.x  + rho_pvt_flt4.y*rho_pvt_flt4.y  +rho_pvt_flt4.z*rho_pvt_flt4.z;															// sum rho^2
-			rho_pvt_flt2.x			*= (1.0f - g1p[read_index].s3);																																// Weight rho by edges. // TODO choose/ refine which edges to use.
-			rho_pvt_flt2.y			= 1.0f;
-			rho[row_in_block]		+= rho_pvt_flt2;																																			// save to pvt mem for this column
-
-			//////////////////////////////////////////////////
-			rho_pvt_flt4			= zero_f4;
-			intersection 			= (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2_2>2) && (u2_2<=read_cols_-2) \
-									&& (v2_2>2) && (v2_2<=read_rows_-2)  &&  (global_id_u<=layer_pixels) && (inv_depth_2>=min_inv_depth) && (inv_depth_2<=max_inv_depth);						// if images overlap
-			if (intersection){
-				rho_pvt_flt4		= img_cur_pvt[row_in_block+1]	-	bilinear_flt4( img_past[past_frame_idx], u2_flt_2, v2_flt_2,  mm_cols, read_offset_ );									// find 2nd row pixel rho
-
-				float multiplier = fp32_params[MAX_INV_DEPTH]/((inv_depth_1 + 0.01) *5); 	// NB beware if inf depth, i.e. subnormal inv_depth, then div by zero error !						// de-weight foreground for rotation, & de-weight backgroud for translation.
 				for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {																																// for each SE3 DoF
-					float8 grad_v8 											= SE3_grad_map_cur_frame[ read_index_row + mm_cols + (se3_dim * mm_pixels) ] ;										// TODO change SE3_grad_map_cur_frame[] to float4 or less.
-					weights_pvt_flt4										= grad_v8.hi + grad_v8.lo;																							// i.e. sum the u and v components of the gradient, for the four colour channels.
-					SE3_incr_pvt_flt4										= weights_pvt_flt4 * rho_pvt_flt4;																					// TODO collapse to single float
+					float8 grad_v8 											= SE3_grad_map_cur_frame[ read_index_row + (se3_dim * mm_pixels) ] ;												// TODO change SE3_grad_map_cur_frame[] to float4 or less.
+					grad_pvt_flt4											= grad_v8.hi + grad_v8.lo;																							// i.e. sum the u and v components of the gradient, for the four colour channels.
+
+					float3 grad_pvt_flt3 									= {grad_pvt_flt4.xyz};
+					float mag_grad_pvt										= fast_length(grad_pvt_flt3);
+					grad_pvt_flt3											/= mag_grad_pvt;
+
+					SE3_incr_pvt_flt4.x										= rho_pvt_flt4.x * grad_pvt_flt3.x;					// NB sometimes grad_pvt_flt3 = 0, so would cause nan if we divide.
+					SE3_incr_pvt_flt4.y										= rho_pvt_flt4.y * grad_pvt_flt3.y;
+					SE3_incr_pvt_flt4.z										= rho_pvt_flt4.z * grad_pvt_flt3.z;
 
 					if (se3_dim>=3){multiplier 								= inv_depth_1/fp32_params[MAX_INV_DEPTH] ;}			// For ST3 only to emphasize foreground pixels for parallax motion: multiply pixel inv_depth by min depth in scene.  Office scene depth is in cm from approx 90 to 450cm.
 
-					SE3_incr_pvt_flt2.x										= ( SE3_incr_pvt_flt4.x + SE3_incr_pvt_flt4.y + SE3_incr_pvt_flt4.z ) * multiplier   ;
+					SE3_incr_pvt_flt2.x										= ( SE3_incr_pvt_flt4.x + SE3_incr_pvt_flt4.y + SE3_incr_pvt_flt4.z ) * multiplier;									// Adjusts SO3/ST3 sensitivity bt inv_depth.
 					SE3_incr_pvt_flt2.y										= 1.0f;
-					SE3_incr[ se3_dim*block_size + row_in_block ]			= SE3_incr_pvt_flt2;																								// pixelwise increment for this SE3 DoF
+					SE3_incr_pvt_arr[ se3_dim*block_size + row_in_block ]	= SE3_incr_pvt_flt2;																								// pixelwise increment for this SE3 DoF
 
-					weights_pvt_flt2.x 										= ( weights_pvt_flt4.x * weights_pvt_flt4.x + weights_pvt_flt4.y * weights_pvt_flt4.y + weights_pvt_flt4.z * weights_pvt_flt4.z );
-					weights_pvt_flt2.y										= 1.0f;
-					weights[ se3_dim*block_size + row_in_block ]			= weights_pvt_flt2;																									// save the SE3_grad^2, to use as divisor for this SE3 DoF, after summing.
+					grad_pvt_flt2.x											= ( grad_pvt_flt4.x * grad_pvt_flt4.x   + grad_pvt_flt4.y * grad_pvt_flt4.y   + grad_pvt_flt4.z * grad_pvt_flt4.z );
+					grad_pvt_flt2.y											= mag_grad_pvt;
+					grad_pvt_arr[ se3_dim*block_size + row_in_block ]		= grad_pvt_flt2;																									// save the SE3_grad^2, to use as divisor for this SE3 DoF, after summing.
 				}
 			}
 			barrier(CLK_GLOBAL_MEM_FENCE );
-			rho_pvt_flt2.x			= rho_pvt_flt4.x*rho_pvt_flt4.x  + rho_pvt_flt4.y*rho_pvt_flt4.y  +rho_pvt_flt4.z*rho_pvt_flt4.z;															// sum rho^2
-			rho_pvt_flt2.x			*= (1.0f - g1p[read_index+mm_cols].s3);
-			rho_pvt_flt2.y			= 1.0f;
- 			rho[row_in_block+1]		+= rho_pvt_flt2;																																			// accumulate rho for this patch
+
+			rho_pvt_flt2.x					= rho_pvt_flt4.x*rho_pvt_flt4.x  + rho_pvt_flt4.y*rho_pvt_flt4.y  +rho_pvt_flt4.z*rho_pvt_flt4.z;													// sum rho^2
+			rho_pvt_flt2.x					*= edge_weight;																														// Weight rho by edges. // TODO choose/ refine which edges to use.
+			rho_pvt_flt2.y					= 1.0f;
+			rho_pvt_arr[row_in_block]		+= rho_pvt_flt2;																																	// save to pvt mem for this column
+/*
+			//////////////////////////////////////////////////
+			rho_pvt_flt4					= zero_f4;
+			intersection 					= (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2_2>2) && (u2_2<=read_cols_-2) \
+											&& (v2_2>2) && (v2_2<=read_rows_-2)  &&  (global_id_u<=layer_pixels) && (inv_depth_2>=min_inv_depth) && (inv_depth_2<=max_inv_depth);				// if images overlap
+// 			if (intersection){
+// 				rho_pvt_flt4				= img_cur_pvt[row_in_block+1]	-	bilinear_flt4( img_past[past_frame_idx], u2_flt_2, v2_flt_2,  mm_cols, read_offset_ );							// find 2nd row pixel rho
+// 				float multiplier			= fp32_params[MAX_INV_DEPTH] / ((inv_depth_2 + 0.01)*5); 	// NB beware if inf depth, i.e. subnormal inv_depth, then div by zero error !			// de-weight foreground for rotation, & de-weight backgroud for translation.
+//				edge_weight					= (1.0f - g1p_pvt[row_in_block+1].s3);//  g1p[read_index + mm_cols].s3);
+//
+// // 				for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {																																// for each SE3 DoF
+// // 					float8 grad_v8 											= SE3_grad_map_cur_frame[ read_index_row + mm_cols + (se3_dim * mm_pixels) ] ;										// TODO change SE3_grad_map_cur_frame[] to float4 or less.
+// // 					grad_pvt_flt4											= grad_v8.hi + grad_v8.lo;																							// i.e. sum the u and v components of the gradient, for the four colour channels.
+// // 					SE3_incr_pvt_flt4										= grad_pvt_flt4 * rho_pvt_flt4;																						// TODO collapse to single float
+// //
+// // 					if (se3_dim>=3){multiplier 								= inv_depth_1/fp32_params[MAX_INV_DEPTH] ;}			// For ST3 only to emphasize foreground pixels for parallax motion: multiply pixel inv_depth by min depth in scene.  Office scene depth is in cm from approx 90 to 450cm.
+// //
+// // 					SE3_incr_pvt_flt2.x										= ( SE3_incr_pvt_flt4.x + SE3_incr_pvt_flt4.y + SE3_incr_pvt_flt4.z ) * multiplier   ;
+// // 					SE3_incr_pvt_flt2.y										= 1.0f;
+// // 					SE3_incr_pvt_arr[ se3_dim*block_size + row_in_block ]	= SE3_incr_pvt_flt2;																								// pixelwise increment for this SE3 DoF
+// //
+// // 					grad_pvt_flt2.x 										= ( grad_pvt_flt4.x * grad_pvt_flt4.x + grad_pvt_flt4.y * grad_pvt_flt4.y + grad_pvt_flt4.z * grad_pvt_flt4.z );
+// // 					grad_pvt_flt2.y											= 1.0f;
+// // 					grad_pvt_arr[ se3_dim*block_size + row_in_block ]		= grad_pvt_flt2;																									// save the SE3_grad^2, to use as divisor for this SE3 DoF, after summing.
+// // 				}
+// 			}
+// 			barrier(CLK_GLOBAL_MEM_FENCE );
+// 			rho_pvt_flt2.x			= rho_pvt_flt4.x*rho_pvt_flt4.x  + rho_pvt_flt4.y*rho_pvt_flt4.y  +rho_pvt_flt4.z*rho_pvt_flt4.z;															// sum rho^2
+// 			rho_pvt_flt2.x			*= (1.0f - g1p[read_index+mm_cols].s3);
+// 			rho_pvt_flt2.y			= 1.0f;
+//			rho_pvt_arr[row_in_block+1]		+= rho_pvt_flt2;																																	// accumulate rho for this patch
+*/
 		}
 	}
 	uint past_frame_idx =0; // TODO remove and restore long outer loop.
@@ -268,27 +280,27 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 // 			if (global_id_u==0){printf("\n__kernel void Rho_sq() chk 3,  block_row=%u",block_row);}//#############################################
 
 			if (fmod((float)lid,step/2)==0) {																																					// selects threads separated by 1/2 step, i.e results of previous iteration of patch reduction.
-																						rho[	  block_row ]							+= rho[		 block_row + step/2 ];						// sum pair of values in col,
+																						rho_pvt_arr[	  block_row ]							+= rho_pvt_arr[		 block_row + step/2 ];		// sum pair of values in col,
 				for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
-																						SE3_incr[ block_row + se3_dim*block_size ]		+= SE3_incr[ block_row + step/2 + se3_dim*block_size ];
-																						weights[  block_row + se3_dim*block_size ]		+= weights[  block_row + step/2 + se3_dim*block_size ];
+																						SE3_incr_pvt_arr[ block_row + se3_dim*block_size ]		+= SE3_incr_pvt_arr[ block_row + step/2 + se3_dim*block_size ];
+																						grad_pvt_arr[  block_row + se3_dim*block_size ]			+= grad_pvt_arr[  block_row + step/2 + se3_dim*block_size ];
 				}
 			}
 
 			if( !(fmod((float)lid,step)==0) &&  (fmod((float)lid,step/2)==0)    ){																												// selects 2nd column, sends data
-																						local_rho[		lid/step ] 						= rho[		 block_row];
+																						local_rho[		lid/step ] 								= rho_pvt_arr[		 block_row];
 				for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
-																						local_SE3_incr[ lid/step + se3_dim*local_size ]	= SE3_incr[  block_row + se3_dim*block_size ];			// NB integer division. Hence both threads use the same index to local memory.
-																						local_weights[  lid/step + se3_dim*local_size ]	= weights[   block_row + se3_dim*block_size ];
+																						local_SE3_incr[ lid/step + se3_dim*local_size ]			= SE3_incr_pvt_arr[  block_row + se3_dim*block_size ];	// NB integer division. Hence both threads use the same index to local memory.
+																						local_weights[  lid/step + se3_dim*local_size ]			= grad_pvt_arr[   block_row + se3_dim*block_size ];
 				}
 			}
 			barrier(CLK_LOCAL_MEM_FENCE );																																						// Using barrier as a semaphore, for local mem messages between threads.
 
 			if( (fmod((float)lid,step)==0)  ){																																					// selects 1st column, adds data. Sum of patch now held in top left element of patch.
-																						rho[block_row] 									+= local_rho[ lid/step ];
+																						rho_pvt_arr[block_row] 									+= local_rho[ lid/step ];
 				for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
-																						SE3_incr[  block_row + se3_dim*block_size ]		+= local_SE3_incr[ lid/step + se3_dim*local_size ];
-																						weights[   block_row + se3_dim*block_size ]		+= local_weights[  lid/step + se3_dim*local_size ];
+																						SE3_incr_pvt_arr[  block_row + se3_dim*block_size ]		+= local_SE3_incr[ lid/step + se3_dim*local_size ];
+																						grad_pvt_arr[   block_row + se3_dim*block_size ]		+= local_weights[  lid/step + se3_dim*local_size ];
 				}
 			}
 			barrier(CLK_LOCAL_MEM_FENCE );
@@ -300,13 +312,13 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 			if( fmod((float)lid,out_block_size) == 0 ){																																			// selects columns i.e. threads within the workgroup
 
 				for (uint block_row=0; block_row < block_size ; block_row += step, write_block_row++){
-																						uint offset_1 				= frame_offset  + write_block_row*mm_cols;
-																						Rho_[			offset_1]	= rho[		 block_row ];
+																						uint offset_1 				= frame_offset		+ write_block_row*mm_cols;
+																						Rho_[			offset_1]	= rho_pvt_arr[		block_row ];
 					for (uint se3_dim=3; se3_dim<se3_dof; se3_dim++) {																															// select only ST3
-																						uint offset_2 				= offset_1 		+ (se3_dim-3)*( 4+ (read_rows_/out_block_size) )*mm_cols;
-																						uint offset_3 				= block_row 	+ se3_dim*block_size;										// NB read_rows_/out_block_size = writre_rows
-																						SE3_incr_map_[	offset_2 ] 	= SE3_incr[  offset_3 ];
-																						weights_map[	offset_2 ] 	= weights[   offset_3 ];
+																						uint offset_2 				= offset_1			+ (se3_dim-3)*( 4+ (read_rows_/out_block_size) )*mm_cols;
+																						uint offset_3 				= block_row			+ se3_dim*block_size;									// NB read_rows_/out_block_size = writre_rows
+																						SE3_incr_map_[	offset_2 ]	= SE3_incr_pvt_arr[	offset_3 ];
+																						weights_map[	offset_2 ]	= grad_pvt_arr[		offset_3 ];
 					}
 				}	// weights_map[	frame_offset  + write_block_row*mm_cols + (se3_dim-3)*((4*block_size+read_rows_)/out_block_size)*mm_cols ] 	=  weights[   block_row + se3_dim*block_size ];
 			}
@@ -330,15 +342,15 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 
 		for (uint block_row=0; block_row < block_size ; block_row += step, write_block_row++){
 																						printf("\n__kernel void Rho_sq()  group_id=%u,  lid=%u,  step=%u,  write_index=%u,  write_index_2=%u,  write_block_row=%u,  mm_cols=%u,  layer_pixels=%u,  mm_pixels=%u,  [write_index + write_block_row*mm_cols]=%u   block_row=%u,  se3_dim=0, block_size=%u,  SE3_incr[  block_row + se3_dim*block_size ]=%f, %f",\
-																							group_id, lid, step, write_index, write_index_2, write_block_row, mm_cols, layer_pixels, mm_pixels, (write_index + write_block_row*mm_cols),   block_row,  block_size,  SE3_incr[block_row].x,  SE3_incr[block_row].y );
+																							group_id, lid, step, write_index, write_index_2, write_block_row, mm_cols, layer_pixels, mm_pixels, (write_index + write_block_row*mm_cols),   block_row,  block_size,  SE3_incr_pvt_arr[block_row].x,  SE3_incr_pvt_arr[block_row].y );
 
 																						uint offset_2 				= frame_offset_1 + write_block_row*mm_cols;
-																						Rho_[			offset_2  ]	= rho[		 block_row ];
+																						Rho_[			offset_2  ]	= rho_pvt_arr[		 block_row ];
 			for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {																																	// All 6 DoF of SE3
 																						uint offset_3 				= offset_2 		+ se3_dim*( 4 + (read_rows_/block_size) )*mm_cols;
 																						uint offset_4				= block_row 	+ se3_dim*block_size;
-																						SE3_incr_map_[	offset_3 ]	= SE3_incr[  offset_4 ];
-																						weights_map[	offset_3 ]	= weights[   offset_4 ];
+																						SE3_incr_map_[	offset_3 ]	= SE3_incr_pvt_arr[  offset_4 ];
+																						weights_map[	offset_3 ]	= grad_pvt_arr[   offset_4 ];
 			}
 		}
 	}
@@ -420,11 +432,11 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 			pvt_weights_sum	+= pvt_weights;
 			pvt_incr_sum	+= pvt_incr;
 
-			printf("\nlid=%u, idx=%u, pvt_incr={%f, %f}	 pvt_weights{%f, %f},   pvt_rho={%f, %f}   ,  SE3_incr_map_[idx_3]={%f,  %f}",\
-			lid, idx, pvt_incr.x, pvt_incr.y,   pvt_weights.x,  pvt_weights.y,   pvt_rho.x,   pvt_rho.y,  SE3_incr_map_[idx_3].x,   SE3_incr_map_[idx_3].y  );
+			printf("\nlid=%u, idx=%u, SE3=%u,  pvt_incr={%f, %f}	 pvt_weights{%f, %f},   pvt_rho={%f, %f}   ,  SE3_incr_map_[idx_3]={%f,  %f}",\
+			lid, idx, SE3, pvt_incr.x, pvt_incr.y,   pvt_weights.x,  pvt_weights.y,   pvt_rho.x,   pvt_rho.y,  SE3_incr_map_[idx_3].x,   SE3_incr_map_[idx_3].y  );
 		}
 	}
-	barrier(CLK_GLOBAL_MEM_FENCE);
+	barrier(CLK_GLOBAL_MEM_FENCE);//////////////////////////////////////////////////////////####################################################
 	////////////////////////////////////////////////////////////////////////////////////		// sum reduce  columns of each 10x8 patch (1ayer 1), 5x5 layer 2, 3x3 layer 3, 2x2 layer 4, 1x1 layer 5.
 	uint max_iter								= ceil(log2((float)cols));
 	uint step									= 2;
@@ -443,14 +455,14 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 			local_weights_map[		lid/step]	= pvt_weights_sum;
 			local_SE3_incr_map_[	lid/step]	= pvt_incr_sum;
 		}
-		barrier(CLK_LOCAL_MEM_FENCE);
+		barrier(CLK_LOCAL_MEM_FENCE);/////////////////////////##########
 
-		if( mod_step  && col+old_step<cols  && in_range ){															//  /*&& in_range*/
+		if( mod_step  && col+old_step<cols  && in_range ){
 			pvt_rho_sum							+= local_Rho_[				lid/step];
 			pvt_weights_sum						+= local_weights_map[		lid/step];
 			pvt_incr_sum						+= local_SE3_incr_map_[		lid/step];
 		}
-		barrier(CLK_LOCAL_MEM_FENCE);
+		barrier(CLK_LOCAL_MEM_FENCE);/////////////////////////##########
 
 		old_step = step;
 	}
@@ -461,24 +473,24 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 		pvt_weights_sum.x						/= pvt_rho_sum.y;
 		local_Rho_[SE3]							=  pvt_rho_sum;																						// will hold sum_Rho for each [SE3]
 	}
-	barrier(CLK_LOCAL_MEM_FENCE);
-	////////////////////////////////////////////////////////////////////////////////////		//
+	barrier(CLK_LOCAL_MEM_FENCE);/////////////////////////////##########
+
 	float old_pose_update	= -1;
 	if (mod_step && in_range){
 		old_pose_update							= pose_update[SE3];																					// will be zero if 1st iteration. }
 	}
-	barrier(CLK_GLOBAL_MEM_FENCE);
+	barrier(CLK_GLOBAL_MEM_FENCE);//////////////////////////////////////////////////////////####################################################
 
 	float update								= 0;
 	if (mod_step && in_range){																														// compute updates. NB different for SO3 vs ST3, hence offset.
 		uint offset 							= 3 * floor((float)SE3/3);																			// offset = 0 for SO3, 3 for ST3.
 		float mag_S3							= fabs(local_Rho_[0+offset].x)  + fabs(local_Rho_[1+offset].x)  + fabs(local_Rho_[2+offset].x);		// float rho_ST3_mag  = fabs(local_Rho_[3].x) + fabs(local_Rho_[4].x) + fabs(local_Rho_[5].x);
 																																					// result_[iter][SE3] = SE3_results[layer][SE3][channel]  / (SE3_weights[layer][SE3][channel] * runcl.img_stats[IMG_VAR+channel] )
-		float result							= /*pvt_rho_sum.x*/ pvt_incr_sum.x / ( pvt_weights_sum.x  * img_var );
+		float result							= pvt_incr_sum.x / ( pvt_weights_sum.x  * img_var );
 
 
 		if ( old_pose_update==0.0f ){			// NB reset to zero for new img pyramid layer, because old result is not valid for comparison.
-			update								= result * delta_SE3_[ SE3/3 ] / mag_S3;															// NB integer division SE3/3 => 0=SO3, 1=ST3
+			update								= result; // * delta_SE3_[ SE3/3 ] / mag_S3;															// NB integer division SE3/3 => 0=SO3, 1=ST3
 
 			printf("\n__kernel void update_SE3()_1  global_id_u=,%u,  (old_pose_update==0)   old_pose_update=,%f,  SE3=,%u         result=%f,  delta_SE3_[ SE3/3 ]=%f,  mag_S3=%f,  update=%f,      pvt_incr_sum.x=%f,  pvt_weights_sum.x=%f  img_var=%f ",\
 			global_id_u,  old_pose_update, SE3,      result, delta_SE3_[ SE3/3 ], mag_S3,  update,       pvt_incr_sum.x,  pvt_weights_sum.x,  img_var );
@@ -495,12 +507,10 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 		}
 		old_result[SE3]							= local_Rho_[SE3].x;
 		update									= clamp(    update, -delta_SE3_[ SE3/3 ], +delta_SE3_[ SE3/3 ] );
-		// if (verbose)
 		pose_update[SE3]						= update;
 		//distorsion_update[..]	=  ;
 	}
-	barrier(CLK_GLOBAL_MEM_FENCE);
-	////////////////////////////////////////////////////////////////////////////////////		//  Compute update to k2k ///
+	barrier(CLK_GLOBAL_MEM_FENCE); /////////////////////////////////////////////////////////####################################################//  Compute update to k2k ///
 	 __local float local_update_vec[9];	//local_SE3[9];
 
 	if ( get_num_groups(0) > 1){
@@ -513,43 +523,41 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 	}else{
 		if (mod_step && in_range){ local_update_vec[SE3]	= update; }
 	}
-	barrier(CLK_LOCAL_MEM_FENCE);
+	barrier(CLK_LOCAL_MEM_FENCE);//////////////////////////////##########
 
 	__local float local_K_update[ 	2* SE3_elems];			// Buffers [32] elem, hold two 4x4 matrices.
 	__local float local_pose_inv_K[ 2* SE3_elems];			// Enable two matrix multiplications simultaneously in one work group of 32 trheads.
 	__local float local_A_B[ 		2* SE3_elems];
 	__local float local_k2k[		   SE3_elems];
 
-	if (group_id == 0){// All except workgroup[0] return here; ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		if (lid < 3) { 	local_update_vec[	lid + 6]		= 3.0f - lid;	}																	// sets local_update_vec[6,7,8] to -1, 0, 1
-		if (lid < 32){ 	local_A_B[ 			lid]			= 0.0f;			}
-		if (lid < 16){
-						local_K_update[		lid]			= K[lid];
-						local_K_update[		lid + 16]		= 0.0f;
-						local_pose_inv_K[ 	lid]			= Pose[lid];
-						local_pose_inv_K[ 	lid + 16]		= inv_K[lid];
-						local_k2k[lid]						= 0.0f;
-		}																					barrier(CLK_LOCAL_MEM_FENCE);
-		LieToP( lid, local_update_vec, local_K_update );									barrier(CLK_LOCAL_MEM_FENCE);
-		update_k2k( lid, local_K_update, local_pose_inv_K, local_A_B, local_k2k ); 			barrier(CLK_LOCAL_MEM_FENCE);						// (local_update, local_Pose, local_K, local_inv_K, A, B, local_k2k );
-		if(lid<16){ k2k[lid] 	= local_k2k[lid]; }											barrier(CLK_LOCAL_MEM_FENCE);
-
-		if(lid==0) printf("\nk2k = { %f, %f, %f, %f,     %f, %f, %f, %f,     %f, %f, %f, %f,     %f, %f, %f, %f }", \
-			local_k2k[0], local_k2k[1], local_k2k[2], local_k2k[3],      local_k2k[4], local_k2k[5], local_k2k[6], local_k2k[7],\
-			local_k2k[8], local_k2k[9], local_k2k[10], local_k2k[11],      local_k2k[12], local_k2k[13], local_k2k[14], local_k2k[15] );
-	}
 }
 
-
-// 				if (mod_step && in_range) { printf("\n__kernel void update_SE3()_0.5  global_id_u=,%u,   SE3=,%u,   pvt_rho={,%f,%f,}  local_Rho_[SE3]={%f,%f,%f,  %f,%f,%f}"\
-// 																					,global_id_u, SE3,  pvt_rho.x, pvt_rho.y, local_Rho_[0].x,local_Rho_[1].x,local_Rho_[2].x,  local_Rho_[3].x,local_Rho_[4].x,local_Rho_[5].x ); }
+// __kernel void read_update_SE3()
+// 	// TODO need new kernel, for global synchronization between workgroups.
+// 	{
+// 	if (group_id == 0){// All except workgroup[0] return here; /////////////////////////////####################################################
+// 		if (lid < 3) { 	local_update_vec[	lid + 6]		= 3.0f - lid;	}																	// sets local_update_vec[6,7,8] to -1, 0, 1
+// 		if (lid < 32){ 	local_A_B[ 			lid]			= 0.0f;			}
+// 		if (lid < 16){
+// 						local_K_update[		lid]			= K[lid];
+// 						local_K_update[		lid + 16]		= 0.0f;
+// 						local_pose_inv_K[ 	lid]			= Pose[lid];
+// 						local_pose_inv_K[ 	lid + 16]		= inv_K[lid];
+// 						local_k2k[lid]						= 0.0f;
+// 		}																					barrier(CLK_LOCAL_MEM_FENCE);/////##########
+// 		LieToP( lid, local_update_vec, local_K_update );									barrier(CLK_LOCAL_MEM_FENCE);/////##########
+// 		update_k2k( lid, local_K_update, local_pose_inv_K, local_A_B, local_k2k ); 			barrier(CLK_LOCAL_MEM_FENCE);/////##########		// (local_update, local_Pose, local_K, local_inv_K, A, B, local_k2k );
+// 		if(lid<16){ k2k[lid] 	= local_k2k[lid]; }											barrier(CLK_LOCAL_MEM_FENCE);/////##########
+//
+// 		if(lid==0) printf("\nk2k = { %f, %f, %f, %f,     %f, %f, %f, %f,     %f, %f, %f, %f,     %f, %f, %f, %f }", \
+// 			local_k2k[0], local_k2k[1], local_k2k[2], local_k2k[3],      local_k2k[4], local_k2k[5], local_k2k[6], local_k2k[7],\
+// 			local_k2k[8], local_k2k[9], local_k2k[10], local_k2k[11],      local_k2k[12], local_k2k[13], local_k2k[14], local_k2k[15] );
+// 	}
+// }
 
 
 
 __kernel void update_maps(  // ? integrate with patch kernel ?
-
-
-
 
 
 	)
@@ -580,14 +588,14 @@ __kernel void se3_Rho_sq(
 	__global 	float4*	img_cur,				//7		// keyframe
 	__global 	float4*	img_new,				//8
 	__global	float* 	depth_map,				//9		// NB keyframe GT_depth, now stored as inv_depth
-	__global	float8* g1p,					//10		// keyframe_g1mem
+	__global	float8* g1p,					//10	// keyframe_g1mem
 
 	// outputs
 	__global	float4* Rho_,					//11
-	__local		float4*	local_sum_rho_sq,		//12		// 1 DoF, float4 channels
+	__local		float4*	local_sum_rho_sq,		//12	// 1 DoF, float4 channels
 	__global 	float4*	global_sum_rho_sq		//13
 	)
- {																									// find gradient wrt SE3 find global sum for each of the 6 DoF
+ {																										// find gradient wrt SE3 find global sum for each of the 6 DoF
 	uint  global_id_u 	= get_global_id(0);
 	float global_id_flt = global_id_u;
 	uint  lid 			= get_local_id(0);
@@ -609,7 +617,7 @@ __kernel void se3_Rho_sq(
 	uint mm_cols		= uint_params[MM_COLS];
 	uint mm_pixels		= uint_params[MM_PIXELS];
 
-	//float SE3_LM_a		= fp32_params[SE3_LM_A];														// Optimisation parameters
+	//float SE3_LM_a		= fp32_params[SE3_LM_A];													// Optimisation parameters
 	//float SE3_LM_b		= fp32_params[SE3_LM_B];
 	float inv_d_step 	= fp32_params[INV_DEPTH_STEP];
 	float min_inv_depth = fp32_params[MIN_INV_DEPTH] ; //+ inv_d_step;
@@ -628,7 +636,7 @@ __kernel void se3_Rho_sq(
 
 	for (int sample=0; sample<local_num_samples; sample++){
 
-		float16 k2k_pvt		= k2k[sample];															// NB we read  k2k[1] and  k2k[2]
+		float16 k2k_pvt		= k2k[sample];																// NB we read  k2k[1] and  k2k[2]
 		float uh2 			= k2k_pvt[0]*u_flt + k2k_pvt[1]*v_flt + k2k_pvt[2]*1 + k2k_pvt[3]*inv_depth;
 		float vh2 			= k2k_pvt[4]*u_flt + k2k_pvt[5]*v_flt + k2k_pvt[6]*1 + k2k_pvt[7]*inv_depth;
 		float wh2 			= k2k_pvt[8]*u_flt + k2k_pvt[9]*v_flt + k2k_pvt[10]*1+ k2k_pvt[11]*inv_depth;
@@ -846,7 +854,7 @@ __kernel void se3_LK_grad(
 	float4 new_px;
 
 	const float4 zero_v4f	= {0.0f,0.0f,0.0f,0.0f};
-	float4 rho 				= zero_v4f;
+	float4 rho				= zero_v4f;
 	float weight;
 	float8 se3_incr;
 	{
@@ -868,7 +876,8 @@ __kernel void se3_LK_grad(
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////							// Exclude all out-of-bounds threads:
-	bool intersection = (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) && (u2>2) && (u2<=read_cols_-2) && (v2>2) && (v2<=read_rows_-2)  &&  (global_id_u<=layer_pixels) && (inv_depth>=min_inv_depth) && (inv_depth<=max_inv_depth);
+	bool intersection = (u>2) && (u<=read_cols_-2) && (v>2) && (v<=read_rows_-2) 	&& (u2>2) && (u2<=read_cols_-2) && (v2>2) && (v2<=read_rows_-2)  \
+						&&  (global_id_u<=layer_pixels) && (inv_depth>=min_inv_depth) && (inv_depth<=max_inv_depth);
 
 	{
 		VK_TRACKING(\
