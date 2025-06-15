@@ -283,11 +283,17 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 	runcl.ReadOutput( (uchar*)ptr, runcl.K_buf, sizeof(float)*16, 0 );
 	PRINT_FLOAT_16(k_buf_arr, )
 
-	for (uint	layer = SE3_start_layer; layer>= SE3_stop_layer;	layer--){															// NB when uint passes zero it becomes UINT_MAX
+	cout <<"\nDynamic_slam::estimate_SLAM() chk_0.5  SE3_start_layer="<<SE3_start_layer<<",  SE3_stop_layer="<<SE3_stop_layer<<flush;
+	//  "SE3_start_layer":4,
+	// "SE3_stop_layer":1,
+
+	for (uint	layer = SE3_start_layer; layer>= 0/*SE3_stop_layer*/;	layer--){															// NB when uint passes zero it becomes UINT_MAX
+		cout << "\nDynamic_slam::estimate_SLAM() chk_0.6  layer="<<layer<<flush;
 		count[1]  = layer;
 		runcl._clEnqueueFillBuffer(  runcl.uload_queue,  runcl.pose_update_buf,  &zero,  sizeof( float),  0,  6*sizeof(float),  fname  );// pose_update_buf zeroed for new layer, because old Rho not valid for comparison.
 
 		for (uint out_block_size = 32; out_block_size > 2; out_block_size /=2){
+			cout << "\nDynamic_slam::estimate_SLAM() chk_0.7  out_block_size="<<out_block_size <<flush;
 			for (uint iter = 0; iter</*SE_iter/2*/1; iter++){
 				count[0]  = iter;
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_1: layer="<<layer<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;

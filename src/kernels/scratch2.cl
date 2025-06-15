@@ -17,8 +17,8 @@ __kernel void Rho_sq(
 	__global	float2*		SE3_incr_map_,			//24
 	__local		float2*		local_SE3_incr			//25
 ){
-	const uint block_size		= 32;						// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
-	const uint se3_dof			= 6;
+	const uint block_size	= 32;					// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
+	const uint se3_dof		= 6;
 	uint  global_id_u 		= get_global_id(0);
 	uint  lid 				= get_local_id(0);
 	uint  group_id			= get_group_id(0);
@@ -77,7 +77,7 @@ __kernel void Rho_sq(
 																																																// Breaks show bondaries of patches.
 	barrier(CLK_GLOBAL_MEM_FENCE );
 	uint write_block_row=0;
-	if( fmod((float)lid,block_size) ==0 ){		//out_block_size																																// selects columns i.e. threads within the workgroup
+	if( fmod((float)lid,block_size) ==0 ){		//out_block_size						// for each 32x32 block of the input image : 															// selects columns i.e. threads within the workgroup
 		uint frame_offset_1 = write_index_2;	// stacks frame SE3 results vertically.
 		step = block_size/2;
 
@@ -93,6 +93,24 @@ __kernel void Rho_sq(
 		}
 	}
 	barrier(CLK_GLOBAL_MEM_FENCE );
+/////////////////////////////////////////////////////////////////////////////////////////////
+	if( fmod((float)lid,block_size) ==0 ){												// for each 32x32 block of the input image :
+		// const uint block_size		= 32
+
+		row_length		= cols_per_row; 												// for this image size
+		row_col			= fmod((float)global_id_u, row_length);							// which pixel column of this row
+		block_row		= global_id_u / row_length;										// which row of blocks NB num threads is set to match: image rows/blocksize
+
+		uint frame_offset_1	= row_col/block_size + block_row*mm_cols;					// pixel to which to write this block's result
+
+		step = block_size/2;
+
+		for (uint block_row=0; block_row < block_size ; block_row += step, write_block_row++){  // will repeat twice
+			for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
+				uint offset_3		= (frame_offset_1  + write_block_row*mm_cols) 		+ se3_dim*( 4 + (read_rows_/block_size) )*mm_cols;
+			}
+		}
+	}
 }
 
 __kernel void update_SE3(									// call just one workgroup to sum the whole image maps from the patch kernel.
@@ -132,3 +150,7 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 		}
 	}
 }
+
+//////////////////////////////////////////
+
+

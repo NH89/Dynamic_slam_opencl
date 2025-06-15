@@ -194,10 +194,10 @@ void RunCL::update_SE3( uint layer, float delta_theta, float delta )									// 
 	const uint		patch_size 			= 32;																							//TODO set global patch size from device parameters // generally:  device_work_size_multiple = patch_size * integer,   eg 32, 64, 128
 	const uint		SE3_DoF				= 6;
 	uint			read_rows			= MipMap[layer * 8 + MiM_READ_ROWS] ;
-	uint			read_cols			= MipMap[layer * 8 + MiM_READ_COLS] ;
-	uint			rows_blocks			= ceil( (float) read_rows/patch_size );															// num rows in the fully reduced map
-	uint			cols_blocks			= ceil( (float) read_cols/patch_size );															// num cols in the fully reduced map
-
+	uint			read_cols			= MipMap[layer * 8 + MiM_READ_COLS] ;															// NB the largest (layer 0) read_cols, is the unreduced size of the input image. (here 640x480)
+	uint			rows_blocks			= ceil( (float) read_rows/patch_size );															// num rows in the fully reduced map  640/32=20 => 32 cols_blocs.  32*6=192 which would fit IFF groupsize >=256.
+	uint			cols_blocks			= ceil( (float) read_cols/patch_size );															// num cols in the fully reduced map. 1920x1080 1920/32=60 => 64 cols_blocs
+																					// threads_per_DoF must be the first 2^n > cols per SE3 patch.
 	uint			threads_per_DoF		= powf(2,ceil( log2((float)cols_blocks) )); // 10 layer 1 =>  pown(2,ciel(log2(10.0f) ))=16; 6*16=96.      // * rows_blocks  ;//	8x10=80 layer1 => 96 threads to launch?			// num pixels in fully reduced map. Req per SE3 DoF.
 	uint 			DoF_per_workgroup	= device_work_size_multiple / threads_per_DoF;
 	size_t			threads_required	= (device_work_size_multiple * SE3_DoF) / DoF_per_workgroup;		// NB device_work_size_multiple is usually a poer of 2, DoF_per_workgroup will also be a power of 2.
@@ -283,6 +283,22 @@ void RunCL::update_SE3( uint layer, float delta_theta, float delta )									// 
 
 }
 
+
+void RunCL::update_k2k()
+{
+	string		fname						= "RunCL::update_k2k(..)";
+	int			local_verbosity_threshold	= V_RUNCL_SE3_RHO_SQ;
+	cl_kernel	kernel 						= update_k2k_kernel;
+
+	_clSetKernelArg( kernel, 0, sizeof( cl_mem), 						&pose_update_buf,			fname);								//__global	float*		pose_update,			//0	// 6_DoF
+	_clSetKernelArg( kernel, 1, sizeof( cl_mem), 						&pose_buf,					fname);								//__global	float*		Pose,					//1
+	_clSetKernelArg( kernel, 2, sizeof( cl_mem), 						&K_buf,						fname);								//__global	float*		K,						//2
+	_clSetKernelArg( kernel, 3, sizeof( cl_mem), 						&inv_K_buf,					fname);								//__global	float*		inv_K,					//3
+	_clSetKernelArg( kernel, 4, sizeof( cl_mem), 						&k2kbuf,					fname);								//__global	float*		k2k						//4
+
+
+
+}
 
 
 
