@@ -287,7 +287,7 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 	//  "SE3_start_layer":4,
 	// "SE3_stop_layer":1,
 
-	for (uint	layer = SE3_start_layer; layer>= 0/*SE3_stop_layer*/;	layer--){															// NB when uint passes zero it becomes UINT_MAX
+	for (int	layer = SE3_start_layer; layer>= 0/*SE3_stop_layer*/;	layer--){														// NB when uint passes zero it becomes UINT_MAX
 		cout << "\nDynamic_slam::estimate_SLAM() chk_0.6  layer="<<layer<<flush;
 		count[1]  = layer;
 		runcl._clEnqueueFillBuffer(  runcl.uload_queue,  runcl.pose_update_buf,  &zero,  sizeof( float),  0,  6*sizeof(float),  fname  );// pose_update_buf zeroed for new layer, because old Rho not valid for comparison.
@@ -297,16 +297,16 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 			for (uint iter = 0; iter</*SE_iter/2*/1; iter++){
 				count[0]  = iter;
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_1: layer="<<layer<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
-				{
-					uint	out_block_size		= 2;
-					uint	layer				= 1;
-					runcl.rho_sq( out_block_size, iter, layer  );																		// For debugging, get a larger, finer Rho map
-				}
-				runcl.rho_sq( out_block_size, iter, layer  );		// uint out_block_size, const float count[4], uint start, uint stop
+				// {
+				// 	uint	out_block_size		= 2;
+				// 	uint	layer				= 1;
+				// 	runcl.rho_sq( out_block_size, iter, layer  );																		// For debugging, get a larger, finer Rho map
+				// }
+				runcl.rho_sq( out_block_size, iter, (uint)layer  );		// uint out_block_size, const float count[4], uint start, uint stop
 				runcl.ReadOutput( (uchar*)ptr, runcl.K_buf, sizeof(float)*16, 0 );
 				PRINT_FLOAT_16(k_buf_arr, )
 
-				runcl.update_SE3( layer, delta_theta, delta );
+				runcl.update_SE3( (uint)layer, delta_theta, delta );
 				runcl.ReadOutput( (uchar*)ptr, runcl.K_buf, sizeof(float)*16, 0 );
 				PRINT_FLOAT_16(k_buf_arr, )
 			}

@@ -77,7 +77,7 @@ void LieToP( uint lid, __local float SE3[9], __local float Pose[32/*16*/] ){
 }		// ,%u,%u,   %u,%u,%u    // ,%f,%f,  %f,%f,%f,  %f,%f,%f
 
 
-void update_k2k_dev_fn(
+void update_k2_kdev_fn(
 	uint lid,
 	__local float local_K_update[ 	2* 	SE3_elems],
 	__local float local_pose_inv_K[ 2* 	SE3_elems],

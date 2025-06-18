@@ -321,6 +321,7 @@ void RunCL::createKernels(){
 	//
 	rho_sq_kernel					= clCreateKernel(m_program, "Rho_sq",				 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'rho_sq_kernel'  kernel not built.\n"				<<flush; exit_(0);   }
 	update_SE3_kernel				= clCreateKernel(m_program, "update_SE3",			 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'update_SE3'  kernel not built.\n"					<<flush; exit_(0);   }
+	update_k2k_kernel				= clCreateKernel(m_program, "update_k2k",			 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'update_k2k'  kernel not built.\n"					<<flush; exit_(0);   }
 }
 
 int RunCL::convertToString(const char *filename, std::string& s){
@@ -1149,6 +1150,7 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	//
 	status = clReleaseKernel(rho_sq_kernel);					if (status != CL_SUCCESS)	{ cout << "\nrho_sq_kernel					status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(update_SE3_kernel);				if (status != CL_SUCCESS)	{ cout << "\nupdate_SE3_kernel				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(update_k2k_kernel);				if (status != CL_SUCCESS)	{ cout << "\nupdate_k2k_kernel				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 	// release command queues
 	status = clReleaseCommandQueue(m_queue);                   if (status != CL_SUCCESS)	{ cout << "\nm_queue                        status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_67"<<flush;
