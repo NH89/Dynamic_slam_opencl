@@ -237,11 +237,17 @@ void RunCL::update_SE3( uint layer, float delta_theta, float delta )									// 
 	uint 			workgroups_required	= ceil( (float)threads_required / device_work_size_multiple );
 	size_t			threads_to_launch	= workgroups_required  *  device_work_size_multiple;
 
-	uint 			row_offset			= rows_blocks + 4;																								//2
-	uint			thread_offset		= threads_per_DoF;																								//3     2^n  > pixels in fully reduced patch
-	uint			mm_cols				= uint_params[MM_COLS];																							//4
-	float			img_var				= img_stats[ layer*4 + IMG_VAR ] + img_stats[ layer*4 + IMG_VAR +1 ] + img_stats[ layer*4 + IMG_VAR +2 ];		//5		sum image variance over 3channels, for this layer.
-	cl_float2		delta_SE3			= {{delta_theta, delta}};																						//6
+	uint 			row_offset			= rows_blocks + 4;																										//2
+	uint			thread_offset		= threads_per_DoF;																										//3     2^n  > pixels in fully reduced patch
+	uint			mm_cols				= uint_params[MM_COLS];																									//4
+	float			img_var				= img_stats[ layer*2*4 + IMG_VAR*4 ] + img_stats[ layer*2*4 + IMG_VAR*4 +1 ] + img_stats[ layer*2*4 + IMG_VAR*4  +2 ];	//5		sum image variance over 3channels, for this layer.
+	cl_float2		delta_SE3			= {{delta_theta, delta}};																								//6
+
+	cout<<"\nRunCL::update_SE3(..)"\
+	<<",  layer="						<<layer\
+	<<",  img_var="						<<img_var\
+	<<",  delta_SE3="					<<delta_SE3.x<<","<<delta_SE3.y\
+	<<flush;
 
 	cout<<"\nRunCL::update_SE3(..)"\
 	<<"   thread_offset="				<<thread_offset\
@@ -254,33 +260,32 @@ void RunCL::update_SE3( uint layer, float delta_theta, float delta )									// 
 	<<",  DoF_per_workgroup="			<<DoF_per_workgroup\
 	<<",  device_work_size_multiple="	<<device_work_size_multiple\
 	<<flush;
-	//private
-	_clSetKernelArg( kernel,  0, sizeof( uint),							&cols_blocks,				fname);								//__private	uint		cols,					//0
-	_clSetKernelArg( kernel,  1, sizeof( uint),							&rows_blocks,				fname);								//__private	uint		rows,					//1
-	_clSetKernelArg( kernel,  2, sizeof( uint),							&row_offset,				fname);								//__private	uint		row_offset,				//2
-	_clSetKernelArg( kernel,  3, sizeof( uint),							&thread_offset,				fname);								//__private	uint		thread_offset,			//3
-	_clSetKernelArg( kernel,  4, sizeof( uint),							&mm_cols,					fname);								//__private	uint		mm_cols,				//4
-	_clSetKernelArg( kernel,  5, sizeof( float),						&img_var,		 			fname);								//__private	float		img_var,				//5
-	_clSetKernelArg( kernel,  6, sizeof( cl_float2),					&delta_SE3,					fname);								//__private	float2		delta_SE3,				//6
+	_clSetKernelArg( kernel,  0, sizeof( uint),								&cols_blocks,				fname);							//__private	uint		cols,					//0
+	_clSetKernelArg( kernel,  1, sizeof( uint),								&rows_blocks,				fname);							//__private	uint		rows,					//1
+	_clSetKernelArg( kernel,  2, sizeof( uint),								&row_offset,				fname);							//__private	uint		row_offset,				//2
+	_clSetKernelArg( kernel,  3, sizeof( uint),								&thread_offset,				fname);							//__private	uint		thread_offset,			//3
+	_clSetKernelArg( kernel,  4, sizeof( uint),								&mm_cols,					fname);							//__private	uint		mm_cols,				//4
+	_clSetKernelArg( kernel,  5, sizeof( float),							&img_var,		 			fname);							//__private	float		img_var,				//5
+	_clSetKernelArg( kernel,  6, sizeof( cl_float2),						&delta_SE3,					fname);							//__private	float2		delta_SE3,				//6
 	//global
-	_clSetKernelArg( kernel,  7, sizeof( cl_mem),						&SE3_rho_map_mem,			fname);								//__global	float2*		Rho_,					//7		// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
-	_clSetKernelArg( kernel,  8, sizeof( cl_mem),						&SE3_weight_map_mem,		fname);								//__global	float2*		weights_map,			//8
-	_clSetKernelArg( kernel,  9, sizeof( cl_mem),						&SE3_incr_map_mem,			fname);								//__global	float2*		SE3_incr_map_,			//9
+	_clSetKernelArg( kernel,  7, sizeof( cl_mem),							&SE3_rho_map_mem,			fname);							//__global	float2*		Rho_,					//7		// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
+	_clSetKernelArg( kernel,  8, sizeof( cl_mem),							&SE3_weight_map_mem,		fname);							//__global	float2*		weights_map,			//8
+	_clSetKernelArg( kernel,  9, sizeof( cl_mem),							&SE3_incr_map_mem,			fname);							//__global	float2*		SE3_incr_map_,			//9
 	//local
-	_clSetKernelArg( kernel, 10, ( local_work_size/2 )*sizeof( cl_float2),	NULL, 						fname);								//__local	float2*		local_Rho_,				//10		// used for sum-reduce. Need to be [groupsize/2], set in host fn.
-	_clSetKernelArg( kernel, 11, ( local_work_size/2 )*sizeof( cl_float2),	NULL, 						fname);								//__local	float2*		local_weights_map,		//11
-	_clSetKernelArg( kernel, 12, ( local_work_size/2 )*sizeof( cl_float2),	NULL, 						fname);								//__local	float2*		local_SE3_incr_map_,	//12
+	_clSetKernelArg( kernel, 10, ( local_work_size/2 )*sizeof( cl_float2),	NULL, 						fname);							//__local	float2*		local_Rho_,				//10		// used for sum-reduce. Need to be [groupsize/2], set in host fn.
+	_clSetKernelArg( kernel, 11, ( local_work_size/2 )*sizeof( cl_float2),	NULL, 						fname);							//__local	float2*		local_weights_map,		//11
+	_clSetKernelArg( kernel, 12, ( local_work_size/2 )*sizeof( cl_float2),	NULL, 						fname);							//__local	float2*		local_SE3_incr_map_,	//12
 
 	// input/output, global
-	_clSetKernelArg( kernel, 13, sizeof( cl_mem), 						&pose_update_buf,			fname);								//__global	float*		pose_update,			//13	// 6_DoF
-	_clSetKernelArg( kernel, 14, sizeof( cl_mem), 						&distorsion_update_buf, 	fname);								//__global	float*		distorsion_update,		//14
-	_clSetKernelArg( kernel, 15, sizeof( cl_mem), 						&old_result_buf, 			fname);								//__global	float*		old_result				//15
+	_clSetKernelArg( kernel, 13, sizeof( cl_mem), 							&pose_update_buf,			fname);							//__global	float*		pose_update,			//13	// 6_DoF
+	_clSetKernelArg( kernel, 14, sizeof( cl_mem), 							&distorsion_update_buf, 	fname);							//__global	float*		distorsion_update,		//14
+	_clSetKernelArg( kernel, 15, sizeof( cl_mem), 							&old_result_buf, 			fname);							//__global	float*		old_result				//15
 
 
-	_clSetKernelArg( kernel, 16, sizeof( cl_mem), 						&pose_buf,					fname);								//__global	float*		Pose,					//16
-	_clSetKernelArg( kernel, 17, sizeof( cl_mem), 						&K_buf,						fname);								//__global	float*		K,						//17
-	_clSetKernelArg( kernel, 18, sizeof( cl_mem), 						&inv_K_buf,					fname);								//__global	float*		inv_K,					//18
-	_clSetKernelArg( kernel, 19, sizeof( cl_mem), 						&k2kbuf,					fname);								//__global	float*		k2k						//19
+	_clSetKernelArg( kernel, 16, sizeof( cl_mem), 							&pose_buf,					fname);							//__global	float*		Pose,					//16
+	_clSetKernelArg( kernel, 17, sizeof( cl_mem), 							&K_buf,						fname);							//__global	float*		K,						//17
+	_clSetKernelArg( kernel, 18, sizeof( cl_mem), 							&inv_K_buf,					fname);							//__global	float*		inv_K,					//18
+	_clSetKernelArg( kernel, 19, sizeof( cl_mem), 							&k2kbuf,					fname);							//__global	float*		k2k						//19
 
 	cl_command_queue 	queue_to_call		= m_queue;
 	cl_int				res, status;

@@ -154,3 +154,40 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 //////////////////////////////////////////
 
 
+for ( step=1; step<=block_size; step *=2){																																					// for each step size, (multiples of 2)
+		for (uint block_row=0; block_row<block_size ; block_row += step){																														// step through rows in column
+																					rho_pvt_arr[	block_row]		+= rho_pvt_arr[	block_row + step ];
+
+			if( !(fmod((float)lid,(step*2))==0) &&  (fmod((float)lid,step)==0)	){	local_rho[		lid-step ]		= rho_pvt_arr[	block_row]	;}
+			if(  (fmod((float)lid,(step*2))==0)									){	rho_pvt_arr[	block_row]		+= local_rho[	lid		 ]	;}
+		}
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

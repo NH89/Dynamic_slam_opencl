@@ -226,6 +226,7 @@ void RunCL::sample_image_variance(){
 	float img_stats__[img_stats_size];
 
 	ReadOutput(  (uchar*)img_stats__, img_stats_buf, img_stats_size_bytes );
+	for (uint idx=0; idx<img_stats_size; idx++  ){ img_stats[idx] = img_stats__[idx];}
 																																			if (verbosity>local_verbosity_threshold){
 																																				cout << "\n" << fname;
 																																				for (uint layer=start; layer<=stop; layer++){
@@ -236,6 +237,10 @@ void RunCL::sample_image_variance(){
 																																					cout << "},   \tvariance={ ";
 																																					for (uint chan=0; chan<4; chan++){
 																																						cout <<  img_stats__[layer*2*4 + IMG_VAR*4 + chan] << ",  \t";
+																																					}
+																																					cout << "}" << flush;
+																																					for (uint chan=0; chan<4; chan++){
+																																						cout <<  img_stats[layer*2*4 + IMG_VAR*4 + chan] << ",  \t";
 																																					}
 																																					cout << "}" << flush;
 																																				}
