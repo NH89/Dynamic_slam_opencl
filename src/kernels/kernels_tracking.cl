@@ -65,7 +65,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	__constant	uint8*		mipmap_params,			//3
 	__constant	uint*		uint_params,			//4
 	__constant	float*		fp32_params,			//5
-	__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames
+	__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames,  k2k_buf
 
 	__global	float4*		img_cur,				//7		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
 	__global	float4*		img_past_0,				//8
@@ -218,23 +218,23 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 			rho_pvt_flt2.x					*= edge_weight;																																		// Weight rho by edges. // TODO choose/ refine which edges to use.
 			rho_pvt_flt2.y					= 1.0f;
 			rho_pvt_arr[row_in_block]		+= rho_pvt_flt2;																																	// save to pvt mem for this column
-
-
+/*
 // 			if (intersection && layer==4){
 // 				printf("\n (intersection), layer=%u,  global_id_u=%u,  group_id=%u,  lid=%u, row_in_block(%u),  img_cur_pvt[row_in_block](%f,%f),  rho_pvt_arr[row_in_block](%f,%f)	read_cols_=%u,  read_rows_=%u,  u=%u, v=%u, u2_1=%u,  v2_1=%u,   global_id_u(%u),  layer_pixels(%u), inv_depth_1(%f), min_inv_depth=%f,  max_inv_depth=%f",\
 // 				layer,  global_id_u,  group_id, lid, row_in_block, img_cur_pvt[row_in_block].x,  img_cur_pvt[row_in_block].y,   rho_pvt_arr[row_in_block].x,  rho_pvt_arr[row_in_block].y,  read_cols_, read_rows_, u, v, u2_1,  v2_1,  global_id_u,  layer_pixels, inv_depth_1, min_inv_depth, max_inv_depth );
 // 			}
-
+*/
 		}
 	}
-
-	barrier(CLK_GLOBAL_MEM_FENCE );
-	if (layer==4 && out_block_size==32 ){
-		for (uint row_in_block=0; row_in_block<block_size; row_in_block ++){
-				printf("\n (layer==4), layer=%u,  global_id_u=%u,  group_id=%u,  lid=%u, row_in_block(%u),  img_cur_pvt[row_in_block](%f,%f),  rho_pvt_arr[row_in_block](%f,%f)	read_cols_=%u,  read_rows_=%u,  ,   global_id_u(%u),  layer_pixels(%u), , min_inv_depth=%f,  max_inv_depth=%f",\
-				layer,  global_id_u,  group_id, lid, row_in_block, img_cur_pvt[row_in_block].x,  img_cur_pvt[row_in_block].y,   rho_pvt_arr[row_in_block].x,  rho_pvt_arr[row_in_block].y,  read_cols_, read_rows_,   global_id_u,  layer_pixels,  min_inv_depth, max_inv_depth );
-		}
-	}
+/*
+// 	barrier(CLK_GLOBAL_MEM_FENCE );
+// 	if (layer==4 && out_block_size==32 ){
+// 		for (uint row_in_block=0; row_in_block<block_size; row_in_block ++){
+// 				printf("\n (layer==4), layer=%u,  global_id_u=%u,  group_id=%u,  lid=%u, row_in_block(%u),  img_cur_pvt[row_in_block](%f,%f),  rho_pvt_arr[row_in_block](%f,%f)	read_cols_=%u,  read_rows_=%u,  ,   global_id_u(%u),  layer_pixels(%u), , min_inv_depth=%f,  max_inv_depth=%f",\
+// 				layer,  global_id_u,  group_id, lid, row_in_block, img_cur_pvt[row_in_block].x,  img_cur_pvt[row_in_block].y,   rho_pvt_arr[row_in_block].x,  rho_pvt_arr[row_in_block].y,  read_cols_, read_rows_,   global_id_u,  layer_pixels,  min_inv_depth, max_inv_depth );
+// 		}
+// 	}
+*/
 	barrier(CLK_GLOBAL_MEM_FENCE );
 
 	uint past_frame_idx =0; // TODO remove and restore long outer loop.
@@ -242,18 +242,18 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	for ( step=1; step<=block_size; step *=2){																																					// for each step size, (multiples of 2)
 		for (uint block_row=0; block_row<block_size ; block_row += step){																														// step through rows in column
 
-			if (layer==4 && out_block_size==32 && block_row<8 && lid==0 )printf("\n\n");
+			//if (layer==4 && out_block_size==32 && block_row<8 && lid==0 )printf("\n\n");
 			barrier(CLK_LOCAL_MEM_FENCE );
-			if (layer==4 && out_block_size==32 && block_row<8  &&  lid<8  )printf("\n(step_0) global_id_u=%u, group_id=%u, lid=%u rho_pvt_arr[block_row(%u )]={%f, %f}",  global_id_u,  group_id, lid, block_row,  rho_pvt_arr[ block_row ].x,  rho_pvt_arr[ block_row ].y  );
+			//if (layer==4 && out_block_size==32 && block_row<8  &&  lid<8  )printf("\n(step_0) global_id_u=%u, group_id=%u, lid=%u rho_pvt_arr[block_row(%u )]={%f, %f}",  global_id_u,  group_id, lid, block_row,  rho_pvt_arr[ block_row ].x,  rho_pvt_arr[ block_row ].y  );
 
 																						rho_pvt_arr[		block_row ]							+=rho_pvt_arr[		block_row + step ];			// sum pair of values in col,
 			for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
 																						SE3_incr_pvt_arr[	block_row + se3_dim*block_size ]	+=SE3_incr_pvt_arr[	block_row + step + se3_dim*block_size ];
 																						grad_pvt_arr[		block_row + se3_dim*block_size ]	+=grad_pvt_arr[		block_row + step + se3_dim*block_size ];
 			}
-			if (layer==4 && out_block_size==32 && block_row<8 && lid==0 )printf("\n");
+			//if (layer==4 && out_block_size==32 && block_row<8 && lid==0 )printf("\n");
 			barrier(CLK_LOCAL_MEM_FENCE );
-			if (layer==4 && out_block_size==32 && block_row<8  &&  lid<8  )printf("\n(step_1) global_id_u=%u, group_id=%u, lid=%u rho_pvt_arr[block_row(%u )]={%f, %f}",  global_id_u,  group_id, lid, block_row,  rho_pvt_arr[ block_row ].x,  rho_pvt_arr[ block_row ].y  );
+			//if (layer==4 && out_block_size==32 && block_row<8  &&  lid<8  )printf("\n(step_1) global_id_u=%u, group_id=%u, lid=%u rho_pvt_arr[block_row(%u )]={%f, %f}",  global_id_u,  group_id, lid, block_row,  rho_pvt_arr[ block_row ].x,  rho_pvt_arr[ block_row ].y  );
 
 			if( !(fmod((float)lid,(step*2))==0) &&  (fmod((float)lid,step)==0)    ){																											// selects 2nd column, sends data
 																						local_rho[			lid-step ]							= rho_pvt_arr[		block_row];
@@ -261,11 +261,11 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 																						local_SE3_incr[		lid-step + se3_dim*local_size ]		= SE3_incr_pvt_arr[	block_row + se3_dim*block_size ];
 																						local_weights[		lid-step + se3_dim*local_size ]		= grad_pvt_arr[		block_row + se3_dim*block_size ];
 				}
-				if (layer==4 && out_block_size==32 && block_row<8  &&  lid<8   )printf("\n(!(fmod((float)lid,(step*2))==0)&&(fmod((float)lid,step)==0)) global_id_u=%u, group_id=%u, lid=%u, block_row=%u, lid-step=%u, step=%u ", global_id_u,  group_id, lid, block_row, lid-step, step  );
+				//if (layer==4 && out_block_size==32 && block_row<8  &&  lid<8   )printf("\n(!(fmod((float)lid,(step*2))==0)&&(fmod((float)lid,step)==0)) global_id_u=%u, group_id=%u, lid=%u, block_row=%u, lid-step=%u, step=%u ", global_id_u,  group_id, lid, block_row, lid-step, step  );
 			}
-			if (layer==4 && out_block_size==32 && block_row<8 && lid==0 )printf("\n");
+			//if (layer==4 && out_block_size==32 && block_row<8 && lid==0 )printf("\n");
 			barrier(CLK_LOCAL_MEM_FENCE );
-			if (layer==4 && out_block_size==32 && block_row<8  &&  lid<8   )printf("\n(step_2) global_id_u=%u, group_id=%u, lid=%u rho_pvt_arr[block_row(%u )]={%f, %f}",  global_id_u,  group_id, lid, block_row,  rho_pvt_arr[ block_row ].x,  rho_pvt_arr[ block_row ].y  );
+			//if (layer==4 && out_block_size==32 && block_row<8  &&  lid<8   )printf("\n(step_2) global_id_u=%u, group_id=%u, lid=%u rho_pvt_arr[block_row(%u )]={%f, %f}",  global_id_u,  group_id, lid, block_row,  rho_pvt_arr[ block_row ].x,  rho_pvt_arr[ block_row ].y  );
 			barrier(CLK_LOCAL_MEM_FENCE );																																						// Using barrier as a semaphore, for local mem messages between threads. This minimizes local_mem req, while allowing 2 patch sizes in output, full & ST3 map at out_block_size.
 
 			if( (fmod((float)lid,(step*2))==0)  ){																																				// selects 1st column, adds data. Sum of patch now held in top left element of patch.
@@ -274,11 +274,11 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 																						SE3_incr_pvt_arr[	block_row + se3_dim*block_size ]	+= local_SE3_incr[	lid		 + se3_dim*local_size ];
 																						grad_pvt_arr[		block_row + se3_dim*block_size ]	+= local_weights[	lid		 + se3_dim*local_size ];
 				}
-				if (layer==4 && out_block_size==32 && block_row<8  &&  lid<8   )printf("\n(fmod((float)lid,(step*2))==0)&&(fmod((float)lid,step)==0)) global_id_u=%u, group_id=%u, lid=%u, block_row=%u, , step=%u ", global_id_u,  group_id, lid, block_row,  step  );
+				//if (layer==4 && out_block_size==32 && block_row<8  &&  lid<8   )printf("\n(fmod((float)lid,(step*2))==0)&&(fmod((float)lid,step)==0)) global_id_u=%u, group_id=%u, lid=%u, block_row=%u, , step=%u ", global_id_u,  group_id, lid, block_row,  step  );
 			}
-			if (layer==4 && out_block_size==32 && block_row<8 && lid==0 )printf("\n");
+			//if (layer==4 && out_block_size==32 && block_row<8 && lid==0 )printf("\n");
 			barrier(CLK_LOCAL_MEM_FENCE );
-			if (layer==4 && out_block_size==32 && block_row<8  &&  lid<8  )printf("\n(step_3) global_id_u=%u, group_id=%u, lid=%u rho_pvt_arr[block_row(%u )]={%f, %f}",  global_id_u,  group_id, lid, block_row,  rho_pvt_arr[ block_row ].x,  rho_pvt_arr[ block_row ].y  );
+			//if (layer==4 && out_block_size==32 && block_row<8  &&  lid<8  )printf("\n(step_3) global_id_u=%u, group_id=%u, lid=%u rho_pvt_arr[block_row(%u )]={%f, %f}",  global_id_u,  group_id, lid, block_row,  rho_pvt_arr[ block_row ].x,  rho_pvt_arr[ block_row ].y  );
 			barrier(CLK_LOCAL_MEM_FENCE );
 			/*
 			if (step==1){
@@ -329,19 +329,22 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 																						uint offset_4				= block_row 	+ se3_dim*block_size;
 																						SE3_incr_map_[	offset_3 ]	= SE3_incr_pvt_arr[  offset_4 ];
 																						weights_map[	offset_3 ]	= grad_pvt_arr[   offset_4 ];
-
-																						printf("\n, ((step 4) lid=%u, se3_dim=%u frame_offset_1=%u, write_block_row=%u, mm_cols=%u,  offset_2=%u, offset_3=%u) Rho_=(%f,%f), SE3_incr_map_=(%f,%f), weights_map=(%f, %f), ",\
-																							lid, se3_dim, frame_offset_1, write_block_row, mm_cols, offset_2, offset_3, \
-																							Rho_[offset_2].x,			Rho_[offset_2].y, \
-																							SE3_incr_map_[offset_3].x,	SE3_incr_map_[offset_3].y, \
-																							weights_map[offset_3].x,	weights_map[offset_3].y  );
+																						/*
+																						if(write_block_row==0 && block_row==0 && frame_offset_1==0 && se3_dim==5){
+																							printf("\n, ((step 4) lid=%u, se3_dim=%u frame_offset_1=%u, write_block_row=%u, mm_cols=%u,  offset_2=%u, offset_3=%u) Rho_=(%f,%f), SE3_incr_map_=(%f,%f), weights_map=(%f, %f), ",\
+																								lid, se3_dim, frame_offset_1, write_block_row, mm_cols, offset_2, offset_3, \
+																								Rho_[offset_2].x,			Rho_[offset_2].y, \
+																								SE3_incr_map_[offset_3].x,	SE3_incr_map_[offset_3].y, \
+																								weights_map[offset_3].x,	weights_map[offset_3].y  );
+																						}
+																						*/
 		}
 	}
 	//barrier(CLK_GLOBAL_MEM_FENCE );																																								// TODO need kernel update depth map
 }
 
 
-__kernel void update_SE3(									// call just one workgroup to sum the whole image maps from the patch kernel.
+__kernel void reduce_patch_Rho(									// call just one workgroup to sum the whole image maps from the patch kernel.
 	__private	uint		cols,					//0		// rows and cols in Rho result patch from  __kernel void Rho_sq(), depends on image pyramid layer.
 	__private	uint 		rows,					//1
 	__private	uint 		row_offset,				//2		// index of 1st pixel of the 2nd patch, i.e. spacing between patches
@@ -356,20 +359,21 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 
 	__local		float2*		local_Rho_,				//10	// used for sum-reduce. Need to be [groupsize/2], set in host fn.
 	__local		float2*		local_weights_map,		//11
-	__local		float2*		local_SE3_incr_map_,	//12
+	__local		float2*		local_SE3_incr_map_		//12
 
 	// out
-	__global	float*		pose_update,			//13	// 6_DoF
-	__global	float*		distorsion_update,		//14
-	__global	float*		old_result,				//15	// 1 rho value
+// 	__global	float*		pose_update,			//13	// 6_DoF
+// 	__global	float*		distorsion_update,		//14
+// 	__global	float*		old_Rho,				//15	// 1 rho value // sizeof(float)*6,
 
 	//
-	__global	float*		Pose,					//16
-	__global	float*		K,						//17
-	__global	float*		inv_K,					//18
-	__global	float*		k2k						//19
+// 	__global	float*		Pose,					//16
+// 	__global	float*		K,						//17
+// 	__global	float*		inv_K,					//18
+// 	__global	float*		k2k						//19
 	)
 {
+	const uint block_size	= 32;
 	const uint	SE3_DoF		= 6;
 	uint   global_id_u		= get_global_id(0);
 	float  global_id_f		= global_id_u;
@@ -382,7 +386,8 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 	uint	SE3				= global_id_u / thread_offset;										// SE3 = which of 6 DoF does this thread compute.
 	uint	read_col		= fmod(global_id_f, thread_offset);
 	bool	in_range		= read_col < cols  &&  (SE3 < SE3_DoF);	// NB integer division.		// in_range = Thread is for a pixel in the image.
-
+																					//if (global_id_u==0) printf("\n__kernel void reduce_patch_Rho(..)   read_col(%u) < cols(%u)  &&  (SE3(%u) < SE3_DoF(%u),  thread_offset(%u) in_range(%u)  ",\
+																						read_col, cols, SE3, SE3_DoF, thread_offset, in_range  );
 	const float2	zero_f2	= {0.0f,0.0f};
 	float2 pvt_rho			= zero_f2;
 	float2 pvt_weights		= zero_f2;
@@ -403,24 +408,21 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 		uint old_row_offset = row_offset;
 		row_offset			*=(SE3 * mm_cols);													// Adjusts "row_offset" to be buffer index, given width of buffer and which SE3 DoF this thread is for.
 
-		for(uint idx = 0; idx<rows; idx ++){													// NB patch sum could be used for rows, BUT most iterations have too few rows to justify the ovehead.
+		for(uint idx = 0; idx<=rows; idx ++){													// NB patch sum could be used for rows, BUT most iterations have too few rows to justify the ovehead.
 			uint idx_2		= read_col + (idx * mm_cols);
 			uint idx_3		= row_offset + idx_2;
-//			pvt_rho			= Rho_[idx_2];														// NB only one Rho[], but 6 DoF for weights_map[] & SE3_incr_map_[]
-// 			pvt_weights		= weights_map[idx_3];
-// 			pvt_incr		= pvt_weights * pvt_rho * SE3_incr_map_[idx_3];		// NB must multiply not divide to avoid div by zero				// pvt variable will hold sum for column in Rho_, weights_map, SE3_incr_map_  // TODO should these be combined BEFORE bering summed ?
-// 			pvt_rho_sum		+= pvt_rho;
-// 			pvt_weights_sum	+= pvt_weights;
-// 			pvt_incr_sum	+= pvt_incr;
-
-			pvt_rho_sum		+= Rho_[idx_2];					// NB incr computation in kernel Rho_sq(..) above.
+																								// sum the columns of the fully reduced patch.
+			pvt_rho_sum		+= Rho_[idx_2];														// NB incr computation in kernel Rho_sq(..) above.
 			pvt_weights_sum	+= weights_map[idx_3];
 			pvt_incr_sum	+= SE3_incr_map_[idx_3];
-
-																												printf("\nlid=%u, old_row_offset=%u,  SE3=%u,  mm_cols=%u,  read_col(%u) +  (idx(%u) *  mm_cols(%u)) = idx_2(%u),  + row_offset(%u) = idx_3(%u),  pvt_incr={%f, %f}	 pvt_weights{%f, %f},   pvt_rho={%f, %f}   ,  SE3_incr_map_[idx_3]={%f,  %f}",\
-																														lid, old_row_offset, SE3, mm_cols, read_col, idx, mm_cols,  idx_2, row_offset, idx_3, \
-																														pvt_incr.x, pvt_incr.y,   pvt_weights.x,  pvt_weights.y,  \
-																														pvt_rho.x,   pvt_rho.y,  SE3_incr_map_[idx_3].x,   SE3_incr_map_[idx_3].y  );
+																					//if(read_col==0 && idx==0 && SE3==5) printf("\nlid=%u, old_row_offset=%u,  SE3=%u, idx(%u),  idx_2(%u),  idx_3(%u)",\
+																						lid, old_row_offset, SE3, idx, idx_2, idx_3);
+			/*
+// 																						printf("\nlid=%u, old_row_offset=%u,  SE3=%u,  mm_cols=%u,  read_col(%u) +  (idx(%u) *  mm_cols(%u)) = idx_2(%u),  + row_offset(%u) = idx_3(%u),  pvt_incr={%f, %f}	 weights_map[idx_3]{%f, %f},   Rho_[idx_2]={%f, %f}   ,  SE3_incr_map_[idx_3]={%f,  %f}",\
+// 																							lid, old_row_offset, SE3, mm_cols, read_col, idx, mm_cols,  idx_2, row_offset, idx_3, \
+// 																							pvt_incr.x, pvt_incr.y,          weights_map[idx_3].x,     weights_map[idx_3].y,      \
+// 																							Rho_[idx_2].x,   Rho_[idx_2].y,  SE3_incr_map_[idx_3].x,   SE3_incr_map_[idx_3].y  );
+			*/
 		}
 	}
 	barrier(CLK_GLOBAL_MEM_FENCE);//////////////////////////////////////////////////////////####################################################
@@ -454,67 +456,77 @@ __kernel void update_SE3(									// call just one workgroup to sum the whole im
 		old_step = step;
 	}
 
-// 	if (mod_step && in_range){//////////////////////////////////////////////////////////////////// NB here "step"= 2^max_iter = thread_offset. So mod_step = fmod(col	, thread_offset)== 0, i.e. select 1st thread of each SE3 DoF.
-// 		pvt_incr_sum.x							/= pvt_weights_sum.x;																				// TODO reduce SE3_incr_map & weights_map to float1, to save data read/writes.
-// 		pvt_rho_sum.x							/= pvt_rho_sum.y;																					// Divide by number of valid overlapping pixels in original image pair.
-// 		pvt_weights_sum.x						/= pvt_rho_sum.y;
-// 		local_Rho_[SE3]							=  pvt_rho_sum;																						// will hold sum_Rho for each [SE3]  TODO ?? would this be the same for all SE3 ??
-// 	}
-	barrier(CLK_LOCAL_MEM_FENCE);/////////////////////////////##########
-
-	float old_pose_update	= -1;
 	if (mod_step && in_range){
-		old_pose_update							= pose_update[SE3];																					// will be zero if 1st iteration. }
-	}
-	barrier(CLK_GLOBAL_MEM_FENCE);//////////////////////////////////////////////////////////####################################################
+		Rho_[SE3]								= pvt_rho_sum;
+		weights_map[SE3]						= pvt_weights_sum;
+		SE3_incr_map_[SE3]						= pvt_incr_sum;
+	}barrier(CLK_LOCAL_MEM_FENCE);/////////////////////////##########
 
-	float update								= 0;
-	if (mod_step && in_range){																														// compute updates. NB different for SO3 vs ST3, hence offset.
-		uint offset								= 3 * floor((float)SE3/3);																			// offset = 0 for SO3, 3 for ST3.
-		float mag_S3							= fabs(local_Rho_[0+offset].x)  + fabs(local_Rho_[1+offset].x)  + fabs(local_Rho_[2+offset].x);		// float rho_ST3_mag  = fabs(local_Rho_[3].x) + fabs(local_Rho_[4].x) + fabs(local_Rho_[5].x);
-																																					// result_[iter][SE3] = SE3_results[layer][SE3][channel]  / (SE3_weights[layer][SE3][channel] * runcl.img_stats[IMG_VAR+channel] )
-		float result							= pvt_incr_sum.x / (  img_var ); // pvt_weights_sum.x  *
-
-		if ( old_pose_update==0.0f ){																												// NB reset to zero for new img pyramid layer, because old result is not valid for comparison.
-			update								= result;
-																												printf("\n__kernel void update_SE3()_1  global_id_u=,%u,  (old_pose_update==0)   old_pose_update=,%f,  SE3=,%u         result=%f,  delta_SE3_[ SE3/3 ]=%f,  mag_S3=%f,  update=%f,      pvt_incr_sum.x=%f,  pvt_weights_sum.x=%f  img_var=%f ",\
-																														global_id_u,  old_pose_update, SE3,      result, delta_SE3_[ SE3/3 ], mag_S3,  update,       pvt_incr_sum.x,  pvt_weights_sum.x,  img_var );
-		}else{
-			float rho_S3_delta					=      local_Rho_[0+offset].x  -  old_result[0+offset] \
-												   +   local_Rho_[1+offset].x  -  old_result[1+offset] \
-												   +   local_Rho_[2+offset].x  -  old_result[2+offset] ;
-			update								= result * rho_S3_delta ;//  / mag_S3;
-																												printf("\n__kernel void update_SE3()_2  global_id_u=,%u,  (old_pose_update != 0.0f),   old_pose_update=,%f,  SE3=,%u,    result=%f,  rho_S3_delta=%f,  mag_S3=%f,  update=%f", \
-																														global_id_u,  old_pose_update, SE3,    result, rho_S3_delta, mag_S3,  update);
-		}
-		old_result[SE3]							= local_Rho_[SE3].x;
-		pose_update[SE3]						= clamp(    update,  -delta_SE3_[ SE3/3 ],  +delta_SE3_[ SE3/3 ] );
-		//distorsion_update[..]	=  ;
-	}
-}
+} // Need to end the kernel here, because cannot synchronize across workgroups.
 
 
-__kernel void update_k2k(	// TODO need new kernel, for global synchronization between workgroups.  // Only one workgroup needed.
+__kernel void update_k2k(	// TODO need new kernel, for global synchronization between workgroups.  // Only one workgroup needed
 	//inputs
-	__global	float*		pose_update,				//0	// 6_DoF
-	__global	float*		Pose,						//1
-	__global	float*		K,							//2
-	__global	float*		inv_K,						//3
+	__private	float		img_var,				//0
+	__private	float2		delta_SE3,				//1
+
+	__global	float2*		Rho_,					//2		// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
+	__global	float2*		weights_map,			//3
+	__global	float2*		SE3_incr_map_,			//4
+
+	__global	float*		pose_update,			//5		// 6_DoF
+	__global	float*		old_Rho,				//6
+
+	__global	float*		Pose,					//7
+	__global	float*		K,						//8
+	__global	float*		inv_K,					//9
 	//input/output
-	__global	float*		k2k							//4
-)
-	{
+	__global	float*		k2k						//10
+	){
+	// compute SE3 update	///////////////////////////////////////////////////////////////////////////////////////////////////
+	uint	lid							= get_local_id(0);
+	if (lid<6) {
+		uint	SE3						= lid;
+		float old_pose_update			= pose_update[SE3];																								// will be zero if 1st iteration. }
+		float update					= 0;																											// One thread per SE3 DoF. i.e. the threads to which the sum-reduce answers wwere written.
+																																						// compute updates. NB different for SO3 vs ST3, hence offset.
+		uint offset						= 3 * floor((float)SE3/3);																						// offset = 0 for SO3, 3 for ST3.
+		float mag_S3					= fast_length( (float3)(SE3_incr_map_[0+offset].x, SE3_incr_map_[0+offset].x, SE3_incr_map_[0+offset].x) );		// fabs(local_Rho_[0+offset].x)  + fabs(local_Rho_[1+offset].x)  + fabs(local_Rho_[2+offset].x);		// float rho_ST3_mag  = fabs(local_Rho_[3].x) + fabs(local_Rho_[4].x) + fabs(local_Rho_[5].x);
+		float result					= SE3_incr_map_[SE3].x / (  img_var ); 																			// pvt_weights_sum.x  *		// result_[iter][SE3] = SE3_results[layer][SE3][channel]  / (SE3_weights[layer][SE3][channel] * runcl.img_stats[IMG_VAR+channel] )
+
+		if ( old_pose_update==0.0f ){																													// NB reset to zero for new img pyramid layer, because old result is not valid for comparison.
+			update						= result;
+																											printf("\n__kernel void update_SE3()_1	SE3=,%u,	(old_pose_update==0)	old_pose_update=,%f,	SE3=,%u	result=%f,	Rho_[SE3].x=%f	delta_SE3[ SE3/3 ]=%f,	mag_S3=%f,  update=%f,	SE3_incr_map_[SE3].x=%f,	weights_map[SE3].x=%f	img_var=%f ",\
+																												SE3,  old_pose_update, SE3,	result,	Rho_[SE3].x,	delta_SE3[ SE3/3 ], mag_S3,  update,       SE3_incr_map_[SE3].x,  weights_map[SE3].x,  img_var );
+		}else{
+			float rho_S3_delta			= Rho_[SE3].x		-	old_Rho[SE3];
+			update						= result * rho_S3_delta *-1.0f / mag_S3;
+																											printf("\n__kernel void update_SE3()_2	SE3=,%u,	(old_pose_update != 0.0f),	old_pose_update=,%f,		result=%f,	local_Rho_[SE3].x=%f	old_Rho[SE3]=%f,	rho_S3_delta=%f,	mag_S3=%f,	update=%f", \
+																												SE3,  old_pose_update, 	result,	Rho_[SE3].x,	old_Rho[SE3],   rho_S3_delta, mag_S3,  update);
+		}
+		old_Rho[SE3]					= Rho_[SE3].x;																									// One copy per SE3 DoF, hence async race. Also only one workgroup.
+		pose_update[SE3]				= clamp(    update,  -delta_SE3[ SE3/3 ],  +delta_SE3[ SE3/3 ] );
+																											printf("\n__kernel void update_SE3()_3	SE3=%u,	pose_update[SE3]=%f",	SE3,	pose_update[SE3] );
+	}
+
+	// compute new K2K	////////////////////////////////////////////////////////////////////////////////////////////////////////
 	__local	float local_update_vec[9];
-	uint	lid											= get_local_id(0);
-	if (lid < 6) { local_update_vec[lid]				= pose_update[lid]; }			barrier(CLK_LOCAL_MEM_FENCE);/////##########
+																																			//if(lid==0) printf("\n_kernel update_k2k(..) SE3=%u", lid);
+	if (lid < 6) { local_update_vec[lid]				= pose_update[lid]; }			barrier(CLK_LOCAL_MEM_FENCE);/////##########		// SE3 = lid
 
 	__local float local_K_update[ 	2* SE3_elems];																							// Buffers [32] elem, hold two 4x4 matrices.
 	__local float local_pose_inv_K[ 2* SE3_elems];																							// Enable two matrix multiplications simultaneously in one work group of 32 trheads.
-	__local float local_A_B[ 		2* SE3_elems];
+	__local float local_A_B[		2* SE3_elems];
 	__local float local_k2k[		   SE3_elems];
 
-	if (lid < 3) { 	local_update_vec[	lid + 6]		= 3.0f - lid;	}																	// sets local_update_vec[6,7,8] to -1, 0, 1
-	if (lid < 32){ 	local_A_B[ 			lid]			= 0.0f;			}
+	if (lid==0){
+		printf("\n\n __global Pose[] = \n");
+		for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",Pose[	j*4 +k]);	} printf("\n"); } printf("\n\n");
+	}
+																						barrier(CLK_GLOBAL_MEM_FENCE);/////##########
+
+	if (lid < 3) { 	local_update_vec[	lid + 6]		= -1.0f + lid;	}																	// sets local_update_vec[6,7,8] to -1, 0, 1
+	if (lid < 32){ 	local_A_B[			lid]			= 0.0f;			}
 	if (lid < 16){
 					local_K_update[		lid]			= K[lid];
 					local_K_update[		lid + 16]		= 0.0f;
@@ -522,25 +534,48 @@ __kernel void update_k2k(	// TODO need new kernel, for global synchronization be
 					local_pose_inv_K[ 	lid + 16]		= inv_K[lid];
 					local_k2k[lid]						= 0.0f;
 	}																					barrier(CLK_LOCAL_MEM_FENCE);/////##########
-	LieToP( 	lid, local_update_vec,	local_K_update );								barrier(CLK_LOCAL_MEM_FENCE);/////##########
-	update_k2_kdev_fn( lid, local_K_update,	local_pose_inv_K, local_A_B, local_k2k ); 	barrier(CLK_LOCAL_MEM_FENCE);/////##########		// (local_update, local_Pose, local_K, local_inv_K, A, B, local_k2k );
-	if(lid<16){ k2k[lid] 								= local_k2k[lid]; }				barrier(CLK_LOCAL_MEM_FENCE);/////##########
-																																			if(lid==0) printf("\nk2k = { %f, %f, %f, %f,     %f, %f, %f, %f,     %f, %f, %f, %f,     %f, %f, %f, %f }", \
-																																				local_k2k[0], local_k2k[1], local_k2k[2], local_k2k[3],      local_k2k[4], local_k2k[5], local_k2k[6], local_k2k[7],\
-																																				local_k2k[8], local_k2k[9], local_k2k[10], local_k2k[11],    local_k2k[12], local_k2k[13], local_k2k[14], local_k2k[15] );
-}
 
-// 	if ( get_num_groups(0) > 1){
-// 		pose_update[SE3]									= update;
-// 		barrier(CLK_GLOBAL_MEM_FENCE);
-//
-//  		if (group_id == 0){
-//  			if (lid < 6) { local_update_vec[lid]			= pose_update[lid]; }  ///  TODO This isn't guaranteed to work. Need new to "finish" and launch new kernel.
-//  		}
-// 	}else{
-// 		if (mod_step && in_range){ local_update_vec[SE3]	= update; }
+// 	if(lid==0){printf("\n\n__kernel void update_k2k(..) local_pose_inv_K = \n");
+// 		for (uint i=0; i< 2 ; i++){ for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_pose_inv_K[	i*16 +j*4 +k]);	} printf("\n"); } printf("\n\n"); }
 // 	}
 
+	LieToP( 	lid, local_update_vec,	local_K_update );								barrier(CLK_LOCAL_MEM_FENCE);/////##########
+
+// 	if (lid==0){
+// 		printf("\n\n local_K_update = \n");
+// 		for (uint i=0; i< 2 ; i++){ for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_K_update[		i*16 +j*4 +k]);	} printf("\n"); } printf("\n\n"); }
+// 	}
+
+	update_k2_kdev_fn( lid, local_K_update,	local_pose_inv_K, local_A_B, local_k2k ); 	barrier(CLK_LOCAL_MEM_FENCE);/////##########		// (local_update, local_Pose, local_K, local_inv_K, A, B, local_k2k );
+	if(lid<16){ k2k[lid] 								= local_k2k[lid]; }				barrier(CLK_LOCAL_MEM_FENCE);/////##########
+
+																																			if(lid==0) {
+																																				printf("\nk2k = {\n");
+																																				for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_k2k[	j*4 +k]);	} printf("\n"); } printf("\n\n");
+																																			}
+
+																																			// update the stored pose. TODO tuck this into 2nd stage of void update_k2_kdev_fn(..)
+	__local float local_pose[SE3_elems];
+	__local float local_update[SE3_elems];
+	__local float local_new_pose[SE3_elems];
+
+	if (lid < 16){
+		local_pose[		lid]		= local_pose_inv_K[		lid];
+		local_update[	lid]		= local_K_update[	16 + lid];
+	}																					barrier(CLK_LOCAL_MEM_FENCE);/////##########
+	mat_mul44( lid,	local_pose,		local_update,		local_new_pose );				barrier(CLK_LOCAL_MEM_FENCE);/////##########
+	if(lid<16){		Pose[lid]		= local_new_pose [lid]; }
+
+	if (lid==0){
+		printf("\n\n local_pose[] = \n");
+		for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_pose[	j*4 +k]);	} printf("\n"); } printf("\n\n");
+		printf("\n\n local_update[] = \n");
+		for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_update[	j*4 +k]);	} printf("\n"); } printf("\n\n");
+		printf("\n\n local_new_pose[] = \n");
+		for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_new_pose[	j*4 +k]);	} printf("\n"); } printf("\n\n");
+	}
+
+}
 
 
 __kernel void update_maps(  // ? integrate with patch kernel ?
@@ -556,6 +591,10 @@ __kernel void update_maps(  // ? integrate with patch kernel ?
 
 }
 
+__kernel void update_SE3(){}
+
+//distorsion_update[..]	=  ;
+//__global	float*		distorsion_update,		//6
 
 
 

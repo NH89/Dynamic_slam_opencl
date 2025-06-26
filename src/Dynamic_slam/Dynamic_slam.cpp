@@ -146,7 +146,8 @@ void Dynamic_slam::initialize_camera_vec(){
 	runcl.costvol_frame_num++;
 	runcl.dataset_frame_num++;
 																																			if (verbosity>local_verbosity_threshold){ cout << "\nDynamic_slam::initialize_camera_vec Finished:"
-																																				<<"##############################################################################\f" <<flush; }
+																																				<<"##############################################################################\f" <<flush;
+																																			}
 }
 
 int Dynamic_slam::nextFrame() {

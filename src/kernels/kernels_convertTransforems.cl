@@ -9,11 +9,11 @@
 #define	ST3_y		5
 #define	ST3_z		6
 
-#define	ONE			7
-#define	ZERO		8
+#define	ONE			6
+#define	ZERO		7
 
-#define	ONE_		1
-#define	MINUS_ONE_	-1
+// #define	ONE_		1
+// #define	MINUS_ONE_	-1
 
 #define	COS_THETA				0
 #define ONE_MINUS_COS_THETA		1
@@ -22,7 +22,7 @@
 #define ONE_VAR					4
 #define MINUS_ONE_VAR			5
 
-void LieToP( uint lid, __local float SE3[9], __local float Pose[32/*16*/] ){
+void LieToP( uint lid,	__local float SE3[9],	__local float Pose[32/*16*/] ){
 
 	const uint LtoP[16][6] = { /*	Indices for SE3[8] and vars[4], to compose the elements of 4x4 SE3 transformation matrix, from SE3 Lie vector.	*/\
 								{ ONE_VAR		, ONE,		COS_THETA, 		SO3_x, SO3_x, ONE_MINUS_COS_THETA 	},	/*	1*1   *cos(theta)    +    w_x w_x (1 - cos_theta)	= SE3[6] * vars[0]   +   SE3[0] * SE3[0] * vars[1]  */\
@@ -68,13 +68,17 @@ void LieToP( uint lid, __local float SE3[9], __local float Pose[32/*16*/] ){
 		uint idx_L2P = fmod((float)lid, 6);
 		uint idx_SE3 = fmod((float)lid, 16);
 
-		//printf( "\nLieToP(..) lid=%u,  theta=%f,  cos_theta=%f,  one_cos_theta=%f,   sin_theta=%f,   L2P[%u]={%u},  SE3[%u]={%f},  Pose[lid +16]=%f ", \
-		lid,  theta,  cos_theta,  one_cos_theta,  sin_theta, \
-		idx_L2P,  L2P[ idx_L2P ], \
-		idx_SE3,  SE3[ idx_SE3 ], \
-		Pose[lid +16] );
-	}	// L2P[1], L2P[2],   L2P[3], L2P[4], L2P[5],   // SE3[1], SE3[2],   SE3[3], SE3[4], SE3[5],   SE3[6], SE3[7], SE3[8],
-}		// ,%u,%u,   %u,%u,%u    // ,%f,%f,  %f,%f,%f,  %f,%f,%f
+		printf( "\nLieToP(..) lid=%u,  theta=%f,  cos_theta=%f,  one_cos_theta=%f,   sin_theta=%f,   L2P[%u]={%u},  SE3[%u]={%f},  Pose[lid +16]=%f ", \
+			lid,  theta,  cos_theta,  one_cos_theta,  sin_theta, \
+			idx_L2P,  L2P[ idx_L2P ], \
+			idx_SE3,  SE3[ idx_SE3 ], \
+			Pose[lid +16] );
+
+	}																												// L2P[1], L2P[2],   L2P[3], L2P[4], L2P[5],   // SE3[1], SE3[2],   SE3[3], SE3[4], SE3[5],   SE3[6], SE3[7], SE3[8],
+
+	if (lid==0) {printf("\nSE3[]="); for(uint i=0; i<9; i++) printf(",	%f",SE3[i]);}
+
+}
 
 
 void update_k2_kdev_fn(
@@ -88,18 +92,30 @@ void update_k2_kdev_fn(
 	uint offset						= (lid/ SE3_elems)  * SE3_elems;
 	uint col						= fmod((float)elem, 4.0f);
 	uint row						= elem / (uint)4;
+	/*
+	if (lid==0){
+		printf("\n\n local_K_update = \n");
+		for (uint i=0; i< 2 ; i++){ for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_K_update[		i*16 +j*4 +k]);	} printf("\n"); } printf("\n\n"); }
 
+		printf("\n\n local_pose_inv_K = \n");
+		for (uint i=0; i< 2 ; i++){ for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_pose_inv_K[	i*16 +j*4 +k]);	} printf("\n"); } printf("\n\n"); }
+
+		printf("\n\n local_A_B = \n");
+		for (uint i=0; i< 2 ; i++){ for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_A_B[			i*16 +j*4 +k]);	} printf("\n"); } printf("\n\n"); }
+
+		printf("\n\n local_k2k = \n");
+		for (uint i=0; i< 1 ; i++){ for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_k2k[			i*16 +j*4 +k]);	} printf("\n"); } printf("\n\n"); }
+	}
+	barrier(CLK_LOCAL_MEM_FENCE);
+	*/
 	if(lid<32){
 		for (uint i =0; i<4; i++){
 			local_A_B[ lid ]		+=	local_K_update[ offset + row * 4 + i ] 		* local_pose_inv_K[ offset + i * 4  + col  ] ;
 
-//			printf("\n updatek2k() lid=%u, elem=%u, offset=%u, col=%u, row=%u,  local_K_update[ offset + row * 4 + i ]=[ %u ]= %f,  local_pose_inv_K[ offset + row * i + col  ]=[ %u ]= %f  product= %f ", \
-//			lid, elem, offset, col, row, (offset + row * 4 + i), local_K_update[ offset + row * 4 + i ],  (offset + row * i + col),  local_pose_inv_K[ offset + row * i + col  ],  (local_K_update[offset+row*4+i] * local_pose_inv_K[offset+row*i+col]) );
+			//printf("\n updatek2k() lid=%u, elem=%u, offset=%u, col=%u, row=%u,  local_K_update[ offset + row * 4 + i ]=[ %u ]= %f,  local_pose_inv_K[ offset + row * i + col  ]=[ %u ]= %f  product= %f ", \
+				lid, elem, offset, col, row, (offset + row * 4 + i), local_K_update[ offset + row * 4 + i ],  (offset + row * i + col),  local_pose_inv_K[ offset + row * i + col  ],  (local_K_update[offset+row*4+i] * local_pose_inv_K[offset+row*i+col]) );
 
-// 			printf("\n updatek2k() lid=%u local_K_update[offset+row*4+i]=[ %u ]= %f,  local_pose_inv_K[offset+row*i+col]=[ %u ]= %f", \
-// 			lid, (offset + row * 4 + i), local_K_update[ offset + row * 4 + i ],  (offset + i * 4  + col),  local_pose_inv_K[ offset + i * 4  + col  ] );
 		}
-
 	}
 	barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -108,5 +124,40 @@ void update_k2_kdev_fn(
 			local_k2k[lid]			+=	local_A_B[ row * 4 + i ] 					* local_A_B[ SE3_elems + i * 4 + col ] ;		// SE3_elems = 16
 		}
 	}
+	barrier(CLK_LOCAL_MEM_FENCE);
+
+// 	if (lid==0){
+// 		printf("\n\n local_K_update = \n");
+// 		for (uint i=0; i< 2 ; i++){ for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_K_update[		i*16 +j*4 +k]);	} printf("\n"); } printf("\n\n"); }
+//
+// 		printf("\n\n local_pose_inv_K = \n");
+// 		for (uint i=0; i< 2 ; i++){ for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_pose_inv_K[	i*16 +j*4 +k]);	} printf("\n"); } printf("\n\n"); }
+//
+// 		printf("\n\n local_A_B = \n");
+// 		for (uint i=0; i< 2 ; i++){ for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_A_B[			i*16 +j*4 +k]);	} printf("\n"); } printf("\n\n"); }
+//
+// 		printf("\n\n local_k2k = \n");
+// 		for (uint i=0; i< 1 ; i++){ for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_k2k[			i*16 +j*4 +k]);	} printf("\n"); } printf("\n\n"); }
+// 	}
+
 }
 
+
+void mat_mul44( uint lid,	__local float local_A[16],		__local float local_B[16],		__local float local_C[16] ){
+
+	uint elem 						= fmod((float)lid, SE3_elems);
+	uint col						= fmod((float)elem, 4.0f);
+	uint row						= elem / (uint)4;
+
+	for (uint i =0; i<4; i++){
+		if (lid<16){
+			local_C[lid]			+=	local_A[ row * 4 + i ] 						* local_B[ i * 4 + col ] ;
+
+			printf("\nmat_mul44(..)	lid=%u,	elem=%u,	col=%u,	row=%u	i=%u,	local_C[lid](%f)			+=	local_A[ row * 4 + i ](%f) 						* local_B[ i * 4 + col ](%f)", \
+				lid,	elem,	col, row,	i,	local_C[lid],	local_A[ row * 4 + i ],		 local_B[ i * 4 + col ]		);
+		}
+		barrier(CLK_LOCAL_MEM_FENCE);
+		if (lid==0) printf("\n");
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
+}

@@ -332,7 +332,7 @@ __kernel void mipmap_linear_flt4(		// Mipmap layers must be executed sesequentia
 	uint read_index 	= read_offset_  +  read_row  * mm_cols  + read_column  ;					// NB 4 channels.  + margin
 	uint write_index 	= write_offset_ +  write_row * mm_cols  + write_column ;					// write_cols_, use read_cols_ as multiplier to preserve images  + margin
 
-	if (read_column==0 && fmod((float)read_row,10)==0)  printf("\n__kernel mipmap_linear_flt4, layer=%u, global_id_u=%u, read_index=%u", layer, global_id_u, read_index);
+	//if (read_column==0 && fmod((float)read_row,10)==0)  printf("\n__kernel mipmap_linear_flt4, layer=%u, global_id_u=%u, read_index=%u", layer, global_id_u, read_index);
 
 	//float4 white = {1.0f,1.0f,1.0f,1.0f};
 	//float4 black = {0.0f,0.0f,0.0f,0.0f};

@@ -468,7 +468,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 	}
 																																		//  TODO Update all variables in frame_data.back()
 	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] 		= k2k_4_16[0][i]; }
-	runcl.update_k2k_buf( k2k_4_16[0] );																									// Sets values in k2k_buf, for depth stages of the algorithm.
+	runcl.update_k2k_buf( k2k_4_16[0] );																								// Sets values in k2k_buf, for depth stages of the algorithm.
 
 	uint 				keyframe_index						= frame_data.back().keyframe_index;		//.frame_data.key_frame_index;		// compute and record "pose_from_start"
 	cv::Matx44f			keyframe_pose 						= keyframe_data[keyframe_index].frame_data.frame_data.pose; 				// .pose_from_start

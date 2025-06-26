@@ -58,5 +58,6 @@ void update_k2_kdev_fn(
 	__local float local_k2k[		   SE3_elems]
 	);
 
+void mat_mul44( uint lid,	__local float local_A[16],		__local float local_B[16],		__local float local_C[16] );
 
 #endif /*KERNELS_H*/

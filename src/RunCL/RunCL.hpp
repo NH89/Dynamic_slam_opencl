@@ -81,7 +81,7 @@ public:
 	cl_kernel			warp_and_depth_error_kernel;
 	cl_kernel			mipmap_3x3blur_flt4_kernel, correlation_one_step_kernel, blur_volume_kernel, correlation_2nd_step_kernel;
 
-	cl_kernel			rho_sq_kernel, update_SE3_kernel, update_k2k_kernel;// TODO declare, create, release kernel in Run_cl.h etc.
+	cl_kernel			rho_sq_kernel, reduce_patch_Rho_kernel, update_k2k_kernel;// TODO declare, create, release kernel in Run_cl.h etc.
 	
 	// GPU Buffers
 	static const uint 	num_current_frames	= 5;																												// static = same for all instances of class Dynamic_slam.
@@ -190,7 +190,7 @@ public:
 	cl_mem				warp_error_buf,				depth_error_buf,			depth_est_buf;
 
 	// buffers for patch kernel based Dynamic_slam
-	cl_mem				pose_buf, pose_update_buf, distorsion_update_buf, old_result_buf, K_buf, inv_K_buf;
+	cl_mem				pose_buf, pose_update_buf, distorsion_update_buf, old_Rho_buf, K_buf, inv_K_buf;
 
 	//
 	cv::Mat 			baseImage, key_frame;
@@ -364,8 +364,8 @@ public:
 
 	// Patch based kernels
 	void rho_sq( uint out_block_size, uint iter, uint layer);
-	void update_SE3( uint layer, float delta_theta, float delta );
-	void update_k2k();
+	void reduce_patch_Rho ( uint layer, float delta_theta, float delta );
+	void update_k2k( uint layer, float delta_theta, float delta );
 
 	// whole img 1 thread per pixel kernels
 	void se3_rho_sq( const uint local_num_samples,  const uint start_sample_idx,  float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels],	const float count[4], uint start, uint stop,	float k2k_3_16_[tracking_tot_samples][16]  ); //float k2k_[16]  );

@@ -45,10 +45,10 @@ void RunCL::rho_sq(uint out_block_size, uint iter, uint layer  ){
 }
 
 
-void RunCL::update_SE3( uint layer, float delta_theta, float delta )									// NB good for images upto 640x480 layer zero, above that need a patch kernel approach to ensure each DoF fits in 1 workgroup. see device_work_size_multiple
+void RunCL::reduce_patch_Rho ( uint layer, float delta_theta, float delta )									// NB good for images upto 640x480 layer zero, above that need a patch kernel approach to ensure each DoF fits in 1 workgroup. see device_work_size_multiple
 {
 	string fname = "RunCL::se3_rho_sq( ..)";
-	cl_kernel		kernel 				= update_SE3_kernel;																			//NB call just one workgroup to sum the whole image maps from the patch kernel.
+	cl_kernel		kernel 				= reduce_patch_Rho_kernel;																			//NB call just one workgroup to sum the whole image maps from the patch kernel.
 	const uint		patch_size 			= 32;																							//TODO set global patch size from device parameters // generally:  device_work_size_multiple = patch_size * integer,   eg 32, 64, 128
 	const uint		SE3_DoF				= 6;
 	uint			read_rows			= MipMap[layer * 8 + MiM_READ_ROWS] ;
