@@ -394,6 +394,7 @@ void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, st
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\nDownloadAndSave_2Channel_volume()_Chk_3"<<flush;
 																																				cout << "\t minVal_u="<<minVal_u<<", 	maxVal_u="<<maxVal_u<<",  	minVal_v="<<minVal_v<<", 	maxVal_v="<<maxVal_v<<flush;
 																																			}
+																																			cout<<"\nDownloadAndSave_2Channel_volume()   min="<<minVal_u<<"_max"<<maxVal_u<<"_maxRange"<<max_range<< flush;
 		stringstream 	ss;
 		stringstream 	png_ss;
 		string 			type_string 	= checkCVtype(type_mat);

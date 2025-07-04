@@ -190,7 +190,7 @@ public:
 	cl_mem				warp_error_buf,				depth_error_buf,			depth_est_buf;
 
 	// buffers for patch kernel based Dynamic_slam
-	cl_mem				pose_buf, pose_update_buf, distorsion_update_buf, old_Rho_buf, K_buf, inv_K_buf;
+	cl_mem				pose_buf, pose_update_buf, distorsion_update_buf, old_results_buf, K_buf, inv_K_buf;
 
 	//
 	cv::Mat 			baseImage, key_frame;
