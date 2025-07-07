@@ -393,3 +393,31 @@ void test_fn(
 
 																					//if (global_id_u==0) printf("\n__kernel void reduce_patch_Rho(..)   read_col(%u) < cols(%u)  &&  (SE3(%u) < SE3_DoF(%u),  thread_offset(%u) in_range(%u)  ",\
 																						read_col, cols, SE3, SE3_DoF, thread_offset, in_range  );
+
+
+	// ==========
+
+
+
+// 			else if (rho_S3_delta < -0.01){																												// step back towards the optimum ? AND reset old_results , such that we can iterate if necessary.
+// 										update 								= -0.5 * old_results[SE3 + UPDATE];
+// 										local_update_vec[SE3]				= update;
+// 										old_results[SE3 + UPDATE]			= -1 * update;
+// 			}
+
+
+
+// 										update								= clamp(    update,  -delta_SE3[ SE3/3 ],  +delta_SE3[ SE3/3 ] );
+// 										local_update_vec[SE3]				= update;
+// 										old_results[SE3 + UPDATE]			= update;
+// 										old_results[SE3 + RHO]				= rho;
+// 										old_results[SE3 + RESULT]			= result;
+// 										old_results[SE3 + MAG_S3]			= mag_S3;
+
+// 										update								= clamp(	update_pre_clamp,  -delta_SE3[ SE3/3 ],  +delta_SE3[ SE3/3 ] );
+// 										local_update_vec[SE3]				= update;
+// 										old_results[SE3 + UPDATE]			= update;
+// 										old_results[SE3 + RHO]				= rho;
+// 										old_results[SE3 + RESULT]			= result;
+// 										old_results[SE3 + MAG_S3]			= mag_S3;
+

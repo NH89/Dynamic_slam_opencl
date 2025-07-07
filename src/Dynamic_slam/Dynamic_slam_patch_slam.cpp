@@ -113,7 +113,7 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 
 		/////////////////////////////////////////////////// testing kernel baased tracking
 		uint out_block_size = 32;
-		runcl.rho_sq( out_block_size, iter, layer  );
+		runcl.rho_sq( out_block_size, iter, layer, delta_theta, delta   );
 		//runcl.update_SE3( layer, delta_theta, delta );
 		///////////////////////////////////////////////////
 
@@ -297,14 +297,14 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 				{
 					uint	out_block_size		= 2;
 					uint	layer				= 0;
-					runcl.rho_sq( out_block_size, iter, layer  );																		// For debugging, get a larger, finer Rho map
+					runcl.rho_sq( out_block_size, iter, layer, delta_theta, delta   );																		// For debugging, get a larger, finer Rho map
 				}
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_2: ,  ###########################"<<flush;
-				runcl.rho_sq( out_block_size, iter, (uint)layer  );		// uint out_block_size, const float count[4], uint start, uint stop
+				runcl.rho_sq( out_block_size, iter, (uint)layer, delta_theta, delta   );		// uint out_block_size, const float count[4], uint start, uint stop
 				//runcl.ReadOutput( (uchar*)ptr, runcl.K_buf, sizeof(float)*16, 0 );
 				//PRINT_FLOAT_16(k_buf_arr, )
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_3: ,  ###########################"<<flush;
-				runcl.reduce_patch_Rho ( (uint)layer, delta_theta, delta );
+				runcl.reduce_patch_Rho ( (uint)layer );
 				//runcl.ReadOutput( (uchar*)ptr, runcl.K_buf, sizeof(float)*16, 0 );
 				//PRINT_FLOAT_16(k_buf_arr, )
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_4: ,  ###########################"<<flush;
