@@ -155,7 +155,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	float4 old_px;
 	bool   intersection;
 
-	local_rho[lid]								= zero_f2;
+	local_rho[lid]									= zero_f2;
 	for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
 		local_SE3_incr[lid + se3_dim*local_size]	= zero_f2;
 	}

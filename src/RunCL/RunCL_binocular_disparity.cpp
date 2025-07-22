@@ -1,7 +1,7 @@
 #include "RunCL.hpp"
 
 void RunCL::compute_lookup_table( uint start, uint stop){
-    string fname = "RunCL::compute_lookup_table( )";
+	string fname = "RunCL::compute_lookup_table( )";
 	int local_verbosity_threshold = V_RUNCL_COMPUTE_LOOKUP_TABLE;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_lookup_table( ..)_chk0 #############################################################"<<flush;
 																																				cout << "\n local_work_size = " << local_work_size
@@ -63,7 +63,7 @@ void RunCL::compute_lookup_table( uint start, uint stop){
 
 
 void RunCL::disparity_load_frame(cl_mem input_img, cl_mem output_img, std::string folder ){													// Loads an image into layer zero of a padded image pyramid, e.g. from basemem to img_mem or keyframe_img_mem.
-    string fname = "RunCL::disparity_load_frame( )";
+	string fname = "RunCL::disparity_load_frame( )";
 	int local_verbosity_threshold = V_RUNCL_WARP_IMAGE;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::disparity_load_frame(..)_chk0 #############################################################"<<flush;
 																																				cout << "\n local_work_size = "<<local_work_size<<",  num_threads[0] = "<<num_threads[0]<< flush;

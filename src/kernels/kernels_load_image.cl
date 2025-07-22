@@ -714,3 +714,5 @@ __kernel void  img_grad(
 	float8 temp_float8  = { sin(H) , cos(H), S, V, gx[1], gy[1], gx[2], gy[2] };					// HSV_grad = { sin(H) , cos(H), S, V, gx[1], gy[1], gx[2], gy[2] };
 	HSV_grad[offset] = temp_float8;
 }
+
+

@@ -13,6 +13,96 @@ using namespace cv;
 using namespace std;
 Vec3f direction;
 Vec3f upvector;
+
+void convertAhandaPovRayToStandard_2(Json::Value obj_ , const char *filepath,  Mat& R,  Mat& T, Mat& cameraMatrix){
+    int verbosity = obj_["verbosity"].asInt();//0;//  link to gobal verbosity
+    int local_verbosity_threshold = V_CONVERTAHANDAPOVRAYTOSTANDARD;//verbosity_mp["convertAhandaPovRayToStandard"];//2;
+    																													if(verbosity>local_verbosity_threshold) cout << "\n convertAhandaPovRayToStandard_2_chk 0"<<flush;
+
+    char     text_file_name[600];                                               // open .txt file
+    sprintf(text_file_name,"%s",filepath);
+    ifstream cam_pars_file(text_file_name);
+    if( !cam_pars_file.is_open() ){  cerr<<"Failed to open param file, check location of sample trajectory!"<<endl<< flush;  cout<< flush; exit(1); }
+    char     readlinedata[300];
+    Point3f  cam_dir;
+    Point3f  cam_up;
+    Point3f  cam_pos;
+    Point3f  rightvector;
+    																													if(verbosity>local_verbosity_threshold) {
+                                                                                                                            cout << "\n convertAhandaPovRayToStandard_2_chk 1"<<endl<<flush;
+                                                                                                                        }
+
+    while(1){
+        cam_pars_file.getline(readlinedata,300);                                // read line
+        if ( cam_pars_file.eof() ) break;
+        istringstream iss;
+
+        if ( strstr(readlinedata,"cam_dir")!= NULL){                            // "cam_dir" direction of optical axis
+            string cam_dir_str(readlinedata);
+            cam_dir_str = cam_dir_str.substr(cam_dir_str.find("= [")+3);
+            cam_dir_str = cam_dir_str.substr(0,cam_dir_str.find("]"));
+            iss.str(cam_dir_str);
+            iss >> cam_dir.x;    iss.ignore(1,',');
+            iss >> cam_dir.y;    iss.ignore(1,',');
+            iss >> cam_dir.z;    iss.ignore(1,',');
+        }
+        if ( strstr(readlinedata,"cam_up")!= NULL){                             // "cam_up" orientation of image wrt world
+            string cam_up_str(readlinedata);
+            cam_up_str = cam_up_str.substr(cam_up_str.find("= [")+3);
+            cam_up_str = cam_up_str.substr(0,cam_up_str.find("]"));
+            iss.str(cam_up_str);
+            iss >> cam_up.x;     iss.ignore(1,',');
+            iss >> cam_up.y;     iss.ignore(1,',');
+            iss >> cam_up.z;     iss.ignore(1,',');
+        }
+        if ( strstr(readlinedata,"cam_pos")!= NULL){                            // "cam_pos" camera position
+            string cam_pos_str(readlinedata);
+            cam_pos_str = cam_pos_str.substr(cam_pos_str.find("= [")+3);
+            cam_pos_str = cam_pos_str.substr(0,cam_pos_str.find("]"));
+            iss.str(cam_pos_str);
+            iss >> cam_pos.x;    iss.ignore(1,',');
+            iss >> cam_pos.y;    iss.ignore(1,',');
+            iss >> cam_pos.z;    iss.ignore(1,',');
+        }
+
+        if ( strstr(readlinedata,"cam_right")!= NULL){                            // "cam_right" pixel aspect ratio
+            string cam_right_str(readlinedata);
+            cam_right_str = cam_right_str.substr(cam_right_str.find("= [")+3);
+            cam_right_str = cam_right_str.substr(0,cam_right_str.find("]"));
+            iss.str(cam_right_str);
+            iss >> rightvector.x;    iss.ignore(1,',');
+            iss >> rightvector.y;    iss.ignore(1,',');
+            iss >> rightvector.z;    iss.ignore(1,',');
+        }
+    }
+    																													if(verbosity>local_verbosity_threshold) {
+                                                                                                                            cout << "\n convertAhandaPovRayToStandard_2_chk 2"<<flush;
+                                                                                                                            cout << "\n cam_up	= " << cam_up << flush;
+                                                                                                                            cout << "\n cam_dir	= " << cam_dir << flush;
+                                                                                                                            cout << "\n cam_pos	= " << cam_pos << flush;
+                                                                                                                        }
+	Point3f z = cam_dir / norm(cam_dir);
+
+	Point3f x = cam_up.cross(z)	;	// cv::Point::cross(cam_up, z);
+	x = x / norm(x);
+
+	Point3f y = z.cross(x);
+																														if(verbosity>local_verbosity_threshold) {
+                                                                                                                            cout << "\n convertAhandaPovRayToStandard_2_chk 2"<<flush;
+                                                                                                                            cout << "\n x	= " << x << flush;
+                                                                                                                            cout << "\n y	= " << y << flush;
+                                                                                                                            cout << "\n z	= " << z << flush;
+                                                                                                                        }
+
+	//R = [ x, y, z ];
+
+	//T = cam_pos;
+
+
+}
+
+
+
 void convertAhandaPovRayToStandard(Json::Value obj_ , const char *filepath,  Mat& R,  Mat& T, Mat& cameraMatrix){
     int verbosity = obj_["verbosity"].asInt();//0;//  link to gobal verbosity
     int local_verbosity_threshold = V_CONVERTAHANDAPOVRAYTOSTANDARD;//verbosity_mp["convertAhandaPovRayToStandard"];//2;
@@ -74,7 +164,13 @@ void convertAhandaPovRayToStandard(Json::Value obj_ , const char *filepath,  Mat
             iss >> rightvector.y;    iss.ignore(1,',');
         }
     }
-    																													if(verbosity>local_verbosity_threshold) cout << "\n convertAhandaPovRayToStandard_chk 2"<<flush;
+    																													if(verbosity>local_verbosity_threshold) {
+                                                                                                                            cout << "\n convertAhandaPovRayToStandard_chk 2"<<flush;
+                                                                                                                            cout << "\n upvector = " << upvector << flush;
+                                                                                                                            cout << "\n direction = " << direction << flush;
+                                                                                                                            cout << "\n posvector = " << posvector << flush;
+                                                                                                                        }
+
 	
     R        = Mat(3,3,CV_32F);                                                 // compute rotation & translation
     R.row(0) = Mat(direction.cross(upvector)).t();

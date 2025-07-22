@@ -157,7 +157,7 @@ void RunCL::rho_sq(uint out_block_size, uint iter, uint layer, float delta_theta
 	_clSetKernelArg( kernel, 6, sizeof( cl_mem), 							&fp32_param_buf,										fname);		//__constant	float*		fp32_params,			//5
 	_clSetKernelArg( kernel, 7, sizeof( cl_mem), 							&k2kbuf,												fname);		//__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames
 
-	_clSetKernelArg( kernel, 8, sizeof( cl_mem),								&current_frames[current_frames_idx[0]].img_buf,			fname);		//__global		float4*		img_cur,				//7		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
+	_clSetKernelArg( kernel, 8, sizeof( cl_mem),							&current_frames[current_frames_idx[0]].img_buf,			fname);		//__global		float4*		img_cur,				//7		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
 	_clSetKernelArg( kernel, 9, sizeof( cl_mem), 							&current_frames[current_frames_idx[1]].img_buf,			fname);		//__global		float4*		img_past_0,				//8
 	_clSetKernelArg( kernel,10, sizeof( cl_mem), 							&current_frames[current_frames_idx[2]].img_buf,			fname);		//__global		float4*		img_past_1,				//9
 	_clSetKernelArg( kernel,11, sizeof( cl_mem), 							&current_frames[current_frames_idx[3]].img_buf,			fname);		//__global		float4*		img_past_2,				//10

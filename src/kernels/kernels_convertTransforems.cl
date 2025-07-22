@@ -27,8 +27,10 @@ void LieToP( uint lid,	__local float SE3[9],	__local float Pose[32/*16*/] ){
 	// NB SO3 3x3 mat is derived by Rodrigues Formula.
 	// SO3 rotation matrix =  e^A	= 				Identity		+	A * sin_theta / theta		+	A^2  *  ( 1 - cos_theta ) / theta^2    // We use this version because it has fewer terms.
 	//								= 	cos_theta * Identity		+	A * sin_theta / theta		+	B    *  ( 1 - cos_theta ) / theta^2
+
 	// w.xyz = so3 rotation vector
 	// theta = /w.xyz/ , i.e. pythagorean length of rotation vector, aka magnitude.
+
 	// A = {{ 0 , -w.z, w.y }, { w.z, 0, -w.x }, { -w.y, w.x, 0}}
 
 	// A^2 = {{-z^2-y^2,  yx,  zx}, {xy,  -z^2-x^2,  zy}, {xz,  yz,  -y^2-x^2}}
@@ -127,10 +129,10 @@ void update_k2_kdev_fn(
 	if(lid<32){
 		for (uint i =0; i<4; i++){
 			local_A_B[ lid ]		+=	local_K_update[ offset + row * 4 + i ] 		* local_pose_inv_K[ offset + i * 4  + col  ] ;
-
+/*
 			//printf("\n updatek2k() lid=%u, elem=%u, offset=%u, col=%u, row=%u,  local_K_update[ offset + row * 4 + i ]=[ %u ]= %f,  local_pose_inv_K[ offset + row * i + col  ]=[ %u ]= %f  product= %f ", \
 				lid, elem, offset, col, row, (offset + row * 4 + i), local_K_update[ offset + row * 4 + i ],  (offset + row * i + col),  local_pose_inv_K[ offset + row * i + col  ],  (local_K_update[offset+row*4+i] * local_pose_inv_K[offset+row*i+col]) );
-
+*/
 		}
 	}
 	barrier(CLK_LOCAL_MEM_FENCE);
@@ -141,7 +143,7 @@ void update_k2_kdev_fn(
 		}
 	}
 	barrier(CLK_LOCAL_MEM_FENCE);
-
+/*
 // 	if (lid==0){
 // 		printf("\n\n local_K_update = \n");
 // 		for (uint i=0; i< 2 ; i++){ for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_K_update[		i*16 +j*4 +k]);	} printf("\n"); } printf("\n\n"); }
@@ -155,7 +157,7 @@ void update_k2_kdev_fn(
 // 		printf("\n\n local_k2k = \n");
 // 		for (uint i=0; i< 1 ; i++){ for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_k2k[			i*16 +j*4 +k]);	} printf("\n"); } printf("\n\n"); }
 // 	}
-
+*/
 }
 
 
@@ -168,12 +170,89 @@ void mat_mul44( uint lid,	__local float local_A[16],		__local float local_B[16],
 	for (uint i =0; i<4; i++){
 		if (lid<16){
 			local_C[lid]			+=	local_A[ row * 4 + i ] 						* local_B[ i * 4 + col ] ;
-
+/*
 			//printf("\nmat_mul44(..)	lid=%u,	elem=%u,		col=%u,	row=%u	i=%u,	local_C[lid](%f)			+=	local_A[ row * 4 + i ](%f) 			* local_B[ i * 4 + col ](%f)", \
 				lid,	elem,	col, row,	i,	local_C[lid],	local_A[ row * 4 + i ],		 local_B[ i * 4 + col ]		);
+*/
 		}
 		barrier(CLK_LOCAL_MEM_FENCE);
+/*
 		if (lid==0) printf("\n");
 		barrier(CLK_LOCAL_MEM_FENCE);
+*/
 	}
 }
+
+/*
+ * This GPU Hessiam matrix approach does not work.
+ * NB the Hessian = the n-D curvature of the photomentric fit. It is used in Lucas-Kanade type fitting, e.g. the Inverse Compositional variant which we use.
+ * 1) The Hessian matrix is not Hermitian, so Cholesky decomposition does not work.
+ * 2) Generally the Hessian need not be fully invertible
+ *		Consequently LDU decomposition and Moore-Penrose pseudo-inverse are needed.
+ * 3) LDU decomposition involves multiple conditional branching, so is not easily adapted to GPU,
+ * 4) There are good CPU libraries that (a) are very fast for 6x6 Hessian matricies, (b) can easily handle very much larger matrices.
+ *
+void cholesky_4x4(
+	uint lid,
+	__local float* mat_in, // [20] with 1st row zero, 4x5 holding 4x4
+	__local float* mat_out // [16]
+){
+	const uint idx[16][4][4]={
+		{ {1,1, 1,1}, {0,0, 0,0}, {0,0, 0,0}, {0,0, 0,0} },	//	l11*l11
+		{ {2,1, 1,1}, {0,0, 0,0}, {0,0, 0,0}, {0,0, 0,0} },	//	l21*l11
+		{ {3,1, 1,1}, {0,0, 0,0}, {0,0, 0,0}, {0,0, 0,0} },	//	l31*l11
+		{ {4,1, 1,1}, {0,0, 0,0}, {0,0, 0,0}, {0,0, 0,0} },	//	l41*l11
+
+		{ {2,1, 1,1}, {0,0, 0,0}, {0,0, 0,0}, {0,0, 0,0} },	//	l21*l11
+		{ {2,1, 2,1}, {2,2, 2,2}, {0,0, 0,0}, {0,0, 0,0} },	//	l21*l21 + l22*l22
+		{ {2,1, 3,1}, {2,2, 3,2}, {0,0, 0,0}, {0,0, 0,0} },	//	l21*l31 + l32*l22
+		{ {2,1, 4,1}, {2,2, 4,2}, {0,0, 0,0}, {0,0, 0,0} },	//	l21*l41 + l42*l22
+
+		{ {3,1, 1,1}, {0,0, 0,0}, {0,0, 0,0}, {0,0, 0,0} },	//	l31*l11
+		{ {3,1, 2,1}, {3,2, 2,2}, {0,0, 0,0}, {0,0, 0,0} },	//	l31*l21 + l32*l22
+		{ {3,1, 3,1}, {3,2, 3,2}, {3,3, 3,3}, {0,0, 0,0} },	//	l31*l31 + l32*l32 + l33*l33
+		{ {3,1, 4,1}, {3,2, 4,2}, {3,3, 4,3}, {0,0, 0,0} },	//	l31*l41 + l32*l42 + l33*l43
+
+		{ {4,1, 1,1}, {0,0, 0,0}, {0,0, 0,0}, {0,0, 0,0} },	//	l41*l11
+		{ {4,1, 2,1}, {4,2, 2,2}, {0,0, 0,0}, {0,0, 0,0} },	//	l41*l21 + l42*l22
+		{ {4,1, 3,1}, {4,2, 3,2}, {4,3, 3,3}, {0,0, 0,0} },	//	l41*l31 + l42*l32 + l43*l33
+		{ {4,1, 4,1}, {4,2, 4,2}, {4,3, 4,3}, {4,4, 4,4} }	//	l41*l41 + l42*l42 + l43*l43 +l44*l44
+	};
+	float pvt_mat_out=0;
+	float pvt_mat_in[16];
+
+	if (lid<16){
+		#pragma unroll
+		for (int i=0; i<16; i++) pvt_mat_in[i] = mat_in[i];
+		barrier(CLK_LOCAL_MEM_FENCE);
+
+		#pragma unroll
+		for (int i=0; i<4; i++){
+			pvt_mat_out += pvt_mat_in[ 4*idx[lid][i][0]] +  pvt_mat_in[idx[lid][i][1]] 		*	pvt_mat_in[ 4*idx[lid][i][2]] +  pvt_mat_in[idx[lid][i][3]]  ;
+		}
+	}
+	mat_out[lid]	= pvt_mat_out;
+}
+
+void pseudo_inverse_4x4(
+	uint lid,
+	__local float* mat_in,
+	__local float* mat_out
+){
+	__local float	L_in[20];
+	__local float	L[16];
+	if (lid<4)		L[lid]		= 0.0f;
+	if(lid<16)		L[lid+4]	= mat_in[lid];
+	cholesky_4x4(lid, L_in, L);
+	barrier(CLK_LOCAL_MEM_FENCE);
+
+	__local float M1[32];
+	__local float M2[32];
+
+	if(lid<16){
+		M1[lid] 		= L[lid];  // eliminate this
+		M1[lid+16] 		=
+
+
+}
+*/

@@ -77,7 +77,7 @@ RunCL::RunCL( Json::Value obj_  ){ //, int_map verbosity_mp_
 																																			/*Step 7: Create kernel objects.*////////////###################################################
 	createKernels();
 	/*
-	 * Given the "apparet memory leaks wrt the Intel ocl-icd,  this is the "valgrind --leak-check=full" result upto this point on Intel IrisXe GPU, on ubuntu 23.04"
+	 * Given the "apparent memory leaks wrt the Intel ocl-icd,  this is the "valgrind --leak-check=full" result upto this point on Intel IrisXe GPU, on ubuntu 23.04"
 	==264229== LEAK SUMMARY:
 	==264229==    definitely lost: 126,434 bytes in 577 blocks
 	==264229==    indirectly lost: 16,608 bytes in 3 blocks

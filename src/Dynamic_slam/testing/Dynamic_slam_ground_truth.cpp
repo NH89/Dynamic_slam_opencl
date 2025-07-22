@@ -9,6 +9,7 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
     char        *ch 						= new char [str.length()+1];
     std::strcpy (ch, str.c_str());
 	cv::Mat T_alt;
+	convertAhandaPovRayToStandard_2( obj,  ch, R, T, cameraMatrix );
     convertAhandaPovRayToStandard( obj,  ch, R, T, cameraMatrix );
 	delete [] ch; //free(ch);
 																																			if(verbosity>local_verbosity_threshold) {
@@ -58,7 +59,7 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 	// frame_data.back().frame_data			= datum;						// TODO if(use GT),  but move it out to Dynamic_slam::next_frame()
 																																			if ( runcl.baseImage.empty() ) {cerr << "\nDynamic_slam::getFrameData_vec():   Error runcl.baseImage.empty() "<<flush;  runcl.exit_(1); }
 	int r 									= runcl.baseImage.rows;
-    int c 									= runcl.baseImage.cols;
+	int c 									= runcl.baseImage.cols;
 	depth_GT 								= loadDepthAhanda(obj, depth[runcl.dataset_frame_num].string(), r,c,cameraMatrix);
 
 	runcl.load_GT_depth(depth_GT, invert_GT_depth);

@@ -20,9 +20,9 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 	invert_GT_depth  				= obj["invert_GT_depth"].asBool();
 
 	SE3_start_layer 				= obj["SE3_start_layer"].asUInt();
-    SE3_stop_layer 					= obj["SE3_stop_layer"].asUInt();
+	SE3_stop_layer 					= obj["SE3_stop_layer"].asUInt();
 	SE_iter_per_layer 				= obj["SE_iter_per_layer"].asUInt();
-    SE_iter 						= obj["SE_iter"].asUInt();
+	SE_iter 						= obj["SE_iter"].asUInt();
 	SE_factor						= obj["SE_factor"].asFloat();
 
 	f								= ( obj["cameraMatrix"][0].asFloat() + obj["cameraMatrix"][4].asFloat() ) /2.0;		// focal length in pixels.
@@ -39,7 +39,7 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 	for (int se3=0; se3<6; se3++)													SE3_update_dof_weights[se3] 		= obj["SE3_update_dof_weights"][se3].asFloat();
 																																			if(verbosity>local_verbosity_threshold) cout << "\n  Dynamic_slam::Dynamic_slam_chk -0.3\n" << flush;
 
-    for (int layer2 = 0; layer2 < 5 ; layer2++) {
+	for (int layer2 = 0; layer2 < 5 ; layer2++) {
 		SE3_update_layer_weights[layer2] 	= obj["SE3_float update_layer_weights"][layer2].asFloat();
 
 		cout << "\nMAX_LAYERS = " << MAX_LAYERS << ",\t layer2 = " << layer2 << "\t  SE3_update_layer_weights[layer2] = " <<  SE3_update_layer_weights[layer2]  <<flush;
@@ -51,11 +51,8 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 	}
 																																			if(verbosity>local_verbosity_threshold) {cout << "\n Dynamic_slam::Dynamic_slam_chk 0,  SE3_Rho_sq_threshold[i][j] = ";
 																																				for (int i=0; i<5; i++){cout << "( "; for (int j=0; j<3; j++) {
-
 																																					std::cout << "dummy text" << 2 ;
-
 																																					cout << ", [" << i <<"]["<<j<<"]" << SE3_Rho_sq_threshold[i][j]; }   cout << " )";
-
 																																				}
 																																				cout << ",\t SE_factor = "<<SE_factor;
 																																				cout << endl << flush;
@@ -113,6 +110,7 @@ void Dynamic_slam::initialize_camera_vec(){
 	getFrameData_vec();													// TODO if( GT available ){getFrameData_vec();}
 	runcl.set_cam_bufs( k , inv_k, frame_data.back().frame_data.keyframe2pose,  frame_data.back().frame_data.K2K );							// NB uses camera matrix from conf.json. We use orthographic matrix, then convert to perspectiveby dividing by depth. See notes in convertTransforms.cpp
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 3:" <<flush;
+																																				PRINT_MATX44F(frame_data.back().frame_data_GT.pose,);
 																																				PRINT_MATX44F(frame_data.back().frame_data_GT.keyframe2pose,);
 																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);
 																																			}
@@ -130,7 +128,7 @@ void Dynamic_slam::initialize_camera_vec(){
 																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);
 																																				PRINT_MATX16F(frame_data.back().frame_data.keyframe2pose_algebra,);
 
-																																				cout << "/n/nPrevious frames :  ############################################" << flush;
+																																				cout << "\n\nPrevious frames :  ############################################" << flush;
 																																				vector<frame_datum>::iterator frame_minus_one			= 	frame_data.end();
 																																				frame_minus_one 										-=	2;
 																																				PRINT_MATX44F( frame_minus_one->frame_data.pose, );

@@ -273,6 +273,13 @@ public:
 	void exit_(int res);
 	~RunCL();
 
+	////////////////////////////////////// RunCL::patch_slam.cpp
+
+	void compute_patch_lookup_table( uint start, uint stop);
+
+
+
+
 	/////////////////////////////////////// RunCL_disparity.cpp
 
 	void compute_lookup_table(uint start, uint stop);
@@ -352,6 +359,7 @@ public:
 	void mipmap_linear(cl_mem image_buf, std::string folder);
 	void mipmap_3x3blur_linear(cl_mem image_buf, std::string folder);
 	void img_gradients();
+	void patch_img_gradients();
 	
 	void load_GT_depth(cv::Mat GT_depth, bool invert);																					// Depthmap loading & preparation
 	void convert_depth(uint invert, float factor);

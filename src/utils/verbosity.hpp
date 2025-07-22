@@ -8,7 +8,7 @@
 
     // UTILS/ ###############################################################
     /////////////////////////////////////// CONVERTAHANDAPOVRAYTOSTANDARD.CPP
-	#define	V_CONVERTAHANDAPOVRAYTOSTANDARD				2
+	#define	V_CONVERTAHANDAPOVRAYTOSTANDARD				-2
 	#define	V_LOADDEPTHAHANDA							2
 
 	/////////////////////////////////////// CONF_PARAMS.CPP
@@ -34,7 +34,7 @@
 	#define	V_DYNAMIC_SLAM_GETFRAME						0
 	#define	V_DYNAMIC_SLAM_GETPOSE						0
 	#define	V_DYNAMIC_SLAM_GETINVPOSE					0
-	#define	V_DYNAMIC_SLAM_GETFRAMEDATA					0
+	#define	V_DYNAMIC_SLAM_GETFRAMEDATA					-1
 	#define	V_DYNAMIC_SLAM_USE_GT_POSE					0
     ////
 	#define	V_DYNAMIC_SLAM_ESTIMATECALIBRATION			0
