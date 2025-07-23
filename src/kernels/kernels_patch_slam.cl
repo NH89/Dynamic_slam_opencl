@@ -1,20 +1,6 @@
 #include "kernels_macros.h"
 #include "kernels.h"
 
-__constant float2 zero_f2				= {0.0f,0.0f};
-
-__constant float4 zero_f4				= {0.0f,0.0f,0.0f,0.0f};
-__constant float4 ones_f4				= {1.0f,1.0f,1.0f,1.0f};
-
-__constant float8 zero_f8				= {0.0f,0.0f,0.0f,0.0f, 0.0f,0.0f,0.0f,0.0f};
-
-__constant float  const_sqrt_flt_min	= 0x1.0p-63f; // 2^(-63) is sqrt of FLT_MIN = 2^(-126)
-
-__constant uint block_size				= 32;										// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
-__constant uint se3_dof					= 6;
-__constant uint num_past_frames			= 4;										// 1,2,4,8,16,32,64 // variable select window of 4 frames.
-
-
  __kernel void compute_patch_lookup_table(					// computed once at start of program	// TODO when is it possible to roll the layers together ?  i.e. when local mem is not used.
 	// inputs
 	__private	uint		layer,					//0
@@ -39,19 +25,14 @@ __constant uint num_past_frames			= 4;										// 1,2,4,8,16,32,64 // variable 
 	uint mm_cols									= uint_params[MM_COLS];
 	uint mm_pixels									= uint_params[MM_PIXELS];
 
-	uint row_length									= cols_per_row;									// blocks_cols * block_size;
-	uint row_col									= fmod((float)global_id_u, row_length);
-	uint block_row									= global_id_u / row_length;
-
-	uint read_index									= read_offset_ + row_col + block_row*block_size*mm_cols;
+	int v 											= global_id_u / cols_per_row;
+	int u 											= fmod( (float)global_id_u, cols_per_row );
+	uint read_index									= read_offset_ + u + v*block_size*mm_cols;
 	uint row_offset									= read_offset_ / mm_cols;
-
-	int v 											= read_index  / read_cols_;						// read_row
-	int u 											= fmod( (float)read_index, read_cols_ );		// read_column
-	float4 lookup 									= zero_f4;  									// TODO should lookup be int4, or uint4 ?
+	float4 lookup 									= zero_f4;
 
 	if ( read_index < mm_pixels  &&  u< read_cols_  &&  v < read_rows_)	{
-		lookup										= (float4)(u, v, read_index, row_offset);
+		lookup										= (float4)(u, v, read_index, layer /*row_offset*/);
 	}
 	lookup_table[global_id_u + lookup_table_offset]	= lookup;
 }

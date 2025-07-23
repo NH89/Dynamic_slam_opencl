@@ -206,17 +206,17 @@ public:
 
 	cl_device_id 		deviceId;
 	
-	static const uint	img_stats_size				= 8*4*2;							// 8 layers, 4 channels, 2 variables.
-	size_t				img_stats_size_bytes 		= sizeof(float)*img_stats_size;
-	float				img_stats[img_stats_size]	= {0};
-	size_t 				num_threads[8]				= {0};
-	size_t 				lookup_table_offset[8] 		= {0};
-	uint				MipMap[8*8]					= {0};
-	uint				uint_params[8]				= {0};
+	static const uint	img_stats_size									= max_mipmap_layers*4*2;							// 8 layers, 4 channels, 2 variables.
+	size_t				img_stats_size_bytes							= sizeof(float)*img_stats_size;
+	float				img_stats[				img_stats_size]			= {0};
+	size_t 				num_threads[			max_mipmap_layers]		= {0};
+	size_t 				lookup_table_offset[	max_mipmap_layers]		= {0};
+	uint				MipMap[					max_mipmap_layers	*8]	= {0};
+	uint				uint_params[			8]						= {0};
 	
-	float				fp32_params[16]				= {0};
-	float				fp32_so3_k2k[9]				= {0};
-	float 				fp32_k2keyframe[16]			= {0};
+	float				fp32_params[			16]						= {0};
+	float				fp32_so3_k2k[			9]						= {0};
+	float 				fp32_k2keyframe[		16]						= {0};
 	
 	uint	 			mm_num_reductions;				//	
 	int 				mm_gaussian_size;				//	
@@ -277,17 +277,6 @@ public:
 	~RunCL();
 
 
-	////////////////////////////////////// RunCL::patch_slam.cpp
-
-	const uint	patch_size						= 32;
-	size_t		device_max_workitem_sizes[3];
-	cl_uint		device_max_compute_units;
-
-	void initialize_patch_params();
-	void compute_patch_lookup_table( uint start, uint stop);
-
-
-
 
 	/////////////////////////////////////// RunCL_disparity.cpp
 
@@ -319,6 +308,7 @@ public:
 	void covariance_3rows(uint layer, uint iter);
 	void covariance_cols( uint layer, uint iter);
 	void correlation( 	  uint layer, uint iter);
+
 
 	/////////////////////////////////////// RunCL_DownloadAndSave.cpp
 
@@ -357,6 +347,7 @@ public:
 	void SaveMat_1chan(cv::Mat temp_mat, int type_mat, std::filesystem::path folder_tiff, bool show, float max_range, std::string mat_name, std::string count);
 	void DownloadAndSaveVolume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, bool exception_tiff=false );
 
+
 	////////////////////////////////////// RunCL_load_image.cpp
 
 	void precom_param_maps(float SO3_k2k[6*16]);																						// Image loading & preparation
@@ -374,12 +365,26 @@ public:
 	void convert_depth(uint invert, float factor);
 	void mipmap_depthmap(cl_mem depthmap_);
 	
+
+	////////////////////////////////////// RunCL::patch_slam.cpp
+
+	const uint	patch_size										= 32;
+	size_t		device_max_workitem_sizes[	3]					= {0};
+	cl_uint		device_max_compute_units						=  0;
+	size_t		patch_lookup_table_offset[	max_mipmap_layers]	= {0};
+	uint		patch_num_threads[			max_mipmap_layers]	= {0};
+
+	void initialize_patch_params();
+	void compute_patch_lookup_table( uint start, uint stop);
+
+
+
 	/////////////////////////////////////// RunCL_tracking.cpp
 	void update_tracking_depthmap(cl_mem depthmap_);
 	void update_k2k_buf(float k2k_3_16_[16]);
 	//void initialize_tracking_depthmap(float initial_depth);
 
-	// Patch based kernels
+	//////////////////////////////////////  Patch based kernels
 	void rho_sq( uint out_block_size, uint iter, uint layer, float delta_theta, float delta );
 	void reduce_patch_Rho ( uint layer );
 	void update_k2k( uint layer, float delta_theta, float delta );
@@ -401,6 +406,7 @@ public:
 	void atomic_test1();
 	void atomic_test2();
 
+
 	/////////////////////////////////////// RunCL_mapping.cpp
 	void swap_costvol_pointers();
 	void transform_depthmap( /*cv::Matx44f K2K_*/ float K2K_arry[16], cl_mem depthmap_);																		// Cost volume
@@ -419,6 +425,8 @@ public:
 	void SpatialCostFns();																												// SIRFS cost functions
 	void ParsimonyCostFns();
 	void ExhaustiveSearch();
+
+
 
 	//////////////////////////////////////
 	void _clEnqueueNDRangeKernel(

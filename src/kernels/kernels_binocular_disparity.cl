@@ -1,9 +1,9 @@
 #include "kernels_macros.h"
 #include "kernels.h"
 
-__constant float4 zero_f4				= {0.0f,0.0f,0.0f,0.0f};
-__constant float4 ones_f4				= {1.0f,1.0f,1.0f,1.0f};
-__constant float  const_sqrt_flt_min	= 0x1.0p-63f; // 2^(-63) is sqrt of FLT_MIN = 2^(-126)
+// __constant float4 zero_f4				= {0.0f,0.0f,0.0f,0.0f};
+// __constant float4 ones_f4				= {1.0f,1.0f,1.0f,1.0f};
+// __constant float  const_sqrt_flt_min	= 0x1.0p-63f; // 2^(-63) is sqrt of FLT_MIN = 2^(-126)
 
  __kernel void compute_lookup_table(					// computed once at start of program	// TODO when is it possible to roll the layers together ?  i.e. when local mem is not used.
 	 // inputs

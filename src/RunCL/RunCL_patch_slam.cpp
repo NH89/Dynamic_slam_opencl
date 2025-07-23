@@ -27,7 +27,7 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){
 	string fname = "RunCL::compute_patch_lookup_table( )";
 	int local_verbosity_threshold = V_RUNCL_COMPUTE_LOOKUP_TABLE;
 	cl_kernel kernel = compute_patch_lookup_table_kernel;
-																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_lookup_table( ..)_chk1 #############################################################"<<flush;
+																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_patch_lookup_table( ..)_chk1 #############################################################"<<flush;
 																																	cout << "\n local_work_size = " << local_work_size
 																																	<< ",  start = " << start << ",  stop = " << stop
 																																	<< flush;
@@ -42,7 +42,7 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){
 							NULL								//size_t* param_value_size_ret
 						);
 	size_t	max_workgroup_size	= min(kernel_workgroup_size, device_max_workitem_sizes[0] );
-																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_lookup_table( ..)_chk_2 "<<flush;
+																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_patch_lookup_table( ..)_chk_2 "<<flush;
 																																	// cout << "\n"
 																																	// 	<<",  device_max_compute_units="				<<device_max_compute_units
 																																	// 	<<",  max_workgroup_size="						<<max_workgroup_size
@@ -63,11 +63,11 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){
 																																}
 	cl_event		ev;
 	cl_int			res, status;
-	lookup_table_offset[0]	= 0; 																								// NB 'start' may not be set to zero
+	patch_lookup_table_offset[0]	= 0; 																						// NB 'start' may not be set to zero
 
 	for(uint layer = 0; layer <= stop; layer++) {																				// NB processes largest layer first.
 																																if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::compute_patch_lookup_table( )_chk3,  reduction="\
-																																	<<layer<<",  num_threads[reduction]="<<num_threads[layer]<<"  local_work_size="<<local_work_size<<flush; }
+																																	<<layer<<",  patch_num_threads[reduction]="<<patch_num_threads[layer]<<"  local_work_size="<<local_work_size<<flush; }
 		uint				read_rows					= MipMap[layer * 8 + MiM_READ_ROWS] ;
 		uint				read_cols					= MipMap[layer * 8 + MiM_READ_COLS] ;
 		uint				rows_blocks					= ceil( (float)  read_rows / patch_size );
@@ -82,8 +82,9 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){
 		uint				blocks_required				= ceil( (float)patches_required / patches_per_compute_uint );
 		size_t				local_work_size_[1] 		= { patches_per_compute_uint	* patch_size };
 		size_t				threads_to_launch 			= blocks_required 				* local_work_size_[0];						// TODO precompute an array for this function. ? where to store
+		patch_num_threads[layer]						= threads_to_launch;
 																																	// ? Have a subclass and object for each kernel ?
-																																if( verbosity>local_verbosity_threshold-3) {cout<<"\n\nRunCL::compute_patch_lookup_table( )_chk_4 "<<flush;
+																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_patch_lookup_table( )_chk_4 "<<flush;
 																																	cout <<"\n"
 																																	<<",  patches_required="						<<patches_required
 																																	<<",  patches_per_compute_uint="				<<patches_per_compute_uint
@@ -93,15 +94,15 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){
 																																	<<"},  local_work_size_[1]="					<<local_work_size_[0]
 																																	<< flush;
 																																	for (uint reduction = 0; reduction < 8  ; reduction ++){
-																																		cout << "\n reduction = "						<< reduction
-																																		<<"  num_threads[reduction] = "				<< num_threads[reduction]
+																																		cout << "\n reduction = "					<< reduction
+																																		<<"  patch_num_threads[reduction] = "		<< patch_num_threads[reduction]
 																																		<< flush;
 																																	}
 																																	cout<<"\ntracking_num_samples*2*mm_size_bytes_C4="<<tracking_num_samples*2*mm_size_bytes_C4
 																																		<<"     24 * mm_size_bytes_C1="<<24 * mm_size_bytes_C1<<flush;
 																																}
 
-		uint 	lookup_table_offset_uint 				= lookup_table_offset[layer];
+		uint 	lookup_table_offset_uint 				= patch_lookup_table_offset[layer];
 		res 	= clSetKernelArg(kernel, 0, sizeof(int), &layer );																// __private	uint		layer,					//0
 		res 	= clSetKernelArg(kernel, 1, sizeof(int), &lookup_table_offset_uint );											// __private	uint		lookup_table_offset,	//1
 		res 	= clSetKernelArg(kernel, 2, sizeof(int), &cols_per_row);														// __private	uint		cols_per_row,			//2
@@ -112,13 +113,13 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){
 		status	= clFlush(m_queue);										if (status != CL_SUCCESS)	{ cout << "\nRunCL::compute_patch_lookup_table( ),  clFlush(m_queue) status  = "<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
 		status	= clWaitForEvents (1, &ev);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::compute_patch_lookup_table( ),  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 
-		lookup_table_offset[layer +1]=  lookup_table_offset[layer] + num_threads[layer];										// NB this pads the lookup table, so that local work groups will not be shared betwen layers.
+		patch_lookup_table_offset[layer +1]				=	patch_lookup_table_offset[layer] + threads_to_launch;				// NB this pads the lookup table, so that local work groups will not be shared betwen layers.
 																																// It also  means that this offset should be used to launch layers from the lookup table.
 	}
 	for(uint reduction = 0; reduction <= stop; reduction++) {
-			cout << "\nnum_threads["<<reduction<<"] = "<<num_threads[reduction]<<" MipMap[reduction*8 +MiM_PIXELS] = "<<MipMap[reduction*8 +MiM_PIXELS]<<flush;
+			cout << "\npatch_num_threads["<<reduction<<"] = "<<patch_num_threads[reduction]<<",   MipMap[reduction*8 +MiM_PIXELS] = "<<MipMap[reduction*8 +MiM_PIXELS]<<flush;
 	}
-	cout <<"\nNB there will only be a gap in the lookuptable when:  num_threads[reduction] > MipMap[reduction*8 +MiM_PIXELS]  , which depends on the image dimensions and local_work_size"<<flush;
+	cout <<"\nNB there will only be a gap in the lookuptable when:  patch_num_threads[reduction] > MipMap[reduction*8 +MiM_PIXELS]  , which depends on the image dimensions and local_work_size"<<flush;
 
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_patch_lookup_table( )_chk5 ."<<flush;	// Save buffers to file ###########
 																																	stringstream ss;
