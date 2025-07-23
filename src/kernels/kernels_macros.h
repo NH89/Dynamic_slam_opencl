@@ -14,7 +14,7 @@
 #define SCALE_EAUX			10
 #define SE3_LM_A			11	// LM damped least squares parameters for SE3 tracking
 #define SE3_LM_B			12
-#define OLD_THETA           13  // replaces DynamicSLAM::old_theta
+#define OLD_THETA			13  // replaces DynamicSLAM::old_theta
 
 #define PIXELS				0	// uint_params indices, 		when launching one kernel per layer. 	Constant throughout program run.
 #define ROWS				1	// baseimage

@@ -82,6 +82,8 @@ public:
 	cl_kernel			mipmap_3x3blur_flt4_kernel, correlation_one_step_kernel, blur_volume_kernel, correlation_2nd_step_kernel;
 
 	cl_kernel			rho_sq_kernel, reduce_patch_Rho_kernel, update_k2k_kernel;// TODO declare, create, release kernel in Run_cl.h etc.
+	// RunCL_patchslam.cpp
+	cl_kernel			compute_patch_lookup_table_kernel;
 	
 	// GPU Buffers
 	static const uint 	num_current_frames	= 5;																												// static = same for all instances of class Dynamic_slam.
@@ -191,6 +193,7 @@ public:
 
 	// buffers for patch kernel based Dynamic_slam
 	cl_mem				pose_buf, pose_update_buf, distorsion_update_buf, old_results_buf, K_buf, inv_K_buf;
+	cl_mem				patch_lookup_table_buf;
 
 	//
 	cv::Mat 			baseImage, key_frame;
@@ -273,8 +276,14 @@ public:
 	void exit_(int res);
 	~RunCL();
 
+
 	////////////////////////////////////// RunCL::patch_slam.cpp
 
+	const uint	patch_size						= 32;
+	size_t		device_max_workitem_sizes[3];
+	cl_uint		device_max_compute_units;
+
+	void initialize_patch_params();
 	void compute_patch_lookup_table( uint start, uint stop);
 
 

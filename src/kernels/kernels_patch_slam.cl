@@ -20,15 +20,13 @@ __constant uint num_past_frames			= 4;										// 1,2,4,8,16,32,64 // variable 
 	__private	uint		layer,					//0
 	__private	uint		lookup_table_offset,	//1
 	__private	uint		cols_per_row,			//2
-	__private	uint		out_block_size,			//3
-	__private	float2		delta_SE3,				//4
 
-	__constant 	uint8*		mipmap_params,			//5
-	__constant 	uint*		uint_params,			//6
-	__constant  float*  	fp32_params,			//7
+	__constant 	uint8*		mipmap_params,			//3
+	__constant 	uint*		uint_params,			//4
+	__constant  float*  	fp32_params,			//5
 
 	// output
-	__global 	float4*		lookup_table			//8
+	__global 	float4*		lookup_table			//6
 )
 {
 	uint  global_id_u 								= get_global_id(0);

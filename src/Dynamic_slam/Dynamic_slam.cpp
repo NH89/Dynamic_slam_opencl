@@ -77,6 +77,9 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 	runcl.allocatemem();																													// Allocate buffers on the GPU ######
 	runcl.compute_lookup_table(runcl.mm_start, runcl.mm_stop);																				// Calls kernel. Used for disparity kernels now, maybe  more later...
 
+	runcl.initialize_patch_params();
+	runcl.compute_patch_lookup_table( runcl.mm_start, runcl.mm_stop);
+
 	initialize_camera_vec();
 	initialize_keyframe_vec();																												// First keyframe
 	initialize_resultsMat();

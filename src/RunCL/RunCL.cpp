@@ -265,7 +265,7 @@ void RunCL::createKernels(){
 
 	cl_int err_code;
 
-    cvt_color_space_linear_kernel 	= clCreateKernel(m_program, "cvt_color_space_linear", 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'cvt_color_space_linear'  kernel not built.\n"	<<flush; exit_(0);   }
+	cvt_color_space_linear_kernel 	= clCreateKernel(m_program, "cvt_color_space_linear", 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'cvt_color_space_linear'  kernel not built.\n"	<<flush; exit_(0);   }
 	sum_image_variance_kernel		= clCreateKernel(m_program, "sum_image_variance",			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'sum_image_variance'  kernel not built.\n"		<<flush; exit_(0);   }
 	sample_image_variance_kernel	= clCreateKernel(m_program, "sample_image_variance",		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'sample_image_variance'  kernel not built.\n"	<<flush; exit_(0);   }
 	blur_image_kernel				= clCreateKernel(m_program, "blur_image",					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'blur_image'  kernel not built.\n"				<<flush; exit_(0);   }
@@ -322,6 +322,11 @@ void RunCL::createKernels(){
 	rho_sq_kernel					= clCreateKernel(m_program, "Rho_sq",				 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'rho_sq_kernel'  kernel not built.\n"				<<flush; exit_(0);   }
 	reduce_patch_Rho_kernel			= clCreateKernel(m_program, "reduce_patch_Rho",		 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'update_SE3'  kernel not built.\n"					<<flush; exit_(0);   }
 	update_k2k_kernel				= clCreateKernel(m_program, "update_k2k",			 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'update_k2k'  kernel not built.\n"					<<flush; exit_(0);   }
+
+
+	compute_patch_lookup_table_kernel	= clCreateKernel(m_program, "compute_patch_lookup_table",	&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'compute_patch_lookup_table'  kernel not built.\n"					<<flush; exit_(0);   }
+
+
 }
 
 int RunCL::convertToString(const char *filename, std::string& s){
@@ -844,6 +849,8 @@ void RunCL::allocatemem(){
 	K_buf							= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, sizeof(float)*16,				0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	inv_K_buf						= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		, sizeof(float)*16,				0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
+	patch_lookup_table_buf			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 			, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nRunCL::allocatemem_chk3\n\n" << flush;
 																																			cout << ",dmem = " 			<< dmem << endl;
@@ -1094,6 +1101,9 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	status = clReleaseMemObject(K_buf);							if (status != CL_SUCCESS)	{ cout << "\nK_buf                          status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(inv_K_buf);						if (status != CL_SUCCESS)	{ cout << "\ninv_K_buf                      status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 
+	status = clReleaseMemObject(patch_lookup_table_buf);		if (status != CL_SUCCESS)	{ cout << "\npatch_lookup_table_buf         status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+
+
 	// release kernels
 	status = clReleaseKernel(cvt_color_space_linear_kernel);	if (status != CL_SUCCESS)	{ cout << "\ncvt_color_space_linear_kernel 	status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_49"<<flush;
 	status = clReleaseKernel(sum_image_variance_kernel);		if (status != CL_SUCCESS)	{ cout << "\nsum_image_variance_kernel 		status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_50"<<flush;
@@ -1147,8 +1157,10 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	status = clReleaseKernel(warp_and_depth_error_kernel);		if (status != CL_SUCCESS)	{ cout << "\nwarp_and_depth_error_kernel	status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	//
 	status = clReleaseKernel(rho_sq_kernel);					if (status != CL_SUCCESS)	{ cout << "\nrho_sq_kernel					status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
-	status = clReleaseKernel(reduce_patch_Rho_kernel);				if (status != CL_SUCCESS)	{ cout << "\nupdate_SE3_kernel				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(reduce_patch_Rho_kernel);			if (status != CL_SUCCESS)	{ cout << "\nupdate_SE3_kernel				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(update_k2k_kernel);				if (status != CL_SUCCESS)	{ cout << "\nupdate_k2k_kernel				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+
+	status = clReleaseKernel(compute_patch_lookup_table_kernel);	if (status != CL_SUCCESS)	{ cout << "\ncompute_patch_lookup_table_kernel	status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 	// release command queues
 	status = clReleaseCommandQueue(m_queue);                   if (status != CL_SUCCESS)	{ cout << "\nm_queue                        status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_67"<<flush;

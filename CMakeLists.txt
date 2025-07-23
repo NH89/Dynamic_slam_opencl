@@ -87,6 +87,7 @@ add_executable(Dynamic_slam
          src/RunCL/RunCL_DownloadAndSave.cpp
          src/RunCL/RunCL_load_image.cpp
          src/RunCL/RunCL_mapping.cpp
+         src/RunCL/RunCL_patch_slam.cpp
          src/RunCL/RunCL_setup_keyframe.cpp
          src/RunCL/RunCL_tracking.cpp
          src/RunCL/RunCL_utils.cpp

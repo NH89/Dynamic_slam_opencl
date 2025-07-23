@@ -164,6 +164,10 @@
 	#define	V_RUNCL_PARSIMONYCOSTFNS					1
 	#define	V_RUNCL_EXHAUSTIVESEARCH					1
 
+	/////////////////////////////////////// RUNCL_PATCH_SLAM.CPP
+	#define V_RUNCL_INITIALIZE_PATCH_PARAMS				-1
+	#define V_RUNCL_COMPUTE_LOOKUP_TABLE				-1
+
 	/////////////////////////////////////// RUNCL_SETUP_KEYFRAME.CPP
 	#define	V_RUNCL_ESTIMATECALIBRATION					1
 	#define	V_RUNCL_TRANSFORM_DEPTHMAP					-2
