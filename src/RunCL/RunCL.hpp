@@ -83,7 +83,7 @@ public:
 
 	cl_kernel			rho_sq_kernel, reduce_patch_Rho_kernel, update_k2k_kernel;// TODO declare, create, release kernel in Run_cl.h etc.
 	// RunCL_patchslam.cpp
-	cl_kernel			compute_patch_lookup_table_kernel;
+	cl_kernel			compute_patch_lookup_table_kernel, patch_img_grad_kernel;
 	
 	// GPU Buffers
 	static const uint 	num_current_frames	= 5;																												// static = same for all instances of class Dynamic_slam.
@@ -192,8 +192,9 @@ public:
 	cl_mem				warp_error_buf,				depth_error_buf,			depth_est_buf;
 
 	// buffers for patch kernel based Dynamic_slam
-	cl_mem				pose_buf, pose_update_buf, distorsion_update_buf, old_results_buf, K_buf, inv_K_buf;
 	cl_mem				patch_lookup_table_buf;
+	cl_mem				SE3_hessian_map_mem,		SE3_jacobian_map_mem;
+	cl_mem				pose_buf, pose_update_buf,	distorsion_update_buf,		old_results_buf,				K_buf, inv_K_buf;
 
 	//
 	cv::Mat 			baseImage, key_frame;
@@ -371,11 +372,22 @@ public:
 	const uint	patch_size										= 32;
 	size_t		device_max_workitem_sizes[	3]					= {0};
 	cl_uint		device_max_compute_units						=  0;
-	size_t		patch_lookup_table_offset[	max_mipmap_layers]	= {0};
-	uint		patch_num_threads[			max_mipmap_layers]	= {0};
+	cl_ulong	device_local_mem_size							=  0;
 
-	void initialize_patch_params();
-	void compute_patch_lookup_table( uint start, uint stop);
+	uint		patch_kernel_workgroup_size						=  0;
+	size_t		patch_lookup_table_offset[	max_mipmap_layers]	= {0};
+	uint		patch_local_work_size[		max_mipmap_layers]	= {0};
+	uint		patch_num_threads[			max_mipmap_layers]	= {0};
+	uint		patch_cols_per_row[			max_mipmap_layers]	= {0};
+
+	void 	initialize_patch_params();
+	void 	compute_patch_lookup_table( uint start, uint stop);
+
+	size_t		patch_img_gradients_workgroup_size		= 0;
+	size_t		patch_img_gradients_local_work_size_	= 0;
+
+	void 	patch_img_gradients_set_params(  );
+	void 	patch_img_gradients( uint layer, uint out_block_size );								// NB this version uses patch_lookup_table.
 
 
 

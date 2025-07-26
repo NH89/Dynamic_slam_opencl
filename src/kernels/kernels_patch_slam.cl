@@ -193,3 +193,26 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	}
 
 }
+
+
+__kernel void  patch_global_hessian_reduce(
+
+){
+
+}
+
+
+__kernel void  patch_Gauss_Jordan_elimination( // invert hessians for (1) ST3+rot (4x4) depth and rel_vel_map,  (2) SO3 (6x6) global camera  (3) camera intrinsic matrix (4) lens distortion
+
+){
+
+}
+
+
+__kernel void  patch_Inverse_Compositional_update(  // (1) for depth & rel_vel_map,  (2) SO3 camera pose,  (3) camera intrinsic matrix (4) lens distortion
+
+){
+
+}
+
+

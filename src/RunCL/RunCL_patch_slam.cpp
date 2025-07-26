@@ -20,12 +20,20 @@ void RunCL::initialize_patch_params(){
 							&device_max_compute_units,			//void* param_value,
 							NULL								//size_t* param_value_size_ret
 	);
+
+	cl_int device_info_3 = clGetDeviceInfo(
+							deviceId,							//cl_device_id device,
+							CL_DEVICE_LOCAL_MEM_SIZE,			//cl_device_info param_name,
+							sizeof(device_local_mem_size),		//size_t param_value_size,
+							&device_local_mem_size,				//void* param_value,
+							NULL								//size_t* param_value_size_ret
+	);
 }
 
 
 void RunCL::compute_patch_lookup_table( uint start, uint stop){
 	string fname = "RunCL::compute_patch_lookup_table( )";
-	int local_verbosity_threshold = V_RUNCL_COMPUTE_LOOKUP_TABLE;
+	int local_verbosity_threshold = V_RUNCL_COMPUTE_PATCH_LOOKUP_TABLE;
 	cl_kernel kernel = compute_patch_lookup_table_kernel;
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_patch_lookup_table( ..)_chk1 #############################################################"<<flush;
 																																	cout << "\n local_work_size = " << local_work_size
@@ -41,8 +49,11 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){
 							&kernel_workgroup_size,				//void* param_value,
 							NULL								//size_t* param_value_size_ret
 						);
+	patch_kernel_workgroup_size	= kernel_workgroup_size;
 	size_t	max_workgroup_size	= min(kernel_workgroup_size, device_max_workitem_sizes[0] );
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_patch_lookup_table( ..)_chk_2 "<<flush;
+																																	cout <<"\n kernel_workgroup_size = "<<kernel_workgroup_size<<flush;
+																																	cout <<"\n device_max_workitem_sizes[0] = "<<device_max_workitem_sizes[0]<<flush;
 																																	// cout << "\n"
 																																	// 	<<",  device_max_compute_units="				<<device_max_compute_units
 																																	// 	<<",  max_workgroup_size="						<<max_workgroup_size
@@ -68,26 +79,36 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){
 	for(uint layer = 0; layer <= stop; layer++) {																				// NB processes largest layer first.
 																																if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::compute_patch_lookup_table( )_chk3,  reduction="\
 																																	<<layer<<",  patch_num_threads[reduction]="<<patch_num_threads[layer]<<"  local_work_size="<<local_work_size<<flush; }
-		uint				read_rows					= MipMap[layer * 8 + MiM_READ_ROWS] ;
-		uint				read_cols					= MipMap[layer * 8 + MiM_READ_COLS] ;
-		uint				rows_blocks					= ceil( (float)  read_rows / patch_size );
-		uint				cols_blocks					= ceil( (float)  read_cols / patch_size );
-		uint				cols_per_row				= cols_blocks  * patch_size;
-		uint				patches_required			= cols_blocks  * rows_blocks;
 
-		uint				patches_per_compute_uint	= ceil( (float)patches_required / device_max_compute_units ) ;
-		uint 				blocks_per_k_wg_size		= max_workgroup_size			/ device_work_size_multiple;
-							patches_per_compute_uint	= min( patches_per_compute_uint,  blocks_per_k_wg_size );
+		uint				read_rows					= MipMap[layer * 8 + MiM_READ_ROWS] ;									cout<<"\nread_rows= 				"<<read_rows;
+		uint				read_cols					= MipMap[layer * 8 + MiM_READ_COLS] ;									cout<<"\nread_cols= 				"<<read_cols;
 
-		uint				blocks_required				= ceil( (float)patches_required / patches_per_compute_uint );
-		size_t				local_work_size_[1] 		= { patches_per_compute_uint	* patch_size };
-		size_t				threads_to_launch 			= blocks_required 				* local_work_size_[0];						// TODO precompute an array for this function. ? where to store
+		uint				rows_blocks					= ceil( (float)  read_rows / patch_size );								cout<<"\nrows_blocks= 				"<<rows_blocks;
+		uint				cols_blocks					= ceil( (float)  read_cols / patch_size );								cout<<"\ncols_blocks= 				"<<cols_blocks;
+		uint				cols_per_row				= cols_blocks  * patch_size;											cout<<"\ncols_per_row= 				"<<cols_per_row				<<"		= cols_blocks  * patch_size";
+
+		uint				patches_required			= cols_blocks  * rows_blocks;											cout<<"\npatches_required= 			"<<patches_required			<<"		= cols_blocks  * rows_blocks";
+
+		uint				patches_per_compute_uint	= ceil( (float)patches_required / device_max_compute_units ) ;			cout<<"\npatches_per_compute_uint=	"<<patches_per_compute_uint	<<"		= ceil( (float)patches_required / device_max_compute_units )";
+
+		uint				blocks_per_k_wg_size		= max_workgroup_size			/ device_work_size_multiple;			cout<<"\nblocks_per_k_wg_size= 		"<<blocks_per_k_wg_size		<<"		= max_workgroup_size			/ device_work_size_multiple";
+
+		patches_per_compute_uint						= min( patches_per_compute_uint,  blocks_per_k_wg_size );				cout<<"\npatches_per_compute_uint=	"<<patches_per_compute_uint	<<"		= max( patches_per_compute_uint,  blocks_per_k_wg_size )";
+
+		uint				blocks_required				= ceil( (float)patches_required / patches_per_compute_uint );			cout<<"\nblocks_required= 			"<<blocks_required			<<"		= ceil( (float)patches_required / patches_per_compute_uint )";
+
+		size_t				local_work_size_[1] 		= { patches_per_compute_uint	* patch_size };							cout<<"\nlocal_work_size_= 			"<<local_work_size_[0]		<<"		= { patches_per_compute_uint	* patch_size }";
+		size_t				threads_to_launch 			= blocks_required 				* local_work_size_[0];					cout<<"\nthreads_to_launch= 		"<<threads_to_launch		<<"		= blocks_required 				* local_work_size_[0]";		// TODO precompute an array for this function. ? where to store
+
+		patch_local_work_size[layer]					= local_work_size_[0];
 		patch_num_threads[layer]						= threads_to_launch;
+		patch_cols_per_row[layer]						= cols_per_row;
 																																	// ? Have a subclass and object for each kernel ?
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_patch_lookup_table( )_chk_4 "<<flush;
 																																	cout <<"\n"
 																																	<<",  patches_required="						<<patches_required
 																																	<<",  patches_per_compute_uint="				<<patches_per_compute_uint
+																																	<<",  blocks_per_k_wg_size="					<<blocks_per_k_wg_size
 																																	<<",  blocks_required="							<<blocks_required
 																																	<<",  threads_to_launch="						<<threads_to_launch
 																																	<<",  local_work_size="							<<local_work_size
@@ -101,14 +122,13 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){
 																																	cout<<"\ntracking_num_samples*2*mm_size_bytes_C4="<<tracking_num_samples*2*mm_size_bytes_C4
 																																		<<"     24 * mm_size_bytes_C1="<<24 * mm_size_bytes_C1<<flush;
 																																}
-
 		uint 	lookup_table_offset_uint 				= patch_lookup_table_offset[layer];
 		res 	= clSetKernelArg(kernel, 0, sizeof(int), &layer );																// __private	uint		layer,					//0
 		res 	= clSetKernelArg(kernel, 1, sizeof(int), &lookup_table_offset_uint );											// __private	uint		lookup_table_offset,	//1
 		res 	= clSetKernelArg(kernel, 2, sizeof(int), &cols_per_row);														// __private	uint		cols_per_row,			//2
 																																if (res    !=CL_SUCCESS)	{ cout <<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}	;
 
-		res 	= clEnqueueNDRangeKernel(m_queue, 		kernel, 1, 0, &threads_to_launch, local_work_size_, 0, NULL, &ev); // run mipmap_float4_kernel, NB wait for own previous iteration.
+		res 	= clEnqueueNDRangeKernel(m_queue,		kernel, 1, 0, &threads_to_launch, local_work_size_, 0, NULL, &ev); // run mipmap_float4_kernel, NB wait for own previous iteration.
 																		if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
 		status	= clFlush(m_queue);										if (status != CL_SUCCESS)	{ cout << "\nRunCL::compute_patch_lookup_table( ),  clFlush(m_queue) status  = "<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
 		status	= clWaitForEvents (1, &ev);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::compute_patch_lookup_table( ),  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
@@ -138,10 +158,182 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){
 }
 
 
+void RunCL::patch_img_gradients_set_params(  ){	// to use patch lookup table
+	string fname = "RunCL::patch_img_gradients_set_params()";
+	int local_verbosity_threshold = V_RUNCL_PATCH_IMG_GRADIENTS;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients_set_params()_chk1 #############################################################"<<flush;}
+	cl_kernel kernel		= patch_img_grad_kernel;
 
+//__kernel void  patch_img_grad(					// To be launched with 1 thread per col for 32x32 patches, and an integer multiple of 32 threads.
+													// Needs 16 elements of local mem per 32x32 patch, to pass data between threads in recursive square reduction.
+													// Needs 32 elem array of private mem per thread.
+	size_t kernel_workgroup_size;
+	cl_int k_wg_info =  clGetKernelWorkGroupInfo(
+							kernel,								//cl_kernel kernel,
+							deviceId,							//cl_device_id device,
+							CL_KERNEL_WORK_GROUP_SIZE,			//cl_kernel_work_group_info param_name,
+							sizeof(kernel_workgroup_size),		//size_t param_value_size,
+							&kernel_workgroup_size,				//void* param_value,
+							NULL								//size_t* param_value_size_ret
+						);
+	// patch_img_gradients_workgroup_size	= patch_local_work_size[layer];		//min(kernel_workgroup_size, device_max_workitem_sizes[0] );
+																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients_set_params()_chk2 #############################################################"<<flush;
+																																	cout <<"\n kernel_workgroup_size = "<<kernel_workgroup_size<<endl<<flush;
+																																}
+																																if( patch_kernel_workgroup_size > kernel_workgroup_size ) {
+																																	cout<<"\n\nRunCL::patch_img_gradients_set_params()  ( patch_kernel_workgroup_size="<<patch_kernel_workgroup_size<<" > kernel_workgroup_size="<<kernel_workgroup_size<<" )."
+																																		<<"Need code to handle workgroup size for this kernel."<<endl<<flush;
 
-
+																																	cerr<<"\n\nRunCL::patch_img_gradients_set_params()  ( patch_kernel_workgroup_size="<<patch_kernel_workgroup_size<<" > kernel_workgroup_size="<<kernel_workgroup_size<<" )."
+																																		<<"Need code to handle workgroup size for this kernel."<<endl<<flush;
+																																	exit_(1);
+																																}
 /*
+																																for (uint layer = mm_start; layer <mm_stop; layer++  ){
+		uint				read_rows					= MipMap[layer * 8 + MiM_READ_ROWS] ;
+		uint				read_cols					= MipMap[layer * 8 + MiM_READ_COLS] ;
+		uint				rows_blocks					= ceil( (float)  read_rows / patch_size );
+		uint				cols_blocks					= ceil( (float)  read_cols / patch_size );
+		//uint				cols_per_row				= cols_blocks  * patch_size;
+		uint				patches_required			= cols_blocks  * rows_blocks;
+
+		uint				patches_per_compute_uint	= ceil( (float)patches_required 		/ device_max_compute_units ) ;
+		uint 				blocks_per_k_wg_size		= patch_img_gradients_workgroup_size	/ device_work_size_multiple;
+							patches_per_compute_uint	= min( patches_per_compute_uint,		blocks_per_k_wg_size );
+
+		uint				blocks_required				= ceil( (float)patches_required / patches_per_compute_uint );
+		size_t				local_work_size_[1] 		= { patches_per_compute_uint	* patch_size };
+		size_t				threads_to_launch 			= blocks_required 				* local_work_size_[0];
+
+	}
+*/
+
+	//Inputs:
+	//__private
+//	_clSetKernelArg( kernel,	0, sizeof(int), 		&layer,							fname );								// __private	uint		layer,					//0
+//	_clSetKernelArg( kernel,	1, sizeof(int), 		&out_block_size,				fname );								// __private	uint		out_block_size,			//1
+//	_clSetKernelArg( kernel,	2, sizeof(int), 		&cols_per_row					fname );								// __private	uint		cols_per_row,			//2
+	//__constant
+	_clSetKernelArg( kernel,	2, sizeof( cl_mem), 	&mipmap_buf,					fname);									// __constant	uint8*		mipmap_params,			//2
+	_clSetKernelArg( kernel,	3, sizeof( cl_mem), 	&uint_param_buf,				fname);									// __constant	uint*		uint_params,			//3
+	_clSetKernelArg( kernel,	4, sizeof( cl_mem), 	&SE3_map_mem,					fname);									// __constant 	float2*		SE3_map,				//4
+	//__global
+	_clSetKernelArg( kernel,	5, sizeof( cl_mem), 	&patch_lookup_table_buf,		fname);									// __global 	float4*		lookup_table,			//5
+//	_clSetKernelArg( kernel,	6, sizeof( cl_mem), 	&imgmem_,						fname);									// __global 	float4*		img,					//6
+	//Outputs:
+	//__global
+	_clSetKernelArg( kernel,	7, sizeof( cl_mem), 	&SE3_grad_map_mem,				fname);									// __global 	float8*		SE3_grad_map,			//7		// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
+
+	_clSetKernelArg( kernel,	8, sizeof( cl_mem), 	&SE3_hessian_map_mem,			fname);									// __global 	float4*		SE3_Hessian_map,		//8		// HSV (6x6) matrix so 36*float8
+
+	_clSetKernelArg( kernel,	10, sizeof( cl_mem),	 &HSV_grad_mem,					fname);									// __global 	float8*		HSV_grad				//10
+
+	/* //Debugging kernel arg setting
+	// size_t		param_value_size		= 0;
+	// char		param_value[32]			= {' '};
+ //
+	// cl_int ret = clGetKernelArgInfo(
+	// 	kernel,								//cl_kernel kernel,
+	// 	(cl_uint)2,							//cl_uint arg_index,
+	// 	CL_KERNEL_ARG_TYPE_NAME,			//cl_kernel_arg_info param_name,
+	// 	param_value_size,					//size_t  param_value_size,
+	// 	param_value,						//void*   param_value,
+	// 	NULL								//size_t* param_value_size_ret
+	// );
+ //
+	// cout << "\n\nRunCL::patch_img_gradients_set_params(..) ret = "<<ret<<",  CL_KERNEL_ARG_TYPE_NAME = "<< string(param_value, param_value_size) << "\n" << flush;
+	*/
+
+}
+
+
+void RunCL::patch_img_gradients( uint layer, uint out_block_size ){
+	string fname = "RunCL::patch_img_gradients()";
+	int local_verbosity_threshold = V_RUNCL_PATCH_IMG_GRADIENTS;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_chk1 #############################################################"<<flush;}
+	cl_kernel 		kernel				= patch_img_grad_kernel;
+	const cl_mem 	imgmem_				= current_frames[ 			current_frames_idx[0] ].img_buf;
+	size_t			local_work_size_	= patch_local_work_size[	layer];										//patch_img_gradients_workgroup_size; // patch_img_gradients_local_work_size_;
+	size_t			threads_to_launch	= patch_num_threads[		layer];
+																												//uint			cols_per_row		= patch_cols_per_row[		layer];
+	size_t	local_Hessian_size			= sizeof(cl_float4)*num_SE3_DoF*num_SE3_DoF*local_work_size_;			//*patch_img_gradients_workgroup_size;
+
+	_clSetKernelArg( kernel,	0, sizeof(int),			&layer,							fname);									// __private	uint		layer,					//0
+	_clSetKernelArg( kernel,	1, sizeof(int),			&out_block_size,				fname);									// __private	uint		out_block_size,			//1
+	_clSetKernelArg( kernel,	6, sizeof( cl_mem),		&imgmem_,						fname);									// __global 	float4*		img,					//6			//	"current_frames[idx].img_buf	= imgmem[idx];", NB changes every new frame.
+	_clSetKernelArg( kernel,	9, local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,			//9		// local_Hessian[ sizeof(float4) *6*6 *local_size]
+
+	/* // Debugging kernel arg setting
+	// size_t		param_value_size		= 0;
+	// char		param_value[32]			= {' '};
+ //
+	// cl_int ret = clGetKernelArgInfo(
+	// 	kernel,								//cl_kernel kernel,
+	// 	(cl_uint)2,							//cl_uint arg_index,
+	// 	CL_KERNEL_ARG_TYPE_NAME,			//cl_kernel_arg_info param_name,
+	// 	param_value_size,					//size_t  param_value_size,
+	// 	param_value,						//void*   param_value,
+	// 	NULL								//size_t* param_value_size_ret
+	// );
+ //
+	// cout << "\n\nRunCL::patch_img_gradients(..) ret = "<<ret<<",  CL_KERNEL_ARG_TYPE_NAME = "<< string(param_value, param_value_size) << "\n" << flush;
+	*/
+
+	cout <<"\nRunCL::patch_img_gradients()_chk1.5   threads_to_launch="<<threads_to_launch<<",		local_work_size_="<<local_work_size_<<flush;
+	for (uint layer_=0; layer_<max_mipmap_layers; layer_++){
+		cout<<"\npatch_num_threads["<<layer_<<"] = "								<<patch_num_threads[		layer_]
+			<<",		patch_cols_per_row[layer_] = "								<<patch_cols_per_row[		layer_]
+			<<",		patch_num_threads[] = "										<<patch_num_threads[		layer_]
+			<<",		patch_local_work_size[	layer_] = "							<<patch_local_work_size[	layer_]
+			<<",		patch_num_threads[] / patch_local_work_size[ layer_] = "	<<(float)patch_num_threads[	layer_] / patch_local_work_size[ layer_]
+			<<flush;
+	}
+
+	cout<<"\n\nlocal_Hessian_size = "	<<local_Hessian_size
+			<<" = sizeof(cl_float4)"<<sizeof(cl_float4)<<"   * num_SE3_DoF "<<num_SE3_DoF<<"    * num_SE3_DoF "<<num_SE3_DoF<<"    *local_work_size_ "<<local_work_size_
+			<<"\ndevice_local_mem_size = "<< device_local_mem_size
+			<<flush;
+
+
+	cl_event	ev;
+	cl_int		res, status;
+
+	res 	= clEnqueueNDRangeKernel(m_queue,		kernel, 1, 0, &threads_to_launch, &local_work_size_, 0, NULL, &ev);
+																	if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
+	status	= clFlush(m_queue);										if (status != CL_SUCCESS)	{ cout << "\nRunCL::compute_patch_lookup_table( ),  clFlush(m_queue) status  = "<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
+	status	= clWaitForEvents (1, &ev);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::compute_patch_lookup_table( ),  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
+
+																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_chk2 ."<<flush;	// Save buffers to file ###########
+																																	stringstream ss;
+																																	ss << "patch_img_gradients_" << save_index ;
+																																	bool show 		= false;
+																																	bool old_tiff 	= tiff;
+																																	tiff 			= true;
+																																	_cl_flush_finish(m_queue, fname);
+																																	DownloadAndSave_3Channel( 	patch_lookup_table_buf,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show);
+																																	// NB the tiff file holda the int32 values as float32. This is okay because they fit in the mantissa.
+																																	// BGRA format, B=u, G=v, R=read_index, A=alpha.
+																																	tiff 			= old_tiff;
+																																}
+																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_finished #############################################################"<<flush;
+																																}
+
+}
+
+//void RunCL::patch_hessian_reduce( uint layer, uint out_block_size ){
+
+	// launch kernel
+
+
+
+	// compute Hessians for this layer
+
+
+	// reload Hessians to GPU
+
+
+//}
+
+
+/* void RunCL::rho_sq(..)
 //  example of using patches, but without lookuptable.
 //  Also need to separate and save patch launch variables.
 void RunCL::rho_sq(uint out_block_size, uint iter, uint layer, float delta_theta, float delta   ){	// To be launched with 1 thread per col for 32x32 patches, and an integer multiple of 32 threads.
@@ -306,7 +498,7 @@ void RunCL::rho_sq(uint out_block_size, uint iter, uint layer, float delta_theta
 }
 */
 
-/*
+/* void RunCL::disparity_load_frame(..)
 // example of using lookuptable
 void RunCL::disparity_load_frame(cl_mem input_img, cl_mem output_img, std::string folder ){													// Loads an image into layer zero of a padded image pyramid, e.g. from basemem to img_mem or keyframe_img_mem.
 	string fname = "RunCL::disparity_load_frame( )";
@@ -343,7 +535,7 @@ void RunCL::disparity_load_frame(cl_mem input_img, cl_mem output_img, std::strin
 }
 */
 
-/*
+/* void RunCL::patch_img_gradients()
 // example of launching image gradients
 void RunCL::patch_img_gradients(){ //getFrame();   TODO Need to rewrite for launching as a patch kernel. See RunCL_tracking.cpp   RunCL::rho_sq(...)
 									//					Need to store global variables for the launch of patch kernels
@@ -425,23 +617,3 @@ delta_parameter  =  H^(-1)  *  Sum_pixels {  [ Image_gradient * d_warp/d_pose ] 
 
 
 
-//__kernel void  patch_img_grad(						// To be launched with 1 thread per col for 32x32 patches, and an integer multiple of 32 threads.
-													// Needs 16 elements of local mem per 32x32 patch, to pass data between threads in recursive square reduction.
-													// Needs 32 elem array of private mem per thread.
-	// //Inputs:
-	// __private	uint		layer,					//0
-	// __private	uint		out_block_size,			//1
- //
-	// __constant	uint8*		mipmap_params,			//2
-	// __constant	uint*		uint_params,			//3
-	// __constant 	float2*		SE3_map,				//4
- //
-	// __global 	float4*		lookup_table,			//5
-	// __global 	float4*		img,					//6
- //
-	// //Outputs:
-	// __global 	float8*		SE3_grad_map,			//7												// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
-	// __global 	float4*		SE3_Hessian_map,		//8												// HSV (6x6) matrix so 36*float8
-	// __local		float4*		local_Hessian,			//9												//	local_Hessian[ sizeof(float4) *6*6 *local_size]
- //
-	// __global 	float8*		HSV_grad				//10
