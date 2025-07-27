@@ -25,16 +25,19 @@
 	uint mm_cols									= uint_params[MM_COLS];
 	uint mm_pixels									= uint_params[MM_PIXELS];
 
-	int v 											= global_id_u / cols_per_row;
+	int v 											= global_id_u / cols_per_row;				// NB integer division.
+	v												*= block_size;
 	int u 											= fmod( (float)global_id_u, cols_per_row );
-	uint read_index									= read_offset_ + u + v*block_size*mm_cols;
+	uint read_index									= read_offset_ + u + v*mm_cols;
 	uint row_offset									= read_offset_ / mm_cols;
 	float4 lookup 									= zero_f4;
 
 	if ( read_index < mm_pixels  &&  u< read_cols_  &&  v < read_rows_)	{
-		lookup										= (float4)(u, v, read_index, layer /*row_offset*/);
+		lookup										= (float4)(u, v, read_index, row_offset);  /* layer */
 	}
 	lookup_table[global_id_u + lookup_table_offset]	= lookup;
+
+	lookup_table[read_index] = lookup;  //debugging
 }
 
 
@@ -66,12 +69,8 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 
 	float4	lookup_ref									= lookup_table[global_id_uint];
 	uint	read_index									= floor(lookup_ref.z);
-	uint	v											= lookup_ref.x;														// read_row
-	uint	u											= lookup_ref.y;														// read_column
-
-	uint	write_spacing								= block_size/out_block_size;
-	uint	write_index									= u/out_block_size;													// + block_row*write_spacing*mm_cols;
-	uint	write_index_2								= u/block_size;														// + block_row*mm_cols;
+	uint	u											= lookup_ref.x;														// read_column
+	uint	v											= lookup_ref.y;														// read_row
 
 	uint8	mipmap_params_ 								= mipmap_params[layer];
 	uint	read_cols_									= mipmap_params_[MiM_READ_COLS];
@@ -80,13 +79,23 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	uint	mm_cols										= uint_params[MM_COLS];
 	uint	mm_pixels									= uint_params[MM_PIXELS];
 
+	uint	write_spacing								= block_size/out_block_size;
+	uint	write_index									= u/out_block_size			 + (v/out_block_size)*write_spacing*mm_cols;
+	uint	write_index_2								= u/block_size				 + (v/block_size)*mm_cols;
+																															//,  write_index +=write_spacing*mm_cols,  write_index_2 +=mm_cols
+		if(fmod((float)lid,32)<3 && (v/block_size)<4 && (u/block_size)<4){
+			printf("\n__kernel void  patch_img_grad, global_id_uint<4=%u,	read_index=%u,	(u,v)=(%u,%u), write_spacing=%u, write_index=%u, write_index_2=%u ", \
+			global_id_uint, read_index, u,v, write_spacing, write_index, write_index_2    );
+		}
+
 	int		lfoff										= -(u >1);															//-(read_column != 0);
 	int		rtoff										=  (u < read_cols_-2);												// (read_column < mm_cols-1);
 
 	float4 	Hessian_pvt_arr[block_size][6][6]			= {{{zero_f4}}};													// pvt variable for values in this column.
 
-	for (uint row_in_block=0; row_in_block<block_size; row_in_block++, v++,  read_index +=mm_cols,  write_index +=write_spacing*mm_cols,  write_index_2 +=mm_cols ){
-
+	for (uint row_in_block=0; row_in_block<block_size; row_in_block++, v++,  read_index +=mm_cols){
+//		if(global_id_uint<4){printf("\n__kernel void  patch_img_grad, global_id_uint<4=%u,		read_index=%u,		row_in_block=%u ", global_id_uint, read_index,   row_in_block );
+//		}
 		int upoff										= -(v  >1 )*mm_cols;												//-(read_row  != 0)*mm_cols;	// up, down, left, right offsets, by boolean logic.
 		int dnoff										=  (v  < read_rows_-2) * mm_cols;									// (read_row  < read_rows_-1) * mm_cols;
 
@@ -117,7 +126,7 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 		float S 										= img[read_index][1];
 		float V 										= img[read_index][2];
 		float8 temp_float8								= { sin(H) , cos(H), S, V, gx[1], gy[1], gx[2], gy[2] };			// HSV_grad = { sin(H) , cos(H), S, V, gx[1], gy[1], gx[2], gy[2] };
-		HSV_grad[read_index]						= temp_float8;
+		HSV_grad[read_index]							= temp_float8;
 
 	} // end of column of this patch.
 

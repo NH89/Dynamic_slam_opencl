@@ -376,16 +376,14 @@ public:
 
 	uint		patch_kernel_workgroup_size						=  0;
 	size_t		patch_lookup_table_offset[	max_mipmap_layers]	= {0};
-	uint		patch_local_work_size[		max_mipmap_layers]	= {0};
+	uint		patch_local_work_size[		max_mipmap_layers]	= {0};	// for kernels not using local mem. Otherwise must compute local_mem(available / req per patch) * patch_size(32)
 	uint		patch_num_threads[			max_mipmap_layers]	= {0};
 	uint		patch_cols_per_row[			max_mipmap_layers]	= {0};
 
 	void 	initialize_patch_params();
 	void 	compute_patch_lookup_table( uint start, uint stop);
 
-	size_t		patch_img_gradients_workgroup_size		= 0;
-	size_t		patch_img_gradients_local_work_size_	= 0;
-
+	size_t	patch_img_gradients_workgroup_size[	max_mipmap_layers]	= {0};
 	void 	patch_img_gradients_set_params(  );
 	void 	patch_img_gradients( uint layer, uint out_block_size );								// NB this version uses patch_lookup_table.
 

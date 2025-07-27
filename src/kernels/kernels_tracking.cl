@@ -126,8 +126,8 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	uint row_offset									= read_offset_/mm_cols;
 
 	uint write_spacing								= block_size/out_block_size;
-	uint write_index								= row_col/out_block_size + block_row*write_spacing*mm_cols;
-	uint write_index_2								= row_col/block_size + block_row*mm_cols;
+	uint write_index								= row_col/out_block_size 	+ block_row*write_spacing*mm_cols;
+	uint write_index_2								= row_col/block_size 		+ block_row*mm_cols;
 
 	float2 rho_pvt_arr[block_size]					= {zero_f2};								// pvt variable for values in this column.
 	float4 rho_pvt_flt4								= zero_f4;
