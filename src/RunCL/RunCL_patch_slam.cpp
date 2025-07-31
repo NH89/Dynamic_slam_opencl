@@ -51,6 +51,9 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){
 						);
 	patch_kernel_workgroup_size	= kernel_workgroup_size;
 	size_t	max_workgroup_size	= min(kernel_workgroup_size, device_max_workitem_sizes[0] );
+
+
+
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_patch_lookup_table( ..)_chk_2 "<<flush;
 																																	cout <<"\n kernel_workgroup_size = "			<<kernel_workgroup_size<<flush;
 																																	cout <<"\n device_max_workitem_sizes[0] = "		<<device_max_workitem_sizes[0]<<flush;
@@ -79,6 +82,19 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){
 	cl_int			res, status;
 	patch_lookup_table_offset[0]	= 0; 																						// NB 'start' may not be set to zero
 
+																																// if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_patch_lookup_table( )_chk6 ."<<flush;	// Save buffers to file ###########
+																																// 	stringstream ss;
+																																// 	ss << "compute_patch_lookup_table_" << save_index ;
+																																// 	bool show 		= false;
+																																// 	bool old_tiff 	= tiff;
+																																// 	tiff 			= true;
+																																// 	_cl_flush_finish(m_queue, fname);
+																																// 	DownloadAndSave_3Channel( 	patch_lookup_table_buf,	ss.str( ), paths.at( "lookup_table_buf"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show);
+																																// 	// NB the tiff file holda the int32 values as float32. This is okay because they fit in the mantissa.
+																																// 	// BGRA format, B=u, G=v, R=read_index, A=alpha.
+																																// 	tiff 			= old_tiff;
+																																// }
+
 	for(uint layer = 0; layer <= stop; layer++) {																				// NB processes largest layer first.
 																																if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::compute_patch_lookup_table( )_chk4,  reduction="\
 																																	<<layer<<",  patch_num_threads[reduction]="<<patch_num_threads[layer]<<"  local_work_size="<<local_work_size<<flush; }
@@ -91,18 +107,12 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){
 		uint				cols_per_row				= cols_blocks  * patch_size;											cout<<"\ncols_per_row= 				"<<cols_per_row				<<"		= cols_blocks  * patch_size";
 
 		uint				patches_required			= cols_blocks  * rows_blocks;											cout<<"\npatches_required= 			"<<patches_required			<<"		= cols_blocks  * rows_blocks";
-
 		uint				patches_per_compute_uint	= ceil( (float)patches_required / device_max_compute_units ) ;			cout<<"\npatches_per_compute_uint=	"<<patches_per_compute_uint	<<"		= ceil( (float)patches_required / device_max_compute_units )";
-
 		uint				blocks_per_k_wg_size		= max_workgroup_size			/ device_work_size_multiple;			cout<<"\nblocks_per_k_wg_size= 		"<<blocks_per_k_wg_size		<<"		= max_workgroup_size			/ device_work_size_multiple";
-
 							patches_per_compute_uint	= min( patches_per_compute_uint,  blocks_per_k_wg_size );				cout<<"\npatches_per_compute_uint=	"<<patches_per_compute_uint	<<"		= max( patches_per_compute_uint,  blocks_per_k_wg_size )";
 
 		uint				blocks_required				= ceil( (float)patches_required / patches_per_compute_uint );			cout<<"\nblocks_required= 			"<<blocks_required			<<"		= ceil( (float)patches_required / patches_per_compute_uint )";
-
 		size_t				local_work_size_[1] 		= { patches_per_compute_uint	* patch_size };							cout<<"\nlocal_work_size_= 			"<<local_work_size_[0]		<<"		= { patches_per_compute_uint	* patch_size }";
-
-
 		size_t				threads_to_launch 			= blocks_required 				* local_work_size_[0];					cout<<"\nthreads_to_launch= 		"<<threads_to_launch		<<"		= blocks_required 				* local_work_size_[0]";		// TODO precompute an array for this function. ? where to store
 
 		patch_local_work_size[layer]					= local_work_size_[0];
@@ -152,8 +162,14 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){
 																																	bool show 		= false;
 																																	bool old_tiff 	= tiff;
 																																	tiff 			= true;
+																																	float max_range	= 1;
+																																	cv::Mat bufImg;
 																																	_cl_flush_finish(m_queue, fname);
-																																	DownloadAndSave_3Channel( 	patch_lookup_table_buf,	ss.str( ), paths.at( "lookup_table_buf"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show);
+																																	//void DownloadAndSave_3Channel(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, cv::Mat *bufImg, float max_range=1, uint offset=0, bool exception_tiff=false );
+
+																																	DownloadAndSave_3Channel( 	patch_lookup_table_buf,	ss.str( ), paths.at( "lookup_table_buf"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range, 0, false);
+
+																																	//DownloadAndSave_3Channel( 	patch_lookup_table_buf,	ss.str( ), paths.at( "lookup_table_buf"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show,  max_range);
 																																	// NB the tiff file holda the int32 values as float32. This is okay because they fit in the mantissa.
 																																	// BGRA format, B=u, G=v, R=read_index, A=alpha.
 																																	tiff 			= old_tiff;
@@ -314,8 +330,12 @@ void RunCL::patch_img_gradients( uint layer, uint out_block_size ){
 																																	bool show 		= false;
 																																	bool old_tiff 	= tiff;
 																																	tiff 			= true;
+																																	float max_range	= -1;
+																																	cv::Mat bufImg;
 																																	_cl_flush_finish(m_queue, fname);
-																																	DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show);
+																																	//DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show);
+																																	DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range, 0, false);
+
 																																	// NB the tiff file holda the int32 values as float32. This is okay because they fit in the mantissa.
 																																	// BGRA format, B=u, G=v, R=read_index, A=alpha.
 																																	tiff 			= old_tiff;

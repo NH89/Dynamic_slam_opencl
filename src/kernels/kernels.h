@@ -65,9 +65,9 @@ void LieToP( uint lid, __local float SE3[9], __local float Pose[32/*16*/] );
 #define SE3_elems  16
 void update_k2_kdev_fn(
 	uint lid,
-	__local float local_K_update[ 	2* SE3_elems],
+	__local float local_K_update[	2* SE3_elems],
 	__local float local_pose_inv_K[ 2* SE3_elems],
-	__local float local_A_B[ 		2* SE3_elems],
+	__local float local_A_B[		2* SE3_elems],
 	__local float local_k2k[		   SE3_elems]
 	);
 

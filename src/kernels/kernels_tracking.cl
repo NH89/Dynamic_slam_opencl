@@ -298,7 +298,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 		uint frame_offset_1 		=  write_index_2;																																			// stacks frame SE3 results vertically.
 		uint block_row				=  0;
 																						uint offset_2 				= frame_offset_1 + write_block_row*mm_cols;
-																						Rho_[			offset_2  ]	= rho_pvt_arr[		 block_row ];
+																						Rho_[			offset_2 ]	= rho_pvt_arr[		 block_row ];
 		for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {																																		// All 6 DoF of SE3
 																						uint offset_3 				= offset_2 		+ se3_dim*( 4 + (read_rows_/block_size) )*mm_cols;
 																						uint offset_4				= block_row 	+ se3_dim*block_size;

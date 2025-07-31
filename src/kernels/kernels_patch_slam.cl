@@ -33,11 +33,11 @@
 	float4 lookup 									= zero_f4;
 
 	if ( read_index < mm_pixels  &&  u< read_cols_  &&  v < read_rows_)	{
-		lookup										= (float4)(u, v, read_index, row_offset);  /* layer */
+		lookup										= (float4)(u, v, read_index, global_id_u /*row_offset*/);  /* layer */
 	}
-	lookup_table[global_id_u + lookup_table_offset]	= lookup;
+	//lookup_table[read_index] = lookup;  //debugging, NB Must be written first, otherwise it overwrites and corrupts the lookup. Can only be used with oner layer.
 
-	lookup_table[read_index] = lookup;  //debugging
+	lookup_table[global_id_u + lookup_table_offset]	= lookup;
 }
 
 
@@ -80,18 +80,36 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	uint	mm_pixels									= uint_params[MM_PIXELS];
 
 	uint	write_spacing								= block_size/out_block_size;
-	uint	write_index									= u/out_block_size			 + (v/out_block_size)*write_spacing*mm_cols;
+	uint	write_index									= u/out_block_size			 + (v/out_block_size)*mm_cols;			// *write_spacing
 	uint	write_index_2								= u/block_size				 + (v/block_size)*mm_cols;
 																															//,  write_index +=write_spacing*mm_cols,  write_index_2 +=mm_cols
-		if(fmod((float)lid,32)<3 && (v/block_size)<4 && (u/block_size)<4){
-			printf("\n__kernel void  patch_img_grad, global_id_uint<4=%u,	read_index=%u,	(u,v)=(%u,%u), write_spacing=%u, write_index=%u, write_index_2=%u ", \
-			global_id_uint, read_index, u,v, write_spacing, write_index, write_index_2    );
-		}
+
+	float4	blue		= {1,0,0,1};
+	float4 	green		= {0,1,0,1};
+	float4	red			= {0,0,1,1};
+
+	float	lid_f		= (float)lid/(block_size*2);
+	float	gid_f		= (float)global_id_uint/((read_cols_*read_rows_)/block_size);
+	float4	tag4		= {1, lid_f, gid_f, 1 };
+
+// 		if(fmod((float)lid,32)<3 && (v/block_size)<4 && (u/block_size)<4){
+// 			printf("\n__kernel void  patch_img_grad, global_id_uint<4=%u,	read_index=%u,	(u,v)=(%u,%u), write_spacing=%u, write_index=%u, write_index_2=%u ", \
+// 			global_id_uint, read_index, u,v, write_spacing, write_index, write_index_2    );
+// 		}
 
 	int		lfoff										= -(u >1);															//-(read_column != 0);
 	int		rtoff										=  (u < read_cols_-2);												// (read_column < mm_cols-1);
 
 	float4 	Hessian_pvt_arr[block_size][6][6]			= {{{zero_f4}}};													// pvt variable for values in this column.
+
+	//float4 debug										= { global_id_uint, 1,1,1}; // lid_f/block_size, group_id, 1};
+	//uint old_read_index									= read_index;
+	//SE3_Hessian_map[old_read_index + 500*mm_cols]		= debug;
+	//SE3_Hessian_map[global_id_uint + 550*mm_cols]		= lookup_ref;
+
+	if(global_id_uint<4 || global_id_uint==mm_cols || (v==32 && u==0) ){printf("\n__kernel void compute_patch_lookup_table()	global_id_uint=%u,	u=%u,	v=%u,	read_index=%u",\
+		global_id_uint, u, v, read_index
+	);}
 
 	for (uint row_in_block=0; row_in_block<block_size; row_in_block++, v++,  read_index +=mm_cols){
 //		if(global_id_uint<4){printf("\n__kernel void  patch_img_grad, global_id_uint<4=%u,		read_index=%u,		row_in_block=%u ", global_id_uint, read_index,   row_in_block );
@@ -116,6 +134,7 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 			float8 SE3_grad_px							= {gx*SE3_px[0]  , gy*SE3_px[1] };									// NB float4 gx, gy => float8
 			SE3_grad_map[read_index + i* mm_pixels]		= SE3_grad_px ;
 			Jacobian[i]									= SE3_grad_px.lo + SE3_grad_px.hi;
+			Jacobian[i].w								= 1.0f;
 		}
 		for (uint i=0; i<6; i++) {
 			for (uint j=0; j<6; j++) {
@@ -137,7 +156,13 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	uint step;
 	uint SE3_out_step_1			= ( 4 + (read_rows_/block_size) )*mm_cols;
 	uint SE3_out_step_2			= SE3_out_step_1 * 6;
-	uint SE3_out_step_5			= 4+ (read_cols_/block_size);
+	uint SE3_out_step_3			= 4+ (read_cols_/block_size);
+
+	uint SE3_out_step_a			= ( 4 + (read_rows_/out_block_size) )*mm_cols;		// ( 4 + (read_rows_/block_size) )*mm_cols;
+	uint SE3_out_step_b			= SE3_out_step_a * 3;								// SE3_out_step_1 * 6;
+	uint SE3_out_step_c			= 4+ (read_cols_/out_block_size);					//4+ (read_cols_/block_size);
+
+	uint ST3_out_offset			= SE3_out_step_1 * (se3_dof + 1);
 
 
 	for ( step=1; step<block_size; step *=2){																																					// for each step size, (multiples of 2)
@@ -170,17 +195,20 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 		if (step==out_block_size/2){																																							// save ST3 map at out_block_size, to use for updating depth_map and rel_vel_map
 			uint frame_offset 		= write_index + past_frame_idx * 100 + 25 ;																													// NB 100 works for current img size . // stacks frame ST3 maps in adjacent collumns..
 			uint write_block_row	= 0;
-			uint SE3_out_step_3		= ( 4 + (read_rows_/block_size) )*mm_cols;
+			uint SE3_out_step_3		= 50;// ( 4 + (read_rows_/block_size) )*mm_cols;
 
-			if( fmod((float)lid,out_block_size) == 0 ){																																			// selects columns i.e. threads within the workgroup
-				for (uint block_row=0; block_row < block_size ; block_row += step*2, write_block_row++){
-																						uint offset_1 						= frame_offset		+ write_block_row*mm_cols	+ SE3_out_step_2;
-					for (uint i=3; i<se3_dof; i++) {																																			// select only ST3
-						for (uint j=0; j<6; j++) {
-																						offset_1 							+= (i-3)*SE3_out_step_3;
-																																																//uint offset_3 = block_row	+ i*block_size;	// NB read_rows_/out_block_size = writre_rows
-																						SE3_Hessian_map[	offset_1 ]		= Hessian_pvt_arr[	block_row ][i][j];
+			uint offset_1_1			= 0;
+
+				// && u==0
+			for (uint block_row=0; block_row < block_size ; block_row += step*2, write_block_row++){
+				for (uint i=0; i<3; i++) {																																						// select only ST3
+					for (uint j=0; j<3; j++) {
+																						offset_1_1 							= write_index		+ ST3_out_offset	+ i*SE3_out_step_a	+ j*SE3_out_step_c + write_block_row*mm_cols;
+																						//float4	debug						= {(float)(i)/3, (float)(j)/3, global_id_uint, 1 };
+						if( fmod((float)lid,out_block_size) == 0  ){																															// selects columns i.e. threads within the workgroup
+																						SE3_Hessian_map[	offset_1_1 ]	= Hessian_pvt_arr[	block_row ][i][j];  // debug;	//tag4; //
 						}
+						barrier(CLK_GLOBAL_MEM_FENCE );
 					}
 				}
 			}
@@ -188,19 +216,37 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	}
 	/// Save maximally reduced SE3 Hessian 32x32 patches for pose updates ////////////////////																									// Writes dense blocks. Reduces required transfer to host.
 	uint write_block_row			=  0;
+	uint frame_offset_1 			=  0;
+	uint offset_2					=  0;
+	uint block_row					=  0;
+
 	if( fmod((float)lid,block_size) == 0 ){																																						// selects columns i.e. threads within the workgroup
-		uint frame_offset_1 		=  write_index_2;																																			// stacks frame SE3 results vertically.
-		uint block_row				=  0;
-																						uint offset_2 						= frame_offset_1	+ write_block_row*mm_cols;
+																																									// frame_offset_1						=  write_index_2;																																			// stacks frame SE3 results vertically.
+																						//uint offset_2 						=  write_index_2; 						// frame_offset_1	+ write_block_row*mm_cols;
 		for (uint i=0; i<se3_dof; i++) {																																						// All 6 DoF of SE3
-			for (uint j=0; j<6; j++) {
-																						offset_2 							+= i*SE3_out_step_1	+ j*SE3_out_step_5;								//se3_dim*( 4 + (read_rows_/block_size) )*mm_cols;
+			for (uint j=0; j<se3_dof; j++) {
+																						offset_2 							= write_index_2		+ i*SE3_out_step_1	+ j*SE3_out_step_3;			//se3_dim*( 4 + (read_rows_/block_size) )*mm_cols;
 																																																//uint offset_4		= block_row			+ i*block_size;
 																						SE3_Hessian_map[	offset_2 ]		= Hessian_pvt_arr[	block_row ][i][j];
 			}
 		}
 	}
 
+	// debugging...
+	barrier(CLK_GLOBAL_MEM_FENCE );
+
+	//SE3_Hessian_map[old_read_index + 502*mm_cols]			= debug;
+
+	if( fmod((float)lid,block_size) == 0 ){
+		//SE3_Hessian_map[	frame_offset_1	+ 400/*write_block_row*mm_cols*/	]	= green;
+		//SE3_Hessian_map[	offset_2		+ 100						]	= blue; //tag4;
+		//SE3_Hessian_map[	write_index_2 	+ 200						]	= red;
+
+		printf("\n__kernel void  patch_img_grad, global_id_u=%u,	lid=%u,	read_index=%u,	step=%u,	SE3_out_step_1=%u,	SE3_out_step_2=%u,	SE3_out_step_5=%u,	offset_2=%u,	write_index_2=%u,	read_cols_=%u,	read_rows_=%u",\
+												 global_id_uint,	lid, 	read_index, 	step, 		SE3_out_step_1, 	SE3_out_step_2, 	SE3_out_step_3, 	offset_2,		write_index_2,		read_cols_,		read_rows_ );
+	}
+	//SE3_Hessian_map[	write_index_2 	+ 300						]	= red;
+	//barrier(CLK_GLOBAL_MEM_FENCE );
 }
 
 
