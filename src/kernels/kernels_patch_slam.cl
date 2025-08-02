@@ -46,31 +46,35 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 													// Needs 32 elem array of private mem per thread.
 	//Inputs:
 	__private	uint		layer,					//0
-	__private	uint		out_block_size,			//1
+	__private	uint		lookup_table_offset,	//1
+	__private	uint		out_block_size,			//2
 
-	__constant	uint8*		mipmap_params,			//2
-	__constant	uint*		uint_params,			//3
-	__constant 	float2*		SE3_map,				//4
+	__constant	uint8*		mipmap_params,			//3
+	__constant	uint*		uint_params,			//4
+	__constant 	float2*		SE3_map,				//5
 
-	__global 	float4*		lookup_table,			//5
-	__global 	float4*		img,					//6
+	__global 	float4*		lookup_table,			//6
+	__global 	float4*		img,					//7
 
 	//Outputs:
-	__global 	float8*		SE3_grad_map,			//7												// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
-	__global 	float4*		SE3_Hessian_map,		//8												// HSV (6x6) matrix so 36*float8
-	__local		float4*		local_Hessian,			//9												//	local_Hessian[ sizeof(float4) *6*6 *local_size]
+	__global 	float8*		SE3_grad_map,			//8												// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
+	__global 	float4*		SE3_Hessian_map,		//9												// HSV (6x6) matrix so 36*float8
+	__local		float4*		local_Hessian,			//10												//	local_Hessian[ sizeof(float4) *6*6 *local_size]
 
-	__global 	float8*		HSV_grad				//10
+	__global 	float8*		HSV_grad				//11
 ){
 	uint	global_id_uint								= get_global_id(0);
 	uint	lid											= get_local_id(0);
 	uint	group_id									= get_group_id(0);
 	const	uint local_size								= get_local_size(0);
 
-	float4	lookup_ref									= lookup_table[global_id_uint];
+	float4	lookup_ref									= lookup_table[global_id_uint + lookup_table_offset];
 	uint	read_index									= floor(lookup_ref.z);
 	uint	u											= lookup_ref.x;														// read_column
 	uint	v											= lookup_ref.y;														// read_row
+
+	float4	lookup_ref_layer							= lookup_table[lookup_table_offset];
+	uint	layer_offset								= floor(lookup_ref_layer.z);
 
 	uint8	mipmap_params_ 								= mipmap_params[layer];
 	uint	read_cols_									= mipmap_params_[MiM_READ_COLS];
@@ -79,18 +83,13 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	uint	mm_cols										= uint_params[MM_COLS];
 	uint	mm_pixels									= uint_params[MM_PIXELS];
 
-	uint	write_spacing								= block_size/out_block_size;
-	uint	write_index									= u/out_block_size			 + (v/out_block_size)*mm_cols;			// *write_spacing
-	uint	write_index_2								= u/block_size				 + (v/block_size)*mm_cols;
-																															//,  write_index +=write_spacing*mm_cols,  write_index_2 +=mm_cols
-
 	float4	blue		= {1,0,0,1};
 	float4 	green		= {0,1,0,1};
 	float4	red			= {0,0,1,1};
 
-	float	lid_f		= (float)lid/(block_size*2);
-	float	gid_f		= (float)global_id_uint/((read_cols_*read_rows_)/block_size);
-	float4	tag4		= {1, lid_f, gid_f, 1 };
+// 	float	lid_f		= (float)lid/(block_size*2);
+// 	float	gid_f		= (float)global_id_uint/((read_cols_*read_rows_)/block_size);
+// 	float4	tag4		= {1, lid_f, gid_f, 1 };
 
 // 		if(fmod((float)lid,32)<3 && (v/block_size)<4 && (u/block_size)<4){
 // 			printf("\n__kernel void  patch_img_grad, global_id_uint<4=%u,	read_index=%u,	(u,v)=(%u,%u), write_spacing=%u, write_index=%u, write_index_2=%u ", \
@@ -136,9 +135,17 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 			Jacobian[i]									= SE3_grad_px.lo + SE3_grad_px.hi;
 			Jacobian[i].w								= 1.0f;
 		}
+		// pseudo inverse of Gauss-Newton approximation H = J^T * J.  NB (1) Det=0 -> non-invertible, (2) this method is NOT valid for Moore-Penrose pseudo inverse of general nxn matricies.
+		float4 denom = zero_f4;
+		for (uint i=0; i<6; i++){ denom += Jacobian[i] * Jacobian[i]; }
+		denom		*= denom;
+		if ( isnormal(denom.x) ){ denom.x = 1/denom.x; } else { denom.x = 0; }	// prevent div by zero error
+		if ( isnormal(denom.y) ){ denom.y = 1/denom.y; } else { denom.y = 0; }
+		if ( isnormal(denom.z) ){ denom.z = 1/denom.z; } else { denom.z = 0; }
+
 		for (uint i=0; i<6; i++) {
 			for (uint j=0; j<6; j++) {
-				Hessian_pvt_arr[row_in_block][i][j]		= Jacobian[i] * Jacobian[j];
+				Hessian_pvt_arr[row_in_block][i][j]		= denom * Jacobian[i] * Jacobian[j];								// Moore-Penrose pseudo inverse of H = J^T * J.
 			}
 		}
 		float H 										= img[read_index][0] * 2*M_PI_F;
@@ -158,12 +165,17 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	uint SE3_out_step_2			= SE3_out_step_1 * 6;
 	uint SE3_out_step_3			= 4+ (read_cols_/block_size);
 
-	uint SE3_out_step_a			= ( 4 + (read_rows_/out_block_size) )*mm_cols;		// ( 4 + (read_rows_/block_size) )*mm_cols;
-	uint SE3_out_step_b			= SE3_out_step_a * 3;								// SE3_out_step_1 * 6;
-	uint SE3_out_step_c			= 4+ (read_cols_/out_block_size);					//4+ (read_cols_/block_size);
+	uint ST3_out_step_a			= ( 8/*4*/ + (read_rows_/out_block_size) )*mm_cols;		// ( 4 + (read_rows_/block_size) )*mm_cols;
+	uint ST3_out_step_b			= ST3_out_step_a * 3;								// SE3_out_step_1 * 6;
+	uint ST3_out_step_c			= 4+ (read_cols_/out_block_size);					//4+ (read_cols_/block_size);
 
-	uint ST3_out_offset			= SE3_out_step_1 * (se3_dof + 1);
+	uint SE3_offset				= layer_offset/mm_cols;
+	uint ST3_out_offset			= SE3_out_step_1 * (se3_dof + 1);// + layer_offset;
 
+	uint	write_spacing								= block_size/out_block_size;
+	uint	write_index									= u/out_block_size			 + (v/out_block_size)*mm_cols	+ ST3_out_offset	;			// *write_spacing
+	uint	write_index_2								= u/block_size				 + (v/block_size)*mm_cols		+ SE3_offset;
+																															//,  write_index +=write_spacing*mm_cols,  write_index_2 +=mm_cols
 
 	for ( step=1; step<block_size; step *=2){																																					// for each step size, (multiples of 2)
 		for (uint block_row=0; block_row<block_size ; block_row += step){																														// step through rows in column
@@ -203,10 +215,10 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 			for (uint block_row=0; block_row < block_size ; block_row += step*2, write_block_row++){
 				for (uint i=0; i<3; i++) {																																						// select only ST3
 					for (uint j=0; j<3; j++) {
-																						offset_1_1 							= write_index		+ ST3_out_offset	+ i*SE3_out_step_a	+ j*SE3_out_step_c + write_block_row*mm_cols;
-																						//float4	debug						= {(float)(i)/3, (float)(j)/3, global_id_uint, 1 };
+																						offset_1_1 							= write_index		+ i*ST3_out_step_a	+ j*ST3_out_step_c + write_block_row*mm_cols;
+																						float4	debug						= {(float)(i)/3, (float)(j)/3, global_id_uint, 1 };
 						if( fmod((float)lid,out_block_size) == 0  ){																															// selects columns i.e. threads within the workgroup
-																						SE3_Hessian_map[	offset_1_1 ]	= Hessian_pvt_arr[	block_row ][i][j];  // debug;	//tag4; //
+																						SE3_Hessian_map[	offset_1_1 ]	= Hessian_pvt_arr[	block_row ][i][j] / Hessian_pvt_arr[	block_row ][i][j].w;  // debug;	//tag4; //
 						}
 						barrier(CLK_GLOBAL_MEM_FENCE );
 					}
@@ -227,7 +239,11 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 			for (uint j=0; j<se3_dof; j++) {
 																						offset_2 							= write_index_2		+ i*SE3_out_step_1	+ j*SE3_out_step_3;			//se3_dim*( 4 + (read_rows_/block_size) )*mm_cols;
 																																																//uint offset_4		= block_row			+ i*block_size;
-																						SE3_Hessian_map[	offset_2 ]		= Hessian_pvt_arr[	block_row ][i][j];
+																						float4 debug = {(float)lid, global_id_uint, group_id, 1.0f};
+
+																						SE3_Hessian_map[	offset_2 ]		= Hessian_pvt_arr[	block_row ][i][j] / Hessian_pvt_arr[	block_row ][i][j].w;
+
+																						SE3_Hessian_map[read_index]			= debug;
 			}
 		}
 	}
@@ -250,18 +266,149 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 }
 
 
-__kernel void  patch_global_hessian_reduce(
+__kernel void  patch_global_hessian_reduce(					// launch 3work groups of 64, -> do all layers ?
+	//Inputs:
+	__private	uint		layer,							//0
+	__private	uint		out_block_size,					//1
+
+	__constant	uint8*		mipmap_params,					//2
+	__constant	uint*		uint_params,					//3
+	__constant 	float2*		SE3_map,						//4
+
+	__global 	float4*		global_Hessian_lookup_table,	//5
+
+	//Outputs:
+	__global 	float4*		SE3_Hessian_map					//6
+){
+	uint	global_id_uint								= get_global_id(0);
+	uint	lid											= get_local_id(0);
+	uint	group_id									= get_group_id(0);
+	const	uint local_size								= get_local_size(0);
+
+// 	float4	lookup_ref									= lookup_table[global_id_uint * block_size];
+//
+// 	float4  pvt_hessian[block_size];
+//
+// 	for (uint row=0; row<  ; row++){
+// 		 pvt_hessian[row]	= SE3_Hessian_map[read_index + row*mm_cols];
+//
+// 	}
+
+}
+
+__kernel void  compute_SO3_Hessian_lookup_table(
 
 ){
+
 
 }
 
 
-__kernel void  patch_Gauss_Jordan_elimination( // invert hessians for (1) ST3+rot (4x4) depth and rel_vel_map,  (2) SO3 (6x6) global camera  (3) camera intrinsic matrix (4) lens distortion
+// 	// Sample ST3
+// 	float4 ST3[3][6]	= {{0}};
+// 	ST3[0][3]			= 1;
+// 	ST3[1][4]			= 1;
+// 	ST3[2][5]			= 1;
 
+/*  // NB  Gauss-Newton approx  H = J.T * J  has det=0, so is NOT invertible. Must use H.pinv()
+
+void Gauss_Jordan_elimination_3x3( // invert hessians for (1) ST3+rot (4x4) depth and rel_vel_map,  (2) SO3 (6x6) global camera  (3) camera intrinsic matrix (4) lens distortion
+	float ST3[3][6],
+	bool symmetrical[3]
 ){
+														uint row_list[3]	= {0,1,2};
+	for (uint i=0; i<3; i++)								symmetrical[i]	= false;
+	for (uint i=0; i<3; i++){
+															uint row 		= row_list[i];
+		for (uint j = i+1; j<3; j++){																// select the row with the largest value on the diagonal.
+			if ( fabs(ST3[row][row]) < fabs(ST3[row_list[j]][row_list[j]] ) ) {
+															uint temp 		= row_list[j];
+															row_list[j] 	= row_list[i];
+															row_list[i]		= temp;
+			};
+		}
+		if ( !isnormal(ST3[row][row]) ) 			symmetrical[row] 		= true;					// can't fit wrt parameter where the image is symmetrical
 
+		for (uint row_j = i+1; row_j<3; row_j++){
+													float multiplier 		=  ST3[row_list[row_j]][i] / ST3[row][i];
+			for (uint k = i; k<3  ; k++){
+													ST3[row_list[row_j]][k]	-=  multiplier * ST3[row][k];
+			}
+		}
+	}
 }
+
+void Gauss_Jordan_elimination_6x6( // invert hessians for (1) ST3+rot (4x4) depth and rel_vel_map,  (2) SO3 (6x6) global camera  (3) camera intrinsic matrix (4) lens distortion
+	float ST3[6][12],
+	bool symmetrical[6]
+){
+									uint stop				= 6;
+									uint row_list[6]		=  {0,1,2,3,4,5};
+	for (uint i=0; i<6; i++){													// NB given the Gauss-Newton approximation:  H = J^t * J,  the expected cause of non-invertible H is 0 values in J.
+										stop--;
+										symmetrical[i]		=  false;			// This causes 0 val col & row for the affected parameter.
+		if (ST3[0][i]==0){														// Solution: move 0 val rows to the bottom of the row_list -> sub-H of the non-zero rows & cols.
+										symmetrical[i]		=  true;			// NB Must use row_list for accessing both rows and cols
+
+			for (uint j=i; j<5; j++){											// symmetrical[] records which params have J[param]=0, ie the image is smmetrical wrt that parameter.
+										row_list[j] 		= row_list[j+1];
+			}
+										row_list[5] 		= i;
+		}
+	}
+
+	for (uint i=0; i<stop ; i++){
+													uint row 							=  row_list[i];
+
+// 		for (uint j = i+1; j<6; j++){																// select the row with the largest value on the diagonal.
+// 			if ( fabs(ST3[row][row]) < fabs(ST3[row_list[j]][row_list[j]] ) ) {
+// 															uint temp 		= row_list[j];
+// 															row_list[j] 	= row_list[i];
+// 															row_list[i]		= temp;
+// 			};
+// 		}
+// 		if ( !isnormal(ST3[row][row]) ) 			symmetrical[row] 		= true;					// can't fit wrt parameter where the image is symmetrical
+
+		for (uint row_j = i+1; row_j<stop; row_j++){
+													float multiplier 					=  ST3[row_list[row_j]][row] / ST3[row][row];
+			for (uint k = i; k<stop  ; k++){
+													ST3[row_list[row_j]][row_list[k]]	-=  multiplier * ST3[row][row_list[k]];
+			}
+		}
+	}
+}
+*/
+
+void GN_Hessian_pseudo_inv_3x3( float J[3], float H_pinv[9]			// NB only valid for Real valued H = J^T * J,  NB Not for a sum of multiple Hessians.
+){
+	float denom = J[0]*J[0] + J[1]*J[1] + J[2]*J[2];
+	denom		*= denom;
+
+	if ( isnormal(denom) ){ denom = 1/denom; } else { denom = 0; }	// prevent div by zero error
+
+	for (uint i=0; i<3; i++){
+		for (uint j=0; j<3; j++){
+			H_pinv[i*3 + j] 	= denom * J[i] * J[j];
+		}
+	}
+}
+
+
+void GN_Hessian_pseudo_inv_6x6( float J[6], float H_pinv[36]		// NB only valid for Real valued H = J^T * J,  NB Not for a sum of multiple Hessians.
+){
+	float denom = 0;
+	for (uint i=0; i<6; i++){ denom += J[i]*J[i]; }
+	denom		*= denom;
+
+	if ( isnormal(denom) ){ denom = 1/denom; } else { denom = 0; }	// prevent div by zero error
+
+	for (uint i=0; i<6; i++){
+		for (uint j=0; j<6; j++){
+			H_pinv[i*6 + j] 	= denom * J[i] * J[j];
+		}
+	}
+}
+
 
 
 __kernel void  patch_Inverse_Compositional_update(  // (1) for depth & rel_vel_map,  (2) SO3 camera pose,  (3) camera intrinsic matrix (4) lens distortion

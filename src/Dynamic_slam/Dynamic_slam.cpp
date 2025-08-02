@@ -233,8 +233,10 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 	runcl.sample_image_variance();
 	runcl.img_gradients();
 
-	runcl.patch_img_gradients( 0/*0*/, 4 ); //  uint layer, uint out_block_size.  NB (0, 4) are the largest sizes that will fit in the buffer.
-										// Will need to decide which layers and ST3 patch sizes to compute Hessians for, then store them in a buffer on the GPU.
+	//runcl.patch_img_gradients( 0/*0*/, 4 ); //  uint layer, uint out_block_size.  NB (0, 4) are the largest sizes that will fit in the buffer.
+	runcl.patch_img_gradients( 0, 4 );
+
+	// Will need to decide which layers and ST3 patch sizes to compute Hessians for, then store them in a buffer on the GPU.
 																																			// # Get 1st & 2nd order image gradients of MipMap
 																																			// see CostVol::cacheGValues(), RunCL::cacheGValue2 & __kernel void CacheG3
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::getFrame_chk 1  Finished "

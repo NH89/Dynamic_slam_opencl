@@ -242,17 +242,17 @@ void RunCL::patch_img_gradients_set_params(  ){	// to use patch lookup table
 //	_clSetKernelArg( kernel,	0, sizeof(int), 		&layer,							fname );								// __private	uint		layer,					//0
 //	_clSetKernelArg( kernel,	1, sizeof(int), 		&out_block_size,				fname );								// __private	uint		out_block_size,			//1
 	//__constant
-	_clSetKernelArg( kernel,	2, sizeof( cl_mem), 	&mipmap_buf,					fname);									// __constant	uint8*		mipmap_params,			//2
-	_clSetKernelArg( kernel,	3, sizeof( cl_mem), 	&uint_param_buf,				fname);									// __constant	uint*		uint_params,			//3
-	_clSetKernelArg( kernel,	4, sizeof( cl_mem), 	&SE3_map_mem,					fname);									// __constant 	float2*		SE3_map,				//4
+	_clSetKernelArg( kernel,	3, sizeof( cl_mem), 	&mipmap_buf,					fname);									// __constant	uint8*		mipmap_params,			//2
+	_clSetKernelArg( kernel,	4, sizeof( cl_mem), 	&uint_param_buf,				fname);									// __constant	uint*		uint_params,			//3
+	_clSetKernelArg( kernel,	5, sizeof( cl_mem), 	&SE3_map_mem,					fname);									// __constant 	float2*		SE3_map,				//4
 	//__global
-	_clSetKernelArg( kernel,	5, sizeof( cl_mem), 	&patch_lookup_table_buf,		fname);									// __global 	float4*		lookup_table,			//5
-//	_clSetKernelArg( kernel,	6, sizeof( cl_mem), 	&imgmem_,						fname);									// __global 	float4*		img,					//6
+	_clSetKernelArg( kernel,	6, sizeof( cl_mem), 	&patch_lookup_table_buf,		fname);									// __global 	float4*		lookup_table,			//5
+//	_clSetKernelArg( kernel,	7, sizeof( cl_mem), 	&imgmem_,						fname);									// __global 	float4*		img,					//6
 	//Outputs:
 	//__global
-	_clSetKernelArg( kernel,	7, sizeof( cl_mem), 	&SE3_grad_map_mem,				fname);									// __global 	float8*		SE3_grad_map,			//7		// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
-	_clSetKernelArg( kernel,	8, sizeof( cl_mem), 	&SE3_hessian_map_mem,			fname);									// __global 	float4*		SE3_Hessian_map,		//8		// HSV (6x6) matrix so 36*float8
-	_clSetKernelArg( kernel,	10,sizeof( cl_mem), 	&HSV_grad_mem,					fname);									// __global 	float8*		HSV_grad				//10
+	_clSetKernelArg( kernel,	8, sizeof( cl_mem), 	&SE3_grad_map_mem,				fname);									// __global 	float8*		SE3_grad_map,			//7		// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
+	_clSetKernelArg( kernel,	9, sizeof( cl_mem), 	&SE3_hessian_map_mem,			fname);									// __global 	float4*		SE3_Hessian_map,		//8		// HSV (6x6) matrix so 36*float8
+	_clSetKernelArg( kernel,	11,sizeof( cl_mem), 	&HSV_grad_mem,					fname);									// __global 	float8*		HSV_grad				//10
 	/* //Debugging kernel arg setting
 	// size_t		param_value_size		= 0;
 	// char		param_value[32]			= {' '};
@@ -274,16 +274,18 @@ void RunCL::patch_img_gradients_set_params(  ){	// to use patch lookup table
 void RunCL::patch_img_gradients( uint layer, uint out_block_size ){
 	string fname = "RunCL::patch_img_gradients()";
 	int local_verbosity_threshold = V_RUNCL_PATCH_IMG_GRADIENTS;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_chk1 #############################################################"<<flush;}
-	cl_kernel		kernel				= patch_img_grad_kernel;
-	const cl_mem 	imgmem_				= current_frames[ 						current_frames_idx[0] ].img_buf;
-	size_t			local_work_size_	= patch_img_gradients_workgroup_size[	layer];											// patch_local_work_size[	layer];							//patch_img_gradients_workgroup_size; // patch_img_gradients_local_work_size_;
-	size_t			threads_to_launch	= patch_num_threads[					layer];
-	size_t			local_Hessian_size	= sizeof(cl_float4)						*num_SE3_DoF *num_SE3_DoF	*local_work_size_;	//*patch_img_gradients_workgroup_size;
+	cl_kernel		kernel						= patch_img_grad_kernel;
+	const cl_mem 	imgmem_						= current_frames[ 						current_frames_idx[0] ].img_buf;
+	size_t			local_work_size_			= patch_img_gradients_workgroup_size[	layer];											// patch_local_work_size[	layer];							//patch_img_gradients_workgroup_size; // patch_img_gradients_local_work_size_;
+	size_t			threads_to_launch			= patch_num_threads[					layer];
+	size_t			local_Hessian_size			= sizeof(cl_float4)						*num_SE3_DoF *num_SE3_DoF	*local_work_size_;	//*patch_img_gradients_workgroup_size;
+	uint			lookup_table_offset_uint 	= patch_lookup_table_offset[			layer];
 
 	_clSetKernelArg( kernel,	0, sizeof(int),			&layer,							fname);									// __private	uint		layer,					//0
-	_clSetKernelArg( kernel,	1, sizeof(int),			&out_block_size,				fname);									// __private	uint		out_block_size,			//1
-	_clSetKernelArg( kernel,	6, sizeof( cl_mem),		&imgmem_,						fname);									// __global 	float4*		img,					//6		//	"current_frames[idx].img_buf	= imgmem[idx];", NB changes every new frame.
-	_clSetKernelArg( kernel,	9, local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,			//9		// local_Hessian[ sizeof(float4) *6*6 *local_size]
+	_clSetKernelArg( kernel,	1, sizeof(int),			&lookup_table_offset_uint,		fname);									// __private	uint		lookup_table_offset_uint,			//1
+	_clSetKernelArg( kernel,	2, sizeof(int),			&out_block_size,				fname);									// __private	uint		out_block_size,			//1
+	_clSetKernelArg( kernel,	7, sizeof( cl_mem),		&imgmem_,						fname);									// __global 	float4*		img,					//6		//	"current_frames[idx].img_buf	= imgmem[idx];", NB changes every new frame.
+	_clSetKernelArg( kernel,	10, local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,			//9		// local_Hessian[ sizeof(float4) *6*6 *local_size]
 
 	/* // Debugging kernel arg setting
 	// size_t		param_value_size		= 0;
@@ -330,7 +332,7 @@ void RunCL::patch_img_gradients( uint layer, uint out_block_size ){
 																																	bool show 		= false;
 																																	bool old_tiff 	= tiff;
 																																	tiff 			= true;
-																																	float max_range	= -1;
+																																	float max_range	= 1;
 																																	cv::Mat bufImg;
 																																	_cl_flush_finish(m_queue, fname);
 																																	//DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show);
