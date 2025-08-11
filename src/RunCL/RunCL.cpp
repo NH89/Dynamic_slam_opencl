@@ -326,6 +326,7 @@ void RunCL::createKernels(){
 
 	compute_patch_lookup_table_kernel	= clCreateKernel(m_program, "compute_patch_lookup_table",	&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'compute_patch_lookup_table'  kernel not built.\n"	<<flush; exit_(0);   }
 	patch_img_grad_kernel				= clCreateKernel(m_program, "patch_img_grad",				&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'patch_img_grad'  kernel not built.\n"				<<flush; exit_(0);   }
+	patch_hessian_reduce_kernel			= clCreateKernel(m_program, "patch_hessian_reduce",			&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'patch_hessian_reduce'  kernel not built.\n"			<<flush; exit_(0);   }
 
 }
 
@@ -1166,6 +1167,8 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 
 	status = clReleaseKernel(compute_patch_lookup_table_kernel);	if (status != CL_SUCCESS)	{ cout << "\ncompute_patch_lookup_table_kernel	status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(patch_img_grad_kernel);				if (status != CL_SUCCESS)	{ cout << "\npatch_img_grad_kernel				status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(patch_hessian_reduce_kernel);			if (status != CL_SUCCESS)	{ cout << "\npatch_hessian_reduce_kernel		status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+
 
 
 

@@ -60,7 +60,7 @@ void RunCL::rho_sq(uint out_block_size, uint iter, uint layer, float delta_theta
 	string fname					= "RunCL::rho_sq( ..)";
 	int local_verbosity_threshold	= V_RUNCL_RHO_SQ;
 	cl_kernel	kernel 				= rho_sq_kernel;
-	const int se3_dof				= 6;
+	//const int se3_dof				= 6;
 	cl_float2	delta_SE3			= {{delta_theta, delta}};
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk0 .##################################################################"<<flush;
 																																				cout << "\nRunCL::rho_sq( ..)__chk_1: K2K= ";
@@ -71,8 +71,8 @@ void RunCL::rho_sq(uint out_block_size, uint iter, uint layer, float delta_theta
 																									if (fmod(device_work_size_multiple, patch_size)!=0)   { cout <<"\nRunCL::rho_sq( ..)  Error: fmod(device_work_size_multiple, patch_size) != 0 \n"<<flush;exit_(0);}
 	const float zero  = 0;
 	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, 	&zero, sizeof( float), 0, 		  2*mm_size_bytes_C1, 	fname);					//_clEnqueueWriteBuffer( uload_queue, k2kbuf, CL_FALSE, 0, local_num_samples*16*sizeof( float), k2k_3_16_[start_sample_idx], fname);
-	_clEnqueueFillBuffer( uload_queue, SE3_weight_map_mem, 	&zero, sizeof( float), 0, se3_dof*2*mm_size_bytes_C1, 	fname);
-	_clEnqueueFillBuffer( uload_queue, SE3_incr_map_mem, 	&zero, sizeof( float), 0, se3_dof*2*mm_size_bytes_C1, 	fname);
+	_clEnqueueFillBuffer( uload_queue, SE3_weight_map_mem, 	&zero, sizeof( float), 0, num_SE3_DoF*2*mm_size_bytes_C1, 	fname);
+	_clEnqueueFillBuffer( uload_queue, SE3_incr_map_mem, 	&zero, sizeof( float), 0, num_SE3_DoF*2*mm_size_bytes_C1, 	fname);
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_3 "<<flush;}
 	size_t kernel_workgroup_size;
 	cl_int k_wg_info =  clGetKernelWorkGroupInfo(
@@ -177,7 +177,7 @@ void RunCL::rho_sq(uint out_block_size, uint iter, uint layer, float delta_theta
 	_clSetKernelArg( kernel,22, sizeof( cl_float2)*local_work_size,			NULL, 													fname);		//__local		float2*		local_rho				//21	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
 
 	_clSetKernelArg( kernel,23, sizeof( cl_mem), 							&SE3_incr_map_mem,										fname);		//__global 		float4*		SE3_incr_map_,			//24
-	_clSetKernelArg( kernel,24, sizeof( cl_float2)*local_work_size*se3_dof,	NULL,													fname);		//__local 		float4*		local_SE3_incr			//25
+	_clSetKernelArg( kernel,24, sizeof( cl_float2)*local_work_size*num_SE3_DoF,	NULL,													fname);		//__local 		float4*		local_SE3_incr			//25
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_6 .  "<<flush;}
 
 	cl_command_queue 	queue_to_call		= m_queue;

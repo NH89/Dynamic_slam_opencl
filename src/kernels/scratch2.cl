@@ -18,7 +18,7 @@ __kernel void Rho_sq(
 	__local		float2*		local_SE3_incr			//25
 ){
 	const uint block_size	= 32;					// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
-	const uint se3_dof		= 6;
+	//const uint num_SE3_DoF		= 6;
 	uint  global_id_u 		= get_global_id(0);
 	uint  lid 				= get_local_id(0);
 	uint  group_id			= get_group_id(0);
@@ -39,8 +39,8 @@ __kernel void Rho_sq(
 	uint write_index_2 		= row_col/block_size + block_row*mm_cols; 							//fmod((float)global_id_u, blocks_cols * out_block_size)	+ (global_id_u / (uint)(blocks_cols * out_block_size)) * out_block_size;;
 
 	float2 rho[block_size]				= {0.0f};												// pvt variable for values in this column.
-	float2 weights[block_size*se3_dof]	= {0.0f};												// pvt variable for values in this column.
-	float2 SE3_incr[block_size*se3_dof]	= {0.0f};												// pvt variable for values in this column.
+	float2 weights[block_size*num_SE3_DoF]	= {0.0f};												// pvt variable for values in this column.
+	float2 SE3_incr[block_size*num_SE3_DoF]	= {0.0f};												// pvt variable for values in this column.
 
 	bool intersection;
 	uint step;
@@ -49,14 +49,14 @@ __kernel void Rho_sq(
 		for (uint block_row=0; block_row<block_size ; block_row += step){																														// step through rows in column
 			if (fmod((float)lid,step/2)==0) {																																					// selects threads separated by 1/2 step, i.e results of previous iteration of patch reduction.
 																						rho[	  block_row ]							+= rho[		 block_row + step/2 ];						// sum pair of values in col,
-				for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
+				for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
 																						SE3_incr[ block_row + se3_dim*block_size ]		+= SE3_incr[ block_row + step/2 + se3_dim*block_size ];
 																						weights[  block_row + se3_dim*block_size ]		+= weights[  block_row + step/2 + se3_dim*block_size ];
 				}
 			}
 			if( !(fmod((float)lid,step)==0) &&  (fmod((float)lid,step/2)==0)    ){																												// selects 2nd column, sends data
 																						local_rho[		lid/step ] 						= rho[		 block_row];
-				for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
+				for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
 																						local_SE3_incr[ lid/step + se3_dim*local_size ]	= SE3_incr[  block_row + se3_dim*block_size ];			// NB integer division. Hence both threads use the same index to local memory.
 																						local_weights[  lid/step + se3_dim*local_size ]	= weights[   block_row + se3_dim*block_size ];
 				}
@@ -64,7 +64,7 @@ __kernel void Rho_sq(
 			barrier(CLK_LOCAL_MEM_FENCE );																																						// Using barrier as a semaphore, for local mem messages between threads.
 			if( (fmod((float)lid,step)==0)  ){																																					// selects 1st column, adds data. Sum of patch now held in top left element of patch.
 																						rho[block_row] 									+= local_rho[ lid/step ];
-				for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
+				for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
 																						SE3_incr[  block_row + se3_dim*block_size ]		+= local_SE3_incr[ lid/step + se3_dim*local_size ];
 																						weights[   block_row + se3_dim*block_size ]		+= local_weights[  lid/step + se3_dim*local_size ];
 				}
@@ -84,7 +84,7 @@ __kernel void Rho_sq(
 		for (uint block_row=0; block_row < block_size ; block_row += step, write_block_row++){
 																						uint offset_2 				= frame_offset_1 + write_block_row*mm_cols;
 																						Rho_[			offset_2  ]	= rho[		 block_row ];
-			for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {																																	// All 6 DoF of SE3
+			for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {																																	// All 6 DoF of SE3
 																						uint offset_3 				= offset_2 		+ se3_dim*( 4 + (read_rows_/block_size) )*mm_cols;
 																						uint offset_4				= block_row 	+ se3_dim*block_size;
 																						SE3_incr_map_[	offset_3 ]	= SE3_incr[  offset_4 ];
@@ -106,7 +106,7 @@ __kernel void Rho_sq(
 		step = block_size/2;
 
 		for (uint block_row=0; block_row < block_size ; block_row += step, write_block_row++){  // will repeat twice
-			for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
+			for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
 				uint offset_3		= (frame_offset_1  + write_block_row*mm_cols) 		+ se3_dim*( 4 + (read_rows_/block_size) )*mm_cols;
 			}
 		}
@@ -205,9 +205,9 @@ void test_fn(
 	__global	float2*		SE3_incr_map_,			//24
 	__local		float2*		local_SE3_incr			//25
 ){
-	const uint block_size		= 32;						// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
-	const uint se3_dof			= 6;
-	const uint num_past_frames	= 4;						// 1,2,4,8,16,32,64 // variable select window of 4 frames.
+	//const uint block_size		= 32;						// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
+	//const uint num_SE3_DoF			= 6;
+	//const uint num_past_frames	= 4;						// 1,2,4,8,16,32,64 // variable select window of 4 frames.
 	const float4 zero_f4		= {0.0f,0.0f,0.0f,0.0f};
 	const float2 zero_f2		= {0.0f,0.0f};
 
@@ -247,11 +247,11 @@ void test_fn(
 	float4 rho_pvt_flt4							= zero_f4;
 	float2 rho_pvt_flt2							= zero_f2;
 
-	float2 grad_pvt_arr[block_size*se3_dof]		= {zero_f2};									// pvt variable for values in this column.
+	float2 grad_pvt_arr[block_size*num_SE3_DoF]		= {zero_f2};									// pvt variable for values in this column.
 	float4 grad_pvt_flt4						= zero_f4;
 	float2 grad_pvt_flt2						= zero_f2;
 
-	float2 SE3_incr_pvt_arr[block_size*se3_dof]	= {zero_f2};									// pvt variable for values in this column.
+	float2 SE3_incr_pvt_arr[block_size*num_SE3_DoF]	= {zero_f2};									// pvt variable for values in this column.
 	float4 SE3_incr_pvt_flt4					= zero_f4;
 	float2 SE3_incr_pvt_flt2					= zero_f2;
 
@@ -268,14 +268,14 @@ void test_fn(
 		for (uint block_row=0; block_row<block_size ; block_row += step){																														// step through rows in column
 			barrier(CLK_LOCAL_MEM_FENCE );
 																						rho_pvt_arr[		block_row ]							+=rho_pvt_arr[		block_row + step ];			// sum pair of values in col,
-			for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
+			for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
 																						SE3_incr_pvt_arr[	block_row + se3_dim*block_size ]	+=SE3_incr_pvt_arr[	block_row + step + se3_dim*block_size ];
 			}
 			barrier(CLK_LOCAL_MEM_FENCE );
 
 			if( !(fmod((float)lid,(step*2))==0) &&  (fmod((float)lid,step)==0)    ){																											// selects 2nd column, sends data
 																						local_rho[			lid-step ]							= rho_pvt_arr[		block_row];
-				for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {																																// NB integer division. Hence both threads use the same index to local memory.
+				for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {																																// NB integer division. Hence both threads use the same index to local memory.
 																						local_SE3_incr[		lid-step + se3_dim*local_size ]		= SE3_incr_pvt_arr[	block_row + se3_dim*block_size ];
 				}
 			}
@@ -283,7 +283,7 @@ void test_fn(
 
 			if( (fmod((float)lid,(step*2))==0)  ){																																				// selects 1st column, adds data. Sum of patch now held in top left element of patch.
 																						rho_pvt_arr[		block_row] 							+= local_rho[		lid ];
-				for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
+				for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
 																						SE3_incr_pvt_arr[	block_row + se3_dim*block_size ]	+= local_SE3_incr[	lid		 + se3_dim*local_size ];
 				}
 			}
@@ -296,7 +296,7 @@ void test_fn(
 				for (uint block_row=0; block_row < block_size ; block_row += step*2, write_block_row++){
 																						uint offset_1 				= frame_offset		+ write_block_row*mm_cols;
 																						Rho_[			offset_1]	= rho_pvt_arr[		block_row ];
-					for (uint se3_dim=3; se3_dim<se3_dof; se3_dim++) {																															// select only ST3
+					for (uint se3_dim=3; se3_dim<num_SE3_DoF; se3_dim++) {																															// select only ST3
 																						uint offset_2 				= offset_1			+ (se3_dim-3)*( 4+ (read_rows_/out_block_size) )*mm_cols;
 																						uint offset_3 				= block_row			+ se3_dim*block_size;									// NB read_rows_/out_block_size = writre_rows
 																						SE3_incr_map_[	offset_2 ]	= SE3_incr_pvt_arr[	offset_3 ];
@@ -420,4 +420,105 @@ void test_fn(
 // 										old_results[SE3 + RHO]				= rho;
 // 										old_results[SE3 + RESULT]			= result;
 // 										old_results[SE3 + MAG_S3]			= mag_S3;
+
+
+
+
+void test_fn2(
+	__private	uint		layer,					//0
+	__private	uint		lookup_table_offset,	//1
+
+	__constant	uint8*		mipmap_params,			//3
+	__constant	uint*		uint_params,			//4
+
+	__global 	float4*		lookup_table,			//6
+	__global 	float4*		SE3_Hessian_map			//9
+){
+	uint	global_id_uint		= get_global_id(0);
+	uint	lid					= get_local_id(0);
+
+	uint8	mipmap_params_		= mipmap_params[layer];
+	uint	read_cols_			= mipmap_params_[MiM_READ_COLS];
+	uint	read_rows_			= mipmap_params_[MiM_READ_ROWS];
+
+	uint	mm_cols				= uint_params[MM_COLS];
+
+	float4	lookup_ref_layer	= lookup_table[  lookup_table_offset];
+	uint	layer_offset		= floor(lookup_ref_layer.z);
+
+
+	float4	lookup_ref			= lookup_table[global_id_uint + lookup_table_offset];
+	uint	u					= lookup_ref.x;														// read_column
+	uint	v					= lookup_ref.y;														// read_row
+
+	uint SE3_out_step_1			= ( 4 + (read_rows_/block_size) )*mm_cols;
+	uint SE3_out_step_3			=   4 + (read_cols_/block_size);
+
+
+	uint 	SE3_offset			= layer_offset/mm_cols;
+	uint	write_index_2		= u/block_size	 + (v/block_size)*mm_cols	+ SE3_offset;
+
+	uint 	write_block_row		=  0;
+	uint 	frame_offset_1 		=  0;
+	uint 	offset_2			=  0;
+	uint 	block_row			=  0;
+
+	float4 	Hessian_pvt_arr[block_size][6][6]			= {{{zero_f4}}};																											// pvt variable for values in this column.
+
+	if( fmod((float)lid, block_size) == 0 ){																																		// selects columns i.e. threads within the workgroup
+		for (  uint i=0; i<num_SE3_DoF; i++) {																																			// All 6 DoF of SE3
+			for (  uint j=0; j<num_SE3_DoF; j++) {
+													offset_2 							= write_index_2		+ i*SE3_out_step_1		+ j*SE3_out_step_3;
+
+													SE3_Hessian_map[	offset_2 ]		= Hessian_pvt_arr[ block_row ][i][j] 	/   Hessian_pvt_arr[ block_row ][i][j].w  ;
+
+			}
+		}
+	}
+}
+
+
+void test_fn3(
+
+
+	__private	uint		layer,					//0
+
+	__constant	uint*		uint_params,			//4
+	__constant 	uint8*		mipmap_params			//3
+)
+{
+	const uint8 mipmap_params_						= mipmap_params[layer];
+	uint read_offset_ 								= mipmap_params_[MiM_READ_OFFSET];
+	uint read_index									= read_offset_ ; // + u + v*mm_cols;
+	uint	mm_cols									= uint_params[MM_COLS];
+	// NB u=0, v=0, so
+	// SE3_offset		= layer_offset/mm_cols;		layer_offset  = mipmap_params_[MiM_READ_OFFSET];
+	// i.e. offset in cols instead of rows.
+
+	uint offset_2 	= write_index_2	 = SE3_offset	=  mipmap_params[layer][MiM_READ_OFFSET] / mm_cols;		// for start of layer, wrt where the SE3 Hessian is written
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

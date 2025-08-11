@@ -32,6 +32,17 @@ void print_matx44f(cv::Matx44f matx){
     cout<<endl<<flush;
 }
 
+void print_matx66f(cv::Matx66f matx){
+    cout << fixed << setprecision(6) ;
+    for(int row=0;row<6;row++){
+         cout<<"  \n";
+         for(int col=0; col<6;col++){
+             cout << setw(9)<< matx.operator()(row,col) << ", \t\t";
+         }
+    }
+    cout<<endl<<flush;
+}
+
 void print_matx61f(cv::Matx61f matx){
     cout<<"  \n";
     for(int col=0; col<6;col++){

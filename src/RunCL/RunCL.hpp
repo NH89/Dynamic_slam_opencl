@@ -42,11 +42,16 @@
 
 
 using namespace std::chrono;
-const uint tracking_num_colour_channels = TRACKING_NUM_COLOR_CHANNELS;
-const uint tracking_num_samples 		= TRACKING_NUM_SAMPLES +1;			// One more on host, for original Rho sample.
-const uint tracking_tot_samples 		= 4;
-const uint max_mipmap_layers 			= 8;
-const uint num_SE3_DoF					= 6;
+constexpr uint tracking_num_colour_channels = TRACKING_NUM_COLOR_CHANNELS;
+constexpr uint tracking_num_samples 		= TRACKING_NUM_SAMPLES +1;			// One more on host, for original Rho sample.
+constexpr uint tracking_tot_samples 		= TRACKING_TOT_SAMPLES;
+constexpr uint max_mipmap_layers 			= MAX_MIPMAP_LAYERS;
+constexpr uint num_SE3_DoF					= NUM_SE3_DOF;
+
+constexpr uint block_size					= BLOCK_SIZE;										// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
+//constexpr uint num_SE3_DoF						= 6;
+constexpr uint num_past_frames				= NUM_PAST_FRAMES;										// 1,2,4,8,16,32,64 // variable select window of 4 frames.
+
 
 using namespace std;
 class RunCL
@@ -83,7 +88,7 @@ public:
 
 	cl_kernel			rho_sq_kernel, reduce_patch_Rho_kernel, update_k2k_kernel;// TODO declare, create, release kernel in Run_cl.h etc.
 	// RunCL_patchslam.cpp
-	cl_kernel			compute_patch_lookup_table_kernel, patch_img_grad_kernel;
+	cl_kernel			compute_patch_lookup_table_kernel, patch_img_grad_kernel, patch_hessian_reduce_kernel;
 	
 	// GPU Buffers
 	static const uint 	num_current_frames	= 5;																												// static = same for all instances of class Dynamic_slam.
@@ -380,12 +385,19 @@ public:
 	uint		patch_num_threads[			max_mipmap_layers]	= {0};
 	uint		patch_cols_per_row[			max_mipmap_layers]	= {0};
 
-	void 	initialize_patch_params();
-	void 	compute_patch_lookup_table( uint start, uint stop);
+	void	initialize_patch_params();
+	void	compute_patch_lookup_table( uint start, uint stop);
 
 	size_t	patch_img_gradients_workgroup_size[	max_mipmap_layers]	= {0};
-	void 	patch_img_gradients_set_params(  );
-	void 	patch_img_gradients( uint layer, uint out_block_size );								// NB this version uses patch_lookup_table.
+	void	patch_img_gradients_set_params(  );
+	void	patch_img_gradients( uint layer, uint out_block_size );								// NB this version uses patch_lookup_table.
+
+	void	patch_hessian_reduce(uint layer);
+	uint	patch_hessian_cols[ 			max_mipmap_layers]	= {0};
+	uint	patch_hessian_rows[ 			max_mipmap_layers]	= {0};
+	uint	patch_hessian_start_idx[ 		max_mipmap_layers][num_SE3_DoF][num_SE3_DoF]	= {0};
+
+	void	patch_hessian_reduce();
 
 
 

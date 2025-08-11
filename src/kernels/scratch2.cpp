@@ -2,11 +2,11 @@
 
 void RunCL::rho_sq(uint out_block_size, uint iter, uint layer  ){
 	string fname = "RunCL::rho_sq( ..)";
-	const int se3_dof  = 6;
+	//const int se3_dof  = 6;
 	float zero  = 0;
 	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, 	&zero, sizeof( float), 0, 		  2*mm_size_bytes_C1, 	fname);
-	_clEnqueueFillBuffer( uload_queue, SE3_weight_map_mem, 	&zero, sizeof( float), 0, se3_dof*2*mm_size_bytes_C1, 	fname);
-	_clEnqueueFillBuffer( uload_queue, SE3_incr_map_mem, 	&zero, sizeof( float), 0, se3_dof*2*mm_size_bytes_C1, 	fname);
+	_clEnqueueFillBuffer( uload_queue, SE3_weight_map_mem, 	&zero, sizeof( float), 0, num_SE3_DoF*2*mm_size_bytes_C1, 	fname);
+	_clEnqueueFillBuffer( uload_queue, SE3_incr_map_mem, 	&zero, sizeof( float), 0, num_SE3_DoF*2*mm_size_bytes_C1, 	fname);
 
 	_clSetKernelArg( rho_sq_kernel, 2, sizeof( uint),   						&out_block_size,	 									fname);		//__private		uint 		out_block_size,			//1
 
@@ -18,10 +18,10 @@ void RunCL::rho_sq(uint out_block_size, uint iter, uint layer  ){
 	_clSetKernelArg( rho_sq_kernel,21, sizeof( float)*local_work_size,			NULL, 													fname);		//__local		float2*		local_rho				//21	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
 
 	_clSetKernelArg( rho_sq_kernel,22, sizeof( cl_mem), 						&SE3_weight_map_mem,									fname);		//__global		float4* 	weights_map,			//22
-	_clSetKernelArg( rho_sq_kernel,23, sizeof( float)*local_work_size*se3_dof,	NULL,													fname);		//__local		float4* 	local_weights,			//23	// float4 local_weights[ local_work_size/2 ]  hence sizeof( float)*local_work_size*4 NB only used as a message between threads.
+	_clSetKernelArg( rho_sq_kernel,23, sizeof( float)*local_work_size*num_SE3_DoF,	NULL,													fname);		//__local		float4* 	local_weights,			//23	// float4 local_weights[ local_work_size/2 ]  hence sizeof( float)*local_work_size*4 NB only used as a message between threads.
 
 	_clSetKernelArg( rho_sq_kernel,24, sizeof( cl_mem), 						&SE3_incr_map_mem,										fname);		//__global 		float4*		SE3_incr_map_,			//24
-	_clSetKernelArg( rho_sq_kernel,25, sizeof( float)*local_work_size*se3_dof,	NULL,													fname);		//__local 		float4*		local_SE3_incr			//25
+	_clSetKernelArg( rho_sq_kernel,25, sizeof( float)*local_work_size*num_SE3_DoF,	NULL,													fname);		//__local 		float4*		local_SE3_incr			//25
 
 	const uint			patch_size 			= 32;																						//TODO set global patch size from device parameters		// generally:  device_work_size_multiple = patch_size * integer,   eg 32, 64, 128
 	uint				read_rows			= MipMap[layer * 8 + MiM_READ_ROWS] ;

@@ -268,6 +268,26 @@ void RunCL::patch_img_gradients_set_params(  ){	// to use patch lookup table
  //
 	// cout << "\n\nRunCL::patch_img_gradients_set_params(..) ret = "<<ret<<",  CL_KERNEL_ARG_TYPE_NAME = "<< string(param_value, param_value_size) << "\n" << flush;
 	*/
+
+	// For the SE3 Hessian patches, and their reduction.	/////////////
+
+
+
+
+	for (uint layer =0; layer<mm_start  ; layer++){		// NB must match where the SE3 Hessian is written in SE3_hessian_map_mem. i.e. 6x6 elems in img pyramid horizontally across the top of the buffer.
+		patch_hessian_cols[		layer]	= ceil( (float)MipMap[layer*8 + MiM_READ_COLS]		/block_size );
+		patch_hessian_rows[		layer]	= ceil( (float)MipMap[layer*8 + MiM_READ_ROWS]		/block_size );
+
+		uint	hessian_layer_offset	=			   MipMap[layer*8 + MiM_READ_OFFSET]	/mm_width;
+		uint	hessian_elem_step		=		   4 + MipMap[layer*8 + MiM_READ_COLS]		/block_size;						// SE3_out_step_3	=   4 + (read_cols_ /block_size );
+		uint	hessian_row_step		=		  (4 + MipMap[layer*8 + MiM_READ_ROWS]		/block_size ) *  mm_width;			// SE3_out_step_1	= ( 4 + (read_rows_ / block_size) ) *mm_cols;
+
+		for( uint row = 0; row<6; row++){
+			for( uint col = 0; col<6; col++){
+				patch_hessian_start_idx[	layer][row][col]	=	hessian_layer_offset + hessian_elem_step*col + hessian_row_step*row; ;
+			}
+		}
+	}
 }
 
 
@@ -347,6 +367,60 @@ void RunCL::patch_img_gradients( uint layer, uint out_block_size ){
 
 }
 
+
+void  RunCL::patch_hessian_reduce(uint layer){
+	string 		fname	= "RunCL::patch_global_hessian_reduce()";
+	int local_verbosity_threshold = V_RUNCL_PATCH_IMG_GRADIENTS;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_chk1 #############################################################"<<flush;}
+	cl_kernel	kernel	= patch_hessian_reduce_kernel;
+
+	uint	cols		=		patch_hessian_cols[ layer];
+	uint	rows		=		patch_hessian_rows[ layer];
+	uint	mm_cols		=		mm_width;
+
+	_clSetKernelArg( kernel,	1, sizeof(int),			&cols,					fname);									// __private	uint	cols		//1
+	_clSetKernelArg( kernel,	2, sizeof(int),			&rows,					fname);									// __private	uint	rows		//2
+	_clSetKernelArg( kernel,	3, sizeof(int),			&mm_cols,				fname);									// __private	uint	mm_cols		//3
+	_clSetKernelArg( kernel,	5, sizeof(int),			&SE3_hessian_map_mem,	fname);									// __private	uint	mm_cols		//5
+
+	cl_int		status	= CL_SUCCESS;
+	cl_event	ev		= 0;
+	cl_int		res		= 0;
+	size_t		threads_to_launch	= block_size;	// NB could be a problem on AMD GPUs with minmum 64 threads, not 32.
+	size_t		local_work_size_	= block_size;
+
+	for( uint row = 0; row<6; row++){
+		for( uint col = 0; col<6; col++){
+			uint start_idx	=	patch_hessian_start_idx[layer][row][col];
+			uint elem 		=	row * 6 + col;
+			_clSetKernelArg( kernel,	0, sizeof(int),	&start_idx,				fname);									// __private	uint	start_idx	//0
+			_clSetKernelArg( kernel,	4, sizeof(int),	&elem,					fname);									// __private	uint	elem		//4
+
+			// launch workgroup for this elem.
+			res = clEnqueueNDRangeKernel(m_queue,	kernel, 1, 0, &threads_to_launch, &local_work_size_, 0, NULL, &ev);		if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
+		}
+	}
+
+	status	= clFlush(m_queue);							if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_hessian_reduce( ),  clFlush(m_queue) status  = "<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
+	status	= clWaitForEvents (1, &ev);					if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_hessian_reduce( ),  clWaitForEventsh(1, &ev) = "<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
+
+	Matx66f	hessian;
+	Mat		hessian_Mat( num_SE3_DoF, num_SE3_DoF, CV_32FC4);
+	size_t	data_size	= num_SE3_DoF * num_SE3_DoF * sizeof(cl_float4);
+	size_t	offset		= patch_hessian_start_idx[	layer][0][0];
+
+	ReadOutput( hessian_Mat.data, SE3_hessian_map_mem, data_size, offset);
+
+	for(int row=0; row<num_SE3_DoF; row++){
+		for(int col=0; col<num_SE3_DoF; col++){
+			hessian.operator()(row,col)		= hessian_Mat.at<cl_float4>( row,col ).x;		// NB choose colour channel of Hessian
+		}
+	}
+	PRINT_MATX66F(hessian, "SE3 Hessian, channel x");
+
+}
+
+
+
 //void RunCL::patch_hessian_reduce( uint layer, uint out_block_size ){
 
 	// launch kernel
@@ -372,7 +446,7 @@ void RunCL::rho_sq(uint out_block_size, uint iter, uint layer, float delta_theta
 	string fname					= "RunCL::rho_sq( ..)";
 	int local_verbosity_threshold	= V_RUNCL_RHO_SQ;
 	cl_kernel	kernel 				= rho_sq_kernel;
-	const int se3_dof				= 6;
+	//const int se3_dof				= 6;
 	cl_float2	delta_SE3			= {{delta_theta, delta}};
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk0 .##################################################################"<<flush;
 																																				cout << "\nRunCL::rho_sq( ..)__chk_1: K2K= ";

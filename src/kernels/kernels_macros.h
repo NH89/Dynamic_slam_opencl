@@ -41,6 +41,12 @@
 #define TRACKING_NUM_COLOR_CHANNELS  4
 #define TRACKING_NUM_SAMPLES         2                          // Just 2 _additional_ Rho samples
 
+#define TRACKING_TOT_SAMPLES		4
+#define MAX_MIPMAP_LAYERS			8
+#define NUM_SE3_DOF					6
+#define BLOCK_SIZE					32
+#define NUM_PAST_FRAMES				4
+
 
 // LOCAL VERBOSITY FOR EACH KERNEL FILE ##############################################
 // These remove the "txt" code before compilation, so it will not take time in execution.

@@ -1,17 +1,20 @@
 #ifndef KERNELS_H
 #define KERNELS_H
 
+#include "kernels_macros.h"
+
 __constant float2 zero_f2				= {0.0f,0.0f};
 __constant float4 zero_f4				= {0.0f,0.0f,0.0f,0.0f};
 __constant float8 zero_f8				= {0.0f,0.0f,0.0f,0.0f, 0.0f,0.0f,0.0f,0.0f};
 
 __constant float4 ones_f4				= {1.0f,1.0f,1.0f,1.0f};
 
-__constant float  const_sqrt_flt_min	= 0x1.0p-63f; // 2^(-63) is sqrt of FLT_MIN = 2^(-126)
+__constant float  const_sqrt_flt_min	= 0x1.0p-63f;										// 2^(-63) is sqrt of FLT_MIN = 2^(-126)
 
-__constant uint block_size				= 32;										// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
-__constant uint se3_dof					= 6;
-__constant uint num_past_frames			= 4;										// 1,2,4,8,16,32,64 // variable select window of 4 frames.
+__constant uint block_size				= BLOCK_SIZE;										// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
+__constant uint num_SE3_DoF				= NUM_SE3_DOF;
+__constant uint num_past_frames			= NUM_PAST_FRAMES;									// 1,2,4,8,16,32,64 // variable select window of 4 frames.
+
 
 
 // Declarations of local device functions used by the kernels.

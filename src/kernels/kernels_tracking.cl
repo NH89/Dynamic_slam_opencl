@@ -92,9 +92,9 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	__local		float2*		local_SE3_incr			//24
 	)
 {
-	const uint block_size							= 32;										// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
-	const uint se3_dof								= 6;
-	const uint num_past_frames						= 4;										// 1,2,4,8,16,32,64 // variable select window of 4 frames.
+	//const uint block_size							= 32;										// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
+	//const uint num_SE3_DoF								= 6;
+	//const uint num_past_frames						= 4;										// 1,2,4,8,16,32,64 // variable select window of 4 frames.
 	const float4 zero_f4							= {0.0f,0.0f,0.0f,0.0f};
 	const float2 zero_f2							= {0.0f,0.0f};
 
@@ -134,7 +134,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	float2 rho_pvt_flt2								= zero_f2;
 
 	float8 grad_v8									= {zero_f4, zero_f4};
-	float2 grad_pvt_arr[block_size*se3_dof]			= {zero_f2};								// pvt variable for values in this column.
+	float2 grad_pvt_arr[block_size*num_SE3_DoF]			= {zero_f2};								// pvt variable for values in this column.
 	float4 grad_pvt_flt4_SE3[6]						= {zero_f4};
 	float  grad_pvt_flt_SE3[6]						= {0.0f};
 	float  grad_pvt_SE3_mag							= 0.0f;
@@ -146,7 +146,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	float4 grad_pvt_flt4							= zero_f4;
 	float2 grad_pvt_flt2							= zero_f2;
 
-	float2 SE3_incr_pvt_arr[block_size*se3_dof]		= {zero_f2};								// pvt variable for values in this column.
+	float2 SE3_incr_pvt_arr[block_size*num_SE3_DoF]		= {zero_f2};								// pvt variable for values in this column.
 	float4 SE3_incr_pvt_flt4						= zero_f4;
 	float2 SE3_incr_pvt_flt2						= zero_f2;
 
@@ -156,7 +156,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	bool   intersection;
 
 	local_rho[lid]									= zero_f2;
-	for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
+	for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
 		local_SE3_incr[lid + se3_dim*local_size]	= zero_f2;
 	}
 																								// PATCH KERNEL //
@@ -203,7 +203,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 				rho_pvt_flt4.w			= 1.0f;																																					// rho.w holds pixel count.
 
 				// Magnitude of gradient of Rho wrt SE3 rotation & translation //////
-				for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
+				for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
 					grad_v8 												=  SE3_grad_map_cur_frame[ read_index_row + (se3_dim * mm_pixels) ] ;
 					grad_pvt_flt4_SE3[se3_dim]								=  grad_v8.hi + grad_v8.lo;
 					grad_pvt_flt4_SE3[se3_dim].w							=  1.0f;
@@ -233,7 +233,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 				SE3_incr_pvt_flt2.y											=  weights;
 				delta_se3													=  delta_SE3[ 1 ];
 
-				for (uint se3_dim=3; se3_dim<se3_dof; se3_dim++) {
+				for (uint se3_dim=3; se3_dim<num_SE3_DoF; se3_dim++) {
 					SE3_incr_pvt_flt4										= grad_pvt_flt4_SE3[se3_dim] * rho_pvt_flt4;
 					SE3_incr_pvt_flt2.x										= weights * ( SE3_incr_pvt_flt4.x 	+ SE3_incr_pvt_flt4.y	+ SE3_incr_pvt_flt4.z)/ (3.0f * grad_pvt_SE3_mag);
 					SE3_incr_pvt_flt2.x										= clamp( SE3_incr_pvt_flt2.x ,	-delta_se3,	+delta_se3  );
@@ -255,13 +255,13 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	for ( step=1; step<block_size; step *=2){																																					// for each step size, (multiples of 2)
 		for (uint block_row=0; block_row<block_size ; block_row += step){																														// step through rows in column
 																						rho_pvt_arr[		block_row ]							+=rho_pvt_arr[		block_row + step ];			// sum pair of values in col,
-			for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
+			for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
 																						SE3_incr_pvt_arr[	block_row + se3_dim*block_size ]	+=SE3_incr_pvt_arr[	block_row + step + se3_dim*block_size ];
 			}
 
 			if( !(fmod((float)lid,(step*2))==0) &&  (fmod((float)lid,step)==0)    ){																											// selects 2nd column, sends data
 																						local_rho[			lid-step ]							= rho_pvt_arr[		block_row];
-				for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {																																// NB integer division. Hence both threads use the same index to local memory.
+				for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {																																// NB integer division. Hence both threads use the same index to local memory.
 																						local_SE3_incr[		lid-step + se3_dim*local_size ]		= SE3_incr_pvt_arr[	block_row + se3_dim*block_size ];
 				}
 			}
@@ -269,7 +269,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 
 			if( (fmod((float)lid,(step*2))==0)  ){																																				// selects 1st column, adds data. Sum of patch now held in top left element of patch.
 																						rho_pvt_arr[		block_row] 							+= local_rho[		lid ];
-				for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {
+				for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
 																						SE3_incr_pvt_arr[	block_row + se3_dim*block_size ]	+= local_SE3_incr[	lid		 + se3_dim*local_size ];
 				}
 			}
@@ -283,7 +283,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 				for (uint block_row=0; block_row < block_size ; block_row += step*2, write_block_row++){
 																						uint offset_1 				= frame_offset		+ write_block_row*mm_cols;
 																						Rho_[			offset_1]	= rho_pvt_arr[		block_row ];
-					for (uint se3_dim=3; se3_dim<se3_dof; se3_dim++) {																															// select only ST3
+					for (uint se3_dim=3; se3_dim<num_SE3_DoF; se3_dim++) {																															// select only ST3
 																						uint offset_2 				= offset_1			+ (se3_dim-3)*( 4+ (read_rows_/out_block_size) )*mm_cols;
 																						uint offset_3 				= block_row			+ se3_dim*block_size;									// NB read_rows_/out_block_size = writre_rows
 																						SE3_incr_map_[	offset_2 ]	= SE3_incr_pvt_arr[	offset_3 ];
@@ -299,7 +299,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 		uint block_row				=  0;
 																						uint offset_2 				= frame_offset_1 + write_block_row*mm_cols;
 																						Rho_[			offset_2 ]	= rho_pvt_arr[		 block_row ];
-		for (uint se3_dim=0; se3_dim<se3_dof; se3_dim++) {																																		// All 6 DoF of SE3
+		for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {																																		// All 6 DoF of SE3
 																						uint offset_3 				= offset_2 		+ se3_dim*( 4 + (read_rows_/block_size) )*mm_cols;
 																						uint offset_4				= block_row 	+ se3_dim*block_size;
 																						SE3_incr_map_[	offset_3 ]	= SE3_incr_pvt_arr[  offset_4 ];

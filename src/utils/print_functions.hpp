@@ -16,6 +16,8 @@
 
 #define PRINT_MATX44F(a,txt) std::cout << "\n\n" << #txt <<" "<< #a << " = " << std::flush ; print_matx44f(a);
 
+#define PRINT_MATX66F(a,txt) std::cout << "\n\n" << #txt <<" "<< #a << " = " << std::flush ; print_matx66f(a);
+
 #define PRINT_MATX61F(a,txt) std::cout << "\n\n" << #txt <<" "<< #a << " = " << std::flush ; print_matx61f(a);
 
 #define PRINT_MATX16F(a,txt) std::cout << "\n\n" << #txt <<" "<< #a << " = " << std::flush ; print_matx16f(a);
@@ -37,6 +39,8 @@
 void print_matx33f(cv::Matx33f matx);
 
 void print_matx44f(cv::Matx44f matx);
+
+void print_matx66f(cv::Matx66f matx);
 
 void print_matx61f(cv::Matx61f matx);
 

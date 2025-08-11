@@ -41,6 +41,7 @@ endif()
 find_package(OpenCL REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(jsoncpp REQUIRED)
+#find_package(libtiff5 REQUIRED) #by my current build of opencv
 #find_package(vtk REQUIRED)
 
 if( OpenCV_FOUND )
