@@ -389,13 +389,14 @@ public:
 	void	compute_patch_lookup_table( uint start, uint stop);
 
 	size_t	patch_img_gradients_workgroup_size[	max_mipmap_layers]	= {0};
-	void	patch_img_gradients_set_params(  );
+	void	patch_img_gradients_set_params( uint out_block_size );
 	void	patch_img_gradients( uint layer, uint out_block_size );								// NB this version uses patch_lookup_table.
 
 	void	patch_hessian_reduce(uint layer);
 	uint	patch_hessian_cols[ 			max_mipmap_layers]	= {0};
 	uint	patch_hessian_rows[ 			max_mipmap_layers]	= {0};
-	uint	patch_hessian_start_idx[ 		max_mipmap_layers][num_SE3_DoF][num_SE3_DoF]	= {0};
+	uint	patch_hessian_start_idx[ 		max_mipmap_layers][num_SE3_DoF][num_SE3_DoF]	= {{{0}}};
+	uint	patch_ST3_hessian_start_idx[	max_mipmap_layers][3][3]						= {{{0}}};
 
 	void	patch_hessian_reduce();
 

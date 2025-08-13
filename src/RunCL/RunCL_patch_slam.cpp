@@ -179,7 +179,7 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){
 }
 
 
-void RunCL::patch_img_gradients_set_params(  ){	// to use patch lookup table
+void RunCL::patch_img_gradients_set_params( uint out_block_size ){	// to use patch lookup table
 	string fname = "RunCL::patch_img_gradients_set_params()";
 	int local_verbosity_threshold = V_RUNCL_PATCH_IMG_GRADIENTS;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients_set_params()_chk1 #############################################################"<<flush;}
 	cl_kernel kernel		= patch_img_grad_kernel;
@@ -240,19 +240,19 @@ void RunCL::patch_img_gradients_set_params(  ){	// to use patch lookup table
 	//Inputs:
 	//__private
 //	_clSetKernelArg( kernel,	0, sizeof(int), 		&layer,							fname );								// __private	uint		layer,					//0
-//	_clSetKernelArg( kernel,	1, sizeof(int), 		&out_block_size,				fname );								// __private	uint		out_block_size,			//1
+	_clSetKernelArg( kernel,	2, sizeof(int), 		&out_block_size,				fname );								// __private	uint		out_block_size,			//1
 	//__constant
-	_clSetKernelArg( kernel,	3, sizeof( cl_mem), 	&mipmap_buf,					fname);									// __constant	uint8*		mipmap_params,			//2
-	_clSetKernelArg( kernel,	4, sizeof( cl_mem), 	&uint_param_buf,				fname);									// __constant	uint*		uint_params,			//3
-	_clSetKernelArg( kernel,	5, sizeof( cl_mem), 	&SE3_map_mem,					fname);									// __constant 	float2*		SE3_map,				//4
+	_clSetKernelArg( kernel,	5, sizeof( cl_mem), 	&mipmap_buf,					fname);									// __constant	uint8*		mipmap_params,			//2
+	_clSetKernelArg( kernel,	6, sizeof( cl_mem), 	&uint_param_buf,				fname);									// __constant	uint*		uint_params,			//3
+	_clSetKernelArg( kernel,	7, sizeof( cl_mem), 	&SE3_map_mem,					fname);									// __constant 	float2*		SE3_map,				//4
 	//__global
-	_clSetKernelArg( kernel,	6, sizeof( cl_mem), 	&patch_lookup_table_buf,		fname);									// __global 	float4*		lookup_table,			//5
-//	_clSetKernelArg( kernel,	7, sizeof( cl_mem), 	&imgmem_,						fname);									// __global 	float4*		img,					//6
+	_clSetKernelArg( kernel,	8, sizeof( cl_mem), 	&patch_lookup_table_buf,		fname);									// __global 	float4*		lookup_table,			//5
+//	_clSetKernelArg( kernel,	9, sizeof( cl_mem), 	&imgmem_,						fname);									// __global 	float4*		img,					//6
 	//Outputs:
 	//__global
-	_clSetKernelArg( kernel,	8, sizeof( cl_mem), 	&SE3_grad_map_mem,				fname);									// __global 	float8*		SE3_grad_map,			//7		// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
-	_clSetKernelArg( kernel,	9, sizeof( cl_mem), 	&SE3_hessian_map_mem,			fname);									// __global 	float4*		SE3_Hessian_map,		//8		// HSV (6x6) matrix so 36*float8
-	_clSetKernelArg( kernel,	11,sizeof( cl_mem), 	&HSV_grad_mem,					fname);									// __global 	float8*		HSV_grad				//10
+	_clSetKernelArg( kernel,	10, sizeof( cl_mem), 	&SE3_grad_map_mem,				fname);									// __global 	float8*		SE3_grad_map,			//7		// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
+	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&SE3_hessian_map_mem,			fname);									// __global 	float4*		SE3_Hessian_map,		//8		// HSV (6x6) matrix so 36*float8
+	_clSetKernelArg( kernel,	13, sizeof( cl_mem), 	&HSV_grad_mem,					fname);									// __global 	float8*		HSV_grad				//10
 	/* //Debugging kernel arg setting
 	// size_t		param_value_size		= 0;
 	// char		param_value[32]			= {' '};
@@ -272,21 +272,49 @@ void RunCL::patch_img_gradients_set_params(  ){	// to use patch lookup table
 	// For the SE3 Hessian patches, and their reduction.	/////////////
 
 
+	cout<<"\nvoid RunCL::patch_img_gradients_set_params(  ):  mm_start="<<mm_start<<"   mm_stop="<<mm_stop<<flush;
 
+	uint	hessian_layer_offset		=	5	+	mm_width;
+	uint	st3_hessian_layer_offset	=	5	+ ( 4 + ( MipMap[ 0*8 + MiM_READ_ROWS] / block_size) )*mm_width   * (num_SE3_DoF + 1);
 
-	for (uint layer =0; layer<mm_start  ; layer++){		// NB must match where the SE3 Hessian is written in SE3_hessian_map_mem. i.e. 6x6 elems in img pyramid horizontally across the top of the buffer.
+	for (uint layer =0; layer<mm_stop  ; layer++){		// NB must match where the SE3 Hessian is written in SE3_hessian_map_mem. i.e. 6x6 elems in img pyramid horizontally across the top of the buffer.
 		patch_hessian_cols[		layer]	= ceil( (float)MipMap[layer*8 + MiM_READ_COLS]		/block_size );
 		patch_hessian_rows[		layer]	= ceil( (float)MipMap[layer*8 + MiM_READ_ROWS]		/block_size );
 
-		uint	hessian_layer_offset	=			   MipMap[layer*8 + MiM_READ_OFFSET]	/mm_width;
+
 		uint	hessian_elem_step		=		   4 + MipMap[layer*8 + MiM_READ_COLS]		/block_size;						// SE3_out_step_3	=   4 + (read_cols_ /block_size );
 		uint	hessian_row_step		=		  (4 + MipMap[layer*8 + MiM_READ_ROWS]		/block_size ) *  mm_width;			// SE3_out_step_1	= ( 4 + (read_rows_ / block_size) ) *mm_cols;
 
+		uint	st3_hessian_elem_step	=		   4 + MipMap[layer*8 + MiM_READ_COLS]		/out_block_size;						// SE3_out_step_3	=   4 + (read_cols_ /block_size );
+		uint	st3_hessian_row_step	=	(8 + ceil( (float)MipMap[layer*8 + MiM_READ_ROWS]		/out_block_size) ) *  mm_width;			// SE3_out_step_1	= ( 4 + (read_rows_ / block_size) ) *mm_cols;
+
+
 		for( uint row = 0; row<6; row++){
 			for( uint col = 0; col<6; col++){
-				patch_hessian_start_idx[	layer][row][col]	=	hessian_layer_offset + hessian_elem_step*col + hessian_row_step*row; ;
+				patch_hessian_start_idx[		layer][row][col]	=	hessian_layer_offset		+ hessian_elem_step*col			+ hessian_row_step*row;
 			}
 		}
+
+		for( uint row = 0; row<3; row++){
+			for( uint col = 0; col<3; col++){
+				patch_ST3_hessian_start_idx[	layer][row][col]	=	st3_hessian_layer_offset	+ st3_hessian_elem_step*col		+ st3_hessian_row_step*row;
+			}
+		}
+
+		cout<<"\npatch_hessian_cols["<<layer<<"]="			<<patch_hessian_cols[layer]
+		<<",    MipMap[layer*8 + MiM_READ_COLS]="			<<MipMap[layer*8 + MiM_READ_COLS]
+		<<",    MipMap[layer*8 + MiM_READ_OFFSET]="			<<MipMap[layer*8 + MiM_READ_OFFSET]
+		<<",    hessian_elem_step="							<<hessian_elem_step
+		<<",    hessian_layer_offset - mm_width ="			<<hessian_layer_offset - mm_width
+		<<"\t\t"
+		<<",    (st3_hessian_layer_offset -5)/ mm_width ="	<<(float)(st3_hessian_layer_offset -5) / mm_width
+		<<",    st3_hessian_elem_step ="					<<st3_hessian_elem_step
+		<<",    st3_hessian_row_step ="						<<st3_hessian_row_step
+		<<",    out_block_size ="							<<out_block_size
+		<<"\n"<<flush;
+
+		hessian_layer_offset		+=		6* hessian_elem_step;					//MipMap[layer*8 + MiM_READ_OFFSET]	/mm_width;
+		st3_hessian_layer_offset	+=		3* st3_hessian_row_step;
 	}
 }
 
@@ -301,11 +329,17 @@ void RunCL::patch_img_gradients( uint layer, uint out_block_size ){
 	size_t			local_Hessian_size			= sizeof(cl_float4)						*num_SE3_DoF *num_SE3_DoF	*local_work_size_;	//*patch_img_gradients_workgroup_size;
 	uint			lookup_table_offset_uint 	= patch_lookup_table_offset[			layer];
 
-	_clSetKernelArg( kernel,	0, sizeof(int),			&layer,							fname);									// __private	uint		layer,					//0
-	_clSetKernelArg( kernel,	1, sizeof(int),			&lookup_table_offset_uint,		fname);									// __private	uint		lookup_table_offset_uint,			//1
-	_clSetKernelArg( kernel,	2, sizeof(int),			&out_block_size,				fname);									// __private	uint		out_block_size,			//1
-	_clSetKernelArg( kernel,	7, sizeof( cl_mem),		&imgmem_,						fname);									// __global 	float4*		img,					//6		//	"current_frames[idx].img_buf	= imgmem[idx];", NB changes every new frame.
-	_clSetKernelArg( kernel,	10, local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,			//9		// local_Hessian[ sizeof(float4) *6*6 *local_size]
+	uint			SE3_hessian_offset			= patch_hessian_start_idx[layer][0][0];
+	uint			ST3_out_offset				= patch_ST3_hessian_start_idx[layer][0][0];
+
+	_clSetKernelArg( kernel,	0, sizeof(int),			&layer,							fname);									// __private	uint		layer,						//0
+	_clSetKernelArg( kernel,	1, sizeof(int),			&lookup_table_offset_uint,		fname);									// __private	uint		lookup_table_offset_uint,	//1
+	//_clSetKernelArg( kernel,	2, sizeof(int),			&out_block_size,				fname);									// __private	uint		out_block_size,				//2
+	_clSetKernelArg( kernel,	3, sizeof(int),			&SE3_hessian_offset,			fname);									// __private	uint		SE3_hessian_offset,			//3
+	_clSetKernelArg( kernel,	4, sizeof(int),			&ST3_out_offset,				fname);									// __private	uint		SE3_hessian_offset,			//3
+
+	_clSetKernelArg( kernel,	9, sizeof( cl_mem),		&imgmem_,						fname);									// __global 	float4*		img,					//6		//	"current_frames[idx].img_buf	= imgmem[idx];", NB changes every new frame.
+	_clSetKernelArg( kernel,	12,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,			//9		// local_Hessian[ sizeof(float4) *6*6 *local_size]
 
 	/* // Debugging kernel arg setting
 	// size_t		param_value_size		= 0;
@@ -380,7 +414,7 @@ void  RunCL::patch_hessian_reduce(uint layer){
 	_clSetKernelArg( kernel,	1, sizeof(int),			&cols,					fname);									// __private	uint	cols		//1
 	_clSetKernelArg( kernel,	2, sizeof(int),			&rows,					fname);									// __private	uint	rows		//2
 	_clSetKernelArg( kernel,	3, sizeof(int),			&mm_cols,				fname);									// __private	uint	mm_cols		//3
-	_clSetKernelArg( kernel,	5, sizeof(int),			&SE3_hessian_map_mem,	fname);									// __private	uint	mm_cols		//5
+	_clSetKernelArg( kernel,	5, sizeof(cl_mem),		&SE3_hessian_map_mem,	fname);									// __private	uint	mm_cols		//5
 
 	cl_int		status	= CL_SUCCESS;
 	cl_event	ev		= 0;
@@ -394,6 +428,8 @@ void  RunCL::patch_hessian_reduce(uint layer){
 			uint elem 		=	row * 6 + col;
 			_clSetKernelArg( kernel,	0, sizeof(int),	&start_idx,				fname);									// __private	uint	start_idx	//0
 			_clSetKernelArg( kernel,	4, sizeof(int),	&elem,					fname);									// __private	uint	elem		//4
+
+			cout << "\nRunCL::patch_hessian_reduce()  start_idx = "<<start_idx<<"	  elem = "<<elem<<"	row="<<row<<",  col="<<col<<"  cols="<<cols<<"  rows="<<rows<<"  mm_cols="<<mm_cols<<"  layer="<<layer<< flush;
 
 			// launch workgroup for this elem.
 			res = clEnqueueNDRangeKernel(m_queue,	kernel, 1, 0, &threads_to_launch, &local_work_size_, 0, NULL, &ev);		if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}

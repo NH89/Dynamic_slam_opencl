@@ -307,6 +307,7 @@ void test_fn(
 	}
 
 
+	uint offset_2	= row_col/out_block_size + block_row*write_spacing*mm_cols  + 25	+ write_block_row*mm_cols	+ (se3_dim-3)*( 4+ (read_rows_/out_block_size) )*mm_cols
 }
 
 
@@ -469,18 +470,10 @@ void test_fn2(
 		for (  uint i=0; i<num_SE3_DoF; i++) {																																			// All 6 DoF of SE3
 			for (  uint j=0; j<num_SE3_DoF; j++) {
 													offset_2 							= write_index_2		+ i*SE3_out_step_1		+ j*SE3_out_step_3;
-
 													SE3_Hessian_map[	offset_2 ]		= Hessian_pvt_arr[ block_row ][i][j] 	/   Hessian_pvt_arr[ block_row ][i][j].w  ;
-
-			}
-		}
-	}
-}
-
+}	}	}	}
 
 void test_fn3(
-
-
 	__private	uint		layer,					//0
 
 	__constant	uint*		uint_params,			//4
