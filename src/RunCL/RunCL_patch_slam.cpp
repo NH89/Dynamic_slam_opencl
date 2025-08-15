@@ -329,14 +329,16 @@ void RunCL::patch_img_gradients( uint layer, uint out_block_size ){
 	size_t			local_Hessian_size			= sizeof(cl_float4)						*num_SE3_DoF *num_SE3_DoF	*local_work_size_;	//*patch_img_gradients_workgroup_size;
 	uint			lookup_table_offset_uint 	= patch_lookup_table_offset[			layer];
 
-	uint			SE3_hessian_offset			= patch_hessian_start_idx[layer][0][0];
-	uint			ST3_out_offset				= patch_ST3_hessian_start_idx[layer][0][0];
+	uint			SE3_h_offset				= patch_hessian_start_idx[layer][0][0];
+	uint			ST3_h_offset				= patch_ST3_hessian_start_idx[layer][0][0];
+	cl_uint3		SE3_hessian_offset			= {{ SE3_h_offset,	(patch_hessian_start_idx[layer][0][1]     - SE3_h_offset) ,	(patch_hessian_start_idx[layer][1][0]     - SE3_h_offset)  }};
+	cl_uint3		ST3_out_offset				= {{ ST3_h_offset,	(patch_ST3_hessian_start_idx[layer][0][1] - ST3_h_offset) ,	(patch_ST3_hessian_start_idx[layer][1][0] - ST3_h_offset)  }};
 
 	_clSetKernelArg( kernel,	0, sizeof(int),			&layer,							fname);									// __private	uint		layer,						//0
 	_clSetKernelArg( kernel,	1, sizeof(int),			&lookup_table_offset_uint,		fname);									// __private	uint		lookup_table_offset_uint,	//1
 	//_clSetKernelArg( kernel,	2, sizeof(int),			&out_block_size,				fname);									// __private	uint		out_block_size,				//2
-	_clSetKernelArg( kernel,	3, sizeof(int),			&SE3_hessian_offset,			fname);									// __private	uint		SE3_hessian_offset,			//3
-	_clSetKernelArg( kernel,	4, sizeof(int),			&ST3_out_offset,				fname);									// __private	uint		SE3_hessian_offset,			//3
+	_clSetKernelArg( kernel,	3, sizeof(cl_uint3),	&SE3_hessian_offset,			fname);									// __private	uint		SE3_hessian_offset,			//3
+	_clSetKernelArg( kernel,	4, sizeof(cl_uint3),	&ST3_out_offset,				fname);									// __private	uint		SE3_hessian_offset,			//3
 
 	_clSetKernelArg( kernel,	9, sizeof( cl_mem),		&imgmem_,						fname);									// __global 	float4*		img,					//6		//	"current_frames[idx].img_buf	= imgmem[idx];", NB changes every new frame.
 	_clSetKernelArg( kernel,	12,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,			//9		// local_Hessian[ sizeof(float4) *6*6 *local_size]
@@ -434,6 +436,7 @@ void  RunCL::patch_hessian_reduce(uint layer){
 			// launch workgroup for this elem.
 			res = clEnqueueNDRangeKernel(m_queue,	kernel, 1, 0, &threads_to_launch, &local_work_size_, 0, NULL, &ev);		if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
 		}
+		cout<< endl << flush;
 	}
 
 	status	= clFlush(m_queue);							if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_hessian_reduce( ),  clFlush(m_queue) status  = "<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
@@ -442,16 +445,18 @@ void  RunCL::patch_hessian_reduce(uint layer){
 	Matx66f	hessian;
 	Mat		hessian_Mat( num_SE3_DoF, num_SE3_DoF, CV_32FC4);
 	size_t	data_size	= num_SE3_DoF * num_SE3_DoF * sizeof(cl_float4);
-	size_t	offset		= patch_hessian_start_idx[	layer][0][0];
+	size_t	offset		= 0; // patch_hessian_start_idx[	layer][0][0];
 
 	ReadOutput( hessian_Mat.data, SE3_hessian_map_mem, data_size, offset);
 
 	for(int row=0; row<num_SE3_DoF; row++){
 		for(int col=0; col<num_SE3_DoF; col++){
-			hessian.operator()(row,col)		= hessian_Mat.at<cl_float4>( row,col ).x;		// NB choose colour channel of Hessian
+			hessian.operator()(row,col)		= hessian_Mat.at<cl_float4>( row,col ).x / hessian_Mat.at<cl_float4>( row,col ).w;		// NB choose colour channel of Hessian
 		}
 	}
-	PRINT_MATX66F(hessian, "SE3 Hessian, channel x");
+	PRINT_MATX66F(hessian, "SE3 Hessian, channel x/w");
+
+	PRINT_MATX66F(hessian.inv(), "SE3 Hessian_inverse, channel x/w");
 
 }
 
