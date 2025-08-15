@@ -101,6 +101,7 @@ public:
 		uint			frame_data_index;
 		float			pose[16];			// Absolute pose of the frame. i.e. relative to initial frame. Computed from the local sample frames. Will req adjustment at loop closure.
 		float			invk2k[16];			// Reprojection matrix to the current img. Estimated, then fitted for each new frame, also with updates of camera inrinsic mattix.
+		Matx66f			invHessian[max_mipmap_layers];
 	};
 
 	std::array<frame, num_current_frames> 					current_frames;			// Needs to be initialized after the buffers are created.
@@ -118,6 +119,9 @@ public:
 			for(uint i=0; i<16; i++){
 				current_frames[idx].pose[i]	= identity_flt16[i];
 				current_frames[idx].pose[i]	= identity_flt16[i];
+			}
+			for(uint i=0; i<max_mipmap_layers; i++){
+				current_frames[idx].invHessian[i]	= Matx66f::eye();
 			}
 		}
 	}
@@ -155,6 +159,10 @@ public:
 			new_current_frames_idx[4] = current_frames_idx[4];
 		}
 		swap( new_current_frames_idx, current_frames_idx);
+
+		for(uint i=0; i<max_mipmap_layers; i++){
+			current_frames[ current_frames_idx[0] ].invHessian[i]	=  Matx66f::eye();
+		}
 		return;
 	};
 
@@ -381,7 +389,7 @@ public:
 
 	uint		patch_kernel_workgroup_size						=  0;
 	size_t		patch_lookup_table_offset[	max_mipmap_layers]	= {0};
-	uint		patch_local_work_size[		max_mipmap_layers]	= {0};	// for kernels not using local mem. Otherwise must compute local_mem(available / req per patch) * patch_size(32)
+	uint		patch_local_work_size[		max_mipmap_layers]	= {0};		// for kernels not using local mem. Otherwise must compute local_mem(available / req per patch) * patch_size(32)
 	uint		patch_num_threads[			max_mipmap_layers]	= {0};
 	uint		patch_cols_per_row[			max_mipmap_layers]	= {0};
 
@@ -390,7 +398,7 @@ public:
 
 	size_t	patch_img_gradients_workgroup_size[	max_mipmap_layers]	= {0};
 	void	patch_img_gradients_set_params( uint out_block_size );
-	void	patch_img_gradients( uint layer, uint out_block_size );								// NB this version uses patch_lookup_table.
+	void	patch_img_gradients( uint layer);								// NB this version uses patch_lookup_table.
 
 	void	patch_hessian_reduce(uint layer);
 	uint	patch_hessian_cols[ 			max_mipmap_layers]	= {0};

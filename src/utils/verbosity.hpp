@@ -158,7 +158,7 @@
 	#define	V_RUNCL_UPDATEG								-2
 	#define	V_RUNCL_UPDATEA								-2
 	#define	V_RUNCL_UPDATEA_DBG_DATABUF					-1
-	#define	V_RUNCL_MEASUREDEPTHFIT						-2
+	#define	V_RUNCL_MEASUREDEPTHFIT						-1
 
 	#define	V_RUNCL_SPATIALCOSTFNS						1
 	#define	V_RUNCL_PARSIMONYCOSTFNS					1

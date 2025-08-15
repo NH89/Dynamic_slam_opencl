@@ -234,10 +234,10 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 	runcl.img_gradients();
 
 	//runcl.patch_img_gradients( 0/*0*/, 4 ); //  uint layer, uint out_block_size.  NB (0, 4) are the largest sizes that will fit in the buffer.
-	for(uint layer=SE3_start_layer; layer>=0/*SE3_stop_layer*/; layer-- ){
+	for(int layer=SE3_start_layer; layer>=0/*SE3_stop_layer*/; layer-- ){
 		cout << "\nDynamic_slam::getFrame(): layer="<<layer<<"  SE3_start_layer="<<SE3_start_layer<<"   SE3_stop_layer="<<SE3_stop_layer<<flush;
-		runcl.patch_img_gradients( layer, 4  /*uint out_block_size*/);
-		runcl.patch_hessian_reduce( layer);
+		runcl.patch_img_gradients(	layer);
+		runcl.patch_hessian_reduce(	layer);
 	}
 	// Will need to decide which layers and ST3 patch sizes to compute Hessians for, then store them in a buffer on the GPU.
 																																			// # Get 1st & 2nd order image gradients of MipMap

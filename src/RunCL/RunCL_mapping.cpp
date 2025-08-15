@@ -270,7 +270,7 @@ void RunCL::measureDepthFit(){
 																																			}
 	cv::Mat dmem_disparity_sum_mat = cv::Mat::zeros (pix_sum_size, 1, CV_32FC4); // cv::Mat::zeros (int rows, int cols, int type)		// NB the data returned is one float4 per group, for the base image, holding disparity (depth, ....) plus entry[3]=pixel count.
 	ReadOutput( dmem_disparity_sum_mat.data, dmem_disparity_sum, pix_sum_size_bytes );
-	                                                                                                                                         if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::measureDepthFit(..)_chk3 ."<<flush;
+	                                                                                                                                         if(verbosity>local_verbosity_threshold+1) {cout<<"\n\nRunCL::measureDepthFit(..)_chk3 ."<<flush;
 																																				cout << "\ndmem_disparity_sum_mat.size()="<<dmem_disparity_sum_mat.size()<<flush;
 																																				cout << "\npix_sum_size="<<pix_sum_size<<flush;
                                                                                                                                                 cout << "\n dmem_disparity_sum_mat.data = (\n";

@@ -86,31 +86,17 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	uint	mm_cols										= uint_params[MM_COLS];
 	uint	mm_pixels									= uint_params[MM_PIXELS];
 
-	float4	blue		= {1,0,0,1};
-	float4 	green		= {0,1,0,1};
-	float4	red			= {0,0,1,1};
-/*
-// 	float	lid_f		= (float)lid/(block_size*2);
-// 	float	gid_f		= (float)global_id_uint/((read_cols_*read_rows_)/block_size);
-// 	float4	tag4		= {1, lid_f, gid_f, 1 };
+// 	float4	blue		= {1,0,0,1};
+// 	float4 	green		= {0,1,0,1};
+// 	float4	red			= {0,0,1,1};
 
-// 		if(fmod((float)lid,32)<3 && (v/block_size)<4 && (u/block_size)<4){
-// 			printf("\n__kernel void  patch_img_grad, global_id_uint<4=%u,	read_index=%u,	(u,v)=(%u,%u), write_spacing=%u, write_index=%u, write_index_2=%u ", \
-// 			global_id_uint, read_index, u,v, write_spacing, write_index, write_index_2    );
-// 		}
-*/
 	int		lfoff										= -(u >1);															//-(read_column != 0);
 	int		rtoff										=  (u < read_cols_-2);												// (read_column < mm_cols-1);
 
 	float4 	Hessian_pvt_arr[block_size][6][6]			= {{{zero_f4}}};													// pvt variable for values in this column.
-/*
-	//float4 debug										= { global_id_uint, 1,1,1}; // lid_f/block_size, group_id, 1};
-	//uint old_read_index									= read_index;
-	//SE3_Hessian_map[old_read_index + 500*mm_cols]		= debug;
-	//SE3_Hessian_map[global_id_uint + 550*mm_cols]		= lookup_ref;
-*/
-	if(global_id_uint<4 || global_id_uint==mm_cols || (v==32 && u==0) ){printf("\n__kernel void patch_img_grad()	global_id_uint=%u,	u=%u,	v=%u,	read_index=%u",\
-		global_id_uint, u, v, read_index
+
+	//if(global_id_uint<4 || global_id_uint==mm_cols || (v==32 && u==0) ){printf("\n__kernel void patch_img_grad()	global_id_uint=%u,	u=%u,	v=%u,	read_index=%u",\
+		global_id_uint, u, v, read_index\
 	);}
 
 	const uint SE3_offset		= SE3_offset3.s0;	//layer_offset/mm_cols;
@@ -178,16 +164,6 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 
 	uint past_frame_idx =0; // TODO remove and restore long outer loop.
 	uint step;
-/*
-	uint SE3_out_step_1			= ( 4 + (read_rows_/block_size) )*mm_cols;
-	uint SE3_out_step_2			= SE3_out_step_1 * 6;
-	uint SE3_out_step_3			= 4+ (read_cols_/block_size);
-
-	uint ST3_out_step_a			= ( 8 / *4* / + (read_rows_/out_block_size) )*mm_cols;		// ( 4 + (read_rows_/block_size) )*mm_cols;
-	uint ST3_out_step_b			= ST3_out_step_a * 3;								// SE3_out_step_1 * 6;
-	uint ST3_out_step_c			= 4+ (read_cols_/out_block_size);					//4+ (read_cols_/block_size);
-*/
-
 
 	for ( step=1; step<block_size; step *=2){																																					// for each step size, (multiples of 2)
 		for (uint block_row=0; block_row<block_size ; block_row += step){																														// step through rows in column
@@ -258,7 +234,7 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 																						SE3_Hessian_map[	offset_2 ]		= Hessian_pvt_arr[	block_row ][i][j] / Hessian_pvt_arr[	block_row ][i][j].w;
 																						SE3_Hessian_map[read_index]			= debug;
 
-																						if(group_id==0 /*lid==0  i==0 && j==0*/) printf("\ni=%u, j=%u, elem=%u,	SE3_offset=%u,	write_index_2=%u,	offset_2=%u,	SE3_Hessian_map[	offset_2 ]	=%f, %f, %f, %f", \
+																						//if(group_id==0 /*lid==0  i==0 && j==0*/) printf("\ni=%u, j=%u, elem=%u,	SE3_offset=%u,	write_index_2=%u,	offset_2=%u,	SE3_Hessian_map[	offset_2 ]	=%f, %f, %f, %f", \
 																																			i,		j, (i*6+j),	SE3_offset,		write_index_2,		offset_2,		SE3_Hessian_map[offset_2].s0,	SE3_Hessian_map[offset_2].s1,	SE3_Hessian_map[offset_2].s2,	SE3_Hessian_map[offset_2].s3  );
 			}
 		}
@@ -291,21 +267,18 @@ __kernel void  patch_hessian_reduce(						// one workgroup per element.
 	__private	uint		mm_cols,						//3
 	__private	uint		elem,							//4
 
-	__global 	float4*		SE3_Hessian_map					//5	// write result to one before start_idx
+	__global 	float4*		SE3_Hessian_map					//5
 ){
 	uint				lid				= get_local_id(0);
 	uint 				index			= lid + start_idx;
-	float4				pvt_Hessian		= 0;								// TODO max_rows macro ?
+	float4				pvt_Hessian		= 0;
 	__local float4		local_msg[32];
 
-
 	if(lid>=cols) return;
-
 	for( int i=0; i<rows; i++ ){	pvt_Hessian		+= SE3_Hessian_map[index + i*mm_cols];	}
 
-	if (/*elem==1*/lid==0 /*|| lid==block_size-1*/) printf("    __kernel patch_hessian_reduce(): start_idx  = %u,		lid=%u,		elem=%u,	pvt_Hessian=%f, %f, %f, %f",\
+	//if (/*elem==1*/lid==0 /*|| lid==block_size-1*/) printf("    __kernel patch_hessian_reduce(): start_idx  = %u,		lid=%u,		elem=%u,	pvt_Hessian=%f, %f, %f, %f",\
 																								start_idx ,  		lid, 		elem,    pvt_Hessian.s0,  pvt_Hessian.s1,  pvt_Hessian.s2,  pvt_Hessian.s3 ); // pvt_Hessian=%v4hlf   , pvt_Hessian
-
 	uint step 		= 2;
 	uint old_step 	= 1;
 	uint iter 		= log2((float)cols);
@@ -320,9 +293,8 @@ __kernel void  patch_hessian_reduce(						// one workgroup per element.
 		barrier(CLK_LOCAL_MEM_FENCE );
 	}
 	if( fmod((float)lid, step)				==0 ) {
-		uint where				=	elem;						// start_idx - mm_cols +
-		SE3_Hessian_map[where]	=	pvt_Hessian;				// write result to the first 36 pixels of SE3_Hessian_map, directly above this layer of hessian pyramid,  because this will be fastest to read to CPU.
-		printf("	SE3_Hessian_map  %u 	=%f, %f, %f, %f",  where,		pvt_Hessian.s0,  pvt_Hessian.s1,  pvt_Hessian.s2,  pvt_Hessian.s3 );
+		SE3_Hessian_map[elem]	=	pvt_Hessian;				// write result to the first 36 pixels of SE3_Hessian_map, directly above this layer of hessian pyramid,  because this will be fastest to read to CPU.
+		//printf("	SE3_Hessian_map  %u 	=%f, %f, %f, %f",  where,		pvt_Hessian.s0,  pvt_Hessian.s1,  pvt_Hessian.s2,  pvt_Hessian.s3 );
 	}
 
 }
