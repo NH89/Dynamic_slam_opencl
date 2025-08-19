@@ -317,11 +317,11 @@ void DISOpticalFlowImpl::prepareBuffers(	Mat &I0, 	Mat &I1, 	Mat &flow, 	bool us
             cur_rows 			= 	I0.rows / fraction;
             cur_cols 			= 	I0.cols / fraction;
 
-            I0s[i].create(			cur_rows, 					cur_cols);
-            resize(					I0, 			I0s[i], 	I0s[i].size(), 	0.0, 	0.0, 	INTER_AREA);
+            I0s[i].create(			cur_rows,					cur_cols);
+            resize(					I0,				I0s[i], 	I0s[i].size(), 	0.0, 	0.0, 	INTER_AREA);
 
-            I1s[i].create(			cur_rows, 					cur_cols);
-            resize(					I1, 			I1s[i], 	I1s[i].size(), 	0.0, 	0.0, 	INTER_AREA);
+            I1s[i].create(			cur_rows,					cur_cols);
+            resize(					I1,				I1s[i], 	I1s[i].size(), 	0.0, 	0.0, 	INTER_AREA);
 
             /* These buffers are reused in each scale so we initialize them once on the finest scale: */
             Sx.create(				cur_rows / patch_stride, 	cur_cols / patch_stride);

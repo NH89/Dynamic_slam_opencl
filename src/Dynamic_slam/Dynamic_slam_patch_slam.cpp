@@ -6,71 +6,55 @@ using namespace cv;
 using namespace std;
 
 float cos_sq_updates(Matx16f old_, Matx16f new_   ){		// tests cos^2 angle between updates of rotation SO3 & translation ST3. Returns the smaller of the two. NB -ve value -> overshoot.
-	float dot_sq_SO3 = old_.operator()(0)*new_.operator()(0) + old_.operator()(1)*new_.operator()(1) + old_.operator()(2)*new_.operator()(2) ;
-	float dot_sq_ST3 = old_.operator()(3)*new_.operator()(3) + old_.operator()(4)*new_.operator()(4) + old_.operator()(5)*new_.operator()(5) ;
-	dot_sq_SO3	*= dot_sq_SO3;
-	dot_sq_ST3	*= dot_sq_ST3;
+	float dot_sq_SO3	= old_.operator()(0)*new_.operator()(0) + old_.operator()(1)*new_.operator()(1) + old_.operator()(2)*new_.operator()(2) ;
+	float dot_sq_ST3	= old_.operator()(3)*new_.operator()(3) + old_.operator()(4)*new_.operator()(4) + old_.operator()(5)*new_.operator()(5) ;
+	dot_sq_SO3			*= dot_sq_SO3;
+	dot_sq_ST3			*= dot_sq_ST3;
 
-	float mag_sq_SO3 = old_.operator()(0)*new_.operator()(0) * old_.operator()(1)*new_.operator()(1) * old_.operator()(2)*new_.operator()(2) ;
-	float mag_sq_ST3 = old_.operator()(3)*new_.operator()(3) * old_.operator()(4)*new_.operator()(4) * old_.operator()(5)*new_.operator()(5) ;
-	mag_sq_SO3	*= mag_sq_SO3;
-	mag_sq_ST3	*= mag_sq_ST3;
+	float mag_sq_SO3	= old_.operator()(0)*new_.operator()(0) * old_.operator()(1)*new_.operator()(1) * old_.operator()(2)*new_.operator()(2) ;
+	float mag_sq_ST3	= old_.operator()(3)*new_.operator()(3) * old_.operator()(4)*new_.operator()(4) * old_.operator()(5)*new_.operator()(5) ;
+	mag_sq_SO3			*= mag_sq_SO3;
+	mag_sq_ST3			*= mag_sq_ST3;
 
 	float cos_sq_SO3	= dot_sq_SO3 / mag_sq_SO3;
 	float cos_sq_ST3	= dot_sq_ST3 / mag_sq_ST3;
 
-	float cos_sq = cos_sq_ST3;
+	float cos_sq 		= cos_sq_ST3;
 	if (cos_sq_SO3 < cos_sq_ST3) cos_sq = cos_sq_SO3;
 
 	return cos_sq;
 }
 
 void Dynamic_slam::patch_slam(){																										// Adaptive step size LM tracking and halting
-	int 	local_verbosity_threshold 		= V_DYNAMIC_SLAM_ESTIMATESE3;//verbosity_mp["Dynamic_slam::estimateSE3"];
-																																		if(verbosity>local_verbosity_threshold) {
-																																			cout << "\nDynamic_slam::patch_slam() chk_0"
+	int 	local_verbosity_threshold 			= V_DYNAMIC_SLAM_ESTIMATESE3;//verbosity_mp["Dynamic_slam::estimateSE3"];
+																																		if(verbosity>local_verbosity_threshold) {	cout << "\nDynamic_slam::patch_slam() chk_0"
 																																			<<"  ##############################################################"<< flush;
 																																		}
+	const uint max_iter							=12;	// must equal SE_iter = 10
+	Matx16f update[max_iter]					= {{0,0,0, 0,0,0}};																			// SE3 Lie Algebra holding the DoF of SE3.
 
-	const uint max_iter						=12;	// must equal SE_iter = 10
-	Matx16f update[max_iter]				= {{0,0,0, 0,0,0}};																			// SE3 Lie Algebra holding the DoF of SE3.
-	//Matx16f old_update						= {0,0,0, 0,0,0};																			// SE3 Lie Algebra holding the DoF of SE3.
-	//float 	old_Rho_sq_results				= FLT_MAX /2.0f;
+	uint  	layer 								= SE3_start_layer;
+	uint  	channel  							= 2;
 
-	uint  	layer 							= SE3_start_layer;
-	//float 	factor 							= obj["SE_factor"].asFloat();
-	uint  	channel  						= 2;
-	// float 	steps[3] 						= {0, 1, 3};
-	// float 	stepsize 						= 1.0;
+	Matx44f K 									= frame_data.back().frame_data.K;															// load function local variables fot the current frame.
+	Matx44f inv_K 								= frame_data.back().frame_data.inv_K;
+	Matx44f keyframe2pose[3] 					= {frame_data.back().frame_data.keyframe2pose};
+	Matx16f	keyframe2pose_SE3[3]				={{0}};
+	keyframe2pose_SE3[0] 						= PToLie( keyframe2pose[0] );
 
-	Matx44f K 								= frame_data.back().frame_data.K;															// load function local variables fot the current frame.
-	Matx44f inv_K 							= frame_data.back().frame_data.inv_K;
-	Matx44f keyframe2pose[3] 				= {frame_data.back().frame_data.keyframe2pose};
-	Matx16f	keyframe2pose_SE3[3]			={{0}};
-	keyframe2pose_SE3[0] 					= PToLie( keyframe2pose[0] );
+	const Matx44f keyframe2pose_GT 				= frame_data.back().frame_data_GT.keyframe2pose;
+	const Matx16f Pose_GT						= PToLie( keyframe2pose_GT);
 
-	const Matx44f keyframe2pose_GT 			= frame_data.back().frame_data_GT.keyframe2pose;
-	const Matx16f Pose_GT					= PToLie( keyframe2pose_GT);
+	Matx44f keyframe_k2k						= K*keyframe2pose[0]*inv_K;
+	float 	k2k_4_16[tracking_tot_samples][16]	= {{0}};
+	Matx44f_To_float16arry( keyframe_k2k,		k2k_4_16[0] );																				// NB float float 	k2k_4_16[..][16]  is passed by RunCL to kernels.
 
-	//Matx44f old_keyframe2pose 				= keyframe2pose[0];
-																																		// old_keyframe2pose.operator()(1,1)=1.234567f;
-																																		// cout << "/n chk old_keyframe2pose vs keyframe2pose.operator()(1,1) = "<< keyframe2pose[0].operator()(1,1)<< flush;
-	Matx44f keyframe_k2k					= K*keyframe2pose[0]*inv_K;
-	float 	k2k_4_16[tracking_tot_samples][16] 		= {{0}};
-	Matx44f_To_float16arry( keyframe_k2k,  k2k_4_16[0] );																				// NB float float 	k2k_4_16[..][16]  is passed by RunCL to kernels.
-	// uint 	local_num_samples, start_sample_idx;
+	float 	result_[max_iter][num_SE3_DoF]		={{0}};
+	float 	update_[max_iter][num_SE3_DoF]		={{0}};
 
-	// const float f			= ( obj["cameraMatrix"][0].asFloat() + obj["cameraMatrix"][4].asFloat() ) /2.0;									// focal length in pixels.
-	// const float delta 	  	= obj["ST3_delta"].asFloat() * obj["min_depth"].asFloat()  / f ;												// ST3_delta * (Translation to cause 1 pixel of parallax at min_depth)  	//1.0;//0.01; //0.001;  //  * obj["min_depth"].asFloat()
-	// const float delta_theta = obj["SO3_delta_theta"].asFloat() / f;																			// SO3_delta_theta * (Rotation to cause 1 pixel of rotation flow) //0.01; //0.001;
-
-	//float	old_update_[num_SE3_DoF]		={0};
-	float 	result_[max_iter][num_SE3_DoF]	={{0}};
-	float 	update_[max_iter][num_SE3_DoF]	={{0}};
-
-	Matx16f Pose_estimate[max_iter]			={{0}};
-	Matx16f Pose_error[max_iter]			={{0}};
-	float	Rho_valid_pixels[max_iter]		={0};
+	Matx16f Pose_estimate[max_iter]				={{0}};
+	Matx16f Pose_error[max_iter]				={{0}};
+	float	Rho_valid_pixels[max_iter]			={0};
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nDynamic_slam::patch_slam() chk_1 ########################"<<flush;
 																																			PRINT_MATX44F(K,);

@@ -224,7 +224,7 @@ void RunCL::patch_img_gradients_set_params( uint out_block_size ){	// Uses patch
 	//Outputs:
 	//__global
 	_clSetKernelArg( kernel,	10, sizeof( cl_mem), 	&SE3_grad_map_mem,				fname);									// __global 	float8*		SE3_grad_map,			//7		// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
-	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&SE3_hessian_map_mem,			fname);									// __global 	float4*		SE3_Hessian_map,		//8		// HSV (6x6) matrix so 36*float8
+	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&SE3_hessian_pinv_map_mem,		fname);									// __global 	float4*		SE3_Hessian_pinv_map,		//8		// HSV (6x6) matrix so 36*float8
 	_clSetKernelArg( kernel,	13, sizeof( cl_mem), 	&HSV_grad_mem,					fname);									// __global 	float8*		HSV_grad				//10
 
 	// For the SE3 Hessian patches, and their reduction.	/////////////
@@ -334,8 +334,8 @@ void RunCL::patch_img_gradients( uint layer ){
 
 	res 	= clEnqueueNDRangeKernel(m_queue,		kernel, 1, 0, &threads_to_launch, &local_work_size_, 0, NULL, &ev);
 																	if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
-	status	= clFlush(m_queue);										if (status != CL_SUCCESS)	{ cout << "\nRunCL::compute_patch_lookup_table( ),  clFlush(m_queue) status  = "<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
-	status	= clWaitForEvents (1, &ev);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::compute_patch_lookup_table( ),  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
+	status	= clFlush(m_queue);										if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_img_gradients( ),  clFlush(m_queue) status  = "<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
+	status	= clWaitForEvents (1, &ev);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_img_gradients( ),  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_chk2 ."<<flush;	// Save buffers to file ###########
 																																	stringstream ss;
@@ -347,8 +347,8 @@ void RunCL::patch_img_gradients( uint layer ){
 																																	cv::Mat bufImg;
 																																	_cl_flush_finish(m_queue, fname);
 																																	//DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show);
-																																	DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range, 0, false);
-
+																																	DownloadAndSave_3Channel( 	SE3_hessian_pinv_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range, 0,			false);
+																																	DownloadAndSave_3Channel( 	SE3_hessian_pinv_map_mem,	ss.str( ), paths.at( "jacobian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range, mm_layerstep, false);
 																																	// NB the tiff file holda the int32 values as float32. This is okay because they fit in the mantissa.
 																																	// BGRA format, B=u, G=v, R=read_index, A=alpha.
 																																	tiff 			= old_tiff;
@@ -367,10 +367,12 @@ void  RunCL::patch_hessian_reduce(uint layer){
 	uint	rows		=		patch_hessian_rows[ layer];
 	uint	mm_cols		=		mm_width;
 
-	_clSetKernelArg( kernel,	1, sizeof(int),			&cols,					fname);									// __private	uint	cols		//1
-	_clSetKernelArg( kernel,	2, sizeof(int),			&rows,					fname);									// __private	uint	rows		//2
-	_clSetKernelArg( kernel,	3, sizeof(int),			&mm_cols,				fname);									// __private	uint	mm_cols		//3
-	_clSetKernelArg( kernel,	5, sizeof(cl_mem),		&SE3_hessian_map_mem,	fname);									// __private	uint	mm_cols		//5
+	_clSetKernelArg( kernel,	1, sizeof(int),			&cols,						fname);									// __private	uint	cols		//1
+	_clSetKernelArg( kernel,	2, sizeof(int),			&rows,						fname);									// __private	uint	rows		//2
+	_clSetKernelArg( kernel,	3, sizeof(int),			&mm_cols,					fname);									// __private	uint	mm_cols		//3
+
+	_clSetKernelArg( kernel,	5, sizeof(int),			&mm_layerstep,				fname);									// __private	uint	mm_pixels	//4
+	_clSetKernelArg( kernel,	6, sizeof(cl_mem),		&SE3_hessian_pinv_map_mem,	fname);									// __private	uint	mm_cols		//5
 
 	cl_int		status	= CL_SUCCESS;
 	cl_event	ev		= 0;
@@ -382,8 +384,8 @@ void  RunCL::patch_hessian_reduce(uint layer){
 		for( uint col = 0; col<6; col++){
 			uint start_idx	=	patch_hessian_start_idx[layer][row][col];
 			uint elem 		=	row * 6 + col;
-			_clSetKernelArg( kernel,	0, sizeof(int),	&start_idx,				fname);									// __private	uint	start_idx	//0
-			_clSetKernelArg( kernel,	4, sizeof(int),	&elem,					fname);									// __private	uint	elem		//4
+			_clSetKernelArg( kernel,	0, sizeof(int),	&start_idx,					fname);									// __private	uint	start_idx	//0
+			_clSetKernelArg( kernel,	4, sizeof(int),	&elem,						fname);									// __private	uint	elem		//4
 
 			cout << "\nRunCL::patch_hessian_reduce()  start_idx = "<<start_idx<<"	  elem = "<<elem<<"	row="<<row<<",  col="<<col<<"  cols="<<cols<<"  rows="<<rows<<"  mm_cols="<<mm_cols<<"  layer="<<layer<< flush;
 
@@ -393,24 +395,51 @@ void  RunCL::patch_hessian_reduce(uint layer){
 		cout<< endl << flush;
 	}
 
+	cout<<"\nchk_2"<<flush;
 	status	= clFlush(m_queue);							if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_hessian_reduce( ),  clFlush(m_queue) status  = "<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 	status	= clWaitForEvents (1, &ev);					if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_hessian_reduce( ),  clWaitForEventsh(1, &ev) = "<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 
-	Matx66f		hessian;
-	Mat			hessian_Mat( num_SE3_DoF, num_SE3_DoF, CV_32FC4);
-	size_t		data_size	= num_SE3_DoF * num_SE3_DoF * sizeof(cl_float4);
+	cout<<"\nchk_3"<<flush;
+	Matx16f		jacobian;
+	Matx66f 	inv_Hessian;
+	Mat			hessian_Mat(	(num_SE3_DoF+1),	num_SE3_DoF,	CV_32FC4);
+	size_t		data_size	=	(num_SE3_DoF+1) *	num_SE3_DoF *	sizeof(cl_float4);
 	size_t		offset		= 0;
-	ReadOutput( hessian_Mat.data, SE3_hessian_map_mem, data_size, offset);
 
-	for(int row=0; row<num_SE3_DoF; row++){
+	cout<<"\nchk_4"<<flush;
+	ReadOutput( hessian_Mat.data, SE3_hessian_pinv_map_mem, data_size, offset);
+
+	cout<<"\nchk_5"<<flush;
+	cout<<hessian_Mat<<flush;
+
+	cout<<"\nchk_5.2"<<flush;
+	Mat J					= Mat( hessian_Mat, Rect(0,0,6,1)	);
+	cout<<J<<flush;
+
+	for(int row=0; row<1; row++){																									// per_pixel division currently done in kernel, TODO which is better ?
 		for(int col=0; col<num_SE3_DoF; col++){
-			hessian.operator()(row,col)		= hessian_Mat.at<cl_float4>( row,col ).x / hessian_Mat.at<cl_float4>( row,col ).w;		// NB choose colour channel of Hessian
+			jacobian.operator()(row,col)		= J.at<cl_float4>( row,col ).x / J.at<cl_float4>( row,col ).w;						// NB choose colour channel of Hessian
 		}
 	}
-	Matx66f inv_Hessian		= hessian.inv();
+
+	cout<<"\nchk_5.5"<<flush;
+	Mat H					= Mat( hessian_Mat, Rect(0,1,6,6)	); 																		//hessian.inv()  NB computed in kernel: sum of pixelwise pseudo-inverse of the Hessian.
+	cout<<H<<flush;
+
+	for(int row=1; row<num_SE3_DoF+1; row++){																							// per_pixel division currently done in kernel, TODO which is better ?
+		for(int col=0; col<num_SE3_DoF; col++){
+			inv_Hessian.operator()(row,col)		= hessian_Mat.at<cl_float4>( row,col ).x / hessian_Mat.at<cl_float4>( row,col ).w;	// NB choose colour channel of Hessian
+		}
+	}
+
+	cout<<"\nchk_6"<<flush;
+	current_frames[ current_frames_idx[0] ].Jacobian[layer]			= jacobian;
 	current_frames[ current_frames_idx[0] ].invHessian[layer]		= inv_Hessian;
-	PRINT_MATX66F(hessian,		"SE3 Hessian, channel x/w");
-	PRINT_MATX66F(inv_Hessian,	"SE3 Hessian_inverse, channel x/w");
+
+	cout<<"\nchk_7"<<flush;
+	PRINT_MATX16F(jacobian,		"Mean SE3 Jacobian, channel x/w");
+	PRINT_MATX66F(inv_Hessian,	"Mean SE3 Hessian_pseudo_inverse, channel x/w");
+
 /*
 	// float sum=0;
 	// for(uint i=0; i<6; i++) sum += hessian.operator()(i,i) * hessian.operator()(i,i);	// sum the squares of the diahonal of the Hessian.
@@ -418,22 +447,22 @@ void  RunCL::patch_hessian_reduce(uint layer){
 	// hessian /= sum ;
 	// PRINT_MATX66F(hessian, "SE3 Hessian/diag, channel x/w");
 */
-																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_hessian_readuce()_finished #############################################################"<<flush;}
+																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_hessian_reduce()_finished #############################################################"<<flush;}
 }
 
-
-void RunCL::LK_SE3_tracking_update(uint layer){
+/*
+void RunCL::IC_LK_SE3_tracking_update(uint layer){	// Inverse compositional Lucas-Kanade optimization of camera pose.
 
 
 	Matx66f invHessian = current_frames[ current_frames_idx[0] ].invHessian[layer];
-	float 	sum_Rho, num_pixels;
+	float	sum_Rho, num_pixels;	// NB num_pixels should be only for img overlap => update each iteration.
 	Matx61f	sum_Rho_J;				// pixelwise:  Rho * J
 	Matx61f	sum_J;					// J = SE3_grad_map * img_grad
 
 	Matx61f	pose_update	= invHessian * ( sum_Rho_J  - (sum_Rho * sum_J) )/ num_pixels;
 
 }
-
+*/
 
 //void RunCL::patch_hessian_reduce( uint layer, uint out_block_size ){
 

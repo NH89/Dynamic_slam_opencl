@@ -166,8 +166,8 @@
 
 	/////////////////////////////////////// RUNCL_PATCH_SLAM.CPP
 	#define V_RUNCL_INITIALIZE_PATCH_PARAMS				-1
-	#define	V_RUNCL_COMPUTE_PATCH_LOOKUP_TABLE			-1
-	#define	V_RUNCL_PATCH_IMG_GRADIENTS					-1
+	#define	V_RUNCL_COMPUTE_PATCH_LOOKUP_TABLE			-2
+	#define	V_RUNCL_PATCH_IMG_GRADIENTS					-2
 
 	/////////////////////////////////////// RUNCL_SETUP_KEYFRAME.CPP
 	#define	V_RUNCL_ESTIMATECALIBRATION					1

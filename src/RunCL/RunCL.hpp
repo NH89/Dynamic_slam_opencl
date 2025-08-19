@@ -101,6 +101,7 @@ public:
 		uint			frame_data_index;
 		float			pose[16];			// Absolute pose of the frame. i.e. relative to initial frame. Computed from the local sample frames. Will req adjustment at loop closure.
 		float			invk2k[16];			// Reprojection matrix to the current img. Estimated, then fitted for each new frame, also with updates of camera inrinsic mattix.
+		Matx16f			Jacobian[max_mipmap_layers];
 		Matx66f			invHessian[max_mipmap_layers];
 	};
 
@@ -206,7 +207,7 @@ public:
 
 	// buffers for patch kernel based Dynamic_slam
 	cl_mem				patch_lookup_table_buf;
-	cl_mem				SE3_hessian_map_mem,		SE3_jacobian_map_mem;
+	cl_mem				SE3_hessian_pinv_map_mem,		SE3_jacobian_map_mem;
 	cl_mem				pose_buf, pose_update_buf,	distorsion_update_buf,		old_results_buf,				K_buf, inv_K_buf;
 
 	//

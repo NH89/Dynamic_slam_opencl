@@ -86,7 +86,7 @@ void RunCL::createFolders(){
 										"dmem","amem","lomem","himem","qmem","qmem2","cdatabuf","cdatabuf_8chan","hdatabuf","dbg_databuf","img_sum_buf", \
 										"HSV_grad_mem", "dmem_disparity", \
 										\
-										"hessian"\
+										"jacobian","hessian"\
 	};
 	std::vector<std::string> names2 = {\
 										"lookup_table_buf",				"ref_img_buf",					"new_img_buf",					"warped_img_buf",\
