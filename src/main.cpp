@@ -26,10 +26,11 @@ int main(int argc, char *argv[])
 	int frame_count 	= 0;
 	int ds_error 		= 0;
 																														if(verbosity_>0) cout << "\n\n main_chk 1\n" << flush;
-																														cout <<"\nconf file = "		<< argv[1];
-																														cout <<"\nverbosity_ = "	<<verbosity_;
-																														cout <<"\nimagesPerCV = "	<<imagesPerCV;
-																														cout <<"\noutpath = " 		<<obj["out_path"].asString(); //j_params.paths_mp
+																														cout 	<<"\nconf file = "		<< argv[1]
+																																<<"\nverbosity_ = "		<<verbosity_
+																																<<"\nimagesPerCV = "	<<imagesPerCV
+																																<<"\noutpath = " 		<<obj["out_path"].asString()
+																																<<"\n## main.cpp line 32 ##"<< flush; //j_params.paths_mp
 	j_params.save_stdout( obj,  "Dynamic_slam_startup_output.txt");
 	Dynamic_slam 	dynamic_slam( obj );																				// Construct Dynamic_slam object (including RunCL object) before while loop.################################
 	frame_count++;

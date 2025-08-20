@@ -75,7 +75,7 @@ void conf_params::create_out_folder(Json::Value& val){
 void conf_params::save_stdout(Json::Value& val,  string outfile){
 	std::filesystem::path 	out_path( val["out_path"].asString() );
 	out_path += outfile;
-																				cerr << "\nOutfile = " << out_path.string() << endl;
+																				cerr << "\nOutfile = " << out_path.string() << endl << flush;
 	fflush (stdout);
 	freopen (out_path.string().c_str(), "w", stdout);							// NB ignores return value. Also stdout is reset at end of main().
 }
