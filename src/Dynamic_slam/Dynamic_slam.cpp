@@ -163,13 +163,25 @@ int Dynamic_slam::nextFrame() {
 																																			// This would update keyframe_depth_mem ith the raw amem, every frame.
 
 	getFrameData_vec();		/*Only IF GT available*/									auto step_1 = high_resolution_clock::now();			// updates pose2pose for next frame in cost volume.
+																																			// if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 1, Pose error after getFrameData_vec():" << flush;
+																																			// 	report_GT_pose_error();
+																																			// 	//display_frame_resluts();
+																																			// }
+
 	if (runcl.costvol_frame_num>1)					{ 	predictFrame_vec(); }			auto step_2 = high_resolution_clock::now();			// Loads GT depth of the new frame. NB depends on image.size from getFrame().
 	if(obj["use_GT_pose"].asBool() == true )		{	use_GT_pose_vec();	}			auto step_3 = high_resolution_clock::now();			// use_GT_pose();
+																																			// if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 2, Pose error after use_GT_pose:" << flush;
+																																			// 	report_GT_pose_error();
+																																			// 	//display_frame_resluts();
+																																			// }
 	getFrame();																			auto step_4 = high_resolution_clock::now();
 	if(obj["Artif_pose_err_bool"].asBool() == true ){ 	artificial_pose_error_vec();}	auto step_5 = high_resolution_clock::now();
 
 	//estimateSE3(); // original tracking
-
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 3, Pose error after Artif_pose_err:" << flush;
+																																				report_GT_pose_error();
+																																				//display_frame_resluts();
+																																			}
 //	patch_slam();		// new tracking prototype.
 	estimateSLAM();		// kernel basedtracking - no data offload. nor CPU computing.
 																						auto step_6 = high_resolution_clock::now();			// own thread ? num iter ?
@@ -177,7 +189,7 @@ int Dynamic_slam::nextFrame() {
 	//binocular_reference_frame();
 //	binocular_disparity();
 	//estimateCalibration(); 																												// own thread, one iter.
-																																			if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 1, Pose error:" << flush;
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 4, Pose error after tracking:" << flush;
 																																				report_GT_pose_error();
 																																				//display_frame_resluts();
 																																			}
@@ -234,14 +246,15 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 	runcl.img_gradients();
 
 	//runcl.patch_img_gradients( 0/*0*/, 4 ); //  uint layer, uint out_block_size.  NB (0, 4) are the largest sizes that will fit in the buffer.
+	float zero  = 0;
+	cl_int 			status;
+	cl_event 		writeEvt;
+	status = clEnqueueFillBuffer(runcl.uload_queue, runcl.SE3_hessian_pinv_map_mem, &zero, 	sizeof(float), 	0, runcl.mm_size_bytes_C4, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << runcl.checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;runcl.exit_(status);}	clFlush(runcl.uload_queue); status = clFinish(runcl.uload_queue);
 	for(int layer=SE3_start_layer; layer>=0/*SE3_stop_layer*/; layer-- ){
-		cout << "\nDynamic_slam::getFrame(): layer="<<layer<<"  SE3_start_layer="<<SE3_start_layer<<"   SE3_stop_layer="<<SE3_stop_layer<<flush;
+		//cout << "\nDynamic_slam::getFrame(): layer="<<layer<<"  SE3_start_layer="<<SE3_start_layer<<"   SE3_stop_layer="<<SE3_stop_layer<<flush;
 		runcl.patch_img_gradients(	layer);
 		runcl.patch_hessian_reduce(	layer);
-		cout << "\nDynamic_slam::getFrame(): chk loop" << flush;
 	}
-
-	cout << "\nDynamic_slam::getFrame(): chk after loop" << flush;
 	// Will need to decide which layers and ST3 patch sizes to compute Hessians for, then store them in a buffer on the GPU.
 																																			// # Get 1st & 2nd order image gradients of MipMap
 																																			// see CostVol::cacheGValues(), RunCL::cacheGValue2 & __kernel void CacheG3

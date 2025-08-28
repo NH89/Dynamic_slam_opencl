@@ -134,7 +134,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	float2 rho_pvt_flt2								= zero_f2;
 
 	float8 grad_v8									= {zero_f4, zero_f4};
-	float2 grad_pvt_arr[block_size*num_SE3_DoF]			= {zero_f2};								// pvt variable for values in this column.
+	float2 grad_pvt_arr[block_size*num_SE3_DoF]		= {zero_f2};								// pvt variable for values in this column.
 	float4 grad_pvt_flt4_SE3[6]						= {zero_f4};
 	float  grad_pvt_flt_SE3[6]						= {0.0f};
 	float  grad_pvt_SE3_mag							= 0.0f;
@@ -146,7 +146,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	float4 grad_pvt_flt4							= zero_f4;
 	float2 grad_pvt_flt2							= zero_f2;
 
-	float2 SE3_incr_pvt_arr[block_size*num_SE3_DoF]		= {zero_f2};								// pvt variable for values in this column.
+	float2 SE3_incr_pvt_arr[block_size*num_SE3_DoF]	= {zero_f2};								// pvt variable for values in this column.
 	float4 SE3_incr_pvt_flt4						= zero_f4;
 	float2 SE3_incr_pvt_flt2						= zero_f2;
 
@@ -203,6 +203,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 				rho_pvt_flt4.w			= 1.0f;																																					// rho.w holds pixel count.
 
 				// Magnitude of gradient of Rho wrt SE3 rotation & translation //////
+				grad_pvt_SE3_mag		= 0.0f;
 				for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
 					grad_v8 												=  SE3_grad_map_cur_frame[ read_index_row + (se3_dim * mm_pixels) ] ;
 					grad_pvt_flt4_SE3[se3_dim]								=  grad_v8.hi + grad_v8.lo;
@@ -243,7 +244,8 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 			}
 			barrier( CLK_GLOBAL_MEM_FENCE );
 
-			rho_pvt_flt2.x					=  rho_pvt_flt4.x*rho_pvt_flt4.x*value_sq_pvt		+ rho_pvt_flt4.y*rho_pvt_flt4.y*value_sq_pvt	+ rho_pvt_flt4.z*rho_pvt_flt4.z;				// sum rho^2, but multiply hue and saturation by value sq TODO Hue is a problem due to wrap arround.Need to changer to the HSVgrad 8 chan colorspace.
+			rho_pvt_flt2.x					=  rho_pvt_flt4.x*rho_pvt_flt4.x*value_sq_pvt		+ rho_pvt_flt4.y*rho_pvt_flt4.y*value_sq_pvt	+ rho_pvt_flt4.z*rho_pvt_flt4.z;				// sum rho^2, but multiply hue and saturation by value sq
+																																																// TODO Hue is a problem due to wrap arround.Need to changer to the HSVgrad 8 chan colorspace.
 			rho_pvt_flt2.x					*= edge_weight;																																		// Weight rho by edges. // TODO choose/ refine which edges to use.
 			rho_pvt_flt2.y					=  1.0f;																																			// count the pixels.
 			rho_pvt_arr[row_in_block]		+= rho_pvt_flt2;																																	// save to pvt mem for this column
@@ -277,7 +279,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 		}
 		// Save intermediate size ST3 patches for depth map updates, //////////
 		if (step==out_block_size/2){																																							// save ST3 map at out_block_size, to use for updating depth_map and rel_vel_map
-			uint frame_offset 		= write_index + past_frame_idx * 100 + 25 ;			// NB 100 works for current img size . // stacks frame ST3 maps in adjacent collumns..
+			uint frame_offset 		= write_index + past_frame_idx * 100 + 25 ;			// NB 100 works for current img size . // stacks frame ST3 maps in adjacent columns..
 			uint write_block_row	= 0;
 			if( fmod((float)lid,out_block_size) == 0 ){																																			// selects columns i.e. threads within the workgroup
 				for (uint block_row=0; block_row < block_size ; block_row += step*2, write_block_row++){
@@ -388,8 +390,8 @@ __kernel void reduce_patch_Rho(									// call just one workgroup to sum the wh
 	}
 
 	if (mod_step && in_range){
-		Rho_[SE3]								= pvt_rho_sum;
-		SE3_incr_map_[SE3]						= pvt_incr_sum;
+		Rho_[			SE3	]			= pvt_rho_sum;
+		SE3_incr_map_[	SE3	]			= pvt_incr_sum;
 	}
 } // Need to end the kernel here, because cannot synchronize across workgroups.
 
@@ -397,15 +399,16 @@ __kernel void reduce_patch_Rho(									// call just one workgroup to sum the wh
 __kernel void update_k2k(	// TODO need new kernel, for global synchronization between workgroups.  // Only one workgroup needed
 	//inputs
 	__private	float2		delta_SE3,				//0
-
-	__global	float2*		Rho_,					//2		// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
-	__global	float2*		SE3_incr_map_,			//3
-	__global	float*		old_results,			//4		// size_of(float) * 6 * 4,  for old mag_S3, & old update as well.
-	__global	float*		Pose,					//5																								(i) Need to reach zero gradient.
-	__global	float*		K,						//6																								(ii) Must reject any step that makes Rho worse.
-	__global	float*		inv_K,					//7																								(iii) Rho might not reach zero, but can never be negative.
+	__private	uint		layer,					//1
+	__global	float4*		Hessian_map,			//2		// holds both H_pinv and J whole image results, for each layer.
+	__global	float2*		Rho_,					//3		// holds result for current layer in 1st 6 pixels										{ sum rho^2 ,  count of valid pixels used } Writen to dense patches.
+	__global	float2*		SE3_incr_map_,			//4		// "					"						"
+	__global	float*		old_results,			//5		// size_of(float) * 6 * 4,  for old mag_S3, & old update as well.
+	__global	float*		Pose,					//6																								(i) Need to reach zero gradient.
+	__global	float*		K,						//7																								(ii) Must reject any step that makes Rho worse.
+	__global	float*		inv_K,					//8																								(iii) Rho might not reach zero, but can never be negative.
 	//input/output
-	__global	float*		k2k						//8
+	__global	float*		k2k						//9
 	){
 	// compute SE3 update	///////////////////////////////////////////////////////////////////////////////////////////////////
 	uint	lid							= get_local_id(0);
@@ -415,6 +418,47 @@ __kernel void update_k2k(	// TODO need new kernel, for global synchronization be
 	# define RHO			6
 	# define RESULT			12
 	# define MAG_S3			18
+
+	// Inverse compositional Lucas-Kanade update (IC-LK)
+	// Load whole img H_pinv & J
+	float4		J[		num_SE3_DoF];
+	float4		H_pinv[	num_SE3_DoF][	num_SE3_DoF];
+	for (uint i=0; i<num_SE3_DoF; i++) {									J[i] 			= Hessian_map[i 			+ layer*8*6];	}				// Each thread holds private copy of whole of J & H_pinv. NB float4, so must choose color channel, + have pixel count in J.w, H_pinv.w .
+	for (uint i=0; i<num_SE3_DoF; i++) {for (uint j=0; j<num_SE3_DoF; j++)	H_pinv[i][j] 	= Hessian_map[i*6 + j + 6	+ layer*8*6];	}
+/*
+	Matx66f invHessian = current_frames[ current_frames_idx[0] ].invHessian[layer];
+	float	sum_Rho, num_pixels;															// NB num_pixels should be only for img overlap => update each iteration.
+	Matx61f	sum_Rho_J;																		// pixelwise:  Rho * J
+	Matx61f	sum_J;																			// J = SE3_grad_map * img_grad
+	Matx61f	pose_update	= invHessian * ( sum_Rho_J  - (sum_Rho * sum_J) )/ num_pixels;
+*/
+	float2	Rho				= Rho_[0];
+	float	num_pixels		= Rho.s1;
+	float	rho				= Rho.s0/Rho.s1;
+	__local float 	pose_update_J[num_SE3_DoF];
+	__local float 	pose_update_H[num_SE3_DoF*num_SE3_DoF];
+
+	if (lid<6) {
+		pose_update_J[lid]			=	SE3_incr_map_[lid].s0	-	(  rho  *  J[lid].x );													//  ( sum_Rho_J  - (sum_Rho * sum_J) )/ num_pixels				// each part needs to be divided by the correct "num_pixels" wole img, or just overlap pixels.
+		pose_update_H[lid]			=	0.0f;
+	}																					barrier(CLK_LOCAL_MEM_FENCE);/////##########
+	if (lid<36) {																																		// multiply by pseudo-inverse of Hessian for the whole image.
+		uint 	elem				=	lid/num_SE3_DoF;
+		float	pose_update_		=	pose_update_J[	elem];
+		float	H_elem				=	Hessian_map[	lid + 6	+ layer*8*6].x;
+		pose_update_H[lid]			=	H_elem * pose_update_;
+	}																					barrier(CLK_LOCAL_MEM_FENCE);/////##########
+	float	pose_update				=	0.0f;
+	if (lid<6) {
+		for(uint i=0; i<num_SE3_DoF; i++) pose_update += pose_update_H[lid*6 +i];
+	}																					barrier(CLK_LOCAL_MEM_FENCE);/////##########
+	if (lid<6) {
+		pose_update_J[lid]			=	pose_update;
+	}
+
+	if(lid==0)printf("\n__kernel void update_k2k(..) Layer=%u,  IC-LK Pose update = %f, %f, %f		%f, %f, %f", layer, pose_update_J[0], pose_update_J[1], pose_update_J[2], pose_update_J[3], pose_update_J[4], pose_update_J[5] );
+	// End IC-LK //////////////////////////////////////////
+
 
 	if (lid<6) {
 		uint	SE3						= lid;
@@ -457,8 +501,8 @@ __kernel void update_k2k(	// TODO need new kernel, for global synchronization be
 										old_results[SE3 + RESULT]			= result;
 										old_results[SE3 + MAG_S3]			= mag_S3;
 		}
-										printf("\n__kernel void update_SE3()_1	option=%u,	SE3=,%u,	(old_update != 0.0f)=,%i,	old_update=,%f,	SE3_incr_map_[SE3].x=,%f,	SE3_incr_map_[SE3].y=,%f,	result=,%f,	Rho_[SE3].x=,%f,	/ Rho_[SE3].y=,%f,	rho=,%f,	old_Rho=,%f,	rho_S3_delta=,%f,	mag_S3=%f,	update_pre_clamp=,%f,	clamped local_update_vec[SE3]=,%f,	delta_SE3[ SE3/3 ]=,%f,", \
-																				option,		SE3,		(old_update != 0.0f),		old_update,		SE3_incr_map_[SE3].x,		SE3_incr_map_[SE3].y,		result,		Rho_[SE3].x,		  Rho_[SE3].y,		rho,		old_Rho,		rho_S3_delta,		mag_S3,		update_pre_clamp,				local_update_vec[SE3], 		delta_SE3[ SE3/3 ]			);
+																																							printf("\n__kernel void update_SE3()_1	option=%u,	SE3=,%u,	(old_update != 0.0f)=,%i,	old_update=,%f,	SE3_incr_map_[SE3].x=,%f,	SE3_incr_map_[SE3].y=,%f,	result=,%f,	Rho_[SE3].x=,%f,	/ Rho_[SE3].y=,%f,	rho=,%f,	old_Rho=,%f,	rho_S3_delta=,%f,	mag_S3=%f,	update_pre_clamp=,%f,	clamped local_update_vec[SE3]=,%f,	delta_SE3[ SE3/3 ]=,%f,", \
+																																																	option,		SE3,		(old_update != 0.0f),		old_update,		SE3_incr_map_[SE3].x,		SE3_incr_map_[SE3].y,		result,		Rho_[SE3].x,		  Rho_[SE3].y,		rho,		old_Rho,		rho_S3_delta,		mag_S3,		update_pre_clamp,				local_update_vec[SE3], 		delta_SE3[ SE3/3 ]			);
 	}																					barrier(CLK_LOCAL_MEM_FENCE);/////##########
 	// compute new K2K	////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -466,11 +510,10 @@ __kernel void update_k2k(	// TODO need new kernel, for global synchronization be
 	__local float local_pose_inv_K[ 2* SE3_elems];																										// Enable two matrix multiplications simultaneously in one work group of 32 trheads.
 	__local float local_A_B[		2* SE3_elems];
 	__local float local_k2k[		   SE3_elems];
-
-	if (lid==0){
-		printf("\n\n __global Pose[] = \n");
-		for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",Pose[	j*4 +k]);	} printf("\n"); } printf("\n\n");
-	}																					barrier(CLK_GLOBAL_MEM_FENCE);/////##########
+																																						if (lid==0){
+																																							printf("\n\n __global Pose[] = \n"); for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",Pose[	j*4 +k]);	} printf("\n"); } printf("\n\n");
+																																						}
+																						barrier(CLK_GLOBAL_MEM_FENCE);/////##########
 
 	if (lid < 3) {	local_update_vec[	lid + 6]		= -1.0f + lid;	}																				// sets local_update_vec[6,7,8] to -1, 0, 1
 /*
@@ -487,25 +530,18 @@ __kernel void update_k2k(	// TODO need new kernel, for global synchronization be
 					local_pose_inv_K[ 	lid + 16]		= inv_K[lid];
 					local_k2k[			lid]			= 0.0f;
 	}																					barrier(CLK_LOCAL_MEM_FENCE);/////##########
-
-	if(lid==0){printf("\n\n__kernel void update_k2k(..), \nlocal_update_vec[]={");
-		for (int i=0; i<9; i++){ printf("	%f,",local_update_vec[i]);}
-		printf("}\nlocal_K_update[]={");
-		for (int i=0; i<2* SE3_elems; i++){printf("	%f,",local_K_update[i]);}
-		printf("}\n");
-	}
+																																						if(lid==0){
+																																							printf("\n\n__kernel void update_k2k(..), \nlocal_update_vec[]={"); for (int i=0; i<9; i++){ printf("	%f,",local_update_vec[i]); }
+																																							printf( "}\nlocal_K_update[]={"); for (int i=0; i<2* SE3_elems; i++){ printf("	%f,",local_K_update[i]); }		printf("}\n");
+																																						}
 	LieToP( 	lid, local_update_vec,	local_K_update );								barrier(CLK_LOCAL_MEM_FENCE);/////##########
-
-	if (lid==0){
-		printf("\n\n local_K_update = \n");
-		for (uint i=0; i< 2 ; i++){ for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){		printf(",	%f",local_K_update[		i*16 +j*4 +k]);	} printf("\n"); } printf("\n\n"); }
-	}
-
+																																						if(lid==0){
+																																							printf("\n\n local_K_update = \n"); for (uint i=0; i< 2 ; i++){ for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ printf(",	%f",local_K_update[		i*16 +j*4 +k]); } printf("\n"); } printf("\n\n"); }
+																																						}
 	update_k2_kdev_fn( lid, local_K_update,	local_pose_inv_K, local_A_B, local_k2k ); 	barrier(CLK_LOCAL_MEM_FENCE);/////##########					// (local_update, local_Pose, local_K, local_inv_K, A, B, local_k2k );
 	if(lid<16){ k2k[lid]								= local_k2k[lid]; }				barrier(CLK_LOCAL_MEM_FENCE);/////##########
-																																						if(lid==0) {
-																																							printf("\nk2k = {\n");
-																																							for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_k2k[	j*4 +k]);	} printf("\n"); } printf("\n\n");
+																																						if(lid==0){
+																																							printf("\nk2k = {\n"); for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_k2k[	j*4 +k]);	} printf("\n"); } printf("\n\n");
 																																						}
 	__local float local_pose[SE3_elems];																												// update the stored pose. TODO tuck this into 2nd stage of void update_k2_kdev_fn(..)
 	__local float local_update[SE3_elems];
@@ -518,25 +554,21 @@ __kernel void update_k2k(	// TODO need new kernel, for global synchronization be
 	}																					barrier(CLK_LOCAL_MEM_FENCE);/////##########
 	mat_mul44( lid,		local_pose,		local_update,		local_new_pose );			barrier(CLK_LOCAL_MEM_FENCE);/////##########
 	if(lid<16){			Pose[lid]		= local_new_pose [lid]; }
-
-	if (lid==0){
-		printf("\n\n local_pose[] = \n");		for (uint j=0; j< 4 ; j++){ 	for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_pose[		j*4 +k]);	} printf("\n"); 	} printf("\n\n");
-		printf("\n\n local_update[] = \n");		for (uint j=0; j< 4 ; j++){ 	for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_update[	j*4 +k]);	} printf("\n"); 	} printf("\n\n");
-		printf("\n\n local_new_pose[] = \n");	for (uint j=0; j< 4 ; j++){ 	for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_new_pose[	j*4 +k]);	} printf("\n"); 	} printf("\n\n");
-	}
+																																						if (lid==0){
+																																							printf("\n\n local_pose[] = \n");		for (uint j=0; j< 4 ; j++){ 	for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_pose[		j*4 +k]);	} printf("\n"); 	} printf("\n\n");
+																																							printf("\n\n local_update[] = \n");		for (uint j=0; j< 4 ; j++){ 	for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_update[	j*4 +k]);	} printf("\n"); 	} printf("\n\n");
+																																							printf("\n\n local_new_pose[] = \n");	for (uint j=0; j< 4 ; j++){ 	for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_new_pose[	j*4 +k]);	} printf("\n"); 	} printf("\n\n");
+																																						}
 }
 
 
 __kernel void update_maps(  // ? integrate with patch kernel ?
 
-
 	)
 {
 	// given global ST3 direction vector, fit depth map
 
-
 	// given residual of local ST3 map, after depth update, fit rel_vel_map
-
 
 }
 
@@ -544,8 +576,6 @@ __kernel void update_SE3(){}
 
 //distorsion_update[..]	=  ;
 //__global	float*		distorsion_update,		//6
-
-
 
 
 __kernel void se3_Rho_sq(

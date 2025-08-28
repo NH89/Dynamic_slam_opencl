@@ -27,6 +27,8 @@ Mat rodrigues(const Mat& p){
     return tmp;
 }
 
+
+
 void LieToRT(InputArray Lie, OutputArray _R, OutputArray _T){
                                                                                                                                             //std::cout << "\n\nLieToRT(InputArray Lie, OutputArray _R, OutputArray _T) chk_0 #############"<<std::flush;
     Mat p = Lie.getMat();
@@ -45,7 +47,8 @@ void RTToLie(Matx33f R, Matx13f T, Matx16f &Lie ){
                                                                                                                                             //std::cout << "\n\nRTToLie(Matx33f R, Matx13f T, Matx16f Lie ) chk_0 #############"<<std::flush;
     Matx13f r(0,0,0);
     cv::Rodrigues(R, r);                      //   PRINT_MATX13F(r,);  PRINT_MATX13F(T,);                                                   // Makes so3 algebra from SO3 Matx33f
-    Matx16f temp(r.operator()(0,0), r.operator()(0,1), r.operator()(0,2),   T.operator()(0,0), T.operator()(0,1), T.operator()(0,2) );
+    Matx16f temp(	r.operator()(0,0), r.operator()(0,1), r.operator()(0,2),\
+    				T.operator()(0,0), T.operator()(0,1), T.operator()(0,2) );
     Lie = temp.get_minor<1,6>(0,0);           //   PRINT_MATX16F(Lie, RTToLie(..));
 }
 
@@ -55,6 +58,9 @@ Matx16f RTToLie(Matx33f _R, Matx13f _T){
     RTToLie(_R,_T,P);
     return P;
 }
+
+
+
 
 void PToLie(Matx44f P, Matx16f &Lie){         //  PRINT_MATX44F(P,);
                                                                                                                                             //std::cout << "\n\nPToLie(Matx44f P, Matx16f Lie) chk_0 #############"<<std::flush;
@@ -89,6 +95,8 @@ Mat RTToP(InputArray _R, InputArray _T){
     return P;
 }
 
+
+
 Matx44f LieToP_Matx(Matx16f Lie){
                                                                                                                                             //std::cout << "\n\nLieToP_Matx chk_0 #############"<<std::flush;
                                                 //PRINT_MATX16F(Lie,  LieToP_Matx(Matx16f Lie) );
@@ -104,10 +112,15 @@ Matx44f LieToP_Matx(Matx16f Lie){
     return P;
 }
 
+
+
+
 Matx16f LieSub(Matx16f A, Matx16f B){
                                                                                                                                             //std::cout << "\n\nLieSub chk_0 #############"<<std::flush;
-    Matx44f Pa = LieToP_Matx(A);
-    Matx44f Pb = LieToP_Matx(B);
+												PRINT_MATX16F(A,);
+												PRINT_MATX16F(B,);
+    Matx44f Pa = LieToP_Matx(A);				PRINT_MATX44F(Pa,);
+    Matx44f Pb = LieToP_Matx(B);				PRINT_MATX44F(Pb,);
     Matx16f out;
     PToLie(Pa*Pb.inv(),out);
     return out;
@@ -115,8 +128,10 @@ Matx16f LieSub(Matx16f A, Matx16f B){
 
 Matx16f LieAdd(Matx16f A, Matx16f B){
                                                                                                                                             //std::cout << "\n\nLieSub chk_0 #############"<<std::flush;
-    Matx44f Pa = LieToP_Matx(A);
-    Matx44f Pb = LieToP_Matx(B);
+												PRINT_MATX16F(A,);
+												PRINT_MATX16F(B,);
+    Matx44f Pa = LieToP_Matx(A);				PRINT_MATX44F(Pa,);
+    Matx44f Pb = LieToP_Matx(B);				PRINT_MATX44F(Pb,);
     Matx16f out;
     PToLie(Pa*Pb,out);
     return out;

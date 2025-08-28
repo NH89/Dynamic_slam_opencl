@@ -180,7 +180,7 @@ void RunCL::rho_sq(uint out_block_size, uint iter, uint layer, float delta_theta
 	_clSetKernelArg( kernel,24, sizeof( cl_float2)*local_work_size*num_SE3_DoF,	NULL,													fname);		//__local 		float4*		local_SE3_incr			//25
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_6 .  "<<flush;}
 
-	cl_command_queue 	queue_to_call		= m_queue;
+	cl_command_queue	queue_to_call		= m_queue;
 	cl_int				res, status;
 	cl_event			ev;
 																									auto step_0 = high_resolution_clock::now();
@@ -299,18 +299,20 @@ void RunCL::update_k2k( uint layer, float delta_theta, float delta )
 
 																																	if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k( ..)_chk_1 . "<< flush;}
 	// private input
-	_clSetKernelArg( kernel,  0, sizeof( cl_float2),					&delta_SE3,					fname);							//__private	float2		delta_SE3,				//1
+	_clSetKernelArg( kernel,  0, sizeof( cl_float2),					&delta_SE3,					fname);							//__private	float2		delta_SE3,				//0
+	_clSetKernelArg( kernel,  1, sizeof( uint),							&layer,						fname);							//__private	float2		delta_SE3,				//0
 	// global inputs
-	_clSetKernelArg( kernel,  1, sizeof( cl_mem),						&SE3_rho_map_mem,			fname);							//__global	float2*		Rho_,					//2		// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
-	_clSetKernelArg( kernel,  2, sizeof( cl_mem),						&SE3_incr_map_mem,			fname);							//__global	float2*		SE3_incr_map_,			//4
+	_clSetKernelArg( kernel,  2, sizeof( cl_mem),						&SE3_hessian_pinv_map_mem,	fname);							// __private	uint	Hessian_map,			//1
+	_clSetKernelArg( kernel,  3, sizeof( cl_mem),						&SE3_rho_map_mem,			fname);							//__global	float2*		Rho_,					//2		// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
+	_clSetKernelArg( kernel,  4, sizeof( cl_mem),						&SE3_incr_map_mem,			fname);							//__global	float2*		SE3_incr_map_,			//4
 
 	// global input/outputs
-	_clSetKernelArg( kernel,  3, sizeof( cl_mem), 						&old_results_buf,			fname);							//__global	float*		old_result				//6
-	_clSetKernelArg( kernel,  4, sizeof( cl_mem), 						&pose_buf,					fname);							//__global	float*		Pose,					//7
+	_clSetKernelArg( kernel,  5, sizeof( cl_mem), 						&old_results_buf,			fname);							//__global	float*		old_result				//6
+	_clSetKernelArg( kernel,  6, sizeof( cl_mem), 						&pose_buf,					fname);							//__global	float*		Pose,					//7
 
-	_clSetKernelArg( kernel,  5, sizeof( cl_mem), 						&K_buf,						fname);							//__global	float*		K,						//8
-	_clSetKernelArg( kernel,  6, sizeof( cl_mem), 						&inv_K_buf,					fname);							//__global	float*		inv_K,					//9
-	_clSetKernelArg( kernel,  7, sizeof( cl_mem), 						&k2kbuf,					fname);							//__global	float*		k2k						//10
+	_clSetKernelArg( kernel,  7, sizeof( cl_mem), 						&K_buf,						fname);							//__global	float*		K,						//8
+	_clSetKernelArg( kernel,  8, sizeof( cl_mem), 						&inv_K_buf,					fname);							//__global	float*		inv_K,					//9
+	_clSetKernelArg( kernel,  9, sizeof( cl_mem), 						&k2kbuf,					fname);							//__global	float*		k2k						//10
 
 	cl_command_queue 	queue_to_call		= m_queue;
 	cl_int				res, status;

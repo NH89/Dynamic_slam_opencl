@@ -252,8 +252,6 @@ void RunCL::sample_image_variance(){
 																																				ss << "_raw_";
 																																				DownloadAndSave_3Channel( imgmem_, ss.str(), paths.at("imgmem"), new_size_bytes, new_Image_size, CV_32FC4, false, 1, 0, true );
 
-
-
 																																			}
 }
 
@@ -402,7 +400,7 @@ void RunCL::img_gradients(){ //getFrame();
 }
 
 void RunCL::load_GT_depth(cv::Mat GT_depth, bool invert){ //getFrameData();,  cv::Matx44f GT_K2K,   cv::Matx44f GT_pose2pose
-    string fname = "RunCL::load_GT_depth(..)";
+	string fname = "RunCL::load_GT_depth(..)";
 	int local_verbosity_threshold = V_RUNCL_LOAD_GT_DEPTH;
 																																		if(verbosity>local_verbosity_threshold) cout << "\nRunCL::load_GT_depth(..)_chk_0:"<<flush;
 																																		if ( GT_depth.empty() ) {cerr << "\nRunCL::load_GT_depth(..)_chk_0:   Error  GT_depth.empty() "<<flush;  exit_(1); }

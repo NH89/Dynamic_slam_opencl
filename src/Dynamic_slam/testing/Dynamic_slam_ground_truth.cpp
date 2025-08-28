@@ -9,8 +9,8 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
     char        *ch 						= new char [str.length()+1];
     std::strcpy (ch, str.c_str());
 	cv::Mat T_alt;
-	convertAhandaPovRayToStandard_2( obj,  ch, R, T, cameraMatrix );
-    convertAhandaPovRayToStandard( obj,  ch, R, T, cameraMatrix );
+	convertAhandaPovRayToStandard_2( obj,  ch, R, T, cameraMatrix );	// TODO  which of these 2 versions of convertAhandaPovRayToStandard() is correct ?
+    convertAhandaPovRayToStandard(   obj,  ch, R, T, cameraMatrix );
 	delete [] ch; //free(ch);
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\n Dynamic_slam::getFrameData_vec_chk 1";
@@ -42,7 +42,7 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec_chk 2.1,  (runcl.dataset_frame_num > 0)"<<flush;
 		uint 			index 				= frame_data.back().keyframe_index;
 		cv::Matx44f		invPose_index		= keyframe_data[index].frame_data.frame_data_GT.inv_pose ;  					//   getInvPose( keyframe_data[index].frame_data.frame_data_GT.keyframe2pose, verbosity);
-		datum.keyframe2pose					= datum.pose 	*    invPose_index;
+		datum.keyframe2pose					= datum.pose 	* invPose_index;
 																																			PRINT_MATX44F(invPose_index  		,Dynamic_slam::getFrameData_vec()  );
 																																			PRINT_MATX44F(datum.pose  			,Dynamic_slam::getFrameData_vec()  );
 																																			PRINT_MATX44F(datum.keyframe2pose  	,Dynamic_slam::getFrameData_vec()  );
@@ -75,27 +75,74 @@ void Dynamic_slam::use_GT_pose_vec(){
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::use_GT_pose_chk_0,"<<flush;
 	frame_data.back().frame_data = frame_data.back().frame_data_GT;
 	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] = frame_data.back().frame_data.K2K.operator()(i/4, i%4);}
+	runcl.update_k2k_buf( runcl.fp32_k2keyframe );
 																																			if(verbosity>local_verbosity_threshold){
 																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);
 																																				PRINT_FLOAT_16(runcl.fp32_k2keyframe,);
+																																				cout << "\nDynamic_slam::use_GT_pose()_finish ##############################################\n\n" << flush;
 																																			}
 }
 
 void Dynamic_slam::artificial_pose_error_vec(){
-	int local_verbosity_threshold = V_DYNAMIC_SLAM_ARTIFICIAL_POSE_ERROR;//verbosity_mp["Dynamic_slam::artificial_pose_error"];													if(verbosity>local_verbosity_threshold){ cout << "\n\nDynamic_slam::artificial_pose_error() chk_0"<<flush; }
+	int local_verbosity_threshold = V_DYNAMIC_SLAM_ARTIFICIAL_POSE_ERROR;//verbosity_mp["Dynamic_slam::artificial_pose_error"];
+																																			if(verbosity>local_verbosity_threshold){
+																																				cout << "\n\n##Dynamic_slam::artificial_pose_error()_chk_0 ##########################################" << endl << flush;
+																																			}
 	Matx16f pose_step_algebra;
 	for (int SE3=0; SE3<6; SE3++)  pose_step_algebra.operator()(0,SE3) = obj["Artif_pose_err_algebra"][SE3].asFloat();
 	Matx44f poseStep 	= LieToP_Matx(pose_step_algebra);																					if(verbosity>local_verbosity_threshold){
+																																				cout << "\n\n##Dynamic_slam::artificial_pose_error()_chk_1"<<flush;
 																																				PRINT_MATX44F(poseStep,);
 																																				PRINT_MATX16F(pose_step_algebra,);
-																																				PRINT_MATX16F(PToLie( frame_data.back().frame_data.keyframe2pose ),True);  }
+																																				PRINT_MATX16F(PToLie(poseStep), );
+																																				PRINT_MATX16F(PToLie( frame_data.back().frame_data.keyframe2pose ),True);
 
-	frame_data.back().frame_data.keyframe2pose = frame_data.back().frame_data.keyframe2pose * poseStep;										if(verbosity>local_verbosity_threshold){
-																																				PRINT_MATX16F(PToLie(frame_data.back().frame_data.keyframe2pose), Start); 	}
+																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose , );
+																																				PRINT_MATX16F(frame_data.back().frame_data.keyframe2pose_algebra, Start);
+																																			}
+	// cv::Matx44f           pose                    = MATX44F_EYE ;             // pose in global coords. (not pose2pose from prev_frame, nor from keyframe) ?
+	// cv::Matx44f           inv_pose                = MATX44F_EYE ;
+	// cv::Matx44f           keyframe2pose           = MATX44F_EYE ;
+	// cv::Matx44f           K2K                     = MATX44F_EYE ;
+																																				cout << "\n\n##Dynamic_slam::artificial_pose_error()_chk_1.5"<<flush;
+																																				PRINT_MATX44F(frame_data.back().frame_data.pose , );
+	Matx44f	old							= frame_data.back().frame_data.pose;
+
+	frame_data.back().frame_data.pose							= poseStep	*	frame_data.back().frame_data.pose/* * poseStep*/;	// TODO which side to multiply from ?
+																																				PRINT_MATX44F(frame_data.back().frame_data.pose , );
+	Matx44f test1						= old.inv() * 	frame_data.back().frame_data.pose;
+	Matx44f test2						= old 		* 	frame_data.back().frame_data.pose.inv();			// Correct, negative.
+	Matx44f test3						= frame_data.back().frame_data.pose 		* old.inv();			// Correct
+	Matx44f test4						= frame_data.back().frame_data.pose.inv()	* old;
+																																				PRINT_MATX44F( test1, );
+																																				PRINT_MATX44F( test2, );
+																																				PRINT_MATX44F( test3, );
+																																				PRINT_MATX44F( test4, );
+
+	frame_data.back().frame_data.inv_pose						= getInvPose(frame_data.back().frame_data.pose, verbosity);
+																																				PRINT_MATX44F(frame_data.back().frame_data.inv_pose , );
+	// frame_data.back().frame_data.inv_pose						= frame_data.back().frame_data.pose.inv();
+	// 																																			PRINT_MATX44F(frame_data.back().frame_data.inv_pose , );
+
+	uint 			index 										= frame_data.back().keyframe_index;
+	cv::Matx44f		invPose_index								= keyframe_data[index].frame_data.frame_data_GT.inv_pose ;  				// getInvPose( keyframe_data[index].frame_data.frame_data_GT.keyframe2pose, verbosity);
+	frame_data.back().frame_data.keyframe2pose					= frame_data.back().frame_data.pose 	* invPose_index;
+
+	frame_data.back().frame_data.K2K							= frame_data.back().frame_data.K 		* frame_data.back().frame_data.keyframe2pose 	* frame_data[index].frame_data_GT.inv_K;
+	frame_data.back().frame_data.keyframe2pose_algebra			= PToLie( frame_data.back().frame_data.keyframe2pose );
+																																			if(verbosity>local_verbosity_threshold){
+																																				cout << "\n\n##Dynamic_slam::artificial_pose_error()_chk_2"<<flush;
+																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose , );
+																																				PRINT_MATX44F(frame_data.back().frame_data.inv_pose , );
+																																				PRINT_MATX44F(keyframe_data[index].frame_data.frame_data_GT.inv_pose , );
+
+																																				PRINT_MATX16F(frame_data.back().frame_data.keyframe2pose_algebra, Start);
+																																				PRINT_MATX44F(frame_data.back().frame_data.K2K , );
+																																			}
 
 	frame_data.back().frame_data.K2K 	= frame_data.back().frame_data.K  * frame_data.back().frame_data.keyframe2pose  *  frame_data.back().frame_data.inv_K;
 																																			if(verbosity>local_verbosity_threshold){
-																																				cout << "\n\n##Dynamic_slam::artificial_pose_error() : frame_data.back().frame_data.K2K, New" << endl << flush;
+																																				cout << "\n\n##Dynamic_slam::artificial_pose_error()_chk_3 : frame_data.back().frame_data.K2K, New" << endl << flush;
 																																				PRINT_MATX44F(frame_data.back().frame_data.K ,);
 																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose ,);
 																																				PRINT_MATX44F(frame_data.back().frame_data.inv_K ,);
@@ -104,7 +151,9 @@ void Dynamic_slam::artificial_pose_error_vec(){
 																																				PRINT_FLOAT_16(runcl.fp32_k2keyframe,Old);
 																																			}// Add error of one step in the 2nd SE3 DoF.
 
-	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] = frame_data.back().frame_data.K2K.operator()(i/4, i%4);  }							if(verbosity>local_verbosity_threshold){
+	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] = frame_data.back().frame_data.K2K.operator()(i/4, i%4);  }
+	runcl.update_k2k_buf( runcl.fp32_k2keyframe );
+																																			if(verbosity>local_verbosity_threshold){
 																																				PRINT_FLOAT_16(runcl.fp32_k2keyframe,New);
-																																				cout << "\nDynamic_slam::artificial_pose_error()_finish ##############################################" << flush;	}
+																																				cout << "\nDynamic_slam::artificial_pose_error()_finish ##############################################\n\n" << flush;	}
 }
