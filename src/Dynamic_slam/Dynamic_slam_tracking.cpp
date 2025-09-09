@@ -468,7 +468,7 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 	}
 																																		//  TODO Update all variables in frame_data.back()
 	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] 		= k2k_4_16[0][i]; }
-	runcl.update_k2k_buf( k2k_4_16[0] );																								// Sets values in k2k_buf, for depth stages of the algorithm.
+
 
 	uint 				keyframe_index						= frame_data.back().keyframe_index;		//.frame_data.key_frame_index;		// compute and record "pose_from_start"
 	cv::Matx44f			keyframe_pose 						= keyframe_data[keyframe_index].frame_data.frame_data.pose; 				// .pose_from_start
@@ -478,6 +478,11 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 	frame_data.back().frame_data.keyframe2pose  			= keyframe2pose;
 	frame_data.back().frame_data.keyframe2pose_algebra 		= PToLie(keyframe2pose);
 	frame_data.back().frame_data.K2K						= K * keyframe2pose * inv_K;
+
+	float pose_arry[16];
+	Matx44f_To_float16arry( frame_data.back().frame_data.keyframe2pose, pose_arry );
+	runcl.update_k2k_buf( k2k_4_16[0],  pose_arry );																								// Sets values in k2k_buf, for depth stages of the algorithm.
+
 
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nDynamic_slam::estimateSE3() Results" << flush;

@@ -153,6 +153,7 @@ void Dynamic_slam::initialize_camera_vec(){
 }
 
 int Dynamic_slam::nextFrame() {
+	string fname ="Dynamic_slam::nextFrame()";
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_NEXTFRAME;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::nextFrame_chk 0,  runcl.dataset_frame_num="<<runcl.dataset_frame_num
 																																				<<",\t depth = runcl.amem  \n" << flush; //  runcl.frame_bool_idx="<<runcl.frame_bool_idx<<"
@@ -168,8 +169,15 @@ int Dynamic_slam::nextFrame() {
 																																			// 	//display_frame_resluts();
 																																			// }
 
-	if (runcl.costvol_frame_num>1)					{ 	predictFrame_vec(); }			auto step_2 = high_resolution_clock::now();			// Loads GT depth of the new frame. NB depends on image.size from getFrame().
-	if(obj["use_GT_pose"].asBool() == true )		{	use_GT_pose_vec();	}			auto step_3 = high_resolution_clock::now();			// use_GT_pose();
+	if (runcl.costvol_frame_num>1)					{	predictFrame_vec(); }			auto step_2 = high_resolution_clock::now();			// Loads GT depth of the new frame. NB depends on image.size from getFrame().
+	if(obj["use_GT_pose"].asBool() == true )		{	use_GT_pose_vec();	}
+	if(obj["initialize_tracking_from_GT_depth"].asBool()==true){
+		runcl.update_current_frame_depth_mem(runcl.depth_mem_GT);
+		cout<<"obj[\"initialize_tracking_from_GT_depth\"].asBool()==true"<<endl<<flush;
+	}else{
+		cout<<"obj[\"initialize_tracking_from_GT_depth\"].asBool()==false"<<endl<<flush;
+	}
+																						auto step_3 = high_resolution_clock::now();			// use_GT_pose();
 																																			// if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 2, Pose error after use_GT_pose:" << flush;
 																																			// 	report_GT_pose_error();
 																																			// 	//display_frame_resluts();
@@ -240,6 +248,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 																																			// load a basic image in CV_8UC3, then convert on GPU to 'half'
 	runcl.cvt_color_space( );
 	runcl.blur_image();//runcl.imgmem, runcl.imgmem_blurred , "imgmem_blurred");
+	runcl.blur_image();
 	runcl.mipmap_linear(runcl.current_frames[ runcl.current_frames_idx[0] ].img_buf, "imgmem");
 	//runcl.sum_image_variance();
 	runcl.sample_image_variance();

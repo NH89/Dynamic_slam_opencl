@@ -273,7 +273,7 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 		count[1]  = layer;
 		runcl._clEnqueueFillBuffer(  runcl.uload_queue,  runcl.pose_update_buf,  &zero,  sizeof( float),  0,  6*sizeof(float),  fname  );// pose_update_buf zeroed for new layer, because old Rho not valid for comparison.
 
-		for (uint out_block_size = 32; out_block_size > 2; out_block_size /=2){
+		for (uint out_block_size = 4/*32*/; out_block_size > 2; out_block_size /=2){
 																																		//cout << "\nDynamic_slam::estimate_SLAM() chk_0.7  out_block_size="<<out_block_size <<flush;
 			for (uint iter = 0; iter</*SE_iter/2*/1; iter++){
 				count[0]  = iter;
@@ -281,19 +281,20 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 				{
 					uint	out_block_size		= 2;
 					uint	layer				= 0;
-					runcl.rho_sq( out_block_size, iter, layer, delta_theta, delta   );																		// For debugging, get a larger, finer Rho map
+					runcl.rho_sq( out_block_size, iter, layer, delta_theta, delta   );													// For debugging, get a larger, finer Rho map
 				}
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_2: ,  ###########################"<<flush;
 				runcl.rho_sq( out_block_size, iter, (uint)layer, delta_theta, delta   );		// uint out_block_size, const float count[4], uint start, uint stop
 				//runcl.ReadOutput( (uchar*)ptr, runcl.K_buf, sizeof(float)*16, 0 );
 				//PRINT_FLOAT_16(k_buf_arr, )
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_3: ,  ###########################"<<flush;
-				runcl.reduce_patch_Rho ( (uint)layer );
+				runcl.reduce_patch_Rho ( out_block_size, iter, (uint)layer );
 				//runcl.ReadOutput( (uchar*)ptr, runcl.K_buf, sizeof(float)*16, 0 );
 				//PRINT_FLOAT_16(k_buf_arr, )
+				runcl.update_k2k_cpu( 	(uint)layer, delta_theta, delta, frame_data.back().frame_data_GT.keyframe2pose );
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_4: ,  ###########################"<<flush;
-				runcl.update_k2k(  (uint)layer, delta_theta, delta );
-																																		cout << "\nDynamic_slam::estimate_SLAM() chk_5: ,  ###########################"<<flush;
+				//runcl.update_k2k(  		(uint)layer, delta_theta, delta, frame_data.back().frame_data_GT.keyframe2pose );
+																																		cout << "\nDynamic_slam::estimate_SLAM() chk_5: ,  ##############################################################"<<endl<<flush;
 			}
 		}
 	}

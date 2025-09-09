@@ -86,7 +86,7 @@ void RunCL::createFolders(){
 										"dmem","amem","lomem","himem","qmem","qmem2","cdatabuf","cdatabuf_8chan","hdatabuf","dbg_databuf","img_sum_buf", \
 										"HSV_grad_mem", "dmem_disparity", \
 										\
-										"jacobian","hessian"\
+										"jacobian","hessian","depth_mem"\
 	};
 	std::vector<std::string> names2 = {\
 										"lookup_table_buf",				"ref_img_buf",					"new_img_buf",					"warped_img_buf",\
@@ -163,6 +163,99 @@ void RunCL::ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t o
 		clReleaseEvent(readEvt);
 																																			if(verbosity>local_verbosity_threshold) cout << "\nRunCL::ReadOutput finish"<<flush;
 }
+
+vector<Matx44f> RunCL::ReadOutput_44f_vec( cl_mem buf_mem, size_t offset/*=0*/){
+	Matx44f	out_matx_x, out_matx_y, out_matx_z, out_matx_w;
+	float	out_ary[4*16];
+	size_t	data_size		= 4*16*sizeof(float);
+
+	RunCL::ReadOutput( (uchar*)out_ary, buf_mem, data_size, offset);
+	for(int i=0; i<4; i++){
+		for(int j=0; j<4; j++){
+			out_matx_x.operator()(i,j) = out_ary[i*16 +j*4 +0];
+			out_matx_y.operator()(i,j) = out_ary[i*16 +j*4 +1];
+			out_matx_z.operator()(i,j) = out_ary[i*16 +j*4 +2];
+			out_matx_w.operator()(i,j) = out_ary[i*16 +j*4 +3];
+		}
+	}
+	vector<Matx44f>  matx_vec = { out_matx_x, out_matx_y, out_matx_z, out_matx_w };
+	return matx_vec;
+}
+
+vector<Matx66f> RunCL::ReadOutput_66f_vec( cl_mem buf_mem, size_t offset/*=0*/){
+	Matx66f	out_matx_x, out_matx_y, out_matx_z, out_matx_w;
+	float	out_ary[4*36];
+	size_t	data_size		= 4*36*sizeof(float);
+
+	RunCL::ReadOutput( (uchar*)out_ary, buf_mem, data_size, offset);
+	for(int i=0; i<6; i++){
+		for(int j=0; j<6; j++){
+			out_matx_x.operator()(i,j) = out_ary[i*6*4 +j*4 +0];
+			out_matx_y.operator()(i,j) = out_ary[i*6*4 +j*4 +1];
+			out_matx_z.operator()(i,j) = out_ary[i*6*4 +j*4 +2];
+			out_matx_w.operator()(i,j) = out_ary[i*6*4 +j*4 +3];
+		}
+	}
+	vector<Matx66f>  matx_vec = { out_matx_x, out_matx_y, out_matx_z, out_matx_w };
+	return matx_vec;
+}
+
+vector<Matx16f> RunCL::ReadOutput_16f_vec( cl_mem buf_mem, size_t offset/*=0*/){
+	Matx16f	out_matx_x, out_matx_y, out_matx_z, out_matx_w;
+	float	out_ary[4*6];
+	size_t	data_size		= 4*6*sizeof(float);
+
+	RunCL::ReadOutput( (uchar*)out_ary, buf_mem, data_size, offset);
+	for(int i=0; i<6; i++){
+			out_matx_x.operator()(i) = out_ary[i*6 +0];
+			out_matx_y.operator()(i) = out_ary[i*6 +1];
+			out_matx_z.operator()(i) = out_ary[i*6 +2];
+			out_matx_w.operator()(i) = out_ary[i*6 +3];
+	}
+	vector<Matx16f>  matx_vec = { out_matx_x, out_matx_y, out_matx_z, out_matx_w };
+	return matx_vec;
+}
+
+
+
+Matx44f RunCL::ReadOutput_44f( cl_mem buf_mem, size_t offset/*=0*/){
+	Matx44f out_matx;
+	float out_ary[16];
+	size_t data_size	= 16*sizeof(float);
+	RunCL::ReadOutput( (uchar*)out_ary, buf_mem, data_size, offset);
+	for(int i=0; i<4; i++){ for(int j=0; j<4; j++){ out_matx.operator()(i,j) = out_ary[i*4 +j];  } }
+	return out_matx;
+}
+
+Matx66f RunCL::ReadOutput_66f( cl_mem buf_mem, size_t offset/*=0*/){
+	Matx66f out_matx;
+	float out_ary[36];
+	size_t data_size	= 36*sizeof(float);
+	RunCL::ReadOutput( (uchar*)out_ary, buf_mem, data_size, offset);
+	for(int i=0; i<6; i++){ for(int j=0; j<6; j++){ out_matx.operator()(i,j) = out_ary[i*6 +j];  } }
+	return out_matx;
+}
+
+Matx16f RunCL::ReadOutput_16f( cl_mem buf_mem, size_t offset/*=0*/){
+	Matx16f out_matx;
+	float out_ary[6];
+	size_t data_size	= 6*sizeof(float);
+	RunCL::ReadOutput( (uchar*)out_ary, buf_mem, data_size, offset);
+	for(int i=0; i<6; i++){  out_matx.operator()(i) = out_ary[i];  }
+	return out_matx;
+}
+
+Matx61f RunCL::ReadOutput_61f( cl_mem buf_mem, size_t offset/*=0*/){
+	Matx61f out_matx;
+	float out_ary[6];
+	size_t data_size	= 6*sizeof(float);
+	ReadOutput( (uchar*)out_ary, buf_mem, data_size, offset);
+	for(int i=0; i<6; i++){  out_matx.operator()(i) = out_ary[i];  }
+	return out_matx;
+}
+
+
+
 
 void RunCL::saveCostVols(float max_range){
 	int local_verbosity_threshold = V_RUNCL_SAVECOSTVOLS;//verbosity_mp["RunCL::saveCostVols"];

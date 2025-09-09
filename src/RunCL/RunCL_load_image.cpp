@@ -260,7 +260,7 @@ void RunCL::blur_image(){//cl_mem in_buff, cl_mem blurred_buf, std::string folde
 	string fname = "RunCL::blur_image()";
 	int local_verbosity_threshold = V_RUNCL_BLUR_IMAGE;//verbosity_mp["RunCL::blur_image"];// -1;
 
-	const cl_mem imgmem_   = current_frames[ current_frames_idx[0] ].img_buf;
+	/*const */cl_mem imgmem_   = current_frames[ current_frames_idx[0] ].img_buf;
 
 	size_t local_size = local_work_size;
 	uint layer = 0;
@@ -291,15 +291,7 @@ void RunCL::blur_image(){//cl_mem in_buff, cl_mem blurred_buf, std::string folde
 
                                                                                                                                                 DownloadAndSave_3Channel(	imgmem_blurred, ss.str(), paths.at( ss_path.str() ), new_size_bytes/*mm_size_bytes_C4*/, new_Image_size/*mm_Image_size*/,  CV_32FC4 /*mm_Image_type*/, 	false );
 																																			}
-	_clEnqueueCopyBuffer(
-		m_queue,							// cl_command_queue command_queue
-		imgmem_blurred, 					// cl_mem src_buffer
-		imgmem_, 							// cl_mem dst_buffer
-		0,									// size_t src_offset
-		0,									// size_t dst_offset
-		mm_size_bytes_C4,					// size_t size
-		fname
-	);
+	swap( imgmem_blurred, imgmem_ );
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_Finished"<<flush;
 }
 
@@ -417,7 +409,7 @@ void RunCL::load_GT_depth(cv::Mat GT_depth, bool invert){ //getFrameData();,  cv
 																																			DownloadAndSave( depth_mem_GT,  ss.str(),   paths.at("depth_GT"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
 																																			DownloadAndSave( depth_mem_temp,   	ss.str(),   paths.at("depth_mem_temp"),   	image_size_bytes_C1,   baseImage_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;						// NB depth_mem_temp is just the raw image, with no margins nor mipmapping.
 																																		}
-    _clEnqueueWriteBuffer(uload_queue, depth_mem_temp, 		CL_FALSE, 0, image_size_bytes_C1,	 GT_depth.data,  fname);
+	_clEnqueueWriteBuffer(uload_queue, depth_mem_temp, 		CL_FALSE, 0, image_size_bytes_C1,	 GT_depth.data,  fname);
 	ss << "__0";
 																																		if(verbosity>local_verbosity_threshold+1){
 																																			DownloadAndSave( depth_mem_GT,  ss.str(),   paths.at("depth_GT"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;

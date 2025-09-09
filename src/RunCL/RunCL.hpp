@@ -330,6 +330,16 @@ public:
 	void createFolders();																												// Called by RunCL(..) constructor, above.
 	void ReadOutput(uchar* outmat) ;
 	void ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset=0) ;
+
+	vector<Matx44f> ReadOutput_44f_vec( cl_mem buf_mem, size_t offset=0);
+	vector<Matx66f> ReadOutput_66f_vec( cl_mem buf_mem, size_t offset=0);
+	vector<Matx16f> ReadOutput_16f_vec( cl_mem buf_mem, size_t offset=0);
+
+	Matx44f ReadOutput_44f( cl_mem buf_mem, size_t offset=0);
+	Matx66f ReadOutput_66f( cl_mem buf_mem, size_t offset=0);
+	Matx16f ReadOutput_16f( cl_mem buf_mem, size_t offset=0);
+	Matx61f ReadOutput_61f( cl_mem buf_mem, size_t offset=0);
+
 	void saveCostVols(float max_range);
 
 	void Store_keyframe();																												// Required for Save_vtk(..), used for amem, demem etc.
@@ -413,13 +423,15 @@ public:
 
 	/////////////////////////////////////// RunCL_tracking.cpp
 	void update_tracking_depthmap(cl_mem depthmap_);
-	void update_k2k_buf(float k2k_3_16_[16]);
+	void update_current_frame_depth_mem( cl_mem depthmap_);
+	void update_k2k_buf(	float k2k_3_16_[16], 	float pose_arry[16]  );
 	//void initialize_tracking_depthmap(float initial_depth);
 
 	//////////////////////////////////////  Patch based kernels
 	void rho_sq( uint out_block_size, uint iter, uint layer, float delta_theta, float delta );
-	void reduce_patch_Rho ( uint layer );
-	void update_k2k( uint layer, float delta_theta, float delta );
+	void reduce_patch_Rho ( uint out_block_size, uint iter, uint layer );
+	void update_k2k_cpu( uint layer, float delta_theta, float delta, Matx44f GT_pose );
+	void update_k2k( uint layer, float delta_theta, float delta, Matx44f GT_pose );
 
 	// whole img 1 thread per pixel kernels
 	void se3_rho_sq( const uint local_num_samples,  const uint start_sample_idx,  float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels],	const float count[4], uint start, uint stop,	float k2k_3_16_[tracking_tot_samples][16]  ); //float k2k_[16]  );

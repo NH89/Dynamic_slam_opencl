@@ -75,7 +75,10 @@ void Dynamic_slam::use_GT_pose_vec(){
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::use_GT_pose_chk_0,"<<flush;
 	frame_data.back().frame_data = frame_data.back().frame_data_GT;
 	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] = frame_data.back().frame_data.K2K.operator()(i/4, i%4);}
-	runcl.update_k2k_buf( runcl.fp32_k2keyframe );
+
+	float pose_arry[16];
+	Matx44f_To_float16arry( frame_data.back().frame_data.keyframe2pose, pose_arry );
+	runcl.update_k2k_buf( runcl.fp32_k2keyframe, pose_arry );
 																																			if(verbosity>local_verbosity_threshold){
 																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);
 																																				PRINT_FLOAT_16(runcl.fp32_k2keyframe,);
@@ -152,7 +155,9 @@ void Dynamic_slam::artificial_pose_error_vec(){
 																																			}// Add error of one step in the 2nd SE3 DoF.
 
 	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] = frame_data.back().frame_data.K2K.operator()(i/4, i%4);  }
-	runcl.update_k2k_buf( runcl.fp32_k2keyframe );
+	float pose_arry[16];
+	Matx44f_To_float16arry( frame_data.back().frame_data.keyframe2pose, pose_arry );
+	runcl.update_k2k_buf( runcl.fp32_k2keyframe, pose_arry );
 																																			if(verbosity>local_verbosity_threshold){
 																																				PRINT_FLOAT_16(runcl.fp32_k2keyframe,New);
 																																				cout << "\nDynamic_slam::artificial_pose_error()_finish ##############################################\n\n" << flush;	}

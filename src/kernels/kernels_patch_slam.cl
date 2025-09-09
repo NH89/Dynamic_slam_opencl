@@ -151,7 +151,7 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 		for (uint i=0; i<6; i++) {
 			Jacobian_pvt_arr[row_in_block][i]					= Jacobian[i];
 			for (uint j=0; j<6; j++) {
-				Hessian_pinv_pvt_arr[row_in_block][i][j]		= denom * Jacobian[i] * Jacobian[j];						// Moore-Penrose pseudo inverse of H = J^T * J.
+				Hessian_pinv_pvt_arr[row_in_block][i][j]		= /*denom * */ Jacobian[i] * Jacobian[j];						// Moore-Penrose pseudo inverse of H = J^T * J.
 			}
 		}
 		float H 										= img[read_index][0] * 2*M_PI_F;
@@ -336,8 +336,9 @@ __kernel void  patch_hessian_reduce(						// one workgroup per element.
 	}
 																				//if( lid==0 )	printf("\n _kernel ofset=%u", layer*8*6);
 	if( fmod((float)lid, step)					==0 ) {							//	Each layer's results spaced by 8*6=48 pixels.
-		SE3_Hessian_map[elem + 6 +layer*8*6]	=	pvt_Hessian/pvt_Hessian.w;				//	Write result to the first 36 pixels of SE3_Hessian_map, directly above this layer of hessian pyramid,  because this will be fastest to read to CPU.
-																				//printf("	SE3_Hessian  %u 		=%f, %f, %f, %f",  elem,		pvt_Hessian.s0,  pvt_Hessian.s1,  pvt_Hessian.s2,  pvt_Hessian.s3 );
+		int idx = elem + 6 +(layer*8*6);
+		SE3_Hessian_map[idx]					=	pvt_Hessian/pvt_Hessian.w;	//	Write result to the first 36 pixels of SE3_Hessian_map, directly above this layer of hessian pyramid,  because this will be fastest to read to CPU.
+																				printf("\nlayer=%u		SE3_Hessian  %u [%i]		=%f, %f, %f, %f",  layer,  elem,	idx,	pvt_Hessian.s0,  pvt_Hessian.s1,  pvt_Hessian.s2,  pvt_Hessian.s3 );
 	}
 
 	// Jacobian reduction	//////////////////////////////////////////////////////////////////////////
@@ -357,8 +358,9 @@ __kernel void  patch_hessian_reduce(						// one workgroup per element.
 		barrier(CLK_LOCAL_MEM_FENCE );
 	}
 	if( fmod((float)lid, step)					==0 ) {							//	Each layer's results spaced by 8*6=48 pixels.
-		SE3_Hessian_map[elem/6 +layer*8*6]		=	pvt_Jacobian/pvt_Jacobian.w;				//	Write result to the first 36 pixels of SE3_Hessian_map, directly above this layer of hessian pyramid,  because this will be fastest to read to CPU.
-																				//printf("	SE3_Jacobian  %u 		=	%f, %f, %f, %f",  elem/6,	pvt_Hessian.s0,  pvt_Hessian.s1,  pvt_Hessian.s2,  pvt_Hessian.s3 );
+		int idx = (elem/6) + (layer*8*6);
+		SE3_Hessian_map[idx]					=	pvt_Jacobian/pvt_Jacobian.w;				//	Write result to the first 36 pixels of SE3_Hessian_map, directly above this layer of hessian pyramid,  because this will be fastest to read to CPU.
+																				printf("\nlayer=%u	SE3_Jacobian  %u [%i]		=	%f, %f, %f, %f",  layer,  elem/6,	idx,  pvt_Hessian.s0,  pvt_Hessian.s1,  pvt_Hessian.s2,  pvt_Hessian.s3 );
 	}
 }
 

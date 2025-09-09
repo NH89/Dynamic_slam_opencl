@@ -724,14 +724,14 @@ void RunCL::allocatemem(){
 	cl_int 			res;
 
 	for (uint i=0; i<num_current_frames; i++ ) {
-		imgmem[i]		= clCreateBuffer(m_context, CL_MEM_READ_ONLY  						, mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-		velmap[i]		= clCreateBuffer(m_context, CL_MEM_READ_ONLY  						, mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+		imgmem[i]		= clCreateBuffer(m_context, CL_MEM_READ_WRITE  						, mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+		velmap[i]		= clCreateBuffer(m_context, CL_MEM_READ_WRITE  						, mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	}
 	initialize_current_frames();
 	// test_update_current_frames_idx(64);	// NB Only for debugging.
 	//imgmem				= clCreateBuffer(m_context, CL_MEM_READ_ONLY  						, mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
-	imgmem_blurred		= clCreateBuffer(m_context, CL_MEM_READ_ONLY  						, mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	imgmem_blurred		= clCreateBuffer(m_context, CL_MEM_READ_WRITE  						, mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 	gxmem				= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C8, 		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 2= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	gymem				= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C8, 		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 3= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
@@ -750,8 +750,8 @@ void RunCL::allocatemem(){
 	depth_mem_temp		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 12= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // Used to be : Copy used by tracing & auto-calib. Now spare buffer for upload & computations
 	depth_mem_GT		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 13= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // Where depthmap GT mimpap is constructed.
 
-	keyframe_imgmem		= clCreateBuffer(m_context, CL_MEM_READ_ONLY  						, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 14= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	keyframe_imgmem_HSV_grad = clCreateBuffer(m_context, CL_MEM_READ_ONLY  					, mm_size_bytes_C8,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 14= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	keyframe_imgmem		= clCreateBuffer(m_context, CL_MEM_READ_WRITE  						, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 14= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	keyframe_imgmem_HSV_grad = clCreateBuffer(m_context, CL_MEM_READ_WRITE  				, mm_size_bytes_C8,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 14= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	keyframe_depth_mem	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 15= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // The depth map for tracking, i.e. used when adding frames to the cost volume.
 	keyframe_depth_mem_GT= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 15.5= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	//keyframe_basemem	= clCreateBuffer(m_context, CL_MEM_READ_ONLY  						, mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}	// Depth mapping buffers
@@ -793,14 +793,14 @@ void RunCL::allocatemem(){
 
 	se3_weight_sum_mem	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, se3_sum_size_bytes,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 32= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
-	SE3_rho_map_mem		= clCreateBuffer(m_context, CL_MEM_READ_ONLY  , tracking_num_samples*2*mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 34= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	se3_sum_rho_sq_mem	= clCreateBuffer(m_context, CL_MEM_READ_ONLY  , tracking_num_samples*pix_sum_size_bytes,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 35= "<<checkerror(res)<<"\n"<<flush;exit_(res);}  // TODO what size should this be ?
+	SE3_rho_map_mem		= clCreateBuffer(m_context, CL_MEM_READ_WRITE  , tracking_num_samples*2*mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 34= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	se3_sum_rho_sq_mem	= clCreateBuffer(m_context, CL_MEM_READ_WRITE  , tracking_num_samples*pix_sum_size_bytes,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 35= "<<checkerror(res)<<"\n"<<flush;exit_(res);}  // TODO what size should this be ?
 
-	img_stats_buf		= clCreateBuffer(m_context, CL_MEM_READ_ONLY  						, img_stats_size_bytes,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 36= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	img_stats_buf		= clCreateBuffer(m_context, CL_MEM_READ_WRITE  						, img_stats_size_bytes,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 36= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	pix_sum_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, pix_sum_size_bytes,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 37= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	var_sum_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, pix_sum_size_bytes,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 38= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
-	HSV_grad_mem		= clCreateBuffer(m_context, CL_MEM_READ_ONLY  						, mm_size_bytes_C8,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 39= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	HSV_grad_mem		= clCreateBuffer(m_context, CL_MEM_READ_WRITE  						, mm_size_bytes_C8,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 39= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	dmem_disparity		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 40= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	dmem_disparity_sum	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, pix_sum_size_bytes,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 

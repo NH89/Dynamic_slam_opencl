@@ -135,11 +135,11 @@
 	#define	V_RUNCL_DOWNLOADANDSAVEVOLUME				2
 
 	////////////////////////////////////// RUNCL_LOAD_IMAGE.CPP
-	#define	V_RUNCL_LOADFRAME							1
+	#define	V_RUNCL_LOADFRAME							-1
 	#define	V_RUNCL_CVT_COLOR_SPACE						0
 	#define	V_RUNCL_SUM_IMAGE_VARIANCE					1
 	#define	V_RUNCL_SAMPLE_IMAGE_VARIANCE				0
-	#define	V_RUNCL_BLUR_IMAGE							1
+	#define	V_RUNCL_BLUR_IMAGE							-1
 	#define	V_RUNCL_MIPMAP_LINEAR						-1
 	#define	V_RUNCL_IMG_GRADIENTS						-1
 
@@ -178,12 +178,13 @@
 
 	/////////////////////////////////////// RUNCL_TRACKING.CPP
 	#define	V_RUNCL_PRECOM_PARAM_MAPS					-1
-	#define	V_RUNCL_UPDATE_TRACKING_DEPTHMAP			0
-	#define	V_RUNCL_INITIALIZE_TRACKING_DEPTHMAP		1
+	#define	V_RUNCL_UPDATE_TRACKING_DEPTHMAP			-1
+	#define	V_RUNCL_CURRENT_FRAME_DEPTH_MAP				-1
+	#define	V_RUNCL_INITIALIZE_TRACKING_DEPTHMAP		-1
 
-	#define	V_RUNCL_UPDATE_K2K_BUF						2
-	#define	V_RUNCL_RHO_SQ								2
-	#define	V_RUNCL_UPDATE_SE3							2
+	#define	V_RUNCL_UPDATE_K2K_BUF						-2
+	#define	V_RUNCL_RHO_SQ								-2
+	#define	V_RUNCL_REDUCE_PATCH_RHO					-2
 	#define	V_RUNCL_UPDATE_K2K							-2
 
 	#define	V_RUNCL_SE3_RHO_SQ							2

@@ -93,8 +93,8 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	)
 {
 	//const uint block_size							= 32;										// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
-	//const uint num_SE3_DoF								= 6;
-	//const uint num_past_frames						= 4;										// 1,2,4,8,16,32,64 // variable select window of 4 frames.
+	//const uint num_SE3_DoF						= 6;
+	//const uint num_past_frames					= 4;										// 1,2,4,8,16,32,64 // variable select window of 4 frames.
 	const float4 zero_f4							= {0.0f,0.0f,0.0f,0.0f};
 	const float2 zero_f2							= {0.0f,0.0f};
 
@@ -197,57 +197,66 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 				// Photometric error rho ///////
 				old_px					= bilinear_flt4( img_past[past_frame_idx],  u2_flt_1,  v2_flt_1,  mm_cols,  read_offset_ )	;
 				rho_pvt_flt4			= (img_cur_pvt[row_in_block] - old_px) ;
-				value_sq_pvt			= img_cur_pvt[row_in_block].z * old_px.z  ;
-				rho_pvt_flt4.x			*= value_sq_pvt;																																		// Reduce rho hue and saturation by multiplying by old & new px value.
-				rho_pvt_flt4.y			*= value_sq_pvt;
+//				value_sq_pvt			= img_cur_pvt[row_in_block].z * old_px.z  ;
+// 				rho_pvt_flt4.x			*= value_sq_pvt;																																		// Reduce rho hue and saturation by multiplying by old & new px value.
+// 				rho_pvt_flt4.y			*= value_sq_pvt;
 				rho_pvt_flt4.w			= 1.0f;																																					// rho.w holds pixel count.
 
 				// Magnitude of gradient of Rho wrt SE3 rotation & translation //////
 				grad_pvt_SE3_mag		= 0.0f;
 				for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
 					grad_v8 												=  SE3_grad_map_cur_frame[ read_index_row + (se3_dim * mm_pixels) ] ;
-					grad_pvt_flt4_SE3[se3_dim]								=  grad_v8.hi + grad_v8.lo;
+					grad_pvt_flt4_SE3[se3_dim]								=  grad_v8.hi + grad_v8.lo;																							// sum (u,v) components ####
 					grad_pvt_flt4_SE3[se3_dim].w							=  1.0f;
-					grad_pvt_flt_SE3[se3_dim]								= (grad_pvt_flt4_SE3[se3_dim].x + grad_pvt_flt4_SE3[se3_dim].y + grad_pvt_flt4_SE3[se3_dim].z) / 3.0f;
-					grad_pvt_SE3_mag										+= grad_pvt_flt_SE3[se3_dim] * grad_pvt_flt_SE3[se3_dim];
+					grad_pvt_flt_SE3[se3_dim]								= grad_pvt_flt4_SE3[se3_dim].x; 		//  + grad_pvt_flt4_SE3[se3_dim].y + grad_pvt_flt4_SE3[se3_dim].z) / 3.0f;			// sum color channels
+					//grad_pvt_SE3_mag										+= grad_pvt_flt_SE3[se3_dim] * grad_pvt_flt_SE3[se3_dim];
 				}
-				grad_pvt_SE3_mag											= half_sqrt( grad_pvt_SE3_mag ) + FLT_EPSILON;																		// L2 norm, always +ve.		+ FLT_EPSILON; prevents div by zero.
+/*
+				//grad_pvt_SE3_mag											= half_sqrt( grad_pvt_SE3_mag ) + FLT_EPSILON;																		// L2 norm, always +ve.		+ FLT_EPSILON; prevents div by zero.
 
 				// SO3 rotation	//////////																																						// NB beware if inf depth, i.e. subnormal inv_depth, then div by zero error !
-				depth_weight												=  fp32_params[MAX_INV_DEPTH] / ((inv_depth_1 + 0.01)*5);															// de-weight foreground for rotation, & de-weight backgroud for translation.
-				weights														=  edge_weight * depth_weight;
-				SE3_incr_pvt_flt2.y											=  weights;
-				float delta_se3												=  delta_SE3[ 0 ];
+				//depth_weight												=  fp32_params[MAX_INV_DEPTH] / ((inv_depth_1 + 0.01)*5);															// de-weight foreground for rotation, & de-weight backgroud for translation.
+				//weights														=  edge_weight * depth_weight;
+*/
+				SE3_incr_pvt_flt2.y											=  1;	//weights;
+				//float delta_se3												=  delta_SE3[ 0 ];
 
 				for (uint se3_dim=0; se3_dim<3; se3_dim++) {
-					SE3_incr_pvt_flt4										= grad_pvt_flt4_SE3[se3_dim] * rho_pvt_flt4;
-					SE3_incr_pvt_flt2.x										= weights * ( SE3_incr_pvt_flt4.x	+ SE3_incr_pvt_flt4.y	+ SE3_incr_pvt_flt4.z )/ (3.0f * grad_pvt_SE3_mag);		// Computes the update vector to zero Rho for this pixel.
-					SE3_incr_pvt_flt2.x										= clamp( SE3_incr_pvt_flt2.x ,	-delta_se3,	+delta_se3  );															// pixelwise clamp to supress the efffect of giant steps from low gradient pixels.
-					SE3_incr_pvt_flt2.y										= weights * grad_pvt_flt_SE3[se3_dim] / grad_pvt_SE3_mag;															// NB will divide   sum_SE3_incr[se3_dim] by sum weights[se3_dim] .
+					SE3_incr_pvt_flt4										= grad_pvt_flt4_SE3[se3_dim] * rho_pvt_flt4;																		// sum colour channels  ####
+					SE3_incr_pvt_flt2.x										= /*weights * */ SE3_incr_pvt_flt4.x;		//	+ SE3_incr_pvt_flt4.y	+ SE3_incr_pvt_flt4.z )/*/ (3.0f * grad_pvt_SE3_mag)*/;		// Computes the update vector to zero Rho for this pixel.
+					/*
+					//SE3_incr_pvt_flt2.x										= clamp( SE3_incr_pvt_flt2.x ,	-delta_se3,	+delta_se3  );															// pixelwise clamp to supress the efffect of giant steps from low gradient pixels.
+
+					//SE3_incr_pvt_flt2.y										= weights * grad_pvt_flt_SE3[se3_dim] / grad_pvt_SE3_mag ;															// NB will divide   sum_SE3_incr[se3_dim] by sum weights[se3_dim] .
+					*/
 					SE3_incr_pvt_arr[ se3_dim*block_size + row_in_block ]	= SE3_incr_pvt_flt2 ;																								// pixelwise increment for this SE3 DoF
 				}
 
 				// ST3 translation	///////
-				weights														/= depth_weight;
-				depth_weight												=  inv_depth_1 / fp32_params[MAX_INV_DEPTH];																		// For ST3 emphasize foreground pixels for parallax motion: multiply pixel inv_depth by min depth in scene.
-				weights														*= depth_weight;																									// NB "Office" test scene depth is in cm from approx 90 to 450cm.
-				SE3_incr_pvt_flt2.y											=  weights;
-				delta_se3													=  delta_SE3[ 1 ];
+				//weights														/= depth_weight;
+				//depth_weight												=  inv_depth_1 / fp32_params[MAX_INV_DEPTH];																		// For ST3 emphasize foreground pixels for parallax motion: multiply pixel inv_depth by min depth in scene.
+				//weights														*= depth_weight;																									// NB "Office" test scene depth is in cm from approx 90 to 450cm.
+				//SE3_incr_pvt_flt2.y											=  weights;
+				//delta_se3													=  delta_SE3[ 1 ];
 
 				for (uint se3_dim=3; se3_dim<num_SE3_DoF; se3_dim++) {
 					SE3_incr_pvt_flt4										= grad_pvt_flt4_SE3[se3_dim] * rho_pvt_flt4;
-					SE3_incr_pvt_flt2.x										= weights * ( SE3_incr_pvt_flt4.x 	+ SE3_incr_pvt_flt4.y	+ SE3_incr_pvt_flt4.z)/ (3.0f * grad_pvt_SE3_mag);
-					SE3_incr_pvt_flt2.x										= clamp( SE3_incr_pvt_flt2.x ,	-delta_se3,	+delta_se3  );
-					SE3_incr_pvt_flt2.y										= weights * grad_pvt_flt_SE3[se3_dim] / grad_pvt_SE3_mag;
+					SE3_incr_pvt_flt2.x										= /*weights */ inv_depth_1 * SE3_incr_pvt_flt4.x; 		//	+ SE3_incr_pvt_flt4.y	+ SE3_incr_pvt_flt4.z)/*/ (3.0f * grad_pvt_SE3_mag)*/;
+
+					/*
+					//SE3_incr_pvt_flt2.x										= clamp( SE3_incr_pvt_flt2.x ,	-delta_se3,	+delta_se3  );
+
+					//SE3_incr_pvt_flt2.y										= weights * grad_pvt_flt_SE3[se3_dim] / grad_pvt_SE3_mag;
+					*/
 					SE3_incr_pvt_arr[ se3_dim*block_size + row_in_block ]	= SE3_incr_pvt_flt2 ;
 				}
 			}
 			barrier( CLK_GLOBAL_MEM_FENCE );
 
-			rho_pvt_flt2.x					=  rho_pvt_flt4.x*rho_pvt_flt4.x*value_sq_pvt		+ rho_pvt_flt4.y*rho_pvt_flt4.y*value_sq_pvt	+ rho_pvt_flt4.z*rho_pvt_flt4.z;				// sum rho^2, but multiply hue and saturation by value sq
+			rho_pvt_flt2.x					=  rho_pvt_flt4.x*rho_pvt_flt4.x;//*value_sq_pvt;	//	+ rho_pvt_flt4.y*rho_pvt_flt4.y*value_sq_pvt	+ rho_pvt_flt4.z*rho_pvt_flt4.z;				// sum rho^2, but multiply hue and saturation by value sq
 																																																// TODO Hue is a problem due to wrap arround.Need to changer to the HSVgrad 8 chan colorspace.
-			rho_pvt_flt2.x					*= edge_weight;																																		// Weight rho by edges. // TODO choose/ refine which edges to use.
-			rho_pvt_flt2.y					=  1.0f;																																			// count the pixels.
+			//rho_pvt_flt2.x					*= edge_weight;																																		// Weight rho by edges. // TODO choose/ refine which edges to use.
+			rho_pvt_flt2.y					=  rho_pvt_flt4.x;	//1.0f;																																			// count the pixels.
 			rho_pvt_arr[row_in_block]		+= rho_pvt_flt2;																																	// save to pvt mem for this column
 		}
 	}
@@ -358,6 +367,9 @@ __kernel void reduce_patch_Rho(									// call just one workgroup to sum the wh
 																								// sum the columns of the fully reduced patch.
 			pvt_rho_sum				+= Rho_[idx_2];												// NB incr computation in kernel Rho_sq(..) above.
 			pvt_incr_sum			+= SE3_incr_map_[idx_3];
+
+			printf("\n__kernel void reduce_patch_Rho. 	SE3 = %u, 	idx_3 = %u, pvt_incr_sum = (%f, %f) )", \
+														SE3, 		idx_3, 		pvt_incr_sum.x, pvt_incr_sum.y );
 		}
 	}
 	barrier(CLK_GLOBAL_MEM_FENCE);//////////////////////////////////////////////////////////####################################################
@@ -390,8 +402,8 @@ __kernel void reduce_patch_Rho(									// call just one workgroup to sum the wh
 	}
 
 	if (mod_step && in_range){
-		Rho_[			SE3	]			= pvt_rho_sum;
-		SE3_incr_map_[	SE3	]			= pvt_incr_sum;
+		Rho_[			SE3	+32]			= pvt_rho_sum;	// Set away from reduction for visibility. NB written as floa2, then converted to float4 .tiff
+		SE3_incr_map_[	SE3	+32]			= pvt_incr_sum;
 	}
 } // Need to end the kernel here, because cannot synchronize across workgroups.
 
@@ -454,12 +466,13 @@ __kernel void update_k2k(	// TODO need new kernel, for global synchronization be
 	}																					barrier(CLK_LOCAL_MEM_FENCE);/////##########
 	if (lid<6) {
 		pose_update_J[lid]			=	pose_update;
-	}
+		local_update_vec[lid]		=	-pose_update;
+	}																					barrier(CLK_LOCAL_MEM_FENCE);/////##########
 
 	if(lid==0)printf("\n__kernel void update_k2k(..) Layer=%u,  IC-LK Pose update = %f, %f, %f		%f, %f, %f", layer, pose_update_J[0], pose_update_J[1], pose_update_J[2], pose_update_J[3], pose_update_J[4], pose_update_J[5] );
 	// End IC-LK //////////////////////////////////////////
 
-
+/*
 	if (lid<6) {
 		uint	SE3						= lid;
 		float old_update				= old_results[SE3 + UPDATE];																					// will be zero if 1st iteration.
@@ -504,6 +517,7 @@ __kernel void update_k2k(	// TODO need new kernel, for global synchronization be
 																																							printf("\n__kernel void update_SE3()_1	option=%u,	SE3=,%u,	(old_update != 0.0f)=,%i,	old_update=,%f,	SE3_incr_map_[SE3].x=,%f,	SE3_incr_map_[SE3].y=,%f,	result=,%f,	Rho_[SE3].x=,%f,	/ Rho_[SE3].y=,%f,	rho=,%f,	old_Rho=,%f,	rho_S3_delta=,%f,	mag_S3=%f,	update_pre_clamp=,%f,	clamped local_update_vec[SE3]=,%f,	delta_SE3[ SE3/3 ]=,%f,", \
 																																																	option,		SE3,		(old_update != 0.0f),		old_update,		SE3_incr_map_[SE3].x,		SE3_incr_map_[SE3].y,		result,		Rho_[SE3].x,		  Rho_[SE3].y,		rho,		old_Rho,		rho_S3_delta,		mag_S3,		update_pre_clamp,				local_update_vec[SE3], 		delta_SE3[ SE3/3 ]			);
 	}																					barrier(CLK_LOCAL_MEM_FENCE);/////##########
+*/
 	// compute new K2K	////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	__local float local_K_update[ 	2* SE3_elems];																										// Buffers [32] elem, hold two 4x4 matrices.
@@ -534,7 +548,8 @@ __kernel void update_k2k(	// TODO need new kernel, for global synchronization be
 																																							printf("\n\n__kernel void update_k2k(..), \nlocal_update_vec[]={"); for (int i=0; i<9; i++){ printf("	%f,",local_update_vec[i]); }
 																																							printf( "}\nlocal_K_update[]={"); for (int i=0; i<2* SE3_elems; i++){ printf("	%f,",local_K_update[i]); }		printf("}\n");
 																																						}
-	LieToP( 	lid, local_update_vec,	local_K_update );								barrier(CLK_LOCAL_MEM_FENCE);/////##########
+	// pose_update_J
+	LieToP( 	lid,  local_update_vec,	local_K_update );								barrier(CLK_LOCAL_MEM_FENCE);/////##########
 																																						if(lid==0){
 																																							printf("\n\n local_K_update = \n"); for (uint i=0; i< 2 ; i++){ for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ printf(",	%f",local_K_update[		i*16 +j*4 +k]); } printf("\n"); } printf("\n\n"); }
 																																						}
@@ -548,12 +563,12 @@ __kernel void update_k2k(	// TODO need new kernel, for global synchronization be
 	__local float local_new_pose[SE3_elems];
 
 	if (lid < 16){
-		local_pose[		lid]			= local_pose_inv_K[		lid];
-		local_update[	lid]			= local_K_update[	16 + lid];
-		local_new_pose[	lid]			= 0.0f;
+					local_pose[			lid]			= local_pose_inv_K[		lid];
+					local_update[		lid]			= local_K_update[	16 + lid];
+					local_new_pose[		lid]			= 0.0f;
 	}																					barrier(CLK_LOCAL_MEM_FENCE);/////##########
-	mat_mul44( lid,		local_pose,		local_update,		local_new_pose );			barrier(CLK_LOCAL_MEM_FENCE);/////##########
-	if(lid<16){			Pose[lid]		= local_new_pose [lid]; }
+	mat_mul44( 		lid,	local_pose,	local_update,	  local_new_pose );				barrier(CLK_LOCAL_MEM_FENCE);/////##########
+	if(lid<16){		Pose[				lid]			= local_new_pose [lid]; }
 																																						if (lid==0){
 																																							printf("\n\n local_pose[] = \n");		for (uint j=0; j< 4 ; j++){ 	for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_pose[		j*4 +k]);	} printf("\n"); 	} printf("\n\n");
 																																							printf("\n\n local_update[] = \n");		for (uint j=0; j< 4 ; j++){ 	for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_update[	j*4 +k]);	} printf("\n"); 	} printf("\n\n");
