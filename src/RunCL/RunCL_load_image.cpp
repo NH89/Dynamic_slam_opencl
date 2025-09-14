@@ -87,7 +87,6 @@ void RunCL::cvt_color_space(){ //getFrame(); basemem(CV_8UC3, RGB)->imgmem(CV16F
 	uint start_group			= 1;
 	uint stop_group				= start_group + groups_to_sum;
 																																			if(verbosity>local_verbosity_threshold+2) cout << "\ngroups_to_sum="<<groups_to_sum<<",  stop_group="<<stop_group<<endl<<flush;
-
 	for (int j=start_group; j< stop_group  ; j++){
 		for (int k=0; k<4; k++){
 			pix_sum_reults[k] += pix_sum_mat.at<float>(j, k);
@@ -97,7 +96,6 @@ void RunCL::cvt_color_space(){ //getFrame(); basemem(CV_8UC3, RGB)->imgmem(CV16F
 	for (int i=0; i<3; i++){
 		img_stats[layer*8 + IMG_MEAN*4 + i ]	=	pix_sum_reults[i] / pix_sum_reults[3];
 	}
-
 	_clEnqueueWriteBuffer(uload_queue, img_stats_buf, CL_FALSE, 0, img_stats_size_bytes, img_stats, fname);									// Upload img_mean to GPU
 																																			if(verbosity>local_verbosity_threshold/*+2*/){
 																																				cout << "\n Pix_sum_results = (";
@@ -110,8 +108,6 @@ void RunCL::cvt_color_space(){ //getFrame(); basemem(CV_8UC3, RGB)->imgmem(CV16F
 																																					cout << ", " << pix_sum_reults[k]/pix_sum_reults[3] ;
 																																				}cout << ")";
 																																			}
-
-
 																																			uint start = mm_start, stop = mm_stop;
 																																			float img_stats__[img_stats_size];
 																																			ReadOutput(  (uchar*)img_stats__, img_stats_buf, img_stats_size_bytes );
@@ -129,9 +125,6 @@ void RunCL::cvt_color_space(){ //getFrame(); basemem(CV_8UC3, RGB)->imgmem(CV16F
 																																					cout << "}" << flush;
 																																				}
 																																			}
-
-
-
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::cvt_color_space()_chk3_Finished"<<flush;
 	// TODO NB it would be faster to find the mean from the smallest layer, BUT only if there are no bugs e.g. the black bottom edge.
 	// Variance however must be computed for each layer, because blurring may reduce contrast &=> variance.
@@ -273,7 +266,10 @@ void RunCL::blur_image(){//cl_mem in_buff, cl_mem blurred_buf, std::string folde
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_chk1,  global_work_size="<< global_work_size <<flush;
 	_clEnqueueNDRangeKernel(m_queue, blur_image_kernel, 1, 0, &global_work_size, &local_work_size, fname ); 								// run blur_image_kernel
                                                                                                                                             if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_chk2"<<flush;
+	_clSetKernelArg(blur_image_kernel, 4, sizeof(cl_mem), 						&imgmem_, fname );											//__global   float4*	img,			//3
+	_clSetKernelArg(blur_image_kernel, 3, sizeof(cl_mem), 						&imgmem_blurred, fname );									//__global   float4*	img,			//4
 
+	_clEnqueueNDRangeKernel(m_queue, blur_image_kernel, 1, 0, &global_work_size, &local_work_size, fname ); 								// run blur_image_kernel
 																																			if (verbosity>local_verbosity_threshold){
                                                                                                                                                 stringstream ss;		ss << dataset_frame_num << "_blur_image";
                                                                                                                                                 stringstream ss_path;	ss_path << "imgmem_blurred";
@@ -291,7 +287,7 @@ void RunCL::blur_image(){//cl_mem in_buff, cl_mem blurred_buf, std::string folde
 
                                                                                                                                                 DownloadAndSave_3Channel(	imgmem_blurred, ss.str(), paths.at( ss_path.str() ), new_size_bytes/*mm_size_bytes_C4*/, new_Image_size/*mm_Image_size*/,  CV_32FC4 /*mm_Image_type*/, 	false );
 																																			}
-	swap( imgmem_blurred, imgmem_ );
+	// swap( imgmem_blurred, imgmem_ );
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_Finished"<<flush;
 }
 

@@ -106,19 +106,24 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	uint  group_id									= get_group_id(0);
 	const uint local_size 							= get_local_size(0);
 
+	if (global_id_u < num_past_frames){printf("\n__kernel void Rho_sq()  past_frame_num= %u,  invk2k buf = (%f,	%f,	%f,	%f),	(%f,	%f,	%f,	%f),	(%f,	%f,	%f,	%f),	(%f,	%f,	%f,	%f),	   ",\
+		lid, inv_k2k[lid][0], inv_k2k[lid][1], inv_k2k[lid][2], inv_k2k[lid][3], 	inv_k2k[lid][4], inv_k2k[lid][5], inv_k2k[lid][6], inv_k2k[lid][7], 	inv_k2k[lid][8], inv_k2k[lid][9], inv_k2k[lid][10], inv_k2k[lid][11], 	inv_k2k[lid][12], inv_k2k[lid][13], inv_k2k[lid][14], inv_k2k[lid][15] );
+	}
+
 	const uint8 mipmap_params_						= mipmap_params[layer];
 	uint read_offset_ 								= mipmap_params_[MiM_READ_OFFSET];
 	uint read_cols_ 								= mipmap_params_[MiM_READ_COLS];
 	uint read_rows_ 								= mipmap_params_[MiM_READ_ROWS];
 	uint layer_pixels								= mipmap_params_[MiM_PIXELS];
 
+	uint base_cols									= uint_params[COLS];
 	uint mm_cols									= uint_params[MM_COLS];
 	uint mm_pixels									= uint_params[MM_PIXELS];
 
 	float min_inv_depth								= fp32_params[MIN_INV_DEPTH];
 	float max_inv_depth								= fp32_params[MAX_INV_DEPTH];
 
-	float reduction									= mm_cols/read_cols_;
+	float reduction									= base_cols/read_cols_;
 	uint row_length									= cols_per_row;								// blocks_cols * block_size;
 	uint row_col									= fmod((float)global_id_u, row_length);
 	uint block_row									= global_id_u / row_length;
@@ -184,8 +189,9 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 			u2_flt_1					= (uh2_1 + inv_k2k[past_frame_idx][1]*v_flt_1 ) / ((wh2_1  )*reduction);
 			v2_flt_1					= (vh2_1 + inv_k2k[past_frame_idx][5]*v_flt_1 ) / ((wh2_1  )*reduction);
 
-			intersection 				= 	(u>2)			&& (u<=read_cols_-2)			&& (v>2)			&& (v<=read_rows_-2) 			&& \
-											(u2_flt_1>2)	&& (u2_flt_1<=read_cols_-2)		&& (v2_flt_1>2) 	&& (v2_flt_1<=read_rows_-2)		&& \
+			uint margin					= 4 * reduction;
+			intersection 				= 	(u>margin)			&& (u<=read_cols_-margin)			&& (v>margin)			&& (v<=read_rows_-margin)			&& \
+											(u2_flt_1>margin)	&& (u2_flt_1<=read_cols_-margin)	&& (v2_flt_1>margin)	&& (v2_flt_1<=read_rows_-margin)	&& \
 											(global_id_u<=layer_pixels)		&&	(inv_depth_1>=min_inv_depth)	&& (inv_depth_1<=max_inv_depth);												// if images overlap
 
 			rho_pvt_flt4				= zero_f4;
@@ -201,6 +207,10 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 // 				rho_pvt_flt4.x			*= value_sq_pvt;																																		// Reduce rho hue and saturation by multiplying by old & new px value.
 // 				rho_pvt_flt4.y			*= value_sq_pvt;
 				rho_pvt_flt4.w			= 1.0f;																																					// rho.w holds pixel count.
+
+				if(v>107 && v<112 && u>70  && u<120 /*&& rho_pvt_flt4.x>0.001*/  ){printf("\n__kernel void Rho_sq, global_id_u=%u,	row_in_block=%u,	group_id=%u,	inv_depth_1=%f,		(u,v)=(%u,%u),	(u2_flt_1,v2_flt_1)=(%f,%f)		img_cur_pvt[row_in_block]=(%f, %f, %f, %f),		old_px=(%f, %f, %f, %f),		rho_pvt_flt4=(%f, %f, %f, %f)", \
+					global_id_u, row_in_block, group_id,	inv_depth_1,   u,v,  u2_flt_1,v2_flt_1,	\
+					img_cur_pvt[row_in_block].x, img_cur_pvt[row_in_block].y, img_cur_pvt[row_in_block].z, img_cur_pvt[row_in_block].w,		old_px.x, old_px.y, old_px.z, old_px.w,		rho_pvt_flt4.x, rho_pvt_flt4.y, rho_pvt_flt4.z, rho_pvt_flt4.w ); }
 
 				// Magnitude of gradient of Rho wrt SE3 rotation & translation //////
 				grad_pvt_SE3_mag		= 0.0f;
@@ -256,7 +266,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 			rho_pvt_flt2.x					=  rho_pvt_flt4.x*rho_pvt_flt4.x;//*value_sq_pvt;	//	+ rho_pvt_flt4.y*rho_pvt_flt4.y*value_sq_pvt	+ rho_pvt_flt4.z*rho_pvt_flt4.z;				// sum rho^2, but multiply hue and saturation by value sq
 																																																// TODO Hue is a problem due to wrap arround.Need to changer to the HSVgrad 8 chan colorspace.
 			//rho_pvt_flt2.x					*= edge_weight;																																		// Weight rho by edges. // TODO choose/ refine which edges to use.
-			rho_pvt_flt2.y					=  rho_pvt_flt4.x;	//1.0f;																																			// count the pixels.
+			rho_pvt_flt2.y					=  rho_pvt_flt4.w;	//1.0f;																																			// count the pixels.
 			rho_pvt_arr[row_in_block]		+= rho_pvt_flt2;																																	// save to pvt mem for this column
 		}
 	}
@@ -294,6 +304,10 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 				for (uint block_row=0; block_row < block_size ; block_row += step*2, write_block_row++){
 																						uint offset_1 				= frame_offset		+ write_block_row*mm_cols;
 																						Rho_[			offset_1]	= rho_pvt_arr[		block_row ];
+/*
+// 					if(block_row==10 && group_id==0 ){printf("\n__kernel void Rho_sq_2, global_id_u=%u,	block_row=%u,	group_id=%u,		rho_pvt_arr[ block_row ]=(%f, %f ) ", \
+// 					global_id_u, block_row, group_id,	rho_pvt_arr[block_row].x, rho_pvt_arr[block_row].y ); }
+*/
 					for (uint se3_dim=3; se3_dim<num_SE3_DoF; se3_dim++) {																															// select only ST3
 																						uint offset_2 				= offset_1			+ (se3_dim-3)*( 4+ (read_rows_/out_block_size) )*mm_cols;
 																						uint offset_3 				= block_row			+ se3_dim*block_size;									// NB read_rows_/out_block_size = writre_rows

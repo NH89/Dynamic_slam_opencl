@@ -98,20 +98,20 @@ float8 bilinear_SE3_grad (__global float8* img, float u_flt, float v_flt, int co
 float4 bilinear_flt4 (__global float4* img, float u_flt, float v_flt, int cols, int read_offset_){                                   // Used in tracking
 	float4 	c, c_00, c_01, c_10, c_11;										// read_offset_ + v2 * mm_cols  + u2;
 	//int coff_00, coff_01, coff_10, coff_11;
-	int int_u2 = ceil(u_flt);
-	int int_v2 = ceil(v_flt);
+	int int_u2 = floor(u_flt);
+	int int_v2 = floor(v_flt);
 																			// compute adjacent pixel indices & sample adjacent pixels
-	c_11 = img[ read_offset_ + int_v2     * cols +  int_u2     ];
-	c_10 = img[ read_offset_ + (int_v2-1) * cols +  int_u2     ];
-	c_01 = img[ read_offset_ + int_v2     * cols + (int_u2 -1) ];
-	c_00 = img[ read_offset_ + (int_v2-1) * cols + (int_u2 -1) ];
+	c_11 = img[ read_offset_ + (int_v2+1)	* cols +	(int_u2+1)	];
+	c_10 = img[ read_offset_ + (int_v2)		* cols +	(int_u2+1)	];
+	c_01 = img[ read_offset_ + (int_v2+1)	* cols +	int_u2		];
+	c_00 = img[ read_offset_ + (int_v2)		* cols +	int_u2		];
 
 	uint  global_id_u 	= get_global_id(0);
 	//if(global_id_u == 10000  ){ printf("\n__bilinear_flt4 (global_id_u == 10000 )  chk_1  , coff_00=%u",  read_offset_ + (int_v2-1) * cols + (int_u2 -1)   ); }
 
 																			// weighting for bi-linear interpolation
-	float factor_x = fmod(u_flt,1);
-	float factor_y = fmod(v_flt,1);
+	float factor_x = fmod(u_flt,1.0f);
+	float factor_y = fmod(v_flt,1.0f);
 	c = factor_y * (c_11*factor_x  +  c_01*(1-factor_x))   +   (1-factor_y) * (c_10*factor_x  + c_00*(1-factor_x));
 	return c;
 }

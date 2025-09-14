@@ -95,12 +95,14 @@ public:
 	cl_mem 				imgmem[num_current_frames], velmap[num_current_frames], depth_mem, g1mem;
 	/////////////////////////////
 	struct frame{
+		int 			frame_num;
 		cl_mem			img_buf;
 		cl_mem			depth_buf;
 		cl_mem			r_vel_buf;
 		uint			frame_data_index;
+		Matx44f			pose_gt;
 		float			pose[16];			// Absolute pose of the frame. i.e. relative to initial frame. Computed from the local sample frames. Will req adjustment at loop closure.
-		float			invk2k[16];			// Reprojection matrix to the current img. Estimated, then fitted for each new frame, also with updates of camera inrinsic mattix.
+		float			invk2k_gt[16];			// Reprojection matrix to the current img. Estimated, then fitted for each new frame, also with updates of camera inrinsic mattix.
 		Matx16f			Jacobian[max_mipmap_layers];
 		Matx66f			invHessian[max_mipmap_layers];
 	};
@@ -113,13 +115,15 @@ public:
 
 	void initialize_current_frames(){
 		for (uint idx = 0; idx < num_current_frames; idx++){
+			current_frames[idx].frame_num			= -1;
 			current_frames[idx].img_buf				= imgmem[idx];
 			//current_frames[idx].depth_buf			= depth_mem[idx];
 			current_frames[idx].r_vel_buf			= velmap[idx];						// velocity _relative_ to the camera.
 			current_frames[idx].frame_data_index	= idx;
+			current_frames[idx].pose_gt				= Matx44f::eye();
 			for(uint i=0; i<16; i++){
-				current_frames[idx].pose[i]	= identity_flt16[i];
-				current_frames[idx].pose[i]	= identity_flt16[i];
+				current_frames[idx].pose[i]			= identity_flt16[i];
+				current_frames[idx].invk2k_gt[i]	= identity_flt16[i];
 			}
 			for(uint i=0; i<max_mipmap_layers; i++){
 				current_frames[idx].invHessian[i]	= Matx66f::eye();

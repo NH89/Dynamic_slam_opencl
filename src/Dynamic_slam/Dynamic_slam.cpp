@@ -159,7 +159,7 @@ int Dynamic_slam::nextFrame() {
 																																				<<",\t depth = runcl.amem  \n" << flush; //  runcl.frame_bool_idx="<<runcl.frame_bool_idx<<"
 																						auto step_0 = high_resolution_clock::now();
 	frame_data.push_back( frame_data.back() ); //////////////////////////////////////////   new_frame										// duplicate last frame, as basis for new frame.
-
+	runcl.update_current_frames_idx();																										// move to next img buffer and RunCL "frame" struct in the current_frames[] array. NB current_frames_idx[..] pointer swap.
 //TODO regularize amem //	if ( obj["initialize_tracking_from_GT_depth"].asBool() == false  ){ runcl.update_tracking_depthmap( runcl.amem   );	}					// copies buffer: amem to keyframe_depth_mem.  NB amem initialization will affect 1st tracking.
 																																			// This would update keyframe_depth_mem ith the raw amem, every frame.
 
@@ -171,19 +171,14 @@ int Dynamic_slam::nextFrame() {
 
 	if (runcl.costvol_frame_num>1)					{	predictFrame_vec(); }			auto step_2 = high_resolution_clock::now();			// Loads GT depth of the new frame. NB depends on image.size from getFrame().
 	if(obj["use_GT_pose"].asBool() == true )		{	use_GT_pose_vec();	}
-	if(obj["initialize_tracking_from_GT_depth"].asBool()==true){
-		runcl.update_current_frame_depth_mem(runcl.depth_mem_GT);
-		cout<<"obj[\"initialize_tracking_from_GT_depth\"].asBool()==true"<<endl<<flush;
-	}else{
-		cout<<"obj[\"initialize_tracking_from_GT_depth\"].asBool()==false"<<endl<<flush;
-	}
+	if(obj["initialize_tracking_from_GT_depth"].asBool()==true){ runcl.update_current_frame_depth_mem(runcl.depth_mem_GT);}
 																						auto step_3 = high_resolution_clock::now();			// use_GT_pose();
 																																			// if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 2, Pose error after use_GT_pose:" << flush;
 																																			// 	report_GT_pose_error();
 																																			// 	//display_frame_resluts();
 																																			// }
 	getFrame();																			auto step_4 = high_resolution_clock::now();
-	if(obj["Artif_pose_err_bool"].asBool() == true ){ 	artificial_pose_error_vec();}	auto step_5 = high_resolution_clock::now();
+/*	if(obj["Artif_pose_err_bool"].asBool() == true ){ 	artificial_pose_error_vec();} */	auto step_5 = high_resolution_clock::now();
 
 	//estimateSE3(); // original tracking
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 3, Pose error after Artif_pose_err:" << flush;
@@ -234,7 +229,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 																																				cout << "\nruncl.mm_Image_size =" 		<< runcl.mm_Image_size ;
 																																				cout << "\n" << flush ;
 																																			}
-	runcl.update_current_frames_idx();
+	//runcl.update_current_frames_idx();
 	image = imread( png[runcl.dataset_frame_num].string());																					if(verbosity>local_verbosity_threshold){
 																																				cout << "\n Dynamic_slam::getFrame_chk 0.5, Image file = " << png[runcl.dataset_frame_num].string() << "\t" << flush;
 																																			}
@@ -248,17 +243,21 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 																																			// load a basic image in CV_8UC3, then convert on GPU to 'half'
 	runcl.cvt_color_space( );
 	runcl.blur_image();//runcl.imgmem, runcl.imgmem_blurred , "imgmem_blurred");
-	runcl.blur_image();
-	runcl.mipmap_linear(runcl.current_frames[ runcl.current_frames_idx[0] ].img_buf, "imgmem");
+	//runcl.blur_image();
+	runcl.mipmap_linear(	runcl.current_frames[ 	runcl.current_frames_idx[0] ].img_buf, 		"imgmem");
+
+	runcl.current_frames[	runcl.current_frames_idx[0] ].frame_num		=	runcl.dataset_frame_num;
+
 	//runcl.sum_image_variance();
-	runcl.sample_image_variance();
-	runcl.img_gradients();
+//	runcl.sample_image_variance();
+//	runcl.img_gradients();
 
 	//runcl.patch_img_gradients( 0/*0*/, 4 ); //  uint layer, uint out_block_size.  NB (0, 4) are the largest sizes that will fit in the buffer.
 	float zero  = 0;
 	cl_int 			status;
 	cl_event 		writeEvt;
 	status = clEnqueueFillBuffer(runcl.uload_queue, runcl.SE3_hessian_pinv_map_mem, &zero, 	sizeof(float), 	0, runcl.mm_size_bytes_C4, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << runcl.checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;runcl.exit_(status);}	clFlush(runcl.uload_queue); status = clFinish(runcl.uload_queue);
+
 	for(int layer=SE3_start_layer; layer>=0/*SE3_stop_layer*/; layer-- ){
 		//cout << "\nDynamic_slam::getFrame(): layer="<<layer<<"  SE3_start_layer="<<SE3_start_layer<<"   SE3_stop_layer="<<SE3_stop_layer<<flush;
 		runcl.patch_img_gradients(	layer);

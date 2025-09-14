@@ -43,16 +43,16 @@ int main(int argc, char *argv[])
 			frame_count ++;
 		}
 																														cerr << "\n\nmain()  dynamic_slam.optimize_depth();"<<flush;
-		dynamic_slam.optimize_depth();
+		//dynamic_slam.optimize_depth();
 																														if(verbosity_>1) dynamic_slam.runcl.saveCostVols(imagesPerCV);
-		dynamic_slam.initialize_keyframe_vec();																			// next keyframe
+		//dynamic_slam.initialize_keyframe_vec();																			// next keyframe
 																														// TODO write new depthmap transformation based on bin sort from fluids_v3 & Morphogenesis.
 		
 	}while(!ds_error && ((frame_count<max_frame_count) || (max_frame_count==-1)) );										// #########################################################################################################
 																														if(verbosity_>0) cout << "\n main_chk 3\n" << flush;
 																														cerr << "\n\nmain() starting  dynamic_sla-1.getResult();"<<flush;
-	dynamic_slam.print_pose_vectors( 0, 20);
-	dynamic_slam.getResult();																							// also calls RunCL::CleanUp()
+	//dynamic_slam.print_pose_vectors( 0, 20);
+	//dynamic_slam.getResult();																							// also calls RunCL::CleanUp()
 																														cerr << "\n\nmain() Dynamic_slam finished. Exiting."<<flush;
 																														cout << "\n\nDynamic_slam finished. Exiting."<<flush;
 	fflush (stdout);

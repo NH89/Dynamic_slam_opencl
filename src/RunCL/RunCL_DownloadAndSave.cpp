@@ -160,7 +160,8 @@ void RunCL::ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t o
 		_cl_flush_finish(dload_queue, fname);
 														if (status != CL_SUCCESS) { cout << "\nclEnqueueReadBuffer(..) status=" << checkerror(status) <<"\n"<<flush; exit_(status);}
 														else 																				if(verbosity>local_verbosity_threshold) cout << "\nRunCL::ReadOutput chk_1"<<flush;
-		clReleaseEvent(readEvt);
+		waitForEventAndRelease( &readEvt );
+		//clReleaseEvent(readEvt);
 																																			if(verbosity>local_verbosity_threshold) cout << "\nRunCL::ReadOutput finish"<<flush;
 }
 
@@ -556,8 +557,8 @@ void RunCL::DownloadAndSave_3Channel(cl_mem buffer, std::string count, std::file
 		stringstream png_ss;
 		std::string  date_time_str = date_time_string();
 
-		ss<<"/"<<folder_tiff.filename().string()<<"_"<<count<<"_sum"<<sum<<"type_"<<type_string<<"min("<<minVal[0]<<","<<minVal[1]<<","<<minVal[2]<<")_max("<<maxVal[0]<<","<<maxVal[1]<<","<<maxVal[2]<<")"<<"_"<<date_time_str;
-		png_ss<< "/" << folder_tiff.filename().string() << "_" << count << date_time_str;
+		ss<<"/" << date_time_str<<folder_tiff.filename().string()<<"_"<<count<<"_sum"<<sum<<"type_"<<type_string<<"min("<<minVal[0]<<","<<minVal[1]<<","<<minVal[2]<<")_max("<<maxVal[0]<<","<<maxVal[1]<<","<<maxVal[2]<<")";
+		png_ss<< "/"<< date_time_str << folder_tiff.filename().string() << "_" << count;
 		if(show){
 			cv::Mat temp;
 			temp_mat.convertTo(temp, CV_8U, 256);																								// NB need CV_U8 for imshow(..)

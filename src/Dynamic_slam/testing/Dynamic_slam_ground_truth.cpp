@@ -34,6 +34,30 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
     datum.inv_K								= generate_invK_(K_GT, verbosity);
     datum.pose								= getPose(R,T, verbosity);
     datum.inv_pose							= getInvPose(datum.pose, verbosity);
+
+	runcl.current_frames[ runcl.current_frames_idx[0] ].pose_gt	= datum.pose;													// copy to the RunCL data structure for a sparse series of frames currently held on GPU.
+																																//Matx44f invPose2Pose 		= runcl.current_frames[ runcl.current_frames_idx[1] ].pose_gt   *  datum.pose.inv();
+																															cout << "\n\n runcl.current_frames_idx[0-5] = ";	for(int i=0; i<5; i++){ cout<< runcl.current_frames_idx[i] << ",  "; }	cout << flush;
+																															for(int i=0; i<5; i++){		PRINT_MATX44F(	runcl.current_frames[ runcl.current_frames_idx[i] ].pose_gt,  );	}
+
+	Matx44f invPose2Pose_gt_1	= runcl.current_frames[ runcl.current_frames_idx[1] ].pose_gt   *	datum.inv_pose;			PRINT_MATX44F(	invPose2Pose_gt_1, );
+	// Matx44f invPose2Pose_gt_2	= runcl.current_frames[ runcl.current_frames_idx[1] ].pose_gt.inv()   *	datum.pose;			PRINT_MATX44F(	invPose2Pose_gt_2, );
+ //
+	// Matx44f invPose2Pose_gt_3	= datum.inv_pose	* runcl.current_frames[ runcl.current_frames_idx[1] ].pose_gt   ;		PRINT_MATX44F(	invPose2Pose_gt_3, );
+	// Matx44f invPose2Pose_gt_4	= datum.pose 		* runcl.current_frames[ runcl.current_frames_idx[1] ].pose_gt.inv();	PRINT_MATX44F(	invPose2Pose_gt_4, );
+
+	Matx16f Lie_invP2P			= PToLie( invPose2Pose_gt_1 ) * (1.0f/powf(2.0f,11.0f) ); // 2^10 = 1024  gave best result.
+	Matx16f	artif_error			= {0.0f, 0.0f, 0.0f,		0.0f, 0.0f, 0.001f };
+	Lie_invP2P					= LieAdd( Lie_invP2P,	artif_error );
+																							// RunCL::update_k2k_cpu( ..)_chk_0 . ################################
+																							// layer = 0
+																							// Rho	= 0.150584 total Rho sq, 302736.000000 pixels of intersection.   NB had  one pixel bright right hand border on Rho image  => need to be more restrictive in intersection.
+																							// rho	= 0.000 001
+	Matx44f invPose2Pose_gt		= LieToP_Matx( Lie_invP2P );																PRINT_MATX44F(invPose2Pose_gt,);	PRINT_MATX16F(Lie_invP2P,);
+
+	Matx44f invk2k_gt			= datum.K		*	invPose2Pose_gt	* datum.K.inv() /*datum.inv_K*/;						PRINT_MATX44F(invk2k_gt,);			// Matx44f_eye
+	Matx44f_To_float16arry(		invk2k_gt,		runcl.current_frames[  runcl.current_frames_idx[0]  ].invk2k_gt	);					// Now holds GT k2k from current frame to previous frame.
+
 																																			if(verbosity>local_verbosity_threshold) {cout << "\n Dynamic_slam::getFrameData_vec_chk 2, "
 																																				<<"\truncl.dataset_frame_num="<<runcl.dataset_frame_num
 																																				<<"\tframe_data.size()="<<frame_data.size()
@@ -73,15 +97,21 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 void Dynamic_slam::use_GT_pose_vec(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_USE_GT_POSE;//verbosity_mp["Dynamic_slam::use_GT_pose"];// -1;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::use_GT_pose_chk_0,"<<flush;
+/*
 	frame_data.back().frame_data = frame_data.back().frame_data_GT;
-	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] = frame_data.back().frame_data.K2K.operator()(i/4, i%4);}
+	Matx44f inv_k2k = frame_data.back().frame_data.K2K.inv();								// NB this will need to be changed to be frame to frame, and to hold the series of frames.
+	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] = inv_k2k.operator()(i/4, i%4);}
 
 	float pose_arry[16];
-	Matx44f_To_float16arry( frame_data.back().frame_data.keyframe2pose, pose_arry );
+	Matx44f_To_float16arry( frame_data.back().frame_data.keyframe2pose.inv(), pose_arry );
 	runcl.update_k2k_buf( runcl.fp32_k2keyframe, pose_arry );
+*/
+	float pose_arry[16];
+	Matx44f_To_float16arry(		runcl.current_frames[  runcl.current_frames_idx[0]  ].pose_gt,			pose_arry );
+	runcl.update_k2k_buf(		runcl.current_frames[  runcl.current_frames_idx[0]  ].invk2k_gt,		pose_arry );
 																																			if(verbosity>local_verbosity_threshold){
-																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);
-																																				PRINT_FLOAT_16(runcl.fp32_k2keyframe,);
+																																				//PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);
+																																				//PRINT_FLOAT_16(runcl.fp32_k2keyframe,);
 																																				cout << "\nDynamic_slam::use_GT_pose()_finish ##############################################\n\n" << flush;
 																																			}
 }

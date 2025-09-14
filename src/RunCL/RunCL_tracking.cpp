@@ -96,7 +96,17 @@ void RunCL::rho_sq(uint out_block_size, uint iter, uint layer, float delta_theta
 																																			}
 	const uint			patch_size					= 32;																					// TODO set global patch size from device parameters // generally: device_work_size_multiple = patch_size * integer, eg 32, 64, 128
 																									if (fmod(device_work_size_multiple, patch_size)!=0)   { cout <<"\nRunCL::rho_sq( ..)  Error: fmod(device_work_size_multiple, patch_size) != 0 \n"<<flush;exit_(0);}
+
+	for (uint i=0; i<5 ;i++){
+		cout<<"\n\n## current_frames[ current_frames_idx["<<i<<"] ].frame_num = "<< current_frames[ current_frames_idx[i] ].frame_num << flush;
+		PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].pose,		);
+		PRINT_MATX44F(	current_frames[ current_frames_idx[i] ].pose_gt,	);
+		PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].invk2k_gt,	);
+	}
+
 	const float zero  = 0;
+	//_clEnqueueWriteBuffer( uload_queue, k2kbuf, CL_FALSE, 0, /*local_num_samples**/16*sizeof( float), identity_flt16 /*k2k_3_16_[start_sample_idx]*/, fname); // TODO  temporary debug, sets k2k to identity.
+
 	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, 	&zero, sizeof( float), 0, 			  2*mm_size_bytes_C1, 	fname);				//_clEnqueueWriteBuffer( uload_queue, k2kbuf, CL_FALSE, 0, local_num_samples*16*sizeof( float), k2k_3_16_[start_sample_idx], fname);
 	_clEnqueueFillBuffer( uload_queue, SE3_weight_map_mem, 	&zero, sizeof( float), 0, num_SE3_DoF*2*mm_size_bytes_C1, 	fname);
 	_clEnqueueFillBuffer( uload_queue, SE3_incr_map_mem, 	&zero, sizeof( float), 0, num_SE3_DoF*2*mm_size_bytes_C1, 	fname);
@@ -239,6 +249,11 @@ void RunCL::rho_sq(uint out_block_size, uint iter, uint layer, float delta_theta
 
 																																				float max_range_ = 0;
 																																				DownloadAndSave( depth_mem,   	ss.str(),   paths.at("depth_mem"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
+
+																																				for(int i=0; i<5; i++){
+																																					ss<<"_"<<i;
+																																					DownloadAndSave_3Channel( current_frames[current_frames_idx[i]].img_buf,  ss.str(),   paths.at("imgmem"),   	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	false , max_range_);
+																																				}
 
 																																				//DownloadAndSave_2Channel_volume(  SE3_weight_map_mem,	ss.str( ), paths.at( "SE3_weight_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	vol_layers);
 																																				//DownloadAndSave_2Channel_volume(  SE3_incr_map_mem,		ss.str( ), paths.at( "SE3_incr_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	vol_layers);
