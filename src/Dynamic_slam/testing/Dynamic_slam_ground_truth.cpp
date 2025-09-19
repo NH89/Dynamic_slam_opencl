@@ -46,9 +46,9 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 	// Matx44f invPose2Pose_gt_3	= datum.inv_pose	* runcl.current_frames[ runcl.current_frames_idx[1] ].pose_gt   ;		PRINT_MATX44F(	invPose2Pose_gt_3, );
 	// Matx44f invPose2Pose_gt_4	= datum.pose 		* runcl.current_frames[ runcl.current_frames_idx[1] ].pose_gt.inv();	PRINT_MATX44F(	invPose2Pose_gt_4, );
 
-	Matx16f Lie_invP2P			= PToLie( invPose2Pose_gt_1 ) * (1.0f/powf(2.0f,11.0f) ); // 2^10 = 1024  gave best result.
-	Matx16f	artif_error			= {0.0f, 0.0f, 0.0f,		0.0f, 0.0f, 0.001f };
-	Lie_invP2P					= LieAdd( Lie_invP2P,	artif_error );
+	Matx16f Lie_invP2P			= PToLie( invPose2Pose_gt_1 ); // * (1.0f/powf(2.0f,11.0f) ); // 2^10 = 1024  gave best result.
+	Matx16f	artif_error			= {0.0f, 0.02f, 0.0f,		0.0f, 0.0f, 0.0f };	// NB Rotation is in Radians. Translation is in world units. Translation is depth range dependent.
+			Lie_invP2P			= LieAdd( Lie_invP2P,	artif_error );
 																							// RunCL::update_k2k_cpu( ..)_chk_0 . ################################
 																							// layer = 0
 																							// Rho	= 0.150584 total Rho sq, 302736.000000 pixels of intersection.   NB had  one pixel bright right hand border on Rho image  => need to be more restrictive in intersection.
@@ -56,7 +56,12 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 	Matx44f invPose2Pose_gt		= LieToP_Matx( Lie_invP2P );																PRINT_MATX44F(invPose2Pose_gt,);	PRINT_MATX16F(Lie_invP2P,);
 
 	Matx44f invk2k_gt			= datum.K		*	invPose2Pose_gt	* datum.K.inv() /*datum.inv_K*/;						PRINT_MATX44F(invk2k_gt,);			// Matx44f_eye
-	Matx44f_To_float16arry(		invk2k_gt,		runcl.current_frames[  runcl.current_frames_idx[0]  ].invk2k_gt	);					// Now holds GT k2k from current frame to previous frame.
+
+	Matx44f_To_float16arry(		invk2k_gt,			runcl.current_frames[  runcl.current_frames_idx[0]  ].invk2k_gt	);					// Now holds GT k2k from current frame to previous frame.
+
+	float pose_arry[16];	Matx44f_To_float16arry(	invPose2Pose_gt, pose_arry );
+
+	runcl.update_k2k_buf(	runcl.current_frames[  runcl.current_frames_idx[0]  ].invk2k_gt,		pose_arry );
 
 																																			if(verbosity>local_verbosity_threshold) {cout << "\n Dynamic_slam::getFrameData_vec_chk 2, "
 																																				<<"\truncl.dataset_frame_num="<<runcl.dataset_frame_num
@@ -66,7 +71,7 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec_chk 2.1,  (runcl.dataset_frame_num > 0)"<<flush;
 		uint 			index 				= frame_data.back().keyframe_index;
 		cv::Matx44f		invPose_index		= keyframe_data[index].frame_data.frame_data_GT.inv_pose ;  					//   getInvPose( keyframe_data[index].frame_data.frame_data_GT.keyframe2pose, verbosity);
-		datum.keyframe2pose					= datum.pose 	* invPose_index;
+		datum.keyframe2pose					= datum.pose	* invPose_index;
 																																			PRINT_MATX44F(invPose_index  		,Dynamic_slam::getFrameData_vec()  );
 																																			PRINT_MATX44F(datum.pose  			,Dynamic_slam::getFrameData_vec()  );
 																																			PRINT_MATX44F(datum.keyframe2pose  	,Dynamic_slam::getFrameData_vec()  );

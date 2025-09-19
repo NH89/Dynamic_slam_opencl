@@ -88,7 +88,7 @@
 
     // Keframe initialization //////////////////////////////////////////////////////////////////////////////////////////////////////////////
     "initialize_keyframe_from_GT":false,                                 // true  false
-    "initialize_tracking_from_GT_depth":true,
+    "initialize_tracking_from_GT_depth":false,
 
     // Results display //////////////////////////////////////////////////////////////////////////////////////////////////////////////
     "sample_layer":2,                                                   // Generate composite image of multiple iterations, sampling this layer from the mipmap.

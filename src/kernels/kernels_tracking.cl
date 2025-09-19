@@ -106,9 +106,9 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	uint  group_id									= get_group_id(0);
 	const uint local_size 							= get_local_size(0);
 
-	if (global_id_u < num_past_frames){printf("\n__kernel void Rho_sq()  past_frame_num= %u,  invk2k buf = (%f,	%f,	%f,	%f),	(%f,	%f,	%f,	%f),	(%f,	%f,	%f,	%f),	(%f,	%f,	%f,	%f),	   ",\
-		lid, inv_k2k[lid][0], inv_k2k[lid][1], inv_k2k[lid][2], inv_k2k[lid][3], 	inv_k2k[lid][4], inv_k2k[lid][5], inv_k2k[lid][6], inv_k2k[lid][7], 	inv_k2k[lid][8], inv_k2k[lid][9], inv_k2k[lid][10], inv_k2k[lid][11], 	inv_k2k[lid][12], inv_k2k[lid][13], inv_k2k[lid][14], inv_k2k[lid][15] );
-	}
+// 	if (global_id_u < num_past_frames){printf("\n__kernel void Rho_sq()  past_frame_num= %u,  invk2k buf = (%f,	%f,	%f,	%f),	(%f,	%f,	%f,	%f),	(%f,	%f,	%f,	%f),	(%f,	%f,	%f,	%f),	   ",\
+// 		lid, inv_k2k[lid][0], inv_k2k[lid][1], inv_k2k[lid][2], inv_k2k[lid][3], 	inv_k2k[lid][4], inv_k2k[lid][5], inv_k2k[lid][6], inv_k2k[lid][7], 	inv_k2k[lid][8], inv_k2k[lid][9], inv_k2k[lid][10], inv_k2k[lid][11], 	inv_k2k[lid][12], inv_k2k[lid][13], inv_k2k[lid][14], inv_k2k[lid][15] );
+// 	}
 
 	const uint8 mipmap_params_						= mipmap_params[layer];
 	uint read_offset_ 								= mipmap_params_[MiM_READ_OFFSET];
@@ -189,11 +189,15 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 			u2_flt_1					= (uh2_1 + inv_k2k[past_frame_idx][1]*v_flt_1 ) / ((wh2_1  )*reduction);
 			v2_flt_1					= (vh2_1 + inv_k2k[past_frame_idx][5]*v_flt_1 ) / ((wh2_1  )*reduction);
 
-			uint margin					= 4 * reduction;
+			uint margin					= 4;// * reduction;
 			intersection 				= 	(u>margin)			&& (u<=read_cols_-margin)			&& (v>margin)			&& (v<=read_rows_-margin)			&& \
 											(u2_flt_1>margin)	&& (u2_flt_1<=read_cols_-margin)	&& (v2_flt_1>margin)	&& (v2_flt_1<=read_rows_-margin)	&& \
 											(global_id_u<=layer_pixels)		&&	(inv_depth_1>=min_inv_depth)	&& (inv_depth_1<=max_inv_depth);												// if images overlap
 
+			if (!intersection && row_in_block==0){
+				printf("\n__kernel void Rho_sq(..) global_id_u==0 	layer=%u,	reduction=%f,	margin=%u,	u=%u,  v=%u,	u2_flt_1=%f,	v2_flt_1=%f,	interscetion=%u,	group_id=%u", \
+																	layer, 		reduction, 		margin, 	u, 		v, 		u2_flt_1, 		v2_flt_1, 		intersection,		group_id);
+			}
 			rho_pvt_flt4				= zero_f4;
 			float edge_weight			= 0;
 			float value_sq_pvt			= 0;
@@ -208,9 +212,9 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 // 				rho_pvt_flt4.y			*= value_sq_pvt;
 				rho_pvt_flt4.w			= 1.0f;																																					// rho.w holds pixel count.
 
-				if(v>107 && v<112 && u>70  && u<120 /*&& rho_pvt_flt4.x>0.001*/  ){printf("\n__kernel void Rho_sq, global_id_u=%u,	row_in_block=%u,	group_id=%u,	inv_depth_1=%f,		(u,v)=(%u,%u),	(u2_flt_1,v2_flt_1)=(%f,%f)		img_cur_pvt[row_in_block]=(%f, %f, %f, %f),		old_px=(%f, %f, %f, %f),		rho_pvt_flt4=(%f, %f, %f, %f)", \
-					global_id_u, row_in_block, group_id,	inv_depth_1,   u,v,  u2_flt_1,v2_flt_1,	\
-					img_cur_pvt[row_in_block].x, img_cur_pvt[row_in_block].y, img_cur_pvt[row_in_block].z, img_cur_pvt[row_in_block].w,		old_px.x, old_px.y, old_px.z, old_px.w,		rho_pvt_flt4.x, rho_pvt_flt4.y, rho_pvt_flt4.z, rho_pvt_flt4.w ); }
+// 				if(v>107 && v<112 && u>70  && u<120 /*&& rho_pvt_flt4.x>0.001*/  ){printf("\n__kernel void Rho_sq, global_id_u=%u,	row_in_block=%u,	group_id=%u,	inv_depth_1=%f,		(u,v)=(%u,%u),	(u2_flt_1,v2_flt_1)=(%f,%f)		img_cur_pvt[row_in_block]=(%f, %f, %f, %f),		old_px=(%f, %f, %f, %f),		rho_pvt_flt4=(%f, %f, %f, %f)", \
+// 					global_id_u, row_in_block, group_id,	inv_depth_1,   u,v,  u2_flt_1,v2_flt_1,	\
+// 					img_cur_pvt[row_in_block].x, img_cur_pvt[row_in_block].y, img_cur_pvt[row_in_block].z, img_cur_pvt[row_in_block].w,		old_px.x, old_px.y, old_px.z, old_px.w,		rho_pvt_flt4.x, rho_pvt_flt4.y, rho_pvt_flt4.z, rho_pvt_flt4.w ); }
 
 				// Magnitude of gradient of Rho wrt SE3 rotation & translation //////
 				grad_pvt_SE3_mag		= 0.0f;
@@ -239,16 +243,16 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 
 					//SE3_incr_pvt_flt2.y										= weights * grad_pvt_flt_SE3[se3_dim] / grad_pvt_SE3_mag ;															// NB will divide   sum_SE3_incr[se3_dim] by sum weights[se3_dim] .
 					*/
-					SE3_incr_pvt_arr[ se3_dim*block_size + row_in_block ]	= SE3_incr_pvt_flt2 ;																								// pixelwise increment for this SE3 DoF
+					SE3_incr_pvt_arr[ se3_dim*block_size + row_in_block ]	= SE3_incr_pvt_flt2 ;			//TODO _may_ be more efficient to use float8, where  .s6 = count and .s7 is empty.	// pixelwise increment for this SE3 DoF
 				}
-
+/*
 				// ST3 translation	///////
 				//weights														/= depth_weight;
 				//depth_weight												=  inv_depth_1 / fp32_params[MAX_INV_DEPTH];																		// For ST3 emphasize foreground pixels for parallax motion: multiply pixel inv_depth by min depth in scene.
 				//weights														*= depth_weight;																									// NB "Office" test scene depth is in cm from approx 90 to 450cm.
 				//SE3_incr_pvt_flt2.y											=  weights;
 				//delta_se3													=  delta_SE3[ 1 ];
-
+*/
 				for (uint se3_dim=3; se3_dim<num_SE3_DoF; se3_dim++) {
 					SE3_incr_pvt_flt4										= grad_pvt_flt4_SE3[se3_dim] * rho_pvt_flt4;
 					SE3_incr_pvt_flt2.x										= /*weights */ inv_depth_1 * SE3_incr_pvt_flt4.x; 		//	+ SE3_incr_pvt_flt4.y	+ SE3_incr_pvt_flt4.z)/*/ (3.0f * grad_pvt_SE3_mag)*/;
@@ -382,8 +386,8 @@ __kernel void reduce_patch_Rho(									// call just one workgroup to sum the wh
 			pvt_rho_sum				+= Rho_[idx_2];												// NB incr computation in kernel Rho_sq(..) above.
 			pvt_incr_sum			+= SE3_incr_map_[idx_3];
 
-			printf("\n__kernel void reduce_patch_Rho. 	SE3 = %u, 	idx_3 = %u, pvt_incr_sum = (%f, %f) )", \
-														SE3, 		idx_3, 		pvt_incr_sum.x, pvt_incr_sum.y );
+// 			printf("\n__kernel void reduce_patch_Rho. 	SE3 = %u, 	idx_3 = %u, pvt_incr_sum = (%f, %f) )", \
+// 														SE3, 		idx_3, 		pvt_incr_sum.x, pvt_incr_sum.y );
 		}
 	}
 	barrier(CLK_GLOBAL_MEM_FENCE);//////////////////////////////////////////////////////////####################################################

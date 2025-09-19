@@ -95,15 +95,15 @@ void RunCL::rho_sq(uint out_block_size, uint iter, uint layer, float delta_theta
 																																				PRINT_FLOAT_16(k2kbuf_ary, gpu buf);
 																																			}
 	const uint			patch_size					= 32;																					// TODO set global patch size from device parameters // generally: device_work_size_multiple = patch_size * integer, eg 32, 64, 128
-																									if (fmod(device_work_size_multiple, patch_size)!=0)   { cout <<"\nRunCL::rho_sq( ..)  Error: fmod(device_work_size_multiple, patch_size) != 0 \n"<<flush;exit_(0);}
-
-	for (uint i=0; i<5 ;i++){
-		cout<<"\n\n## current_frames[ current_frames_idx["<<i<<"] ].frame_num = "<< current_frames[ current_frames_idx[i] ].frame_num << flush;
-		PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].pose,		);
-		PRINT_MATX44F(	current_frames[ current_frames_idx[i] ].pose_gt,	);
-		PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].invk2k_gt,	);
-	}
-
+																														if (fmod(device_work_size_multiple, patch_size)!=0)   { cout <<"\nRunCL::rho_sq( ..)  Error: fmod(device_work_size_multiple, patch_size) != 0 \n"<<flush;exit_(0);}
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\nRunCL::rho_sq( ..)_chk0.5"<<flush;
+																																				for (uint i=0; i<5 ;i++){
+																																					cout<<"\n\n## current_frames[ current_frames_idx["<<i<<"] ].frame_num = "<< current_frames[ current_frames_idx[i] ].frame_num << flush;
+																																					PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].pose,		);
+																																					PRINT_MATX44F(	current_frames[ current_frames_idx[i] ].pose_gt,	);
+																																					PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].invk2k_gt,	);
+																																				}
+																																			}
 	const float zero  = 0;
 	//_clEnqueueWriteBuffer( uload_queue, k2kbuf, CL_FALSE, 0, /*local_num_samples**/16*sizeof( float), identity_flt16 /*k2k_3_16_[start_sample_idx]*/, fname); // TODO  temporary debug, sets k2k to identity.
 
@@ -155,7 +155,7 @@ void RunCL::rho_sq(uint out_block_size, uint iter, uint layer, float delta_theta
 	uint				cols_per_row				= cols_blocks  * patch_size;
 	uint				patches_required			= cols_blocks  * rows_blocks;
 
-	uint				patches_per_compute_uint	= ceil( (float)patches_required / device_max_compute_units ) ;
+	uint				patches_per_compute_uint	= ceil( (float)patches_required / device_max_compute_units );
 	uint 				blocks_per_k_wg_size		= max_workgroup_size			/ device_work_size_multiple;
 						patches_per_compute_uint	= min( patches_per_compute_uint,  blocks_per_k_wg_size );
 
@@ -326,6 +326,7 @@ void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer )					
 																									auto step_1 = high_resolution_clock::now();
 	status 	= clWaitForEvents(1, &ev);																if (status != CL_SUCCESS)	{ cout << "\nRunCL::reduce_patch_Rho( ..) call_kernel( cl_kernel "<<kernel<<") final,  clWaitForEventsh(1, &ev) ="<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 																									auto step_2 = high_resolution_clock::now();
+	clReleaseEvent(ev);
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::reduce_patch_Rho( ..)_chk_2 . "<<\
 																																				"Execution time = "<<  duration_cast<microseconds>(step_1 - step_0).count() \
 																																				<<" , "<<duration_cast<microseconds>(step_2 - step_1).count() <<flush;
@@ -374,24 +375,28 @@ void RunCL::update_k2k_cpu( uint layer, float delta_theta, float delta, Matx44f 
 	float		rho			=	sqrtf(Rho.x) / Rho.y;																												cout<<"\nrho	= "<< rho 					<<endl<<flush;
 
 	Matx16f		J			=			current_frames[ current_frames_idx[0] ].Jacobian[layer];													PRINT_MATX16F( J, );
-	Matx66f		H			=			current_frames[ current_frames_idx[0] ].invHessian[layer];													PRINT_MATX66F( H, );	PRINT_MATX66F( H.inv(), );
-
+	Matx66f		H			=			current_frames[ current_frames_idx[0] ].invHessian[layer];													PRINT_MATX66F( H, );				PRINT_MATX66F( H.inv(), );
+																																					PRINT_MATX66F( (H * H.inv() ), );	PRINT_MATX66F( (H.inv() * H ), );
 	float		SE3_incr_arry[6*2];		ReadOutput(			(uchar*)SE3_incr_arry,		SE3_incr_map_mem,	6*sizeof(cl_float2),	32*sizeof(cl_float2)	);
 																																						cout<<"\nSE3_incr_arry[]= (";
 																																						for(int i=0; i<6*2; i++) cout << ", "<< SE3_incr_arry[i];
 																																						cout<<" ) "<<endl<<flush;
 	Matx16f		SE3_incr;				for (int i=0;	i<6; i++){	SE3_incr.operator()(i)	=	SE3_incr_arry[i*2];  }								PRINT_MATX16F( SE3_incr, );
-//				SE3_incr	/=			SE3_incr_arry[1];																							PRINT_MATX16F( SE3_incr, );
+				SE3_incr	/=			SE3_incr_arry[1];	//640*480.0f; // 																		PRINT_MATX16F( SE3_incr, );
+
+//				H			/=			SE3_incr_arry[1];																							PRINT_MATX66F( H, );				PRINT_MATX66F( H.inv(), );
 
 	Matx44f		pose		=			ReadOutput_44f( 					pose_buf );																PRINT_MATX44F( pose, 	);
 	Matx44f		invK		=			ReadOutput_44f(						inv_K_buf);																PRINT_MATX44F( invK,	);
 	Matx44f		K			=			ReadOutput_44f(						K_buf	 );																PRINT_MATX44F( K,		);
+																																					PRINT_MATX44F( K * invK,		);
+																																					PRINT_MATX44F( invK * K,		);
 
 																																	if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k_cpu( ..)_chk_1 . ################################"<< flush;
 																																			Matx44f pose_error						= pose	*	GT_pose.inv();	// correct, i.e. reproduces the artif error:  pose = poseStep * pose
 																																			Matx16f pose_error_algebra				= PToLie(pose_error);
-																																			PRINT_MATX16F( pose_error_algebra, );
 
+																																			PRINT_MATX16F( pose_error_algebra, );
 																																			PRINT_MATX44F( GT_pose, );
 																																			PRINT_MATX44F( pose, );
 																																			PRINT_MATX44F( pose_error, );
@@ -412,11 +417,36 @@ void RunCL::update_k2k_cpu( uint layer, float delta_theta, float delta, Matx44f 
 	for(uint i=0; i<num_SE3_DoF; i++) pose_update += pose_update_H[lid*6 +i];
 */
 	Matx16f pose_update_cpu		= SE3_incr * H.inv();   /* - rho * J */ 	/*NB should compute H.inv() once and store */							PRINT_MATX16F( pose_update_cpu, );		// TODO order of matrix multiplication & transpose 1x6  vs 6x1 ?
-	Matx61f	pose_update_cpu_1	= H.inv() * SE3_incr.t(); 	/*pose_update_cpu *  H.inv();*/															PRINT_MATX61F( pose_update_cpu_1, );
+//	Matx61f	pose_update_cpu_1	= H.inv() * SE3_incr.t(); 	/*pose_update_cpu *  H.inv();*/															PRINT_MATX61F( pose_update_cpu_1, );
 //	Matx61f	pose_update_cpu_2	= H/*.inv()*/ * pose_update_cpu.t();																				PRINT_MATX61F( pose_update_cpu_2, );
 
 	Matx44f newPose				= LieToP_Matx( pose_update_cpu )  *  pose;																			PRINT_MATX44F( newPose,			);		// TODO order of matrix multiplication ?
-	Matx44f newK2K				= invK  * newPose  * K ;																							PRINT_MATX44F( newK2K,			);
+
+	//Matx44f newK2K				= invK  * newPose  * K ;																							PRINT_MATX44F( newK2K,			);
+
+
+	Matx44f eye_Matx44f			= {	1,0,0,10,  \
+									0,1,0,0,  \
+									0,0,1,0,  \
+									0,0,0,1};
+
+	Matx44f newK2K				= invK  * /*eye_Matx44f*/  newPose  * K ;				PRINT_MATX44F( newK2K,			);
+
+
+
+
+
+
+	float 	newPoseArry[16],	newK2KArry[16];
+	Matx44f_To_float16arry(		newK2K,			newK2KArry );
+	Matx44f_To_float16arry(		newPose,		newPoseArry);
+
+	Matx44f		k2k_old			=			ReadOutput_44f(						k2kbuf);																PRINT_MATX44F( k2k_old,	);
+
+	update_k2k_buf(				newK2KArry,		newPoseArry);
+
+	Matx44f		pose_now		=			ReadOutput_44f( 					pose_buf );																PRINT_MATX44F( pose_now, 	);
+	Matx44f		k2k_now			=			ReadOutput_44f(						k2kbuf);																PRINT_MATX44F( k2k_now,	);
 ///////////
 																																	if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k_cpu( ..)_chk_2 . ################################"<< flush;
 																																			Matx44f pose_error						= pose	*	GT_pose.inv();	// correct, i.e. reproduces the artif error:  pose = poseStep * pose

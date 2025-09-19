@@ -140,18 +140,21 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 			Jacobian[i]									= SE3_grad_px.lo + SE3_grad_px.hi;
 			Jacobian[i].w								= 1.0f;
 		}
+/*
 		// pseudo inverse of Gauss-Newton approximation H = J^T * J.  NB (1) Det=0 -> non-invertible, (2) this method is NOT valid for Moore-Penrose pseudo inverse of general nxn matricies.
+
 		float4 denom = zero_f4;
 		for (uint i=0; i<6; i++){ denom += Jacobian[i] * Jacobian[i]; }
-		denom		*= denom;													// the square of (sum of the squares of the elements of the Jacbian)
-		if ( isnormal(denom.x) ){ denom.x = 1/denom.x; } else { denom.x = 0; }	// prevent div by zero error
-		if ( isnormal(denom.y) ){ denom.y = 1/denom.y; } else { denom.y = 0; }
-		if ( isnormal(denom.z) ){ denom.z = 1/denom.z; } else { denom.z = 0; }
 
+// 		denom		*= denom;													// the square of (sum of the squares of the elements of the Jacbian)
+// 		if ( isnormal(denom.x) ){ denom.x = 1/denom.x; } else { denom.x = 0; }	// prevent div by zero error
+// 		if ( isnormal(denom.y) ){ denom.y = 1/denom.y; } else { denom.y = 0; }
+// 		if ( isnormal(denom.z) ){ denom.z = 1/denom.z; } else { denom.z = 0; }
+*/
 		for (uint i=0; i<6; i++) {
 			Jacobian_pvt_arr[row_in_block][i]					= Jacobian[i];
 			for (uint j=0; j<6; j++) {
-				Hessian_pinv_pvt_arr[row_in_block][i][j]		= /*denom * */ Jacobian[i] * Jacobian[j];						// Moore-Penrose pseudo inverse of H = J^T * J.
+				Hessian_pinv_pvt_arr[row_in_block][i][j]		= Jacobian[i] * Jacobian[j];						// Moore-Penrose pseudo inverse of H = J^T * J.		/*denom * */
 			}
 		}
 		float H 										= img[read_index][0] * 2*M_PI_F;
@@ -217,23 +220,27 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 			uint offset_1_1			= 0;
 
 			for (uint block_row=0; block_row < block_size ; block_row += step*2, write_block_row++){
-				for (uint i=0; i<3; i++) {																																										// select only ST3
-					if( fmod((float)lid,out_block_size) == 0  ){						// write Jacobian to 2nd page of SE3_Hessian_pinv_map buffer.
+				for (uint i=0; i<3; i++) {																																						// select only ST3
+					if( fmod((float)lid,out_block_size) == 0  ){																																// write Jacobian to 2nd page of SE3_Hessian_pinv_map buffer.
 																						offset_1_1 								= write_index		+ i*ST3_v_step	+ mm_pixels + write_block_row*mm_cols;
 																						float4	pvt_Jacobian 					= Jacobian_pvt_arr[		block_row][i];
-																					/*	pvt_Jacobian.x							= pvt_Jacobian.x / pvt_Jacobian.w;
+																					/*
+																					 *	pvt_Jacobian.x							= pvt_Jacobian.x / pvt_Jacobian.w;
 																						pvt_Jacobian.y							= pvt_Jacobian.y / pvt_Jacobian.w;
-																						pvt_Jacobian.z							= pvt_Jacobian.z / pvt_Jacobian.w;	*/
+																						pvt_Jacobian.z							= pvt_Jacobian.z / pvt_Jacobian.w;
+																					*/
 																						SE3_Hessian_pinv_map[	offset_1_1 ]	= pvt_Jacobian;
 					}
 					barrier(CLK_GLOBAL_MEM_FENCE );  // TODO is this needed?
 					for (uint j=0; j<3; j++) {																																					//float4	debug						= {(float)(i)/3, (float)(j)/3, global_id_uint, 1 };
-						if( fmod((float)lid,out_block_size) == 0  ){					// write Hessian to 1st page of SE3_Hessian_pinv_map buffer.											// selects columns i.e. threads within the workgroup
+						if( fmod((float)lid,out_block_size) == 0  ){																															// write Hessian to 1st page of SE3_Hessian_pinv_map buffer.		// selects columns i.e. threads within the workgroup
 																						offset_1_1								= write_index		+ i*ST3_v_step	+ j*ST3_u_step + write_block_row*mm_cols;
 																						float4	pvt_Hessian 					= Hessian_pinv_pvt_arr[	block_row ][i][j];
-																					/*	pvt_Hessian.x							= pvt_Hessian.x / pvt_Hessian.w;
+																					/*
+																					 *	pvt_Hessian.x							= pvt_Hessian.x / pvt_Hessian.w;
 																						pvt_Hessian.y							= pvt_Hessian.y / pvt_Hessian.w;
-																						pvt_Hessian.z							= pvt_Hessian.z / pvt_Hessian.w;	*/
+																						pvt_Hessian.z							= pvt_Hessian.z / pvt_Hessian.w;
+																					*/
 																						SE3_Hessian_pinv_map[	offset_1_1 ]	= pvt_Hessian;													// Hessian_pinv_pvt_arr[	block_row ][i][j] / Hessian_pinv_pvt_arr[	block_row ][i][j].w;
 /*
 // 							if( group_id==0 && / * lid==0 && * /  j==0 &&     ((i==0 && block_row==0)    ||    / * (i==2 && block_row==0)  || * / (i>=2 && block_row>=28 )  ) )  {
@@ -255,21 +262,27 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	uint block_row					=  0;
 
 	if( fmod((float)lid,block_size) == 0 ){																																						// selects columns i.e. threads within the workgroup
-		for (uint i=0; i<num_SE3_DoF; i++) {											// write Jacobian to 2nd page of SE3_Hessian_pinv_map buffer.											// All 6 DoF of SE3
+		for (uint i=0; i<num_SE3_DoF; i++) {																																					// write Jacobian to 2nd page of SE3_Hessian_pinv_map buffer.		// All 6 DoF of SE3
 																						offset_2 								= write_index_2		+ i*SE3_v_step	+ mm_pixels;
 																						float4	pvt_Jacobian 					= Jacobian_pvt_arr[		block_row][i];
-																					/*	pvt_Jacobian.x							= pvt_Jacobian.x / pvt_Jacobian.w;
+																					/*
+																					 *	pvt_Jacobian.x							= pvt_Jacobian.x / pvt_Jacobian.w;
 																						pvt_Jacobian.y							= pvt_Jacobian.y / pvt_Jacobian.w;
-																						pvt_Jacobian.z							= pvt_Jacobian.z / pvt_Jacobian.w;	*/
+																						pvt_Jacobian.z							= pvt_Jacobian.z / pvt_Jacobian.w;
+																					*/
 																						SE3_Hessian_pinv_map[	offset_2 ]		= pvt_Jacobian;
+																					/*
 // 																						printf("\n SE3 elem =%u,  u=%u,  v=%u, write_index_2=%u,  offset_2=%u,  SE3_v_step=%u  =ST3_offset3.s2", \
 // 																											i,	 	u, 		v, write_index_2,  		offset_2,  	SE3_v_step );
-			for (uint j=0; j<num_SE3_DoF; j++) {										// write Hessian to 1st page of SE3_Hessian_pinv_map buffer.
+																					*/
+			for (uint j=0; j<num_SE3_DoF; j++) {																																				// write Hessian to 1st page of SE3_Hessian_pinv_map buffer.
 																						offset_2 								= write_index_2		+ i*SE3_v_step	+ j*SE3_u_step;
 																						float4	pvt_Hessian 					= Hessian_pinv_pvt_arr[	block_row ][i][j];
-																					/*	pvt_Hessian.x							= pvt_Hessian.x / pvt_Hessian.w;
+																					/*
+																					 * pvt_Hessian.x							= pvt_Hessian.x / pvt_Hessian.w;
 																						pvt_Hessian.y							= pvt_Hessian.y / pvt_Hessian.w;
-																						pvt_Hessian.z							= pvt_Hessian.z / pvt_Hessian.w;	*/
+																						pvt_Hessian.z							= pvt_Hessian.z / pvt_Hessian.w;
+																					*/
 																						SE3_Hessian_pinv_map[	offset_2 ]		= pvt_Hessian;													// Hessian_pinv_pvt_arr[	block_row ][i][j] / Hessian_pinv_pvt_arr[	block_row ][i][j].w;
 
 																						float4		debug 						= {(float)lid, global_id_uint, group_id, 1.0f};

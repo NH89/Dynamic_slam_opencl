@@ -168,10 +168,10 @@ int Dynamic_slam::nextFrame() {
 																																			// 	report_GT_pose_error();
 																																			// 	//display_frame_resluts();
 																																			// }
-
-	if (runcl.costvol_frame_num>1)					{	predictFrame_vec(); }			auto step_2 = high_resolution_clock::now();			// Loads GT depth of the new frame. NB depends on image.size from getFrame().
-	if(obj["use_GT_pose"].asBool() == true )		{	use_GT_pose_vec();	}
-	if(obj["initialize_tracking_from_GT_depth"].asBool()==true){ runcl.update_current_frame_depth_mem(runcl.depth_mem_GT);}
+//	if (runcl.costvol_frame_num>1)					{	predictFrame_vec(); }
+																						auto step_2 = high_resolution_clock::now();			// Loads GT depth of the new frame. NB depends on image.size from getFrame().
+//	if(obj["use_GT_pose"].asBool() == true )		{	use_GT_pose_vec();	}
+//	if(obj["initialize_tracking_from_GT_depth"].asBool()==true){ runcl.update_current_frame_depth_mem(runcl.depth_mem_GT);}
 																						auto step_3 = high_resolution_clock::now();			// use_GT_pose();
 																																			// if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 2, Pose error after use_GT_pose:" << flush;
 																																			// 	report_GT_pose_error();
@@ -230,7 +230,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 																																				cout << "\n" << flush ;
 																																			}
 	//runcl.update_current_frames_idx();
-	image = imread( png[runcl.dataset_frame_num].string());																					if(verbosity>local_verbosity_threshold){
+	image = imread( png[runcl.dataset_frame_num].string() );																				if(verbosity>local_verbosity_threshold){
 																																				cout << "\n Dynamic_slam::getFrame_chk 0.5, Image file = " << png[runcl.dataset_frame_num].string() << "\t" << flush;
 																																			}
 																																			if (image.type()!= runcl.baseImage.type() || image.size()!=runcl.baseImage.size() ) {
