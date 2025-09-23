@@ -432,9 +432,9 @@ public:
 	//void initialize_tracking_depthmap(float initial_depth);
 
 	//////////////////////////////////////  Patch based kernels
-	void rho_sq( uint out_block_size, uint iter, uint layer, float delta_theta, float delta );
+	void rho_sq( uint out_block_size, uint iter, uint layer);
 	void reduce_patch_Rho ( uint out_block_size, uint iter, uint layer );
-	void update_k2k_cpu( uint layer, float delta_theta, float delta, Matx44f GT_pose );
+	void update_k2k_cpu( uint layer, Matx16f deltas_matx, /*float delta_theta, float delta,*/ Matx44f GT_pose );
 	void update_k2k( uint layer, float delta_theta, float delta, Matx44f GT_pose );
 
 	// whole img 1 thread per pixel kernels

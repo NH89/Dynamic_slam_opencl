@@ -30,7 +30,7 @@ Mat rodrigues(const Mat& p){
 
 
 void LieToRT(InputArray Lie, OutputArray _R, OutputArray _T){
-                                                                                                                                            //std::cout << "\n\nLieToRT(InputArray Lie, OutputArray _R, OutputArray _T) chk_0 #############"<<std::flush;
+    																																	if(V_CONVERT_TRANSFORMS<1){ std::cout << "\n\nvoid LieToRT(InputArray Lie, OutputArray _R, OutputArray _T) chk_0 #############"<<std::flush; }
     Mat p = Lie.getMat();
     _R.create(3,3,CV_32FC1);
     Mat R = _R.getMat();
@@ -44,7 +44,7 @@ void LieToRT(InputArray Lie, OutputArray _R, OutputArray _T){
 }
 
 void RTToLie(Matx33f R, Matx13f T, Matx16f &Lie ){
-                                                                                                                                            //std::cout << "\n\nRTToLie(Matx33f R, Matx13f T, Matx16f Lie ) chk_0 #############"<<std::flush;
+																																		if(V_CONVERT_TRANSFORMS<1){ std::cout << "\n\nvoid RTToLie(Matx33f R, Matx13f T, Matx16f Lie ) chk_0 #############"<<std::flush; }
     Matx13f r(0,0,0);
     cv::Rodrigues(R, r);                      //   PRINT_MATX13F(r,);  PRINT_MATX13F(T,);                                                   // Makes so3 algebra from SO3 Matx33f
     Matx16f temp(	r.operator()(0,0), r.operator()(0,1), r.operator()(0,2),\
@@ -53,7 +53,7 @@ void RTToLie(Matx33f R, Matx13f T, Matx16f &Lie ){
 }
 
 Matx16f RTToLie(Matx33f _R, Matx13f _T){
-                                                                                                                                            //std::cout << "\n\nRTToLie(Matx33f _R, Matx13f _T) chk_0 #############"<<std::flush;
+                                                                                                                                        if(V_CONVERT_TRANSFORMS<1){ std::cout << "\n\nMatx16f RTToLie(Matx33f _R, Matx13f _T) chk_0 #############"<<std::flush; }
     Matx16f P;
     RTToLie(_R,_T,P);
     return P;
@@ -63,21 +63,21 @@ Matx16f RTToLie(Matx33f _R, Matx13f _T){
 
 
 void PToLie(Matx44f P, Matx16f &Lie){         //  PRINT_MATX44F(P,);
-                                                                                                                                            //std::cout << "\n\nPToLie(Matx44f P, Matx16f Lie) chk_0 #############"<<std::flush;
+                                                                                                                                        if(V_CONVERT_TRANSFORMS<1){ std::cout << "\n\nvoid PToLie(Matx44f P, Matx16f Lie) chk_0 #############"<<std::flush; }
     Matx33f R( P.get_minor<3,3>(0,0) );         //PRINT_MATX33F(R,);
     Matx31f T( P.get_minor<3,1>(0,3) );       //  PRINT_MATX13F(T.t(),);
     RTToLie(R,T.t(),Lie);                     //  PRINT_MATX16F(Lie, PToLie(Matx44f P, Matx16f Lie));
 }
 
 Matx16f PToLie(Matx44f P){
-                                                                                                                                            //std::cout << "\n\nPToLie(Matx44f P) chk_0 #############"<<std::flush;
+                                                                                                                                        if(V_CONVERT_TRANSFORMS<1){ std::cout << "\n\nMatx16f PToLie(Matx44f P) chk_0 #############"<<std::flush; }
     Matx16f Lie;
     PToLie(P, Lie);                             //PRINT_MATX16F(Lie, PToLie(..));
     return Lie;
 }
 
 void RTToP(InputArray _R, InputArray _T, OutputArray _P ){
-                                                                                                                                            //std::cout << "\n\nRTToP (InputArray _R, InputArray _T, OutputArray _P ) chk_0 #############"<<std::flush;
+                                                                                                                                        if(V_CONVERT_TRANSFORMS<1){ std::cout << "\n\nvoid RTToP (InputArray _R, InputArray _T, OutputArray _P ) chk_0 #############"<<std::flush; }
     Mat R = _R.getMat();
     Mat T = _T.getMat();
     Mat P = _P.getMat();
@@ -86,7 +86,7 @@ void RTToP(InputArray _R, InputArray _T, OutputArray _P ){
 }
 
 Mat RTToP(InputArray _R, InputArray _T){
-                                                                                                                                            //std::cout << "\n\nRTToP (InputArray _R, InputArray _T) chk_0 #############"<<std::flush;
+                                                                                                                                        if(V_CONVERT_TRANSFORMS<1){ std::cout << "\n\nMat RTToP (InputArray _R, InputArray _T) chk_0 #############"<<std::flush; }
     Mat R = _R.getMat();
     Mat T = _T.getMat();
     Mat P;
@@ -98,7 +98,7 @@ Mat RTToP(InputArray _R, InputArray _T){
 
 
 Matx44f LieToP_Matx(Matx16f Lie){
-                                                                                                                                            //std::cout << "\n\nLieToP_Matx chk_0 #############"<<std::flush;
+                                                                                                                                        if(V_CONVERT_TRANSFORMS<1){ std::cout << "\n\nMatx44f LieToP_Matx chk_0 #############"<<std::flush; }
                                                 //PRINT_MATX16F(Lie,  LieToP_Matx(Matx16f Lie) );
     Matx13f r( Lie.get_minor<1,3>(0,0) );       //PRINT_MATX13F(r,    LieToP_Matx(Matx16f Lie) );
     Matx33f R;
@@ -116,7 +116,7 @@ Matx44f LieToP_Matx(Matx16f Lie){
 
 
 Matx16f LieSub(Matx16f A, Matx16f B){
-                                                                                                                                            //std::cout << "\n\nLieSub chk_0 #############"<<std::flush;
+                                                                                                                                        if(V_CONVERT_TRANSFORMS<1){ std::cout << "\n\nMatx16f LieSub chk_0 #############"<<std::flush; }
 												PRINT_MATX16F(A,);
 												PRINT_MATX16F(B,);
     Matx44f Pa = LieToP_Matx(A);				PRINT_MATX44F(Pa,);
@@ -127,7 +127,7 @@ Matx16f LieSub(Matx16f A, Matx16f B){
 }
 
 Matx16f LieAdd(Matx16f A, Matx16f B){
-                                                                                                                                            //std::cout << "\n\nLieSub chk_0 #############"<<std::flush;
+                                                                                                                                        if(V_CONVERT_TRANSFORMS<1){ std::cout << "\n\nMatx16f LieAdd chk_0 #############"<<std::flush; }
 												PRINT_MATX16F(A,);
 												PRINT_MATX16F(B,);
     Matx44f Pa = LieToP_Matx(A);				PRINT_MATX44F(Pa,);

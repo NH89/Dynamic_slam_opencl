@@ -56,25 +56,27 @@ class Dynamic_slam
     std::vector<fs::path>   depth;
 
     // camera & pose params
-	float f;			//= ( obj["cameraMatrix"][0].asFloat() + obj["cameraMatrix"][4].asFloat() ) /2.0;	// focal length in pixels.
-	float delta;		//= obj["ST3_delta"].asFloat() * obj["min_depth"].asFloat()  / f ;					// ST3_delta * (Translation to cause 1 pixel of parallax at min_depth)  //1.0;//0.01; //0.001;  //  * obj["min_depth"].asFloat()
-	float delta_theta;	//= obj["SO3_delta_theta"].asFloat() / f;											// SO3_delta_theta * (Rotation to cause 1 pixel of rotation flow) //0.01; //0.001;
+	float f;			//= fmaxf(	obj["cameraMatrix"][0].asFloat(),	obj["cameraMatrix"][4].asFloat()	);	// focal length in pixels.
+	float delta;		//= obj["min_depth"].asFloat() /f ;														// ST3_delta * (Translation to cause 1 pixel of parallax at min_depth)
+	float delta_theta;	//= 1/f																					// SO3_delta_theta * (Rotation to cause 1 pixel of rotation flow)
 	float cos_theta;	//= cos(delta_theta);
 	float sin_theta;	//= sin(delta_theta);
+	float delta_depth;	//= f*2.0f / ( min_depth * fmaxf(  obj["cameraMatrix"][2].asFloat(),	obj["cameraMatrix"][5].asFloat() )  );
+	Matx16f deltas_matx;// used to multiply SE3 update results.
 
     const cv::Matx44f       Matx44f_zero = {0,0,0,0,  0,0,0,0,  0,0,0,0,  0,0,0,0};   //  = cv::Matx44f::zeros();//
     const cv::Matx44f       Matx44f_eye  = {1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1};
     #define                 MATX44F_EYE    {1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1}
-
-    #define D_K             0
-    #define D_inv_K         1
-    #define D_pose          2
-    #define D_inv_pose      3
-    #define D_keyframe2pose 4
-    #define D_K2K           5
-
-    std::vector<cv::Matx44f > Mat_pose_vec;
-
+/*
+    // #define D_K             0
+    // #define D_inv_K         1
+    // #define D_pose          2
+    // #define D_inv_pose      3
+    // #define D_keyframe2pose 4
+    // #define D_K2K           5
+    //
+    // std::vector<cv::Matx44f > Mat_pose_vec;
+*/
     struct pose_datum{      // default intitialization, if instatiated with " ... = {}; "
       cv::Matx16f           keyframe2pose_algebra   = {0} ;
 
@@ -115,6 +117,7 @@ class Dynamic_slam
 
     // functions ////////////////////////////////////////
     /////////////////////////////////////// Dynamic_slam_class.cpp
+    void generate_deltas();
     void initialize_resultsMat();
     void initialize_camera_vec();
 

@@ -11,6 +11,9 @@
 	#define	V_CONVERTAHANDAPOVRAYTOSTANDARD				-2
 	#define	V_LOADDEPTHAHANDA							2
 
+	/////////////////////////////////////// CONVERT_TRANSFORMS.CPP
+	#define	V_CONVERT_TRANSFORMS						-1
+
 	/////////////////////////////////////// CONF_PARAMS.CPP
 	#define	V_CONF_PARAMS_CONF_PARAMS					1
 	#define	V_CONF_PARAMS_DISPLAY_PARAMS				1
@@ -29,6 +32,7 @@
     /////////////////////////////////////// DYNAMIC_SLAM_CLASS.CPP
 	#define	V__DYNAMIC_SLAM								0
 	#define	V_DYNAMIC_SLAM_DYNAMIC_SLAM					0
+	#define V_DYNAMIC_GENERATE_DELTAS					-1
 	#define	V_DYNAMIC_SLAM_INITIALIZE_CAMERA			-2
 	#define	V_DYNAMIC_SLAM_NEXTFRAME					-2
 	#define	V_DYNAMIC_SLAM_GETFRAME						0

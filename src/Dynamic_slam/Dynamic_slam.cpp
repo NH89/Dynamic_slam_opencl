@@ -25,12 +25,14 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 	SE_iter 						= obj["SE_iter"].asUInt();
 	SE_factor						= obj["SE_factor"].asFloat();
 
-	f								= ( obj["cameraMatrix"][0].asFloat() + obj["cameraMatrix"][4].asFloat() ) /2.0;		// focal length in pixels.
-	delta							= obj["ST3_delta"].asFloat() * obj["min_depth"].asFloat()  / f ;					// ST3_delta * (Translation to cause 1 pixel of parallax at min_depth)  	//1.0;//0.01; //0.001;  //  * obj["min_depth"].asFloat()
-	delta_theta						= obj["SO3_delta_theta"].asFloat() / f;												// SO3_delta_theta * (Rotation to cause 1 pixel of rotation flow) //0.01; //0.001;
-	cos_theta						= cos(delta_theta);
-	sin_theta						= sin(delta_theta);
-
+	generate_deltas();
+/*
+	// f								= ( obj["cameraMatrix"][0].asFloat() + obj["cameraMatrix"][4].asFloat() ) /2.0;		// focal length in pixels.
+	// delta							= obj["ST3_delta"].asFloat() * obj["min_depth"].asFloat()  / f ;					// ST3_delta * (Translation to cause 1 pixel of parallax at min_depth)  	//1.0;//0.01; //0.001;  //  * obj["min_depth"].asFloat()
+	// delta_theta						= obj["SO3_delta_theta"].asFloat() / f;												// SO3_delta_theta * (Rotation to cause 1 pixel of rotation flow) //0.01; //0.001;
+	// cos_theta						= cos(delta_theta);
+	// sin_theta						= sin(delta_theta);
+*/
 																																			if(verbosity>local_verbosity_threshold) cout << "\n  Dynamic_slam::Dynamic_slam_chk -0.5\n" << flush;
 
 	for (int layer=0; layer<MAX_LAYERS; layer++){for (int chan=0; chan<3; chan++)	SE3_Rho_sq_threshold[layer][chan]  	= obj["SE3_Rho_sq_threshold"][layer][chan].asFloat();  }
@@ -87,6 +89,34 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_ finished "
 																																				<< "#####################################################################################\f" << flush;
 };
+
+
+void Dynamic_slam::generate_deltas(){	// Principle : delta for each parameter causes maximum 1 pixel of warp in the full size image.
+										// i.e. when computing J = (d_warp/d_param) * img_grad, only the difference betwen neigbouring pixels counts.
+										// NB images should be blurred to eliminate noise and bilinear interpolation artefacts.
+	int local_verbosity_threshold = V_DYNAMIC_GENERATE_DELTAS;
+																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::generate_deltas()_chk 0:"<<flush;}
+	f						= fmaxf(	obj["cameraMatrix"][0].asFloat(),	obj["cameraMatrix"][4].asFloat()	);							// NB [0]&[4] are u,v focal length
+	float min_depth			= obj["min_depth"].asFloat();
+	delta					= min_depth/f;
+	delta_theta				= 1/f;
+	cos_theta				= cos(delta_theta);
+	sin_theta				= sin(delta_theta);
+	delta_depth				= f * 2.0f / ( min_depth * fmaxf(  obj["cameraMatrix"][2].asFloat(),	obj["cameraMatrix"][5].asFloat() )  );	// NB [2]&[5] are image sensor size
+	deltas_matx	= { delta_theta, delta_theta, delta_theta, delta, delta, delta };
+																																			if (verbosity>local_verbosity_threshold) { cout
+																																				<<"\nf				= "<<f
+																																				<<"\nmin_depth		= "<<min_depth
+																																				<<"\ndelta			= "<<delta
+																																				<<"\ndelta_theta	= "<<delta_theta
+																																				<<"\ncos_theta		= "<<cos_theta
+																																				<<"\nsin_theta		= "<<sin_theta
+																																				<<"\ndelta_depth	= "<<delta_depth
+																																				<<"\ndeltas_matx	= "<<deltas_matx
+																																				<<"\nDynamic_slam::generate_deltas()_finished"<<flush;
+																																			}
+}
+
 
 void Dynamic_slam::initialize_camera_vec(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_INITIALIZE_CAMERA;//verbosity_mp["Dynamic_slam::initialize_camera"];

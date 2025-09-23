@@ -61,35 +61,35 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	__private	uint		layer,					//0
 	__private	uint		cols_per_row,			//1
 	__private	uint		out_block_size,			//2
-	__private	float2		delta_SE3,				//3
+//	__private	float2		delta_SE3,				//3
 
 	__constant	uint8*		mipmap_params,			//4
 	__constant	uint*		uint_params,			//5
 	__constant	float*		fp32_params,			//6
 	__constant	float16*	inv_k2k,				//7		// transforms for 4 past frames,  k2k_buf
 
-	__global	float4*		img_cur,				//8		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
-	__global	float4*		img_past_0,				//9
-	__global	float4*		img_past_1,				//10
-	__global	float4*		img_past_2,				//11
-	__global	float4*		img_past_3,				//12
+	__global	float4*		img_cur,				//7		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
+	__global	float4*		img_past_0,				//8
+	__global	float4*		img_past_1,				//9
+	__global	float4*		img_past_2,				//10
+	__global	float4*		img_past_3,				//11
 
-	__global	float*		depth_map,				//13	// current frame depth, now stored as inv_depth
-	__global	float8*		g1p,					//14	// current frame g1mem
-	__global 	float8*		SE3_grad_map_cur_frame,	//15
+	__global	float*		depth_map,				//12	// current frame depth, now stored as inv_depth
+	__global	float8*		g1p,					//13	// current frame g1mem
+	__global 	float8*		SE3_grad_map_cur_frame,	//14
 
-	__global	float4*		vel_cur,				//16	// multiple past frames.
-	__global	float4*		vel_past_0,				//17	// TODO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
-	__global	float4*		vel_past_1,				//18
-	__global	float4*		vel_past_2,				//19
-	__global	float4*		vel_past_3,				//20
+	__global	float4*		vel_cur,				//15	// multiple past frames.
+	__global	float4*		vel_past_0,				//16	// TODO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
+	__global	float4*		vel_past_1,				//17
+	__global	float4*		vel_past_2,				//18
+	__global	float4*		vel_past_3,				//19
 
 	//output
-	__global	float2*		Rho_,					//21	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
-	__local		float2*		local_rho,				//22	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
+	__global	float2*		Rho_,					//20	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
+	__local		float2*		local_rho,				//21	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
 
-	__global	float2*		SE3_incr_map_,			//23
-	__local		float2*		local_SE3_incr			//24
+	__global	float2*		SE3_incr_map_,			//22
+	__local		float2*		local_SE3_incr			//23
 	)
 {
 	//const uint block_size							= 32;										// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
@@ -193,11 +193,12 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 			intersection 				= 	(u>margin)			&& (u<=read_cols_-margin)			&& (v>margin)			&& (v<=read_rows_-margin)			&& \
 											(u2_flt_1>margin)	&& (u2_flt_1<=read_cols_-margin)	&& (v2_flt_1>margin)	&& (v2_flt_1<=read_rows_-margin)	&& \
 											(global_id_u<=layer_pixels)		&&	(inv_depth_1>=min_inv_depth)	&& (inv_depth_1<=max_inv_depth);												// if images overlap
-
+/*
 			if (!intersection && row_in_block==0){
 				printf("\n__kernel void Rho_sq(..) global_id_u==0 	layer=%u,	reduction=%f,	margin=%u,	u=%u,  v=%u,	u2_flt_1=%f,	v2_flt_1=%f,	interscetion=%u,	group_id=%u", \
 																	layer, 		reduction, 		margin, 	u, 		v, 		u2_flt_1, 		v2_flt_1, 		intersection,		group_id);
 			}
+*/
 			rho_pvt_flt4				= zero_f4;
 			float edge_weight			= 0;
 			float value_sq_pvt			= 0;
@@ -211,11 +212,11 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 // 				rho_pvt_flt4.x			*= value_sq_pvt;																																		// Reduce rho hue and saturation by multiplying by old & new px value.
 // 				rho_pvt_flt4.y			*= value_sq_pvt;
 				rho_pvt_flt4.w			= 1.0f;																																					// rho.w holds pixel count.
-
-// 				if(v>107 && v<112 && u>70  && u<120 /*&& rho_pvt_flt4.x>0.001*/  ){printf("\n__kernel void Rho_sq, global_id_u=%u,	row_in_block=%u,	group_id=%u,	inv_depth_1=%f,		(u,v)=(%u,%u),	(u2_flt_1,v2_flt_1)=(%f,%f)		img_cur_pvt[row_in_block]=(%f, %f, %f, %f),		old_px=(%f, %f, %f, %f),		rho_pvt_flt4=(%f, %f, %f, %f)", \
+/*
+// 				if(v>107 && v<112 && u>70  && u<120 / * && rho_pvt_flt4.x>0.001 * /  ){printf("\n__kernel void Rho_sq, global_id_u=%u,	row_in_block=%u,	group_id=%u,	inv_depth_1=%f,		(u,v)=(%u,%u),	(u2_flt_1,v2_flt_1)=(%f,%f)		img_cur_pvt[row_in_block]=(%f, %f, %f, %f),		old_px=(%f, %f, %f, %f),		rho_pvt_flt4=(%f, %f, %f, %f)", \
 // 					global_id_u, row_in_block, group_id,	inv_depth_1,   u,v,  u2_flt_1,v2_flt_1,	\
 // 					img_cur_pvt[row_in_block].x, img_cur_pvt[row_in_block].y, img_cur_pvt[row_in_block].z, img_cur_pvt[row_in_block].w,		old_px.x, old_px.y, old_px.z, old_px.w,		rho_pvt_flt4.x, rho_pvt_flt4.y, rho_pvt_flt4.z, rho_pvt_flt4.w ); }
-
+*/
 				// Magnitude of gradient of Rho wrt SE3 rotation & translation //////
 				grad_pvt_SE3_mag		= 0.0f;
 				for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
