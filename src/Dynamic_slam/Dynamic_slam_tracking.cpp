@@ -72,20 +72,20 @@ void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {															
 																																			}
 	//Identity =				(1,			0,			0,			0,  			0,			1,			0,			0,  			0,			0,			1,			0,  			0,	0,	0,	1);
 	cv::Matx44f transform[6];
-	transform[Rx] = cv::Matx44f(1,         0,          0,          0,\
-								0,         cos_theta, -sin_theta,  0,\
-								0,         sin_theta,  cos_theta,  0,\
-								0,         0,          0,          1);
+	transform[Rx] = cv::Matx44f(1,				0,				0,				0,\
+								0,				cos_theta,		-sin_theta,		0,\
+								0,				sin_theta,		cos_theta,		0,\
+								0,				0,				0,				1);
 
-	transform[Ry] = cv::Matx44f(cos_theta,   0,         sin_theta,  0,\
-								0,           1,         0,          0,\
-								-sin_theta,  0,         cos_theta,  0,\
-								0,           0,         0,          1);
+	transform[Ry] = cv::Matx44f(cos_theta,		0,				sin_theta,		0,\
+								0,				1,				0,				0,\
+								-sin_theta,		0,				cos_theta,		0,\
+								0,				0,				0,				1);
 
-	transform[Rz] = cv::Matx44f(cos_theta, -sin_theta,  0,          0,\
-								sin_theta,  cos_theta,  0,          0,\
-								0,           0,         1,          0,\
-								0,           0,         0,          1);
+	transform[Rz] = cv::Matx44f(cos_theta,		-sin_theta,		0,				0,\
+								sin_theta,		cos_theta,		0,				0,\
+								0,				0,				1,				0,\
+								0,				0,				0,				1);
 
 	transform[Tx] = cv::Matx44f(1,0,0,delta, 	0,1,0,0,		0,0,1,0,		0,0,0,1);
 	transform[Ty] = cv::Matx44f(1,0,0,0, 		0,1,0,delta,	0,0,1,0,		0,0,0,1);
@@ -96,21 +96,11 @@ void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {															
 																																				PRINT_MATX44F(frame_data.back().frame_data_GT.K,);
 																																				PRINT_MATX44F(frame_data.back().frame_data_GT.inv_K,);
 																																			}
-
 	for (int i=0; i<6; i++) {  cam2cam[i] = frame_data.back().frame_data_GT.K  *  transform[i]  *  frame_data.back().frame_data_GT.inv_K;
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\ni=" << i << endl;
 																																				PRINT_MATX44F(transform[i],);
 																																				PRINT_MATX44F(cam2cam[i],);
-																																			}
-	}
-
-	for (int i=0; i<6; i++) {
-		cam2cam[i] = frame_data.back().frame_data_GT.K  *  transform[i] *  frame_data.back().frame_data_GT.inv_K;
-																																			if(verbosity>local_verbosity_threshold) {
-																																				cout << "\ncam2cam["<<i<<"]=";
-																																				for (int j=0; j<16; j++) cout << setw(12) << ", "<<cam2cam[i].operator()(j/4,j%4);
-																																				cout << flush;
 																																			}
 		for (uint row=0; row<4; row++) {
 			for (uint col=0; col<4; col++){
@@ -119,15 +109,16 @@ void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {															
 		}
 	}
 																																			if(verbosity>local_verbosity_threshold) {
+																																				/*
 																																				cout << endl << setprecision(9);
-																																				for (int i=0; i<6; i++) {
-																																					cout << "\n _SE3_k2k ["<<i<<"*16 + row*4 + col]=\n";
-																																					for (int row=0; row<4; row++) {
-																																						for (int col=0; col<4; col++){
-																																							cout << setw(6) << _SE3_k2k[i*16 + row*4 + col] <<"\t  ";
-																																						}cout<<endl;
-																																					}cout<<endl;
-																																				}
+																																				// for (int i=0; i<6; i++) {
+																																				// 	cout << "\n _SE3_k2k ["<<i<<"*16 + row*4 + col]=\n";
+																																				// 	for (int row=0; row<4; row++) {
+																																				// 		for (int col=0; col<4; col++){
+																																				// 			cout << setw(6) << _SE3_k2k[i*16 + row*4 + col] <<"\t  ";
+																																				// 		}cout<<endl;
+																																				// 	}cout<<endl;
+																																				// }
 
 																																				// Chk k2k makes sense for each SE3 DoF
 																																				// Image size 640 * 480, from K as loaded from .json file.
@@ -141,8 +132,8 @@ void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {															
 																																				cout << "\n topleft * 	identity = " << topleft * 		identity << flush;
 																																				cout << "\n topright * 	identity = " << topright * 		identity << flush;
 																																				cout << "\n bottomleft *  identity = " << bottomleft * 	identity << flush;
-																																				cout << "\n bottomright * identity = " << bottomright * 	identity << flush;
-
+																																				cout << "\n bottomright * identity = " << bottomright * identity << flush;
+																																				*/
 																																				cout << "\n\nDynamic_slam::generate_SE3_k2k( float _SE3_k2k[6*16] )   finished" << endl << flush;
 																																			}
 }

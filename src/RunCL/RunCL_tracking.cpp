@@ -8,8 +8,8 @@ void RunCL::precom_param_maps( float SE3_k2k[6*16]){ //  Compute maps of pixel m
 	float mid_depth 	= ( fp32_params[MAX_INV_DEPTH] + fp32_params[MIN_INV_DEPTH])/2.0;                                                   // TODO fix : depthmap not used as a kernel arg. NB want to match scale of depth range, but ? parallax may vary.
 	depth 				*= mid_depth;
 
-	_clEnqueueWriteBuffer( uload_queue, SE3_k2kbuf,	CL_FALSE, 0, 6*16*sizeof( float), SE3_k2k,		fname);
-	_clEnqueueWriteBuffer( uload_queue, depth_mem_temp,	CL_FALSE, 0, mm_size_bytes_C1,	 depth.data,	fname);
+	_clEnqueueWriteBuffer( uload_queue, SE3_k2kbuf,		CL_FALSE, 0, 6*16*sizeof( float), 	SE3_k2k,		fname);
+	_clEnqueueWriteBuffer( uload_queue, depth_mem_temp,	CL_FALSE, 0, mm_size_bytes_C1,	 	depth.data,		fname);
 
 	//      __private	 uint layer, set in mipmap_call_kernel( ..) below                                                                      __private	 uint	    layer,		//0
     _clSetKernelArg( comp_param_maps_kernel, 1, sizeof( cl_mem),	&mipmap_buf, fname);														//__constant uint*	mipmap_params,	//1
@@ -72,7 +72,22 @@ void RunCL::update_k2k_buf( float k2k_3_16_[16],		float pose_arry[16] ) {
 	_clEnqueueWriteBuffer( uload_queue, 	pose_buf,	CL_FALSE, 0, 16*sizeof( float), pose_arry, 		fname);
 }
 
-void RunCL::rho_sq(uint out_block_size, uint iter, uint layer  ){	// To be launched with 1 thread per col for 32x32 patches, and an integer multiple of 32 threads.
+void RunCL::update_k2k_buf( Matx44f k2k, Matx44f pose ){
+	string fname = "RunCL::update_k2k_buf( ..)";
+	int local_verbosity_threshold = V_RUNCL_UPDATE_K2K_BUF;
+	float k2k_array[16], pose_array[16];
+	Matx44f_To_float16arry(	k2k,	k2k_array );
+	Matx44f_To_float16arry( pose,	pose_array );
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k_buf( ..)_chk0 .##################################################################"<<flush;
+																																				PRINT_FLOAT_16( k2k_array, );
+																																				PRINT_FLOAT_16( pose_array, );
+																																			}
+	_clEnqueueWriteBuffer( uload_queue, 	k2kbuf,		CL_FALSE, 0, 16*sizeof( float), k2k_array,	fname);
+	_clEnqueueWriteBuffer( uload_queue, 	pose_buf,	CL_FALSE, 0, 16*sizeof( float), pose_array,	fname);
+	for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].k2k_0to1_est[i]	=	k2k_array[i];	}
+}
+
+void RunCL::rho_sq( uint out_block_size, uint iter, uint layer  ){	// To be launched with 1 thread per col for 32x32 patches, and an integer multiple of 32 threads.
 																	// Needs 16 elements of local mem per 32x32 patch, to pass data between threads in recursive square reduction.
 																	// Needs 32 elem array of private mem per thread.
 																	// Writes answer to SE3_rho_map_mem, BUT as float2
@@ -104,14 +119,14 @@ void RunCL::rho_sq(uint out_block_size, uint iter, uint layer  ){	// To be launc
 																																					cout<<"\n\n## current_frames[ current_frames_idx["<<i<<"] ].frame_num = "<< current_frames[ current_frames_idx[i] ].frame_num << flush;
 																																					PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].pose,		);
 																																					PRINT_MATX44F(	current_frames[ current_frames_idx[i] ].pose_gt,	);
-																																					PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].invk2k_gt,	);
+																																					PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].k2k_0to1_est,	);
 																																				}
 																																			}
 	const float zero  = 0;
 	//_clEnqueueWriteBuffer( uload_queue, k2kbuf, CL_FALSE, 0, /*local_num_samples**/16*sizeof( float), identity_flt16 /*k2k_3_16_[start_sample_idx]*/, fname); // TODO  temporary debug, sets k2k to identity.
 
 	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, 	&zero, sizeof( float), 0, 			  2*mm_size_bytes_C1, 	fname);				//_clEnqueueWriteBuffer( uload_queue, k2kbuf, CL_FALSE, 0, local_num_samples*16*sizeof( float), k2k_3_16_[start_sample_idx], fname);
-	_clEnqueueFillBuffer( uload_queue, SE3_weight_map_mem, 	&zero, sizeof( float), 0, num_SE3_DoF*2*mm_size_bytes_C1, 	fname);
+//	_clEnqueueFillBuffer( uload_queue, SE3_weight_map_mem, 	&zero, sizeof( float), 0, num_SE3_DoF*2*mm_size_bytes_C1, 	fname);
 	_clEnqueueFillBuffer( uload_queue, SE3_incr_map_mem, 	&zero, sizeof( float), 0, num_SE3_DoF*2*mm_size_bytes_C1, 	fname);
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_1 "<<flush;}
 	size_t kernel_workgroup_size;
@@ -349,7 +364,7 @@ void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer )					
 																																				bool old_tiff			= tiff;
 																																				tiff					= true;
 																																				DownloadAndSave_2Channel_volume(  SE3_rho_map_mem,		ss.str( ), paths.at( "SE3_rho_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	1);
-																																				DownloadAndSave_2Channel_volume(  SE3_weight_map_mem,	ss.str( ), paths.at( "SE3_weight_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	vol_layers);
+																																				//DownloadAndSave_2Channel_volume(  SE3_weight_map_mem,	ss.str( ), paths.at( "SE3_weight_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	vol_layers);
 																																				DownloadAndSave_2Channel_volume(  SE3_incr_map_mem,		ss.str( ), paths.at( "SE3_incr_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	vol_layers);
 																																				tiff = old_tiff;
 
@@ -363,6 +378,14 @@ void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){
 	int			local_verbosity_threshold	= V_RUNCL_UPDATE_K2K;
 																																	if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k_cpu( ..)_chk_0 . ################################"<< flush;}
 																																					cout << "\nlayer = "	<< layer 	<<endl<<flush;
+	Matx44f	current_frame_pose_gt	=	current_frames[ current_frames_idx[0] ].pose_gt;												PRINT_MATX44F( current_frame_pose_gt, );
+	Matx44f	previous_frame_pose_gt	=	current_frames[ current_frames_idx[1] ].pose_gt;												PRINT_MATX44F( previous_frame_pose_gt, );
+																																		PRINT_MATX44F( current_frame_pose_gt.inv(), );
+																																		PRINT_MATX44F( getInvPose( current_frame_pose_gt, verbosity) , );
+
+	Matx44f pose_update_gt			=	current_frame_pose_gt.inv()	*	previous_frame_pose_gt;											PRINT_MATX44F( pose_update_gt, );
+	Matx16f pose_update_gt_algebra	=	PToLie(pose_update_gt);																			PRINT_MATX16F( pose_update_gt_algebra, );
+																																		PRINT_MATX44F( previous_frame_pose_gt	*	current_frame_pose_gt.inv(),	);
 /*
 	uint		J_offset	=	layer	* 48;																										cout << "\nJ_offset = "	<< J_offset	<<endl<<flush;
 
@@ -379,7 +402,7 @@ void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){
 
 	Matx16f		J			=			current_frames[ current_frames_idx[0] ].Jacobian[layer];													PRINT_MATX16F( J, );
 	Matx66f		H			=			current_frames[ current_frames_idx[0] ].invHessian[layer];													PRINT_MATX66F( H, );				PRINT_MATX66F( H.inv(), );
-																																					PRINT_MATX66F( (H * H.inv() ), );	PRINT_MATX66F( (H.inv() * H ), );
+																																					//PRINT_MATX66F( (H * H.inv() ), );	PRINT_MATX66F( (H.inv() * H ), );
 	float		SE3_incr_arry[6*2];		ReadOutput(			(uchar*)SE3_incr_arry,		SE3_incr_map_mem,	6*sizeof(cl_float2),	32*sizeof(cl_float2)	);
 																																						cout<<"\nSE3_incr_arry[]= (";
 																																						for(int i=0; i<6*2; i++) cout << ", "<< SE3_incr_arry[i];
@@ -395,7 +418,7 @@ void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){
 	Matx44f		K			=			ReadOutput_44f(						K_buf	 );																PRINT_MATX44F( K,		);
 																																					PRINT_MATX44F( K * invK,		);
 																																					PRINT_MATX44F( invK * K,		);
-
+/*
 																																	if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k_cpu( ..)_chk_1 . ################################"<< flush;
 																																			Matx44f pose_error						= pose	*	GT_pose.inv();	// correct, i.e. reproduces the artif error:  pose = poseStep * pose
 																																			Matx16f pose_error_algebra				= PToLie(pose_error);
@@ -405,6 +428,7 @@ void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){
 																																			PRINT_MATX44F( pose, );
 																																			PRINT_MATX44F( pose_error, );
 																																	}
+*/
 /*
 	//for (uint i=0; i<num_SE3_DoF; i++) {	J[i] 	= Hessian_map[i 	+ layer*8*6];	}
 
@@ -424,6 +448,8 @@ void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){
 	pose_update_cpu				= pose_update_cpu.mul( deltas_matx);																				PRINT_MATX16F( deltas_matx, );		PRINT_MATX16F( pose_update_cpu, );
 																																					PRINT_MATX44F( LieToP_Matx(pose_update_cpu), );
 																																					PRINT_MATX44F( LieToP_Matx(pose_update_cpu).inv(), );		// TODO order of matrix multiplication & transpose 1x6  vs 6x1 ?
+
+																																					PRINT_MATX16F( pose_update_cpu.div( pose_update_gt_algebra ) , );
 /*
 //	Matx61f	pose_update_cpu_1	= H.inv() * SE3_incr.t(); 	/ *  pose_update_cpu *  H.inv();  * /													PRINT_MATX61F( pose_update_cpu_1, );
 //	Matx61f	pose_update_cpu_2	= H / * .inv()  * /   * pose_update_cpu.t();																				PRINT_MATX61F( pose_update_cpu_2, );
@@ -438,7 +464,7 @@ void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){
 									0,0,1,0,  \
 									0,0,0,1};
 
-	Matx44f newK2K				= invK  * /*eye_Matx44f*/  newPose  * K ;				PRINT_MATX44F( newK2K,			);
+	Matx44f newK2K				= K  * /*eye_Matx44f*/  newPose  * invK ;				PRINT_MATX44F( newK2K,			);
 
 	float 	newPoseArry[16],	newK2KArry[16];
 	Matx44f_To_float16arry(		newK2K,			newK2KArry );

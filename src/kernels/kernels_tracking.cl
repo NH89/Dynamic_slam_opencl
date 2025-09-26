@@ -63,10 +63,10 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	__private	uint		out_block_size,			//2
 //	__private	float2		delta_SE3,				//3
 
-	__constant	uint8*		mipmap_params,			//4
-	__constant	uint*		uint_params,			//5
-	__constant	float*		fp32_params,			//6
-	__constant	float16*	inv_k2k,				//7		// transforms for 4 past frames,  k2k_buf
+	__constant	uint8*		mipmap_params,			//3
+	__constant	uint*		uint_params,			//4
+	__constant	float*		fp32_params,			//5
+	__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames,  k2k_buf
 
 	__global	float4*		img_cur,				//7		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
 	__global	float4*		img_past_0,				//8

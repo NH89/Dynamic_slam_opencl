@@ -21,7 +21,7 @@
 
 #define MAX_LAYERS  6
 
-namespace fs = std::filesystem;  //::std::filesystem;
+namespace fs = std::filesystem;
 
 
 class Dynamic_slam

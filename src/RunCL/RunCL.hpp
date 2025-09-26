@@ -101,8 +101,8 @@ public:
 		cl_mem			r_vel_buf;
 		uint			frame_data_index;
 		Matx44f			pose_gt;
-		float			pose[16];			// Absolute pose of the frame. i.e. relative to initial frame. Computed from the local sample frames. Will req adjustment at loop closure.
-		float			invk2k_gt[16];			// Reprojection matrix to the current img. Estimated, then fitted for each new frame, also with updates of camera inrinsic mattix.
+		float			pose[16];						// Absolute pose of the frame. i.e. relative to initial frame. Computed from the local sample frames. Will req adjustment at loop closure.
+		float			k2k_0to1_est[16];				// Reprojection matrix to the current img. Estimated, then fitted for each new frame, also with updates of camera inrinsic mattix.
 		Matx16f			Jacobian[max_mipmap_layers];
 		Matx66f			invHessian[max_mipmap_layers];
 	};
@@ -123,7 +123,7 @@ public:
 			current_frames[idx].pose_gt				= Matx44f::eye();
 			for(uint i=0; i<16; i++){
 				current_frames[idx].pose[i]			= identity_flt16[i];
-				current_frames[idx].invk2k_gt[i]	= identity_flt16[i];
+				current_frames[idx].k2k_0to1_est[i]	= identity_flt16[i];
 			}
 			for(uint i=0; i<max_mipmap_layers; i++){
 				current_frames[idx].invHessian[i]	= Matx66f::eye();
@@ -429,6 +429,7 @@ public:
 	void update_tracking_depthmap(cl_mem depthmap_);
 	void update_current_frame_depth_mem( cl_mem depthmap_);
 	void update_k2k_buf(	float k2k_3_16_[16], 	float pose_arry[16]  );
+	void update_k2k_buf( Matx44f k2k, Matx44f pose );
 	//void initialize_tracking_depthmap(float initial_depth);
 
 	//////////////////////////////////////  Patch based kernels

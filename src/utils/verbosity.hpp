@@ -12,7 +12,7 @@
 	#define	V_LOADDEPTHAHANDA							2
 
 	/////////////////////////////////////// CONVERT_TRANSFORMS.CPP
-	#define	V_CONVERT_TRANSFORMS						-1
+	#define	V_CONVERT_TRANSFORMS						1
 
 	/////////////////////////////////////// CONF_PARAMS.CPP
 	#define	V_CONF_PARAMS_CONF_PARAMS					1
@@ -66,7 +66,7 @@
 	#define	V_DYNAMIC_SLAM_ARTIFICIAL_POSE_ERROR		-1
 	#define	V_DYNAMIC_SLAM_PREDICTFRAME					-1
 	#define	V_DYNAMIC_SLAM_GENERATE_INVK_				0
-	#define	V_DYNAMIC_SLAM_GENERATE_SE3_K2K				0
+	#define	V_DYNAMIC_SLAM_GENERATE_SE3_K2K				-1
 	#define	V_DYNAMIC_SLAM_UPDATE_K2K					-2
 	#define	V_DYNAMIC_SLAM_COMPUTE_OPTIMUM				-2
 	#define	V_DYNAMIC_SLAM_ESTIMATESE3					-2
