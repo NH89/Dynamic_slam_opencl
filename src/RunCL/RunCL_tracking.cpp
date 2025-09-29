@@ -97,13 +97,13 @@ void RunCL::rho_sq( uint out_block_size, uint iter, uint layer  ){	// To be laun
 	//const int se3_dof				= 6;
 	//cl_float2	delta_SE3			= {{delta_theta, delta}};
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk0 .##################################################################"<<flush;
-																																				PRINT_FLOAT_16( fp32_k2keyframe, cpu array);
 																																				cout<<endl<<endl
 																																					<<"   dataset_frame_num="	<<dataset_frame_num
 																																					<<",  out_block_size="		<<out_block_size
 																																					<<",  iter="				<<iter
 																																					<<",  layer="				<<layer
 																																					<< flush;
+																																				PRINT_FLOAT_16( fp32_k2keyframe, cpu array);
 																																				float pose_ary[16];
 																																				ReadOutput( (uchar*)pose_ary, pose_buf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
 																																				PRINT_FLOAT_16(pose_ary, gpu buf);
@@ -397,9 +397,10 @@ void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){
 //	vector<Matx66f>	H_vec	=			ReadOutput_66f_vec(					SE3_hessian_pinv_map_mem,		4*(J_offset + 6)* sizeof(float)	);		PRINT_MATX66F( H_vec[0],);	PRINT_MATX66F( H_vec[1],);	PRINT_MATX66F( H_vec[2],);	PRINT_MATX66F( H_vec[3],);
 //	Matx66f		H			=			H_vec[0];																									PRINT_MATX66F( H,	);										// TODO this is a cl_float4  6x6 matrix
 */
-	cl_float2	Rho 		=	{{0}};	ReadOutput( 		(uchar*)&Rho,				SE3_rho_map_mem, 	sizeof(cl_float2),		32*sizeof(cl_float2)	);		cout<<"\nRho	= "<< Rho.x <<", "<< Rho.y 	<<endl<<flush;
+	cl_float2	Rho 		=	{{0}};	ReadOutput( 		(uchar*)&Rho,				SE3_rho_map_mem, 	sizeof(cl_float2),		32*sizeof(cl_float2)	);
+/*
 	float		rho			=	sqrtf(Rho.x) / Rho.y;																												cout<<"\nrho	= "<< rho 					<<endl<<flush;
-
+*/
 	Matx16f		J			=			current_frames[ current_frames_idx[0] ].Jacobian[layer];													PRINT_MATX16F( J, );
 	Matx66f		H			=			current_frames[ current_frames_idx[0] ].invHessian[layer];													PRINT_MATX66F( H, );				PRINT_MATX66F( H.inv(), );
 																																					//PRINT_MATX66F( (H * H.inv() ), );	PRINT_MATX66F( (H.inv() * H ), );
@@ -407,7 +408,20 @@ void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){
 																																						cout<<"\nSE3_incr_arry[]= (";
 																																						for(int i=0; i<6*2; i++) cout << ", "<< SE3_incr_arry[i];
 																																						cout<<" ) "<<endl<<flush;
-	Matx16f		SE3_incr;				for (int i=0;	i<6; i++){	SE3_incr.operator()(i)	=	SE3_incr_arry[i*2];  }								PRINT_MATX16F( SE3_incr, );
+
+	float		sum_rho		=	Rho.x;		// currently .x colour channel only.
+	float		sum_rho_sq	=	Rho.y;
+	float		num_pixels	=	SE3_incr_arry[1];																		// TODO move numpixels to SE3_incr.w   & reduce SE3_incr_map_mem from float8 tro float4
+	Matx16f		sum_rhoXgrad;	for (int i=0;	i<6; i++){	sum_rhoXgrad.operator()(i)	=	SE3_incr_arry[i*2];  };
+	Matx16f		sum_grad	=	current_frames[ current_frames_idx[0] ].Jacobian[layer];
+	Matx16f		SE3_incr	=	sum_rhoXgrad	;//		-	sum_rho * sum_grad / num_pixels;
+																																			if( verbosity>local_verbosity_threshold ){cout<<"\n\nRunCL::update_k2k_cpu( ..)_chk_1"<< \
+																																				"\nsum_rho = "<< sum_rho <<",	sum_rho_sq	= "<< sum_rho_sq <<",	num_pixels = "<<num_pixels <<endl<<flush;
+																																				PRINT_MATX16F( sum_rhoXgrad, );
+																																				PRINT_MATX16F( sum_grad, );
+																																				PRINT_MATX16F( (-sum_rho * sum_grad / num_pixels), );
+																																				PRINT_MATX16F( SE3_incr, );
+																																			}
 /*
 //				SE3_incr	/=			SE3_incr_arry[1];					 																		PRINT_MATX16F( SE3_incr, );
 
@@ -444,7 +458,7 @@ void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){
 	//
 	for(uint i=0; i<num_SE3_DoF; i++) pose_update += pose_update_H[lid*6 +i];
 */
-	Matx16f pose_update_cpu		= SE3_incr * H.inv();   /* - rho * J */ 	/*NB should compute H.inv() once and store */							PRINT_MATX16F( pose_update_cpu, );
+	Matx16f pose_update_cpu		= ( SE3_incr * H.inv() ) /8.0f;																								PRINT_MATX16F( pose_update_cpu, );
 	pose_update_cpu				= pose_update_cpu.mul( deltas_matx);																				PRINT_MATX16F( deltas_matx, );		PRINT_MATX16F( pose_update_cpu, );
 																																					PRINT_MATX44F( LieToP_Matx(pose_update_cpu), );
 																																					PRINT_MATX44F( LieToP_Matx(pose_update_cpu).inv(), );		// TODO order of matrix multiplication & transpose 1x6  vs 6x1 ?
@@ -472,7 +486,7 @@ void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){
 
 	Matx44f		k2k_old			=			ReadOutput_44f(						k2kbuf);																PRINT_MATX44F( k2k_old,	);
 
-	update_k2k_buf(				newK2KArry,		newPoseArry); //  TODO   NO LONGER A GOOD IDEA.  clashes with frame to frame transforms used for patch kernel tracking.
+	update_k2k_buf(				newK2KArry,		newPoseArry);
 /*
 	Matx44f		pose_now		=			ReadOutput_44f( 					pose_buf );																PRINT_MATX44F( pose_now, 	);
 	Matx44f		k2k_now			=			ReadOutput_44f(						k2kbuf);																PRINT_MATX44F( k2k_now,	);

@@ -208,9 +208,11 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 				// Photometric error rho ///////
 				old_px					= bilinear_flt4( img_past[past_frame_idx],  u2_flt_1,  v2_flt_1,  mm_cols,  read_offset_ )	;
 				rho_pvt_flt4			= (img_cur_pvt[row_in_block] - old_px) ;
+/*
 //				value_sq_pvt			= img_cur_pvt[row_in_block].z * old_px.z  ;
 // 				rho_pvt_flt4.x			*= value_sq_pvt;																																		// Reduce rho hue and saturation by multiplying by old & new px value.
 // 				rho_pvt_flt4.y			*= value_sq_pvt;
+*/
 				rho_pvt_flt4.w			= 1.0f;																																					// rho.w holds pixel count.
 /*
 // 				if(v>107 && v<112 && u>70  && u<120 / * && rho_pvt_flt4.x>0.001 * /  ){printf("\n__kernel void Rho_sq, global_id_u=%u,	row_in_block=%u,	group_id=%u,	inv_depth_1=%f,		(u,v)=(%u,%u),	(u2_flt_1,v2_flt_1)=(%f,%f)		img_cur_pvt[row_in_block]=(%f, %f, %f, %f),		old_px=(%f, %f, %f, %f),		rho_pvt_flt4=(%f, %f, %f, %f)", \
@@ -257,7 +259,6 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 				for (uint se3_dim=3; se3_dim<num_SE3_DoF; se3_dim++) {
 					SE3_incr_pvt_flt4										= grad_pvt_flt4_SE3[se3_dim] * rho_pvt_flt4;
 					SE3_incr_pvt_flt2.x										= /*weights */ inv_depth_1 * SE3_incr_pvt_flt4.x; 		//	+ SE3_incr_pvt_flt4.y	+ SE3_incr_pvt_flt4.z)/*/ (3.0f * grad_pvt_SE3_mag)*/;
-
 					/*
 					//SE3_incr_pvt_flt2.x										= clamp( SE3_incr_pvt_flt2.x ,	-delta_se3,	+delta_se3  );
 
@@ -267,11 +268,14 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 				}
 			}
 			barrier( CLK_GLOBAL_MEM_FENCE );
-
-			rho_pvt_flt2.x					=  rho_pvt_flt4.x*rho_pvt_flt4.x;//*value_sq_pvt;	//	+ rho_pvt_flt4.y*rho_pvt_flt4.y*value_sq_pvt	+ rho_pvt_flt4.z*rho_pvt_flt4.z;				// sum rho^2, but multiply hue and saturation by value sq
+/*
+			rho_pvt_flt4.x*rho_pvt_flt4.x;// *value_sq_pvt;	//	+ rho_pvt_flt4.y*rho_pvt_flt4.y*value_sq_pvt	+ rho_pvt_flt4.z*rho_pvt_flt4.z;   				// sum rho^2, but multiply hue and saturation by value sq
 																																																// TODO Hue is a problem due to wrap arround.Need to changer to the HSVgrad 8 chan colorspace.
-			//rho_pvt_flt2.x					*= edge_weight;																																		// Weight rho by edges. // TODO choose/ refine which edges to use.
-			rho_pvt_flt2.y					=  rho_pvt_flt4.w;	//1.0f;																																			// count the pixels.
+			//rho_pvt_flt2.x					*= edge_weight;																																	// Weight rho by edges. // TODO choose/ refine which edges to use.
+			//rho_pvt_flt4.w;	//1.0f;	// count the pixels.
+*/
+			rho_pvt_flt2.x					=  rho_pvt_flt4.x;																																	// Sum Rho
+			rho_pvt_flt2.y					=  rho_pvt_flt4.x * rho_pvt_flt4.x;																													// Sum Rho_squared
 			rho_pvt_arr[row_in_block]		+= rho_pvt_flt2;																																	// save to pvt mem for this column
 		}
 	}
