@@ -193,12 +193,6 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 			intersection 				= 	(u>margin)			&& (u<=read_cols_-margin)			&& (v>margin)			&& (v<=read_rows_-margin)			&& \
 											(u2_flt_1>margin)	&& (u2_flt_1<=read_cols_-margin)	&& (v2_flt_1>margin)	&& (v2_flt_1<=read_rows_-margin)	&& \
 											(global_id_u<=layer_pixels)		&&	(inv_depth_1>=min_inv_depth)	&& (inv_depth_1<=max_inv_depth);												// if images overlap
-/*
-			if (!intersection && row_in_block==0){
-				printf("\n__kernel void Rho_sq(..) global_id_u==0 	layer=%u,	reduction=%f,	margin=%u,	u=%u,  v=%u,	u2_flt_1=%f,	v2_flt_1=%f,	interscetion=%u,	group_id=%u", \
-																	layer, 		reduction, 		margin, 	u, 		v, 		u2_flt_1, 		v2_flt_1, 		intersection,		group_id);
-			}
-*/
 			rho_pvt_flt4				= zero_f4;
 			float edge_weight			= 0;
 			float value_sq_pvt			= 0;
@@ -208,72 +202,32 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 				// Photometric error rho ///////
 				old_px					= bilinear_flt4( img_past[past_frame_idx],  u2_flt_1,  v2_flt_1,  mm_cols,  read_offset_ )	;
 				rho_pvt_flt4			= (img_cur_pvt[row_in_block] - old_px) ;
-/*
-//				value_sq_pvt			= img_cur_pvt[row_in_block].z * old_px.z  ;
-// 				rho_pvt_flt4.x			*= value_sq_pvt;																																		// Reduce rho hue and saturation by multiplying by old & new px value.
-// 				rho_pvt_flt4.y			*= value_sq_pvt;
-*/
 				rho_pvt_flt4.w			= 1.0f;																																					// rho.w holds pixel count.
-/*
-// 				if(v>107 && v<112 && u>70  && u<120 / * && rho_pvt_flt4.x>0.001 * /  ){printf("\n__kernel void Rho_sq, global_id_u=%u,	row_in_block=%u,	group_id=%u,	inv_depth_1=%f,		(u,v)=(%u,%u),	(u2_flt_1,v2_flt_1)=(%f,%f)		img_cur_pvt[row_in_block]=(%f, %f, %f, %f),		old_px=(%f, %f, %f, %f),		rho_pvt_flt4=(%f, %f, %f, %f)", \
-// 					global_id_u, row_in_block, group_id,	inv_depth_1,   u,v,  u2_flt_1,v2_flt_1,	\
-// 					img_cur_pvt[row_in_block].x, img_cur_pvt[row_in_block].y, img_cur_pvt[row_in_block].z, img_cur_pvt[row_in_block].w,		old_px.x, old_px.y, old_px.z, old_px.w,		rho_pvt_flt4.x, rho_pvt_flt4.y, rho_pvt_flt4.z, rho_pvt_flt4.w ); }
-*/
+
 				// Magnitude of gradient of Rho wrt SE3 rotation & translation //////
 				grad_pvt_SE3_mag		= 0.0f;
 				for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
 					grad_v8 												=  SE3_grad_map_cur_frame[ read_index_row + (se3_dim * mm_pixels) ] ;
 					grad_pvt_flt4_SE3[se3_dim]								=  grad_v8.hi + grad_v8.lo;																							// sum (u,v) components ####
 					grad_pvt_flt4_SE3[se3_dim].w							=  1.0f;
-					grad_pvt_flt_SE3[se3_dim]								= grad_pvt_flt4_SE3[se3_dim].x; 		//  + grad_pvt_flt4_SE3[se3_dim].y + grad_pvt_flt4_SE3[se3_dim].z) / 3.0f;			// sum color channels
-					//grad_pvt_SE3_mag										+= grad_pvt_flt_SE3[se3_dim] * grad_pvt_flt_SE3[se3_dim];
+					grad_pvt_flt_SE3[se3_dim]								= grad_pvt_flt4_SE3[se3_dim].x;
 				}
-/*
-				//grad_pvt_SE3_mag											= half_sqrt( grad_pvt_SE3_mag ) + FLT_EPSILON;																		// L2 norm, always +ve.		+ FLT_EPSILON; prevents div by zero.
-
-				// SO3 rotation	//////////																																						// NB beware if inf depth, i.e. subnormal inv_depth, then div by zero error !
-				//depth_weight												=  fp32_params[MAX_INV_DEPTH] / ((inv_depth_1 + 0.01)*5);															// de-weight foreground for rotation, & de-weight backgroud for translation.
-				//weights														=  edge_weight * depth_weight;
-*/
-				SE3_incr_pvt_flt2.y											=  1;	//weights;
-				//float delta_se3												=  delta_SE3[ 0 ];
+				SE3_incr_pvt_flt2.y											=  1;
 
 				for (uint se3_dim=0; se3_dim<3; se3_dim++) {
-					SE3_incr_pvt_flt4										= grad_pvt_flt4_SE3[se3_dim] * rho_pvt_flt4;																		// sum colour channels  ####
-					SE3_incr_pvt_flt2.x										= /*weights * */ SE3_incr_pvt_flt4.x;		//	+ SE3_incr_pvt_flt4.y	+ SE3_incr_pvt_flt4.z )/*/ (3.0f * grad_pvt_SE3_mag)*/;		// Computes the update vector to zero Rho for this pixel.
-					/*
-					//SE3_incr_pvt_flt2.x										= clamp( SE3_incr_pvt_flt2.x ,	-delta_se3,	+delta_se3  );															// pixelwise clamp to supress the efffect of giant steps from low gradient pixels.
-
-					//SE3_incr_pvt_flt2.y										= weights * grad_pvt_flt_SE3[se3_dim] / grad_pvt_SE3_mag ;															// NB will divide   sum_SE3_incr[se3_dim] by sum weights[se3_dim] .
-					*/
-					SE3_incr_pvt_arr[ se3_dim*block_size + row_in_block ]	= SE3_incr_pvt_flt2 ;			//TODO _may_ be more efficient to use float8, where  .s6 = count and .s7 is empty.	// pixelwise increment for this SE3 DoF
-				}
-/*
-				// ST3 translation	///////
-				//weights														/= depth_weight;
-				//depth_weight												=  inv_depth_1 / fp32_params[MAX_INV_DEPTH];																		// For ST3 emphasize foreground pixels for parallax motion: multiply pixel inv_depth by min depth in scene.
-				//weights														*= depth_weight;																									// NB "Office" test scene depth is in cm from approx 90 to 450cm.
-				//SE3_incr_pvt_flt2.y											=  weights;
-				//delta_se3													=  delta_SE3[ 1 ];
-*/
-				for (uint se3_dim=3; se3_dim<num_SE3_DoF; se3_dim++) {
 					SE3_incr_pvt_flt4										= grad_pvt_flt4_SE3[se3_dim] * rho_pvt_flt4;
-					SE3_incr_pvt_flt2.x										= /*weights */ inv_depth_1 * SE3_incr_pvt_flt4.x; 		//	+ SE3_incr_pvt_flt4.y	+ SE3_incr_pvt_flt4.z)/*/ (3.0f * grad_pvt_SE3_mag)*/;
-					/*
-					//SE3_incr_pvt_flt2.x										= clamp( SE3_incr_pvt_flt2.x ,	-delta_se3,	+delta_se3  );
+					SE3_incr_pvt_flt2.x										= SE3_incr_pvt_flt4.x;
+					SE3_incr_pvt_arr[ se3_dim*block_size + row_in_block ]	= SE3_incr_pvt_flt2;
+				}
 
-					//SE3_incr_pvt_flt2.y										= weights * grad_pvt_flt_SE3[se3_dim] / grad_pvt_SE3_mag;
-					*/
+				for (uint se3_dim=3; se3_dim<num_SE3_DoF; se3_dim++) {
+					SE3_incr_pvt_flt4										= inv_depth_1 * grad_pvt_flt4_SE3[se3_dim] * rho_pvt_flt4;
+					SE3_incr_pvt_flt2.x										= SE3_incr_pvt_flt4.x;
 					SE3_incr_pvt_arr[ se3_dim*block_size + row_in_block ]	= SE3_incr_pvt_flt2 ;
 				}
 			}
 			barrier( CLK_GLOBAL_MEM_FENCE );
-/*
-			rho_pvt_flt4.x*rho_pvt_flt4.x;// *value_sq_pvt;	//	+ rho_pvt_flt4.y*rho_pvt_flt4.y*value_sq_pvt	+ rho_pvt_flt4.z*rho_pvt_flt4.z;   				// sum rho^2, but multiply hue and saturation by value sq
-																																																// TODO Hue is a problem due to wrap arround.Need to changer to the HSVgrad 8 chan colorspace.
-			//rho_pvt_flt2.x					*= edge_weight;																																	// Weight rho by edges. // TODO choose/ refine which edges to use.
-			//rho_pvt_flt4.w;	//1.0f;	// count the pixels.
-*/
+
 			rho_pvt_flt2.x					=  rho_pvt_flt4.x;																																	// Sum Rho
 			rho_pvt_flt2.y					=  rho_pvt_flt4.x * rho_pvt_flt4.x;																													// Sum Rho_squared
 			rho_pvt_arr[row_in_block]		+= rho_pvt_flt2;																																	// save to pvt mem for this column

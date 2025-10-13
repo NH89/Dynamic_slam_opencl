@@ -127,8 +127,8 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 		pu												=  img[read_index + upoff];
 		pd												=  img[read_index + dnoff];
 
-		float4 gx										= { (pr.x - pl.x), (pr.y - pl.y), (pr.z - pl.z), 1.0f };			// Signed img gradient in hsv
-		float4 gy										= { (pd.x - pu.x), (pd.y - pu.y), (pd.z - pu.z), 1.0f };
+		float4 gx										= { (pr.x - pl.x)/2.0f, (pr.y - pl.y)/2.0f, (pr.z - pl.z)/2.0f, 0.5f };			// Signed img gradient in hsv
+		float4 gy										= { (pd.x - pu.x)/2.0f, (pd.y - pu.y)/2.0f, (pd.z - pu.z)/2.0f, 0.5f };
 
 		float4 Jacobian[6]								=  {0};
 
@@ -137,8 +137,8 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 																															// float2 partial_gradient={u_flt-u2 , v_flt-v2}; // Find movement of pixel
 			float8 SE3_grad_px							= {gx*SE3_px[0]  , gy*SE3_px[1] };									// NB float4 gx, gy => float8
 			SE3_grad_map[read_index + i* mm_pixels]		= SE3_grad_px ;
-			Jacobian[i]									= SE3_grad_px.lo + SE3_grad_px.hi;
-			Jacobian[i].w								= 1.0f;
+			Jacobian[i]									= gx*SE3_px[0]  + gy*SE3_px[1];
+			//Jacobian[i].w								= 1.0f;
 		}
 /*
 		// pseudo inverse of Gauss-Newton approximation H = J^T * J.  NB (1) Det=0 -> non-invertible, (2) this method is NOT valid for Moore-Penrose pseudo inverse of general nxn matricies.

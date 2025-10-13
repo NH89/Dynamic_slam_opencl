@@ -383,7 +383,7 @@ void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){
 																																		PRINT_MATX44F( current_frame_pose_gt.inv(), );
 																																		PRINT_MATX44F( getInvPose( current_frame_pose_gt, verbosity) , );
 
-	Matx44f pose_update_gt			=	current_frame_pose_gt.inv()	*	previous_frame_pose_gt;											PRINT_MATX44F( pose_update_gt, );
+	Matx44f pose_update_gt			=	previous_frame_pose_gt	*	current_frame_pose_gt.inv();										PRINT_MATX44F( pose_update_gt, );
 	Matx16f pose_update_gt_algebra	=	PToLie(pose_update_gt);																			PRINT_MATX16F( pose_update_gt_algebra, );
 																																		PRINT_MATX44F( previous_frame_pose_gt	*	current_frame_pose_gt.inv(),	);
 /*
@@ -402,7 +402,7 @@ void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){
 	float		rho			=	sqrtf(Rho.x) / Rho.y;																												cout<<"\nrho	= "<< rho 					<<endl<<flush;
 */
 	Matx16f		J			=			current_frames[ current_frames_idx[0] ].Jacobian[layer];													PRINT_MATX16F( J, );
-	Matx66f		H			=			current_frames[ current_frames_idx[0] ].invHessian[layer];													PRINT_MATX66F( H, );				PRINT_MATX66F( H.inv(), );
+	Matx66f		invH		=			current_frames[ current_frames_idx[0] ].invHessian[layer];													PRINT_MATX66F( invH, );				PRINT_MATX66F( invH.inv(), );
 																																					//PRINT_MATX66F( (H * H.inv() ), );	PRINT_MATX66F( (H.inv() * H ), );
 	float		SE3_incr_arry[6*2];		ReadOutput(			(uchar*)SE3_incr_arry,		SE3_incr_map_mem,	6*sizeof(cl_float2),	32*sizeof(cl_float2)	);
 																																						cout<<"\nSE3_incr_arry[]= (";
@@ -458,8 +458,8 @@ void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){
 	//
 	for(uint i=0; i<num_SE3_DoF; i++) pose_update += pose_update_H[lid*6 +i];
 */
-	Matx16f pose_update_cpu		= ( SE3_incr * H.inv() ) /8.0f;																								PRINT_MATX16F( pose_update_cpu, );
-	pose_update_cpu				= pose_update_cpu.mul( deltas_matx);																				PRINT_MATX16F( deltas_matx, );		PRINT_MATX16F( pose_update_cpu, );
+	Matx16f pose_update_cpu		= ( SE3_incr * invH ) /8.0f;																								PRINT_MATX16F( pose_update_cpu, );
+	//pose_update_cpu				= pose_update_cpu.mul( deltas_matx);																				PRINT_MATX16F( deltas_matx, );		PRINT_MATX16F( pose_update_cpu, );
 																																					PRINT_MATX44F( LieToP_Matx(pose_update_cpu), );
 																																					PRINT_MATX44F( LieToP_Matx(pose_update_cpu).inv(), );		// TODO order of matrix multiplication & transpose 1x6  vs 6x1 ?
 

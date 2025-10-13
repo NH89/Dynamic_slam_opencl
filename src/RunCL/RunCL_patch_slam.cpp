@@ -351,6 +351,16 @@ void RunCL::patch_img_gradients( uint layer ){
 																																	DownloadAndSave_3Channel( 	SE3_hessian_pinv_map_mem,	ss.str( ), paths.at( "jacobian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  mm_size_bytes_C4/*mm_layerstep*/, false);
 																																	// NB the tiff file holda the int32 values as float32. This is okay because they fit in the mantissa.
 																																	// BGRA format, B=u, G=v, R=read_index, A=alpha.
+																																	////////////////
+																																	if( layer==0){
+																																		stringstream 	ss_path;
+																																		ss_path.str(std::string()); // reset ss_path
+																																		ss_path 		<< "SE3_grad_map_mem"<<flush;
+																																		cout 			<< "\n" << ss_path.str() <<flush;
+																																		cout 			<< "\n" << paths.at(ss_path.str()) <<flush;
+																																		DownloadAndSave_6Channel_volume(  SE3_grad_map_mem, ss.str(), paths.at(ss_path.str()), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, -1, 6 );
+																																	}
+																																	//////////
 																																	tiff 			= old_tiff;
 																																}
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_finished #############################################################"<<flush;
@@ -359,7 +369,7 @@ void RunCL::patch_img_gradients( uint layer ){
 
 
 void  RunCL::patch_hessian_reduce(uint layer){
-	string 		fname	= "RunCL::patch_global_hessian_reduce()";
+	string 		fname	= "RunCL::patch_hessian_reduce()";
 	int local_verbosity_threshold = V_RUNCL_PATCH_IMG_GRADIENTS;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_hessian_reduce()_chk1 layer="<<layer<<" #############################################################"<<flush;}
 	cl_kernel	kernel	= patch_hessian_reduce_kernel;
 
@@ -423,7 +433,7 @@ void  RunCL::patch_hessian_reduce(uint layer){
 
 	for(int row=0; row<num_SE3_DoF; row++){																							// per_pixel division currently done in kernel, TODO which is better ?
 		for(int col=0; col<num_SE3_DoF; col++){
-			Hessian.operator()(row,col)		= hessian_Mat.at<cl_float4>( row+1,col ).x / hessian_Mat.at<cl_float4>( row+1,col ).w;	// NB choose colour channel of Hessian
+			Hessian.operator()(row,col)		= hessian_Mat.at<cl_float4>( row+1,col ).x; // / hessian_Mat.at<cl_float4>( row+1,col ).w;	// NB choose colour channel of Hessian
 		}
 	}
 
@@ -431,7 +441,7 @@ void  RunCL::patch_hessian_reduce(uint layer){
 	current_frames[ current_frames_idx[0] ].invHessian[layer]		= Hessian.inv();							//inv_Hessian.inv();
 																																if( verbosity>local_verbosity_threshold) {
 																																	cout <<"\nJacobian \n" << current_frames[ current_frames_idx[0] ].Jacobian[layer]	<< endl << endl <<flush;
-																																	cout <<"\nHessian  \n" << current_frames[ current_frames_idx[0] ].invHessian[layer]	<< endl << endl <<flush;
+																																	cout <<"\ninvHessian  \n" << current_frames[ current_frames_idx[0] ].invHessian[layer]	<< endl << endl <<flush;
 																																	cout <<"\n\nRunCL::patch_hessian_reduce()_finished #############################################################"<<flush;
 																																}
 }
