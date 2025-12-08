@@ -89,6 +89,8 @@ public:
 	cl_kernel			rho_sq_kernel, reduce_patch_Rho_kernel, update_k2k_kernel;// TODO declare, create, release kernel in Run_cl.h etc.
 	// RunCL_patchslam.cpp
 	cl_kernel			compute_patch_lookup_table_kernel, patch_img_grad_kernel, patch_hessian_reduce_kernel;
+	// RunCL_patch_tracking.cpp
+	cl_kernel			pad_image_top_bottom2_kernel, vertcal_blur5_kernel, pad_image_left_right2_kernel, horiz_blur5_kernel, reduce_img_kernel;
 	
 	// GPU Buffers
 	static const uint 	num_current_frames	= 5;																												// static = same for all instances of class Dynamic_slam.
@@ -238,6 +240,7 @@ public:
 	float 				fp32_k2keyframe[		16]						= {0};
 	
 	uint	 			mm_num_reductions;				//	
+	uint				mm_num_blur_layers;				//
 	int 				mm_gaussian_size;				//	
 	int 				mm_margin;						//	
 	int 				mm_height;						//	
@@ -395,7 +398,7 @@ public:
 	void mipmap_depthmap(cl_mem depthmap_);
 	
 
-	////////////////////////////////////// RunCL::patch_slam.cpp
+	////////////////////////////////////// RunCL_patch_slam.cpp
 
 	const uint	patch_size										= 32;
 	size_t		device_max_workitem_sizes[	3]					= {0};
@@ -423,6 +426,27 @@ public:
 
 	void	patch_hessian_reduce();
 
+	////////////////////////////////////// RunCL_patch_tracking.cpp
+	void	build_img_pyramid( uint reductions, uint blur_layers, std::string folder );
+
+	void	blur_image_layer( uint layer );
+	void	pad_image_top_bottom2(uint layer);
+	void	vertcal_blur5(uint layer);
+	void	pad_image_left_right2(uint layer);
+	void	horiz_blur5(uint layer);
+
+	void	reduce_img( uint layer, std::string folder );
+	void 	copy_translate_img( uint layer );
+
+
+
+	// 1st gen,  Patch based kernels /////////////////////////////
+	void rho_sq( uint out_block_size, uint iter, uint layer);
+	void reduce_patch_Rho ( uint out_block_size, uint iter, uint layer );
+	void update_k2k_cpu( uint layer, Matx16f deltas_matx, /*float delta_theta, float delta,*/ Matx44f GT_pose );
+	void update_k2k( uint layer, float delta_theta, float delta, Matx44f GT_pose );
+
+
 
 
 	/////////////////////////////////////// RunCL_tracking.cpp
@@ -432,13 +456,8 @@ public:
 	void update_k2k_buf( Matx44f k2k, Matx44f pose );
 	//void initialize_tracking_depthmap(float initial_depth);
 
-	//////////////////////////////////////  Patch based kernels
-	void rho_sq( uint out_block_size, uint iter, uint layer);
-	void reduce_patch_Rho ( uint out_block_size, uint iter, uint layer );
-	void update_k2k_cpu( uint layer, Matx16f deltas_matx, /*float delta_theta, float delta,*/ Matx44f GT_pose );
-	void update_k2k( uint layer, float delta_theta, float delta, Matx44f GT_pose );
 
-	// whole img 1 thread per pixel kernels
+	/////////////// whole img 1 thread per pixel kernels
 	void se3_rho_sq( const uint local_num_samples,  const uint start_sample_idx,  float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels],	const float count[4], uint start, uint stop,	float k2k_3_16_[tracking_tot_samples][16]  ); //float k2k_[16]  );
 	//void se3_rho_sq( 								float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels], 	const float count[4], uint start, uint stop, float k2k_3_16_[tracking_tot_samples][16]  );				// Tracking
 	void estimateSE3_LK(float local_k2k[16], float SE3_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels], float SE3_weights_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels], float Rho_sq_results[max_mipmap_layers][tracking_num_colour_channels], int count, uint start, uint stop);

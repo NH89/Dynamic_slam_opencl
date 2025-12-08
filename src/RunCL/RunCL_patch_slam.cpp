@@ -1,6 +1,8 @@
 #include "RunCL.hpp"
 
-void RunCL::initialize_patch_params(){
+// called by Dynamic_slam::Dynamic_slam //////////////////////////////////////////////////////////////////////////////////////////////////
+
+void RunCL::initialize_patch_params(){																// called by Dynamic_slam::Dynamic_slam
 	string fname					= "RunCL::initialize_patch_params()";
 	int local_verbosity_threshold	= V_RUNCL_INITIALIZE_PATCH_PARAMS;
 
@@ -31,7 +33,7 @@ void RunCL::initialize_patch_params(){
 }
 
 
-void RunCL::compute_patch_lookup_table( uint start, uint stop){
+void RunCL::compute_patch_lookup_table( uint start, uint stop){										// called by Dynamic_slam::Dynamic_slam
 	string fname = "RunCL::compute_patch_lookup_table( )";
 	int local_verbosity_threshold = V_RUNCL_COMPUTE_PATCH_LOOKUP_TABLE;
 	cl_kernel kernel = compute_patch_lookup_table_kernel;
@@ -169,7 +171,7 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){
 }
 
 
-void RunCL::patch_img_gradients_set_params( uint out_block_size ){	// Uses patch lookup table
+void RunCL::patch_img_gradients_set_params( uint out_block_size ){	// Uses patch lookup table		// called by Dynamic_slam::Dynamic_slam
 	string fname = "RunCL::patch_img_gradients_set_params()";
 	int local_verbosity_threshold = V_RUNCL_PATCH_IMG_GRADIENTS;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients_set_params()_chk1 #############################################################"<<flush;}
 	cl_kernel kernel		= patch_img_grad_kernel;																			// To be launched with 1 thread per col for 32x32 patches, and an integer multiple of 32 threads.
@@ -273,8 +275,9 @@ void RunCL::patch_img_gradients_set_params( uint out_block_size ){	// Uses patch
 	}
 }
 
+// called by Dynamic_slam::getFrame //////////////////////////////////////////////////////////////////////////////////////////////////
 
-void RunCL::patch_img_gradients( uint layer ){
+void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic_slam::getFrame
 	string fname = "RunCL::patch_img_gradients()";
 	int local_verbosity_threshold = V_RUNCL_PATCH_IMG_GRADIENTS;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_chk1 #############################################################"<<flush;}
 	cl_kernel		kernel						= patch_img_grad_kernel;
@@ -368,7 +371,7 @@ void RunCL::patch_img_gradients( uint layer ){
 }
 
 
-void  RunCL::patch_hessian_reduce(uint layer){
+void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic_slam::getFrame
 	string 		fname	= "RunCL::patch_hessian_reduce()";
 	int local_verbosity_threshold = V_RUNCL_PATCH_IMG_GRADIENTS;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_hessian_reduce()_chk1 layer="<<layer<<" #############################################################"<<flush;}
 	cl_kernel	kernel	= patch_hessian_reduce_kernel;

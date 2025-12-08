@@ -173,6 +173,11 @@
 	#define	V_RUNCL_COMPUTE_PATCH_LOOKUP_TABLE			-2
 	#define	V_RUNCL_PATCH_IMG_GRADIENTS					-2
 
+	/////////////////////////////////////// RUNCL_PATCH_TRACKING.CPP
+	#define V_RUNCL_REDUCE_IMG							-1
+	#define V_RUNCL_BLUR_IMG							-1
+
+
 	/////////////////////////////////////// RUNCL_SETUP_KEYFRAME.CPP
 	#define	V_RUNCL_ESTIMATECALIBRATION					1
 	#define	V_RUNCL_TRANSFORM_DEPTHMAP					-2

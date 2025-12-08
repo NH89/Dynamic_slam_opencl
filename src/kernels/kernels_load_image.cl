@@ -291,7 +291,7 @@ __kernel void blur_image(
 			blurred_pixel += local_img_patch[lid+2 + i*patch_length];// /5;							// prevents blur wrapping left-right.
 		}
 	}
-	if (read_row>=read_rows_ || global_id_u >= pixels) return;									// num pixels to be written & num threads to really use. // mipmap_params_[MiM_PIXELS]
+	if (read_row>=read_rows_ || global_id_u >= pixels) return;										// num pixels to be written & num threads to really use. // mipmap_params_[MiM_PIXELS]
 	blurred_pixel		/= 25;
 	blurred_pixel[3] = 1.0f;
 	img_blurred[ read_index] = blurred_pixel;

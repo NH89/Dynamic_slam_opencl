@@ -86,9 +86,11 @@ add_executable(Dynamic_slam
          src/RunCL/RunCL.cpp
          src/RunCL/RunCL_binocular_disparity.cpp
          src/RunCL/RunCL_DownloadAndSave.cpp
+         src/RunCL/RunCL_first_gen_patch_kernels.cpp
          src/RunCL/RunCL_load_image.cpp
          src/RunCL/RunCL_mapping.cpp
          src/RunCL/RunCL_patch_slam.cpp
+         src/RunCL/RunCL_patch_tracking.cpp
          src/RunCL/RunCL_setup_keyframe.cpp
          src/RunCL/RunCL_tracking.cpp
          src/RunCL/RunCL_utils.cpp

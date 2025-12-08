@@ -328,6 +328,12 @@ void RunCL::createKernels(){
 	patch_img_grad_kernel				= clCreateKernel(m_program, "patch_img_grad",				&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'patch_img_grad'  kernel not built.\n"				<<flush; exit_(0);   }
 	patch_hessian_reduce_kernel			= clCreateKernel(m_program, "patch_hessian_reduce",			&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'patch_hessian_reduce'  kernel not built.\n"			<<flush; exit_(0);   }
 
+	// RunCL_patch_tracking.cpp
+	pad_image_top_bottom2_kernel		= clCreateKernel(m_program, "pad_image_top_bottom2",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'pad_image_top5'  kernel not built.\n"				<<flush; exit_(0);   }
+	vertcal_blur5_kernel				= clCreateKernel(m_program, "vertcal_blur5",				&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'vertcal_blur5_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
+	pad_image_left_right2_kernel		= clCreateKernel(m_program, "pad_image_left_right2",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'pad_image_left_right2'  kernel not built.\n"		<<flush; exit_(0);   }
+	horiz_blur5_kernel					= clCreateKernel(m_program, "horiz_blur5",					&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'patch_hessian_reduce'  kernel not built.\n"			<<flush; exit_(0);   }
+	reduce_img_kernel					= clCreateKernel(m_program, "reduce_img",					&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'reduce_img'  kernel not built.\n"					<<flush; exit_(0);   }
 }
 
 int RunCL::convertToString(const char *filename, std::string& s){
@@ -410,6 +416,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	layerstep 			= baseImage_width * baseImage_height;
 
 	mm_num_reductions	= obj["num_reductions"].asUInt();																					// Constant parameters of the mipmap, (as opposed to per-layer mipmap_buf)
+	mm_num_blur_layers	= obj["num_blur_layers"].asUInt();
 	mm_start			= 0;
 	mm_stop				= mm_num_reductions;																								if(verbosity>local_verbosity_threshold) cout << "\nRunCL::initialize_RunCL_chk0.5,  mm_start="<<mm_start<<",  mm_stop="<<mm_stop<<" \n" << flush;
 	mm_gaussian_size	= obj["gaussian_size"].asUInt();
@@ -538,6 +545,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	uint 							mipmap[8];
 	mipmap[MiM_READ_ROWS] 			= baseImage_height;
 	uint write_rows 				= mipmap[MiM_READ_ROWS] /2;
+	mipmap[MiM_WRITE_ROWS]			= write_rows;
 	uint margin						= mm_margin;
 	uint read_cols_with_margin 		= mm_width ;
 	uint read_rows_with_margin		= mipmap[MiM_READ_ROWS] + margin;
@@ -547,7 +555,9 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	mipmap[MiM_WRITE_COLS]			= mipmap[MiM_READ_COLS]/2;
 	mipmap[MiM_PIXELS]				= mipmap[MiM_READ_COLS] * mipmap[MiM_READ_ROWS];
 
-	for(int reduction = 0; reduction <= mm_num_reductions+1; reduction++) {
+	int stop 						= min(mm_num_reductions, max_mipmap_layers-1);	// TODO compute required reduction and blur depending on img size
+	int reduction = 0;
+	for(; reduction <= stop; reduction++) {
 		num_threads[reduction]		= ceil( (float)(mipmap[MiM_PIXELS])/(float)local_work_size ) * local_work_size ;						// global_work_size formula for num_treads req for this layer.
 		for (int i=0; i<8; i++) 	{																										// Initialize the global MipMap[8*8] array.
 			MipMap[reduction*8 +i] = mipmap[i];
@@ -557,13 +567,29 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 		mipmap[MiM_WRITE_OFFSET] 	= mipmap[MiM_WRITE_OFFSET] + read_cols_with_margin * (margin + write_rows);
 		mipmap[MiM_READ_ROWS] 		= write_rows;
 		write_rows					= write_rows/2;
+		mipmap[MiM_WRITE_ROWS]		= write_rows;
 		mipmap[MiM_READ_COLS] 		= mipmap[MiM_WRITE_COLS];
 		mipmap[MiM_WRITE_COLS] 		= mipmap[MiM_WRITE_COLS]/2;
 		mipmap[MiM_PIXELS]			= mipmap[MiM_READ_COLS] * mipmap[MiM_READ_ROWS];
 	}
+	mipmap[MiM_WRITE_ROWS]			= mipmap[MiM_READ_ROWS];
+	mipmap[MiM_WRITE_COLS] 			= mipmap[MiM_READ_COLS];
+	mipmap[MiM_WRITE_OFFSET] 		= mipmap[MiM_READ_OFFSET] + mipmap[MiM_READ_COLS] + 2*margin;
+
+	stop 							= min( (mm_num_reductions + mm_num_blur_layers),  max_mipmap_layers-1);
+	int layer 						= reduction;
+	for(; layer <= stop; layer++) {
+		for (int i=0; i<8; i++) 	{																										// Initialize the global MipMap[8*8] array.
+			MipMap[layer*8 +i] = mipmap[i];
+																																			if(verbosity>local_verbosity_threshold) { cout << "\nMipMap["<<layer<<"*8 +"<<i<<"]="<<MipMap[layer*8 +i] ;}
+		}																																	if(verbosity>local_verbosity_threshold) { cout << endl << flush; }
+		mipmap[MiM_READ_OFFSET]		= mipmap[MiM_WRITE_OFFSET];
+		mipmap[MiM_WRITE_OFFSET] 	= mipmap[MiM_READ_OFFSET] + mipmap[MiM_READ_COLS] + 2*margin;
+	}
+
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout <<"	\nRunCL::initialize"<<endl;
-																																				for(int reduction = 0; reduction <= mm_num_reductions+1; reduction++) {
+																																				for(int reduction = 0; reduction < max_mipmap_layers; reduction++) {
 																																					cout << "\n\n reduction = " 		<< reduction;
 																																					cout << "\n MiM_PIXELS = " 			<< MipMap[reduction*8 +MiM_PIXELS];
 																																					cout << "\n MiM_READ_OFFSET = " 	<< MipMap[reduction*8 +MiM_READ_OFFSET] ;
@@ -573,6 +599,8 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																					//cout << "\n MiM_GAUSSIAN_SIZE = " 	<< MipMap[reduction*8 +MiM_GAUSSIAN_SIZE];
 																																					cout << "\n MiM_READ_ROWS = " 		<< MipMap[reduction*8 +MiM_READ_ROWS];
 																																					cout << "\n MiM_WRITE_ROWS = " 		<< MipMap[reduction*8 +MiM_WRITE_ROWS];
+																																					cout << "\n row = "					<< MipMap[reduction*8 +MiM_READ_OFFSET] / mm_width;
+																																					cout << "\n col = "					<< MipMap[reduction*8 +MiM_READ_OFFSET] % mm_width;
 																																				}
 																																			}
 																																			/*
@@ -1168,8 +1196,12 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	status = clReleaseKernel(compute_patch_lookup_table_kernel);	if (status != CL_SUCCESS)	{ cout << "\ncompute_patch_lookup_table_kernel	status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(patch_img_grad_kernel);				if (status != CL_SUCCESS)	{ cout << "\npatch_img_grad_kernel				status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(patch_hessian_reduce_kernel);			if (status != CL_SUCCESS)	{ cout << "\npatch_hessian_reduce_kernel		status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
-
-
+	// RunCL_patch_tracking.cpp
+	status = clReleaseKernel(pad_image_top_bottom2_kernel);			if (status != CL_SUCCESS)	{ cout << "\npad_image_top_bottom2_kernel		status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(vertcal_blur5_kernel);					if (status != CL_SUCCESS)	{ cout << "\nvertcal_blur5_kernel				status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(pad_image_left_right2_kernel);			if (status != CL_SUCCESS)	{ cout << "\npad_image_left_right2_kernel		status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(horiz_blur5_kernel);					if (status != CL_SUCCESS)	{ cout << "\nhoriz_blur5_kernel					status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(reduce_img_kernel);					if (status != CL_SUCCESS)	{ cout << "\nreduce_img_kernel					status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 
 	// release command queues

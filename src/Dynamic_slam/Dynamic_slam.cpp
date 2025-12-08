@@ -272,9 +272,12 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 	runcl.loadFrame( image );																												// NB Nvidia GeForce have 'Tensor Compute" FP16, accessible by PTX. AMD have RDNA and CDNA. These need PTX/assembly code and may use BF16 instead of FP16.
 																																			// load a basic image in CV_8UC3, then convert on GPU to 'half'
 	runcl.cvt_color_space( );
-	runcl.blur_image();//runcl.imgmem, runcl.imgmem_blurred , "imgmem_blurred");
-	//runcl.blur_image();
-	runcl.mipmap_linear(	runcl.current_frames[ 	runcl.current_frames_idx[0] ].img_buf, 		"imgmem");
+	//runcl.blur_image();//runcl.imgmem, runcl.imgmem_blurred , "imgmem_blurred");
+	//runcl.mipmap_linear(	runcl.current_frames[ 	runcl.current_frames_idx[0] ].img_buf, 		"imgmem");
+	uint reductions			= 4;	// given 640x480 base img.
+	uint blur_layers		= 3;
+	std::string folder		= "imgmem";
+	runcl.build_img_pyramid( reductions, blur_layers, "imgmem" );		// RunCL_patch_image_tracking.cpp  way to build pyramid, with additional blur layers at apex
 
 	runcl.current_frames[	runcl.current_frames_idx[0] ].frame_num		=	runcl.dataset_frame_num;
 
