@@ -205,11 +205,13 @@ void RunCL::patch_img_gradients_set_params( uint out_block_size ){	// Uses patch
 	uint		patches_per_workgroup_local_mem		= floor ( device_local_mem_size	/ one_patch_local_Hessian_size);
 																																if( verbosity>local_verbosity_threshold+1 ) {
 																																	cout <<"\npatches_per_workgroup_local_mem 	= "<<patches_per_workgroup_local_mem<<flush;
+																																	cout <<"\npatch_size = "<<patch_size<<flush;
 																																}
 	for (uint layer_=0; layer_<max_mipmap_layers; layer_++){
 		patch_img_gradients_workgroup_size[layer_]	= min( patch_local_work_size[layer_],  patches_per_workgroup_local_mem * patch_size );
 																																if( verbosity>local_verbosity_threshold+1 ) {
-																																	cout <<"\npatch_img_gradients_workgroup_size["<<layer_<<"] = "<<patch_img_gradients_workgroup_size[layer_]<<flush;
+																																	cout <<"\npatch_local_work_size["<<layer_<<"] = "<<patch_local_work_size[layer_];
+																																	cout <<"\tpatch_img_gradients_workgroup_size["<<layer_<<"] = "<<patch_img_gradients_workgroup_size[layer_]<<flush;
 																																}
 	}
 	//Inputs:

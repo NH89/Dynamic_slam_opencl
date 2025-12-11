@@ -274,7 +274,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 	runcl.cvt_color_space( );
 	//runcl.blur_image();//runcl.imgmem, runcl.imgmem_blurred , "imgmem_blurred");
 	//runcl.mipmap_linear(	runcl.current_frames[ 	runcl.current_frames_idx[0] ].img_buf, 		"imgmem");
-	uint reductions			= 4;	// given 640x480 base img.
+	uint reductions			= 5;	// given 640x480 base img.
 	uint blur_layers		= 3;
 	std::string folder		= "imgmem";
 	runcl.build_img_pyramid( reductions, blur_layers, "imgmem" );		// RunCL_patch_image_tracking.cpp  way to build pyramid, with additional blur layers at apex

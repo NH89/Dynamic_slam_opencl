@@ -6,7 +6,7 @@ void RunCL::build_img_pyramid( uint reductions, uint blur_layers, std::string fo
 	string fname = "RunCL::build_img_pyramid()";
 	int local_verbosity_threshold = V_RUNCL_REDUCE_IMG;																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::build_img_pyramid(..)_chk0"<<flush;}
 
-	int stop 		= min(mm_num_reductions, max_mipmap_layers-1);	// TODO compute required reduction and blur depending on img size
+	int stop 		= min(mm_num_reductions+1, max_mipmap_layers-1);	// TODO compute required reduction and blur depending on img size
 	int layer 		= 0;
 																																			cout << "\nlayer = "<<layer<<flush;
 	reduce_img( layer, folder);
@@ -28,6 +28,7 @@ void RunCL::build_img_pyramid( uint reductions, uint blur_layers, std::string fo
 			blur_image_layer( layer );					// NB will need new locations for non-reduced layers.
 		}
 	}
+
 																																			cout << "\nlast layer = "<<layer<<flush;
 	size_t 			local_size 		= local_work_size;
 	const cl_mem 	imgmem_			= current_frames[	current_frames_idx[0] ].img_buf;
@@ -52,8 +53,8 @@ void RunCL::blur_image_layer( uint layer ){
 }
 
 void RunCL::pad_image_top_bottom2( uint layer ){
-	string fname = "RunCL::pad_image_top2()";
-	int local_verbosity_threshold 	= V_RUNCL_REDUCE_IMG;																		if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::pad_image_top2(..)_chk0"<<flush;}
+	string fname = "RunCL::pad_image_top_bottom2()";
+	int local_verbosity_threshold 	= V_RUNCL_REDUCE_IMG;																		if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::pad_image_top_bottom2(..)_chk0"<<flush;}
 	cl_kernel 		kernel 			= pad_image_top_bottom2_kernel;
 	const cl_mem 	imgmem_			= current_frames[	current_frames_idx[0] ].img_buf;
 
@@ -63,6 +64,17 @@ void RunCL::pad_image_top_bottom2( uint layer ){
 	uint	buf_width				= uint_params[MM_COLS];													//2 mm_cols, i.e. width of the buffer holding the image pyramid
 	uint	offset2					= offset1 + buf_width * (MipMap[layer * 8 + MiM_READ_ROWS] - 1);		//1 bottom left corner
 	uint	img_pixels				= MipMap[layer * 8 + MiM_PIXELS];										//3 num rows of this level of the image pyramid
+
+																																if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::pad_image_top_bottom2(..)_chk1"<<flush;
+																																	cout \
+																																	<<" local_work_size_ = "	<< local_work_size_
+																																	<<" threads_to_launch = "	<< threads_to_launch
+																																	<<" offset1 = "				<< offset1
+																																	<<" buf_width = "			<< buf_width
+																																	<<" offset2 = "				<< offset2
+																																	<<" img_pixels = "			<< img_pixels
+																																	<<flush;
+																																}
 
 	_clSetKernelArg( kernel,	0, sizeof(int), 		&offset1,						fname );								//	__private	uint	offset1,			//0	top left corner
 	_clSetKernelArg( kernel,	1, sizeof(int), 		&offset2,						fname );								//	__private	uint	offset2,			//1 bottom left corner
