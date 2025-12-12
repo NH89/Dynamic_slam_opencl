@@ -93,7 +93,8 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 																																			//PRINT_FLOAT_16(runcl.fp32_k2keyframe,);
 																																			if (layer>6) runcl.exit_(1);
 																																		}
-		runcl.estimateSE3_LK( k2k_4_16[ iter ], SE3_results, SE3_weights, Rho_sq_results[ iter ], iter, layer, layer );		// NB processes largest layer first.		// Find the gradient "update" wrt SE3
+// TODO replace with patch tracking
+//	runcl.estimateSE3_LK( k2k_4_16[ iter ], SE3_results, SE3_weights, Rho_sq_results[ iter ], iter, layer, layer );		// NB processes largest layer first.		// Find the gradient "update" wrt SE3
 
 		/////////////////////////////////////////////////// testing kernel baased tracking
 		uint out_block_size = 32;

@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
 		}
 																														cerr << "\n\nmain()  dynamic_slam.optimize_depth();"<<flush;
 		//dynamic_slam.optimize_depth();
-																														if(verbosity_>1) dynamic_slam.runcl.saveCostVols(imagesPerCV);
+																														//if(verbosity_>1) dynamic_slam.runcl.saveCostVols(imagesPerCV);
 		//dynamic_slam.initialize_keyframe_vec();																			// next keyframe
 																														// TODO write new depthmap transformation based on bin sort from fluids_v3 & Morphogenesis.
 		

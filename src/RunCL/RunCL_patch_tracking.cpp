@@ -1,12 +1,85 @@
 #include "RunCL.hpp"
 
+// old functions
+
+void RunCL::precomp_param_maps ( float SE3_k2k[6*16]){ //  Compute maps of pixel motion for each SE3 DoF, and camera params // Derived from RunCL::mipmap
+	string fname = "RunCL::precom_param_maps( ..)";
+	int local_verbosity_threshold = V_RUNCL_PRECOM_PARAM_MAPS;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::precom_param_maps( float SE3_k2k[6*16])_chk_0 "<<flush;}
+	cv::Mat depth		= cv::Mat::ones ( mm_height, mm_width, CV_32FC1);																	// NB must recompute translation maps at run time. NB parallax motion is proportional to inv depth.
+	float mid_depth 	= ( fp32_params[MAX_INV_DEPTH] + fp32_params[MIN_INV_DEPTH])/2.0;                                                   // TODO fix : depthmap not used as a kernel arg. NB want to match scale of depth range, but ? parallax may vary.
+	depth 				*= mid_depth;
+
+	_clEnqueueWriteBuffer( uload_queue, SE3_k2kbuf,		CL_FALSE, 0, 6*16*sizeof( float), 	SE3_k2k,		fname);
+	_clEnqueueWriteBuffer( uload_queue, depth_mem_temp,	CL_FALSE, 0, mm_size_bytes_C1,	 	depth.data,		fname);
+
+	//      __private	 uint layer, set in mipmap_call_kernel( ..) below                                                                      __private	 uint	    layer,		//0
+    _clSetKernelArg( comp_param_maps_kernel, 1, sizeof( cl_mem),	&mipmap_buf, fname);														//__constant uint*	mipmap_params,	//1
+	_clSetKernelArg( comp_param_maps_kernel, 2, sizeof( cl_mem), 	&uint_param_buf, fname);													//__global 	uint*	uint_params		//2
+	_clSetKernelArg( comp_param_maps_kernel, 3, sizeof( cl_mem), 	&SE3_k2kbuf, fname);														//__global 	float* 	k2k,			//3
+	_clSetKernelArg( comp_param_maps_kernel, 4, sizeof( cl_mem), 	&SE3_map_mem, fname);														//__global 	float* 	SE3_map,		//4
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\nRunCL::precom_param_maps( float SO3_k2k[6*16])_chk_1 "<<flush;}
+	// SE3_map_mem, k_map_mem, dist_map_mem;
+	mipmap_call_kernel( comp_param_maps_kernel, m_queue );
+																																			if( verbosity>local_verbosity_threshold) {
+																																													cout<<"\n\nRunCL::precom_param_maps( float SO3_k2k[6*16])_output "<<flush;
+																																													for ( int i=0; i<1; i++) { // TODO x & y for all 6 SE3 DoF
+																																														stringstream ss;	ss << dataset_frame_num << "_SE3_map";
+																																														DownloadAndSave_2Channel_volume( SE3_map_mem, ss.str( ), paths.at( "SE3_map_mem"), mm_size_bytes_C1*2, mm_Image_size, CV_32FC2, false, -1.0, 6 /*SE3, 6DoF */);
+																																													}
+																																													cout<<"\nRunCL::precom_param_maps( float SE3_k2k[6*16])_chk.. Finished "<<flush;
+																																			}
+}
+
+
+/* void RunCL::update_tracking_depthmap( cl_mem depthmap_){
+	string fname = "RunCL::update_tracking_depthmap( cl_mem depthmap_)";
+	int local_verbosity_threshold = V_RUNCL_UPDATE_TRACKING_DEPTHMAP;
+
+	_clEnqueueCopyBuffer( m_queue,  depthmap_, keyframe_depth_mem, 0, 0, mm_size_bytes_C1, fname);
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_tracking_depthmap( ..)_finished ."<<flush;}
+}
+*/
+
+void RunCL::update_k2k_buf( float k2k_3_16_[16],		float pose_arry[16] ) {
+	string fname = "RunCL::update_k2k_buf( ..)";
+	int local_verbosity_threshold = V_RUNCL_UPDATE_K2K_BUF;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k_buf( ..)_chk0 .##################################################################"<<flush;
+																																				PRINT_FLOAT_16( k2k_3_16_, );
+																																				PRINT_FLOAT_16( pose_arry, );
+																																			}
+	_clEnqueueWriteBuffer( uload_queue, 	k2kbuf,		CL_FALSE, 0, 16*sizeof( float), k2k_3_16_,  	fname);
+	_clEnqueueWriteBuffer( uload_queue, 	pose_buf,	CL_FALSE, 0, 16*sizeof( float), pose_arry, 		fname);
+}
+
+void RunCL::update_k2k_buf( Matx44f k2k, Matx44f pose ){
+	string fname = "RunCL::update_k2k_buf( ..)";
+	int local_verbosity_threshold = V_RUNCL_UPDATE_K2K_BUF;
+	float k2k_array[16], pose_array[16];
+	Matx44f_To_float16arry(	k2k,	k2k_array );
+	Matx44f_To_float16arry( pose,	pose_array );
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k_buf( ..)_chk0 .##################################################################"<<flush;
+																																				PRINT_FLOAT_16( k2k_array, );
+																																				PRINT_FLOAT_16( pose_array, );
+																																			}
+	_clEnqueueWriteBuffer( uload_queue, 	k2kbuf,		CL_FALSE, 0, 16*sizeof( float), k2k_array,	fname);
+	_clEnqueueWriteBuffer( uload_queue, 	pose_buf,	CL_FALSE, 0, 16*sizeof( float), pose_array,	fname);
+	for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].k2k_0to1_est[i]	=	k2k_array[i];	}
+}
+
+
+
+
+
+// new functions ////////////////////////////////////////////////
+
 // Image pyramid
 
 void RunCL::build_img_pyramid( uint reductions, uint blur_layers, std::string folder ){
 	string fname = "RunCL::build_img_pyramid()";
 	int local_verbosity_threshold = V_RUNCL_REDUCE_IMG;																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::build_img_pyramid(..)_chk0"<<flush;}
 
-	int stop 		= min(mm_num_reductions+1, max_mipmap_layers-1);	// TODO compute required reduction and blur depending on img size
+	int stop 		= min(mm_num_reductions+1,  max_mipmap_layers-1);	// TODO compute required reduction and blur depending on img size
 	int layer 		= 0;
 																																			cout << "\nlayer = "<<layer<<flush;
 	reduce_img( layer, folder);

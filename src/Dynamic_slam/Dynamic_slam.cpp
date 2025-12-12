@@ -77,15 +77,15 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 																																			}
 	runcl.initialize_RunCL( imread(png[runcl.dataset_frame_num].string() ) );																// Set image params, ref for dimensions and data type. ########################################################################
 	runcl.allocatemem();																													// Allocate buffers on the GPU ######
-	runcl.compute_lookup_table(runcl.mm_start, runcl.mm_stop);																				// Calls kernel. Used for disparity kernels now, maybe  more later...
+	//runcl.compute_lookup_table(runcl.mm_start, runcl.mm_stop);																				// Calls kernel. Used for disparity kernels now, maybe  more later...
 
 	runcl.initialize_patch_params();
 	runcl.compute_patch_lookup_table( runcl.mm_start, runcl.mm_stop);
 	runcl.patch_img_gradients_set_params( 4/*out_block_size*/ );		//TODO set in .conf file,  uint out_block_sizefor ST3_hessian		// will need a runcl.set_patch_kernels_params() function
 
 	initialize_camera_vec();
-	initialize_keyframe_vec();																												// First keyframe
-	initialize_resultsMat();
+	// initialize_keyframe_vec();																												// First keyframe
+	// initialize_resultsMat();
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_ finished "
 																																				<< "#####################################################################################\f" << flush;
 };
@@ -173,9 +173,9 @@ void Dynamic_slam::initialize_camera_vec(){
 
 																																			}
 	generate_SE3_k2k_vec( SE3_k2k );																										// fills float[96] ie 6xfloat[16] from conf.json intrinsic camera matrix + SE3 increments.
-	runcl.precom_param_maps( SE3_k2k );																										// GPU computes J(u,v/SE3) Jacobian of optical flow wrt SE3.
+	runcl.precomp_param_maps ( SE3_k2k );																										// GPU computes J(u,v/SE3) Jacobian of optical flow wrt SE3.
 	getFrame();
-	runcl.costvol_frame_num++;
+//	runcl.costvol_frame_num++;
 	runcl.dataset_frame_num++;
 																																			if (verbosity>local_verbosity_threshold){ cout << "\nDynamic_slam::initialize_camera_vec Finished:"
 																																				<<"##############################################################################\f" <<flush;
@@ -231,10 +231,12 @@ int Dynamic_slam::nextFrame() {
 	//runcl.atomic_test2();
 	////////////////////////////////// Parallax depth mapping
 																						auto step_7 = high_resolution_clock::now();
-	updateDepthCostVol();																auto step_8 = high_resolution_clock::now();			// Update cost vol with the new frame, and repeat optimization of the depth map.
+// TODO replace with patch_slam and multi-frame depth+motion+accel maps,  together with vel, accel, jolt of camera,   and later reflectance & illum etc...
+//	updateDepthCostVol();
+																						auto step_8 = high_resolution_clock::now();			// Update cost vol with the new frame, and repeat optimization of the depth map.
 																																			// NB Cost vol needs to be initialized on a particular keyframe.
 	getNextFrameProfile(step_0, step_1, step_2, step_3, step_4, step_5, step_6, step_7, step_8);											// A previous depth map can be transfered, and the updated depth map after each frame, can be used to track the next frame.
-	runcl.costvol_frame_num++;
+//	runcl.costvol_frame_num++;
 	runcl.dataset_frame_num++;
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame Finished "
 																																				<<"##################################################################################\f" << flush; }

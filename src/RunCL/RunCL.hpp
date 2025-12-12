@@ -62,7 +62,7 @@ public:
 	RunCL( Json::Value obj_ );
 	Json::Value 		obj;
 
-	cv::Mat 			resultsMat;																																// used to insert images for multiple iterations, and variables for comparison. Size set in itialization, from cnf.json data.
+//	cv::Mat 			resultsMat;																																// used to insert images for multiple iterations, and variables for comparison. Size set in itialization, from cnf.json data.
 	int					verbosity;
 	bool				tiff, png, vtp;
 	std::vector<cl_platform_id> 	m_platform_ids;
@@ -72,11 +72,21 @@ public:
 	cl_program			m_program;
 
 	// Kernels
-	cl_kernel			disparity_kernel;
-	cl_kernel			convert_depth_kernel, invert_depth_kernel, transform_depthmap_kernel, transform_costvolume_kernel;
-	cl_kernel 			depth_cost_vol_kernel, cost_kernel, cache3_kernel, cache4_kernel, updateQD_kernel, updateG_kernel, updateA_kernel, measureDepthFit_kernel;
+	// old kernels
+	cl_kernel			convert_depth_kernel;
 	cl_kernel			cvt_color_space_kernel, cvt_color_space_linear_kernel, sum_image_variance_kernel, sample_image_variance_kernel, blur_image_kernel;
 	cl_kernel 			reduce_kernel, mipmap_float4_kernel, mipmap_float_kernel, img_grad_kernel, se3_rho_sq_kernel, comp_param_maps_kernel;
+	// 1st gen patch kernels ?
+	cl_kernel			rho_sq_kernel, reduce_patch_Rho_kernel, update_k2k_kernel;// TODO declare, create, release kernel in Run_cl.h etc.
+	// RunCL_patchslam.cpp
+	cl_kernel			compute_patch_lookup_table_kernel, patch_img_grad_kernel, patch_hessian_reduce_kernel;
+	// RunCL_patch_tracking.cpp
+	cl_kernel			pad_image_top_bottom2_kernel, vertcal_blur5_kernel, pad_image_left_right2_kernel, horiz_blur5_kernel, reduce_img_kernel;
+/*
+//	cl_kernel			disparity_kernel;
+//	cl_kernel			convert_depth_kernel, invert_depth_kernel, transform_depthmap_kernel, transform_costvolume_kernel;
+//	cl_kernel 			depth_cost_vol_kernel, cost_kernel, cache3_kernel, cache4_kernel, updateQD_kernel, updateG_kernel, updateA_kernel, measureDepthFit_kernel;
+
 	cl_kernel			se3_lk_grad_kernel, atomic_test1_kernel, atomic_test2_kernel;
 	// stereo disparity kernels
 	cl_kernel			compute_lookup_table_kernel, disparity_load_frame_kernel, set_warp_new_image_kernel, warp_image_kernel;
@@ -85,13 +95,7 @@ public:
 	cl_kernel			compute_warp_kernel, regularize_warp_kernel, propagate_warp_kernel;
 	cl_kernel			warp_and_depth_error_kernel;
 	cl_kernel			mipmap_3x3blur_flt4_kernel, correlation_one_step_kernel, blur_volume_kernel, correlation_2nd_step_kernel;
-
-	cl_kernel			rho_sq_kernel, reduce_patch_Rho_kernel, update_k2k_kernel;// TODO declare, create, release kernel in Run_cl.h etc.
-	// RunCL_patchslam.cpp
-	cl_kernel			compute_patch_lookup_table_kernel, patch_img_grad_kernel, patch_hessian_reduce_kernel;
-	// RunCL_patch_tracking.cpp
-	cl_kernel			pad_image_top_bottom2_kernel, vertcal_blur5_kernel, pad_image_left_right2_kernel, horiz_blur5_kernel, reduce_img_kernel;
-	
+*/
 	// GPU Buffers
 	static const uint 	num_current_frames	= 5;																												// static = same for all instances of class Dynamic_slam.
 	cl_mem 				imgmem[num_current_frames], velmap[num_current_frames], depth_mem, g1mem;
@@ -188,16 +192,16 @@ public:
 		}
 	}
 
-	cl_mem 				basemem, imgmem_blurred, gxmem, gymem, k_map_mem, dist_map_mem, SE3_grad_map_mem, SE3_incr_map_mem;
-	cl_mem				cdatabuf, temp_cdatabuf, cdatabuf_8chan, hdatabuf, temp_hdatabuf, dbg_databuf;
-	cl_mem 				dmem, amem, qmem, qmem2, lomem, himem, mean_mem, img_sum_buf, depth_mem_temp, depth_mem_GT;												// 'depth_mem_temp' is use to load & prepare data for depth_mem_GT and transform_depthmap
+	cl_mem 				basemem, imgmem_blurred, SE3_grad_map_mem, SE3_incr_map_mem;		// gxmem, gymem, dist_map_mem,  k_map_mem,
+	//cl_mem				cdatabuf, temp_cdatabuf, cdatabuf_8chan, hdatabuf, temp_hdatabuf, dbg_databuf;
+	cl_mem 				depth_mem_temp, depth_mem_GT;	// dmem, amem, qmem, qmem2, lomem, himem, mean_mem, img_sum_buf, 											// 'depth_mem_temp' is use to load & prepare data for depth_mem_GT and transform_depthmap
 
-	cl_mem				k2kbuf, invk2kbuf, SO3_k2kbuf, SE3_k2kbuf, fp32_param_buf, uint_param_buf, mipmap_buf, gaussian_buf, img_stats_buf;
-	cl_mem 				SE3_map_mem, SE3_rho_map_mem, se3_sum_rho_sq_mem, SE3_weight_map_mem;
-	cl_mem 				pix_sum_mem, var_sum_mem, se3_sum_mem, se3_sum2_mem, se3_weight_sum_mem;
-	cl_mem 				keyframe_imgmem, keyframe_imgmem_HSV_grad, keyframe_depth_mem, keyframe_g1mem, keyframe_SE3_grad_map_mem, keyframe_depth_mem_GT;
-	cl_mem				HSV_grad_mem, dmem_disparity, dmem_disparity_sum;
-
+	cl_mem				k2kbuf, SE3_k2kbuf, fp32_param_buf, uint_param_buf, mipmap_buf, img_stats_buf;		// invk2kbuf, SO3_k2kbuf, gaussian_buf,
+	cl_mem 				SE3_map_mem, SE3_rho_map_mem, SE3_weight_map_mem;									// se3_sum_rho_sq_mem,
+	cl_mem 				pix_sum_mem, var_sum_mem;															// , se3_sum_mem, se3_sum2_mem, se3_weight_sum_mem;
+	// cl_mem 				keyframe_imgmem, keyframe_imgmem_HSV_grad, keyframe_depth_mem, keyframe_g1mem, keyframe_SE3_grad_map_mem, keyframe_depth_mem_GT;
+	cl_mem				HSV_grad_mem;	// , dmem_disparity, dmem_disparity_sum;
+/*
 	// buffers for stereo disparity
 	cl_mem				lookup_table_buf,			ref_img_buf,				new_img_buf,					warped_img_buf;
 	cl_mem				ref_img_mean_rows_buf,		ref_img_mean_buf,			warped_img_mean_rows_buf,		warped_img_mean_buf;
@@ -210,7 +214,7 @@ public:
 	cl_mem				warp_buf_regularized,		confidence_buf_regularized;
 	cl_mem				warp_ref_buf,				warp_GT_buf;
 	cl_mem				warp_error_buf,				depth_error_buf,			depth_est_buf;
-
+*/
 	// buffers for patch kernel based Dynamic_slam
 	cl_mem				patch_lookup_table_buf;
 	cl_mem				SE3_hessian_pinv_map_mem,		SE3_jacobian_map_mem;
@@ -255,16 +259,16 @@ public:
 	int 				costVolLayers;					//	
 	int 				baseImage_type;					//	
 	int 				mm_Image_type;					//	
-	
+
 	int 				dataset_frame_num		= 0;	//	Frame number in dataset, set in constructor from json file. Incremented in Dynamic_slam::nextFrame.
-	int 				costvol_frame_num		= 0;	//	Frame number in the cost volume. Set = 0 in RunCL::initializeDepthCostVol(..) . Incremented in Dynamic_slam::nextFrame(..)
+/*	int 				costvol_frame_num		= 0;	//	Frame number in the cost volume. Set = 0 in RunCL::initializeDepthCostVol(..) . Incremented in Dynamic_slam::nextFrame(..)
 	int 				keyFrameCount			= 0;	//	used in saving data to file. Incremented in Dynamic_slam::initialize_new_keyframe(..)
 	int 				save_index				= 0;	//	Set in RunCL::initializeDepthCostVol(), and RunCL::updateDepthCostVol(), to save_index = keyFrameCount*1000 + costvol_frame_num;
 	
 	int 				QD_count 				= 0; 	//	Incremented in RunCL::updateQD(..) Set = 0 in Dynmaic_slam::initialize_new_keyfrme(..)  & in Dynamic_slam::nextFrame()
 	int 				A_count					= 0;	//	Incremented in RunCL::updateA(..), ditto
 	int 				G_count					= 0;	//	Incremented in RunCL::updateG(..), ditto
-	
+*/
 	cv::Size 			baseImage_size, mm_Image_size;
 	std::map< std::string, std::filesystem::path > paths;
 
@@ -288,7 +292,7 @@ public:
 
 	//void mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_to_call){ mipmap_call_kernel( kernel_to_call,  queue_to_call, mm_start, mm_stop, false, local_work_size); } // , true
 
-	void layer_call_kernel(cl_kernel kernel_to_call,  cl_command_queue queue_to_call, uint layer, const size_t local_work_size);
+	//void layer_call_kernel(cl_kernel kernel_to_call,  cl_command_queue queue_to_call, uint layer, const size_t local_work_size);
 
 	void initialize_fp32_params();
 	void initialize_RunCL( cv::Mat baseImage_ );																						// Setting up buffers & mipmap parameters
@@ -300,7 +304,7 @@ public:
 
 
 
-	/////////////////////////////////////// RunCL_disparity.cpp
+/*	/////////////////////////////////////// RunCL_disparity.cpp
 
 	void compute_lookup_table(uint start, uint stop);
 	void disparity_load_frame(cl_mem input_img, cl_mem output_img, std::string folder );
@@ -330,12 +334,12 @@ public:
 	void covariance_3rows(uint layer, uint iter);
 	void covariance_cols( uint layer, uint iter);
 	void correlation( 	  uint layer, uint iter);
-
+*/
 
 	/////////////////////////////////////// RunCL_DownloadAndSave.cpp
 
 	void createFolders();																												// Called by RunCL(..) constructor, above.
-	void ReadOutput(uchar* outmat) ;
+//	void ReadOutput(uchar* outmat) ;
 	void ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset=0) ;
 
 	vector<Matx44f> ReadOutput_44f_vec( cl_mem buf_mem, size_t offset=0);
@@ -347,9 +351,9 @@ public:
 	Matx16f ReadOutput_16f( cl_mem buf_mem, size_t offset=0);
 	Matx61f ReadOutput_61f( cl_mem buf_mem, size_t offset=0);
 
-	void saveCostVols(float max_range);
+//	void saveCostVols(float max_range);
 
-	void Store_keyframe();																												// Required for Save_vtk(..), used for amem, demem etc.
+//	void Store_keyframe();																												// Required for Save_vtk(..), used for amem, demem etc.
 	void Save_vtk(cv::Mat mat, cv::Mat keyframe, std::filesystem::path folder );
 
 	// void DownloadAndSave_lookuptable(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range );
@@ -364,14 +368,14 @@ public:
 	void DownloadAndSave_3Channel(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, cv::Mat *bufImg, float max_range=1, uint offset=0, bool exception_tiff=false );
 	void DownloadAndSave_3Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers,  bool exception_tiff=false, float iter=0, bool display=false );
 
-	void PrepareResults_3Channel(cl_mem buffer, size_t image_size_bytes, cv::Size size_mat, int type_mat, cv::Mat *bufImg, float max_range /*=1*/, uint offset /*=0*/ );
-	void PrepareResults_3Channel_volume(cl_mem buffer, size_t image_size_bytes, cv::Size size_mat, int type_mat, float max_range, uint vol_layers,  float iter);
+//	void PrepareResults_3Channel(cl_mem buffer, size_t image_size_bytes, cv::Size size_mat, int type_mat, cv::Mat *bufImg, float max_range /*=1*/, uint offset /*=0*/ );
+//	void PrepareResults_3Channel_volume(cl_mem buffer, size_t image_size_bytes, cv::Size size_mat, int type_mat, float max_range, uint vol_layers,  float iter);
 
 	void DownloadAndSave_6Channel(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint offset=0);
 	void DownloadAndSave_6Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers );
 	
-	void DownloadAndSave_8Channel(cl_mem buffer, std::string count, std::map< std::string, std::filesystem::path > folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range /*=1*/, uint offset /*=0*/);
-	void DownloadAndSave_8Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers );
+//	void DownloadAndSave_8Channel(cl_mem buffer, std::string count, std::map< std::string, std::filesystem::path > folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range /*=1*/, uint offset /*=0*/);
+//	void DownloadAndSave_8Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers );
 	
 	void DownloadAndSave_HSV_grad(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint offset=0 );
 	
@@ -382,15 +386,15 @@ public:
 
 	////////////////////////////////////// RunCL_load_image.cpp
 
-	void precom_param_maps(float SO3_k2k[6*16]);																						// Image loading & preparation
+	void precomp_param_maps (float SO3_k2k[6*16]);																						// Image loading & preparation
 	void loadFrame(cv::Mat image);
 	void cvt_color_space();
 	void sum_image_variance();
 	void sample_image_variance();
-	void blur_image();
+//	void blur_image();
 	void mipmap_linear(cl_mem image_buf, std::string folder);
-	void mipmap_3x3blur_linear(cl_mem image_buf, std::string folder);
-	void img_gradients();
+//	void mipmap_3x3blur_linear(cl_mem image_buf, std::string folder);
+//	void img_gradients();
 	void patch_img_gradients();
 	
 	void load_GT_depth(cv::Mat GT_depth, bool invert);																					// Depthmap loading & preparation
@@ -450,14 +454,14 @@ public:
 
 
 	/////////////////////////////////////// RunCL_tracking.cpp
-	void update_tracking_depthmap(cl_mem depthmap_);
-	void update_current_frame_depth_mem( cl_mem depthmap_);
+//	void update_tracking_depthmap(cl_mem depthmap_);
+//	void update_current_frame_depth_mem( cl_mem depthmap_);
 	void update_k2k_buf(	float k2k_3_16_[16], 	float pose_arry[16]  );
 	void update_k2k_buf( Matx44f k2k, Matx44f pose );
 	//void initialize_tracking_depthmap(float initial_depth);
 
 
-	/////////////// whole img 1 thread per pixel kernels
+/*	/////////////// whole img 1 thread per pixel kernels
 	void se3_rho_sq( const uint local_num_samples,  const uint start_sample_idx,  float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels],	const float count[4], uint start, uint stop,	float k2k_3_16_[tracking_tot_samples][16]  ); //float k2k_[16]  );
 	//void se3_rho_sq( 								float Rho_sq_results[tracking_tot_samples][max_mipmap_layers][tracking_num_colour_channels], 	const float count[4], uint start, uint stop, float k2k_3_16_[tracking_tot_samples][16]  );				// Tracking
 	void estimateSE3_LK(float local_k2k[16], float SE3_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels], float SE3_weights_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels], float Rho_sq_results[max_mipmap_layers][tracking_num_colour_channels], int count, uint start, uint stop);
@@ -473,12 +477,12 @@ public:
 	void RelativeVel_Map();																												// RelativeVelMap - placeholder...
 	void atomic_test1();
 	void atomic_test2();
+*/
 
-
-	/////////////////////////////////////// RunCL_mapping.cpp
+/*	/////////////////////////////////////// RunCL_mapping.cpp
 	void swap_costvol_pointers();
-	void transform_depthmap( /*cv::Matx44f K2K_*/ float K2K_arry[16], cl_mem depthmap_);																		// Cost volume
-	void transform_costvolume(/*cv::Matx44f K2K_*/ float K2K_arry[16]);						//, cl_mem old_cdata_mem =cdatabuf,  cl_mem new_cdata_mem =new_cdatabuf, cl_mem old_hdata_mem =hdatabuf,  cl_mem new_hdata_mem =new_hdatabuf );
+	void transform_depthmap(  / * cv::Matx44f K2K_ * /  float K2K_arry[16], cl_mem depthmap_);																		// Cost volume
+	void transform_costvolume( / * cv::Matx44f K2K_ * /  float K2K_arry[16]);						//, cl_mem old_cdata_mem =cdatabuf,  cl_mem new_cdata_mem =new_cdatabuf, cl_mem old_hdata_mem =hdatabuf,  cl_mem new_hdata_mem =new_hdatabuf );
 	
 	void initializeFirstDepthCostVol( float default_depth );
 	void initializeDepthCostVol( cl_mem key_frame_depth_map_src);		// Depth costvol functions
@@ -493,7 +497,7 @@ public:
 	void SpatialCostFns();																												// SIRFS cost functions
 	void ParsimonyCostFns();
 	void ExhaustiveSearch();
-
+*/
 
 
 	//////////////////////////////////////

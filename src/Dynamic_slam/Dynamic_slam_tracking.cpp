@@ -322,7 +322,8 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 																																			//layer=obj["SE3_start_layer"].asUInt();
 																																			if (layer>6) runcl.exit_(1);
 																																		}
-		runcl.estimateSE3_LK( k2k_4_16[0], SE3_results, SE3_weights, Rho_sq_results[0], iter, layer-2, layer );		// NB processes largest layer first.		// Find the gradient "update" wrt SE3
+// TODO replace with patch tracking
+//		runcl.estimateSE3_LK( k2k_4_16[0], SE3_results, SE3_weights, Rho_sq_results[0], iter, layer-2, layer );		// NB processes largest layer first.		// Find the gradient "update" wrt SE3
 
 		for (int SE3=0; SE3<6; SE3++) {	update.operator()(SE3) = 	SE3_update_dof_weights[SE3] * SE3_update_layer_weights[layer] * factor * SE3_results[layer][SE3][channel] 	/ (SE3_weights[layer][SE3][channel] * runcl.img_stats[IMG_VAR+channel] ) ;  }
 
@@ -363,7 +364,8 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 																																		}
 		local_num_samples	= 2;
 		start_sample_idx	= 1;
-		runcl.se3_rho_sq( local_num_samples, start_sample_idx, Rho_sq_results, count, layer, layer+1, k2k_4_16 );						// Find Rho for the two sample steps
+// TODO replace with patch tracking
+//		runcl.se3_rho_sq( local_num_samples, start_sample_idx, Rho_sq_results, count, layer, layer+1, k2k_4_16 );						// Find Rho for the two sample steps
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nDynamic_slam::estimateSE3(): k2k_4_16[tracking_tot_samples][16] : ";
 																																			for (int a=0; a<tracking_tot_samples; a++){
@@ -394,7 +396,8 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 																																		}
 		local_num_samples	=1;
 		start_sample_idx	=3;
-		runcl.se3_rho_sq( local_num_samples, start_sample_idx, Rho_sq_results, count, layer, layer+1, k2k_4_16 );						// Find Rho at the predicted optimal step
+// TODO replace with patch tracking
+//		runcl.se3_rho_sq( local_num_samples, start_sample_idx, Rho_sq_results, count, layer, layer+1, k2k_4_16 );						// Find Rho at the predicted optimal step
 
 		float 	lowest = FLT_MAX;																										// Choose best of the 4 samples
 		int 	index  = 0;
@@ -472,7 +475,8 @@ void Dynamic_slam::estimateSE3(){																										// Adaptive step size
 
 	float pose_arry[16];
 	Matx44f_To_float16arry( frame_data.back().frame_data.keyframe2pose, pose_arry );
-	runcl.update_k2k_buf( k2k_4_16[0],  pose_arry );																								// Sets values in k2k_buf, for depth stages of the algorithm.
+// TODO replace with patch tracking
+//	runcl.update_k2k_buf( k2k_4_16[0],  pose_arry );																								// Sets values in k2k_buf, for depth stages of the algorithm.
 
 
 																																		if(verbosity>local_verbosity_threshold) {

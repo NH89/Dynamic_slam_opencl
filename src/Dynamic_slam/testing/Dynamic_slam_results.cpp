@@ -82,7 +82,7 @@ void Dynamic_slam::report_GT_pose_error(){																																		// A
 	cout << "\n void Dynamic_slam::report_GT_pose_error() Finished ######################################################################\n\f" << flush;
 }
 
-
+/*
 void Dynamic_slam::initialize_resultsMat(){	// need to take img pyramid layer 2 of output, or read layer num from .json .
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_INITIALIZE_RESULTSMAT;//verbosity_mp["Dynamic_slam::initialize_resultsMat"];
 																																			if(verbosity>local_verbosity_threshold) cout << "\n\n Dynamic_slam::initialize_resultsMat()_chk 1" << flush;
@@ -93,14 +93,14 @@ void Dynamic_slam::initialize_resultsMat(){	// need to take img pyramid layer 2 
 	runcl.resultsMat 	= cv::Mat::zeros ( rows, cols , CV_8UC4);																			if(verbosity>local_verbosity_threshold) cout << ",  runcl.resultsMat.size() = "<< runcl.resultsMat.size() 	<< flush;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::initialize_resultsMat()_chk  finished\n" 	<< flush;
 }
-
-void Dynamic_slam::getResult(){
+*/
+/* void Dynamic_slam::getResult(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_GETRESULT;//verbosity_mp["Dynamic_slam::getResult"];
 	if(verbosity>local_verbosity_threshold){
 		cout<<"\nDynamic_slam::getResult()  ################################################\n"<<flush;
 
 		stringstream ss;
-		ss << "getResult"<< runcl.save_index << "_QD_count_" << runcl.QD_count <<"_epsilon_"<</*epsilon*/runcl.fp32_params[EPSILON]<<"_sigmaQ_"<</*sigma_q*/runcl.fp32_params[SIGMA_Q]<<"_D_"<</*sigma_d*/runcl.fp32_params[SIGMA_D]<<"_theta_"<<runcl.fp32_params[THETA];
+		ss << "getResult"<< runcl.save_index << "_QD_count_" << runcl.QD_count <<"_epsilon_"<< / * epsilon * / runcl.fp32_params[EPSILON]<<"_sigmaQ_"<< / * sigma_q * / runcl.fp32_params[SIGMA_Q]<<"_D_"<< / * sigma_d * / runcl.fp32_params[SIGMA_D]<<"_theta_"<<runcl.fp32_params[THETA];
 																																				//int this_count = save_index * 1000 + QD_count;
 																																				//ss << save_index << "_QD_count_" << QD_count;
 		cv::Size q_size( runcl.mm_Image_size.width, 2* runcl.mm_Image_size.height ); 			// 2x sized for qx and qy.
@@ -112,6 +112,7 @@ void Dynamic_slam::getResult(){
 		cout<<"\nDynamic_slam::getResult()_finished ################################################\n"<<flush;
 	}
 };
+*/
 
 void Dynamic_slam::getNextFrameProfile(time_pt step_0, time_pt step_1, time_pt step_2, time_pt step_3, time_pt step_4, time_pt step_5, time_pt step_6, time_pt step_7, time_pt step_8){
 	stringstream ss;

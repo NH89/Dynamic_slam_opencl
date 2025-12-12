@@ -248,12 +248,12 @@ void RunCL::sample_image_variance(){
 																																			}
 }
 
-
+/*
 void RunCL::blur_image(){//cl_mem in_buff, cl_mem blurred_buf, std::string folder ){
 	string fname = "RunCL::blur_image()";
 	int local_verbosity_threshold = V_RUNCL_BLUR_IMAGE;//verbosity_mp["RunCL::blur_image"];// -1;
 
-	/*const */cl_mem imgmem_   = current_frames[ current_frames_idx[0] ].img_buf;
+	/ * const * / cl_mem imgmem_   = current_frames[ current_frames_idx[0] ].img_buf;
 
 	size_t local_size = local_work_size;
 	uint layer = 0;
@@ -285,12 +285,12 @@ void RunCL::blur_image(){//cl_mem in_buff, cl_mem blurred_buf, std::string folde
                                                                                                                                                 cout <<", new_size_bytes="<< new_size_bytes << endl << flush;
                                                                                                                                                 cout <<", new_Image_size="<< new_Image_size <<"" << endl << flush;
 
-                                                                                                                                                DownloadAndSave_3Channel(	imgmem_blurred, ss.str(), paths.at( ss_path.str() ), new_size_bytes/*mm_size_bytes_C4*/, new_Image_size/*mm_Image_size*/,  CV_32FC4 /*mm_Image_type*/, 	false );
+                                                                                                                                                DownloadAndSave_3Channel(	imgmem_blurred, ss.str(), paths.at( ss_path.str() ), new_size_bytes / * mm_size_bytes_C4 * / , new_Image_size / * mm_Image_size * / ,  CV_32FC4  / * mm_Image_type * / , 	false );
 																																			}
 	// swap( imgmem_blurred, imgmem_ );
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_Finished"<<flush;
 }
-
+*/
 
 void RunCL::mipmap_linear(cl_mem image_buf, std::string folder){
 	string fname = "RunCL::mipmap_linear()";
@@ -321,7 +321,7 @@ void RunCL::mipmap_linear(cl_mem image_buf, std::string folder){
 																																			}
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_linear(..)_chk4 Finished"<<flush;}
 }
-
+/*
 void RunCL::mipmap_3x3blur_linear(cl_mem image_buf, std::string folder){
 	string fname = "RunCL::mipmap_linear()";
 	int local_verbosity_threshold = V_RUNCL_MIPMAP_LINEAR;																					if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_linear(..)_chk0"<<flush;}
@@ -343,13 +343,13 @@ void RunCL::mipmap_3x3blur_linear(cl_mem image_buf, std::string folder){
 																																				ss << "_raw_";
 																																				//stringstream ss_path;	ss_path << "imgmem";
 																																				//
-																																				DownloadAndSave_3Channel( image_buf, ss.str(), paths.at(folder/*ss_path.str()*/), new_size_bytes, new_Image_size, CV_32FC4, false, 1, 0, true );
+																																				DownloadAndSave_3Channel( image_buf, ss.str(), paths.at(folder / *  ss_path.str()  * / ), new_size_bytes, new_Image_size, CV_32FC4, false, 1, 0, true );
 																																				cout << "\n  (local_size+4) *5*4* sizeof(float) = "<<  (local_size+4) *5*4* sizeof(float) << " ,   (local_size+4) = " <<  (local_size+4) << endl << flush;
 																																			}
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_linear(..)_chk4 Finished"<<flush;}
 }
-
-void RunCL::img_gradients(){ //getFrame();
+*/
+/* void RunCL::img_gradients(){ //getFrame();
 	string fname = "RunCL::img_gradients()";
 	int local_verbosity_threshold = V_RUNCL_IMG_GRADIENTS;																					if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::img_gradients(..)_chk0"<<flush;}
 	size_t num_threads = ceil( (float)(mm_layerstep)/(float)local_work_size ) * local_work_size ;
@@ -386,7 +386,7 @@ void RunCL::img_gradients(){ //getFrame();
 																																			}
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::img_gradients(..)_chk4 Finished."<<flush;}
 }
-
+*/
 void RunCL::load_GT_depth(cv::Mat GT_depth, bool invert){ //getFrameData();,  cv::Matx44f GT_K2K,   cv::Matx44f GT_pose2pose
 	string fname = "RunCL::load_GT_depth(..)";
 	int local_verbosity_threshold = V_RUNCL_LOAD_GT_DEPTH;

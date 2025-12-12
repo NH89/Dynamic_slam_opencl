@@ -1,6 +1,11 @@
 #include "kernels_macros.h"
 #include "kernels.h"
 
+// old kernels - may req conversion to patch operation, lookup tables etc.
+
+
+
+// new kernels /////////////////////////////////
 // Image pyramid
 __kernel void reduce_img(
 	__private	uint	offset1,			//0	top left corner source image
