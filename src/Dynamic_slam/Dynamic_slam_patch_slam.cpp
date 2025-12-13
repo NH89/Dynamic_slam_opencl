@@ -5,26 +5,6 @@
 using namespace cv;
 using namespace std;
 
-float cos_sq_updates(Matx16f old_, Matx16f new_   ){		// tests cos^2 angle between updates of rotation SO3 & translation ST3. Returns the smaller of the two. NB -ve value -> overshoot.
-	float dot_sq_SO3	= old_.operator()(0)*new_.operator()(0) + old_.operator()(1)*new_.operator()(1) + old_.operator()(2)*new_.operator()(2) ;
-	float dot_sq_ST3	= old_.operator()(3)*new_.operator()(3) + old_.operator()(4)*new_.operator()(4) + old_.operator()(5)*new_.operator()(5) ;
-	dot_sq_SO3			*= dot_sq_SO3;
-	dot_sq_ST3			*= dot_sq_ST3;
-
-	float mag_sq_SO3	= old_.operator()(0)*new_.operator()(0) * old_.operator()(1)*new_.operator()(1) * old_.operator()(2)*new_.operator()(2) ;
-	float mag_sq_ST3	= old_.operator()(3)*new_.operator()(3) * old_.operator()(4)*new_.operator()(4) * old_.operator()(5)*new_.operator()(5) ;
-	mag_sq_SO3			*= mag_sq_SO3;
-	mag_sq_ST3			*= mag_sq_ST3;
-
-	float cos_sq_SO3	= dot_sq_SO3 / mag_sq_SO3;
-	float cos_sq_ST3	= dot_sq_ST3 / mag_sq_ST3;
-
-	float cos_sq 		= cos_sq_ST3;
-	if (cos_sq_SO3 < cos_sq_ST3) cos_sq = cos_sq_SO3;
-
-	return cos_sq;
-}
-
 void Dynamic_slam::patch_slam(){																										// Adaptive step size LM tracking and halting
 	int 	local_verbosity_threshold 			= V_DYNAMIC_SLAM_ESTIMATESE3;//verbosity_mp["Dynamic_slam::estimateSE3"];
 																																		if(verbosity>local_verbosity_threshold) {	cout << "\nDynamic_slam::patch_slam() chk_0"
@@ -68,8 +48,6 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 																																			cout << "\n\nDynamic_slam::patch_slam() iter="<< iter
 																																			<<"  ##############################################################"<< flush;
 																																		}
-		//uint 	mod3_iter 		= iter;// % 3;
-		//uint 	mod3_iter_1 	= (iter+1);// % 3;
 
 		float 	SE3_weights[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels]	 				= {{{0}}};
 		float 	SE3_results[max_mipmap_layers][num_SE3_DoF][tracking_num_colour_channels]	 				= {{{0}}};
@@ -93,9 +71,6 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 																																			//PRINT_FLOAT_16(runcl.fp32_k2keyframe,);
 																																			if (layer>6) runcl.exit_(1);
 																																		}
-// TODO replace with patch tracking
-//	runcl.estimateSE3_LK( k2k_4_16[ iter ], SE3_results, SE3_weights, Rho_sq_results[ iter ], iter, layer, layer );		// NB processes largest layer first.		// Find the gradient "update" wrt SE3
-
 		/////////////////////////////////////////////////// testing kernel baased tracking
 		uint out_block_size = 32;
 		runcl.rho_sq( out_block_size, iter, layer/*, delta_theta, delta*/   );
@@ -181,32 +156,7 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 																																			PRINT_FLOAT_16( k2k_4_16[ iter+1 ], );
 																																		}
 		if(iter%3 == 2){	layer--; }	// TODO 1) change layers 2) use patch kernel
-		//swap( update_, old_update_ );	// float [6] arrays.
-/*
-		old_mag_SO3 = mag_SO3;
-		old_mag_ST3 = mag_ST3;
-		for (int SE3=0; SE3<num_SE3_DoF; SE3++) {	old_update_[SE3] = update_[SE3]; }
 
-		// if (Rho_sq_results[0][layer][channel] > old_Rho_sq_results  && iter>0 ){
-		// 	stepsize /=2.0;
-		// 	keyframe2pose = old_keyframe2pose * LieToP_Matx( old_update * stepsize );
-		// }else{																			cout << "\n!(Rho_sq_results[0][layer][channel] > old_Rho_sq_results  )" << flush;
-		// 	old_Rho_sq_results	= Rho_sq_results[0][layer][channel] ;					// TODO (i) use all channels, (ii) handle layer change.
-  //
-		// 	if (iter>0){
-		// 		float cos_sq 	= cos_sq_updates( old_update, update );					// 1) find cos^2 angle between old and new SO3 & ST3. NB -1 <= cos^2 <=1 , -ve => overshoot.
-		// 																				// Returns the smaller of cos^2 SO3 & cos^2 ST3.      NB elements not comparable between SO3 & ST3.
-		// 		stepsize 		*= powf(2.0f, cos_sq); 									// 2) adjust stepsize, min *0.5, max *2.0
-		// 	}
-		// 	keyframe2pose 		= keyframe2pose * LieToP_Matx( update * stepsize );
-		// 	old_update 			= update;
-		// }																				cout << "\nstepsize = "<<stepsize<<flush;
-		// 																				PRINT_MATX44F(keyframe2pose,);
-  //
-		// Matx44f sample_1_k2k 	= K * keyframe2pose * inv_K;							// Generate next sample step
-		// Matx44f_To_float16arry( sample_1_k2k,  k2k_4_16[0] ); 							// TODO also need to update relative to the other reference frames.
-		// 																				PRINT_FLOAT_16(k2k_4_16[0],);
-*/
 		// TODO Problem, need to undo previous update.									// Generate two sample steps
 		// TODO also need to update relative to the other reference frames.
 	}

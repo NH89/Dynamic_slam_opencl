@@ -47,21 +47,6 @@
 	#define	V_DYNAMIC_SLAM_EXHAUSTIVESEARCH				0
 	#define	V_DYNAMIC_SLAM_GETRESULT					-1
 
-	/////////////////////////////////////// DYNAMIC_SLAM_BINOCULAR_DISPARITY.CPP
-	#define V_DYNAMIC_SLAM_BINOCULAR_REFERENCE_FRAME	-1
-	#define V_DYNAMIC_SLAM_BINOCULAR_DISPARITY			-1
-
-    /////////////////////////////////////// DYNAMIC_SLAM_KEYFRAME.CPP
-	#define	V_DYNAMIC_SLAM_INITIALIZE_KEYFRAME			-2
-
-    /////////////////////////////////////// DYNAMIC_SLAM_MAPPING.CPP
-	#define	V_DYNAMIC_SLAM_OPTIMIZE_DEPTH				0
-	#define	V_DYNAMIC_SLAM_UPDATEDEPTHCOSTVOL			-2
-	#define	V_DYNAMIC_SLAM_BUILDDEPTHCOSTVOL_FAST_PERIPHERAL	0
-	#define	V_DYNAMIC_SLAM_UPDATEQD						-1
-	#define	V_DYNAMIC_SLAM_CACHEGVALUES					-1
-	#define	V_DYNAMIC_SLAM_UPDATEA						-1
-
     /////////////////////////////////////// DYNAMIC_SLAM_TRACKING.CPP
 	#define	V_DYNAMIC_SLAM_ARTIFICIAL_POSE_ERROR		-1
 	#define	V_DYNAMIC_SLAM_PREDICTFRAME					-1
@@ -76,8 +61,6 @@
 
 	/////////////////////////////////////// DYNAMIC_SLAM_RESULTS.CPP
 	#define	V_DYNAMIC_SLAM_REPORT_GT_POSE_ERROR			-2
-
-	#define	V_DYNAMIC_SLAM_INITIALIZE_RESULTSMAT		0
 
 	// RUNCL/ ##############################################
 	/////////////////////////////////////// RUNCL_CLASS.CPP
@@ -98,15 +81,6 @@
 	#define	V_RUNCL_ALLOCATEMEM							0
 	#define	V__RUNCL									0
 	#define	V_EXIT_										0
-
-	/////////////////////////////////////// RUNCL_DISPARITY.CPP
-	//#define	V_RUNCL_DISPARITY -1
-	#define	V_RUNCL_COMPUTE_LOOKUP_TABLE				-1
-	#define	V_RUNCL_WARP_IMAGE							-1
-	#define	V_RUNCL_IMG_SQ								-1
-	#define	V_RUNCL_IMG_VARIANCE						-1
-	#define	V_RUNCL_COMPUTE_WARP						-1
-	#define V_RUNCL_PROPAGATE_WARP						-1
 
 	/////////////////////////////////////// RUNCL_DOWNLOADANDSAVE.CPP
 	#define	V_RUNCL_CREATEFOLDERS						2
@@ -143,7 +117,7 @@
 	#define	V_RUNCL_CVT_COLOR_SPACE						0
 	#define	V_RUNCL_SUM_IMAGE_VARIANCE					1
 	#define	V_RUNCL_SAMPLE_IMAGE_VARIANCE				0
-	#define	V_RUNCL_BLUR_IMAGE							-1
+
 	#define	V_RUNCL_MIPMAP_LINEAR						-1
 	#define	V_RUNCL_IMG_GRADIENTS						-1
 
@@ -152,17 +126,6 @@
 	#define	V_RUNCL_MIPMAP_DEPTHMAP						-2
 
 	/////////////////////////////////////// RUNCL_MAPPING.CPP
-	#define	V_RUNCL_COMPUTESIGMAS						1
-	#define	V_RUNCL_UPDATEDEPTHCOSTVOL					-1
-	#define	V_RUNCL_UPDATEDEPTHCOSTVOL_CDATABUF			true
-	#define	V_RUNCL_UPDATEDEPTHCOSTVOL_CDATABUF_8CHAN	false
-	#define	V_RUNCL_UPDATEDEPTHCOSTVOL_HDATABUF			true
-
-	#define	V_RUNCL_UPDATEQD							-1
-	#define	V_RUNCL_UPDATEG								-2
-	#define	V_RUNCL_UPDATEA								-2
-	#define	V_RUNCL_UPDATEA_DBG_DATABUF					-1
-	#define	V_RUNCL_MEASUREDEPTHFIT						-1
 
 	#define	V_RUNCL_SPATIALCOSTFNS						1
 	#define	V_RUNCL_PARSIMONYCOSTFNS					1
@@ -180,31 +143,17 @@
 
 	/////////////////////////////////////// RUNCL_SETUP_KEYFRAME.CPP
 	#define	V_RUNCL_ESTIMATECALIBRATION					1
-	#define	V_RUNCL_TRANSFORM_DEPTHMAP					-2
-	#define	V_RUNCL_SWAP_COSTVOL_POINTERS				-2
-	#define	V_RUNCL_TRANSFORM_COSTVOLUME				-2
-	#define	V_RUNCL_INITIALIZEDEPTHCOSTVOL				-2
+
 
 	/////////////////////////////////////// RUNCL_TRACKING.CPP
 	#define	V_RUNCL_PRECOM_PARAM_MAPS					-1
-	#define	V_RUNCL_UPDATE_TRACKING_DEPTHMAP			-1
-	#define	V_RUNCL_CURRENT_FRAME_DEPTH_MAP				-1
-	#define	V_RUNCL_INITIALIZE_TRACKING_DEPTHMAP		-1
+
 
 	#define	V_RUNCL_UPDATE_K2K_BUF						-2
 	#define	V_RUNCL_RHO_SQ								-2
 	#define	V_RUNCL_REDUCE_PATCH_RHO					-2
 	#define	V_RUNCL_UPDATE_K2K							-2
 
-	#define	V_RUNCL_SE3_RHO_SQ							2
-	#define	V_RUNCL_ESTIMATESE3_LK						2
-	#define	V_RUNCL_READ_RHO_SQ							2
-	#define	V_RUNCL_READ_SE3_WEIGHTS					2
-	#define	V_RUNCL_READ_SE3_INCR						2
-
-	#define	V_RUNCL_TRACKING_RESULT						1
 	#define	V_RELATIVEVEL_MAP							1
-	#define	V_RUNCL_ATOMIC_TEST1						1
-	#define	V_RUNCL_ATOMIC_TEST2						1
 
 

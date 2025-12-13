@@ -1,5 +1,101 @@
 #include "kernels_macros.h"
 
+/* NB GPU limits
+ * For Intel iRIS Xe
+// Max number of constant args                     8
+// Max constant buffer size                        4294959104 (4GiB)
+NB shoud use these for things that never change during runtime, not for variables constant in a particular kernel but not another.
+TODO Declare constants at top of the device prgram file.
+*/
+
+__kernel void compute_param_maps(
+	__private	uint	layer,			//0
+	__constant 	uint8*	mipmap_params,	//1
+	__constant 	uint*	uint_params,	//2
+	__constant 	float* 	SO3_k2k,		//3
+	__global 	float2*	SE3_map			//4
+		 )
+{
+	uint global_id_u 	= get_global_id(0);
+	float global_id_flt = global_id_u;
+	uint8 mipmap_params_= mipmap_params[layer];
+	uint read_offset_ 	= mipmap_params_[MiM_READ_OFFSET];
+	uint read_cols_ 	= mipmap_params_[MiM_READ_COLS];
+	if (global_id_u >= mipmap_params_[MiM_PIXELS]) return;
+
+	uint lid 			= get_local_id(0);
+	uint group_size 	= get_local_size(0);
+
+	uint margin 		= uint_params[MARGIN];
+	uint mm_cols		= uint_params[MM_COLS];
+	uint reduction		= mm_cols/read_cols_;
+	uint v    			= global_id_u / read_cols_;													// read_row
+	uint u 				= fmod(global_id_flt, read_cols_);											// read_column
+	float u_flt			= u * reduction;															// NB this causes sparse sampling of the original space, to use the same k2k at every scale.
+	float v_flt			= v * reduction;
+	uint read_index 	= read_offset_  +  v  * mm_cols  + u ;
+
+	for (uint i=0; i<6; i++) {																		// for each SE3 DoF
+																									// Find new pixel position, h=homogeneous coords.
+		int idx = i *16;
+		float inv_depth = 1.0f;																		// mid point max-min inv depth
+		float uh2 = SO3_k2k[idx+0]*u_flt + SO3_k2k[idx+1]*v_flt + SO3_k2k[idx+2]*1 + SO3_k2k[idx+3]*inv_depth;
+		float vh2 = SO3_k2k[idx+4]*u_flt + SO3_k2k[idx+5]*v_flt + SO3_k2k[idx+6]*1 + SO3_k2k[idx+7]*inv_depth;
+		float wh2 = SO3_k2k[idx+8]*u_flt + SO3_k2k[idx+9]*v_flt + SO3_k2k[idx+10]*1+ SO3_k2k[idx+11]*inv_depth;
+		//float h/z  = SO3_k2k[12]*u_flt + SO3_k2k[13]*v + SO3_k2k[14]*1; 							// +SO3_k2k[15]/z
+
+		float u2   = uh2/wh2;
+		float v2   = vh2/wh2;
+		float2 partial_gradient={u_flt-u2 , v_flt-v2}; 												// Find movement of pixel
+
+		SE3_map[read_index + i* uint_params[MM_PIXELS]  ] = partial_gradient;
+	}
+
+	// TODO // Create a 'reproject' & 'img_grad_sum' kernels
+}
+
+
+
+
+__kernel void convert_depth(
+	__private	uint 	invert,					//0
+	__private	float 	factor,					//1
+	__constant 	uint*	mipmap_params,			//2		// NB uses ony mipmap_params[layer=0]
+	__constant	uint*	uint_params,			//3
+	__global	float* 	depth_mem_temp,			//4
+	__global	float* 	depth_mem_GT			//5
+		)
+{
+	int global_id 		= (int)get_global_id(0);
+	uint pixels 		= uint_params[PIXELS];
+
+	uint read_offset_ 	= mipmap_params[MiM_READ_OFFSET];
+	uint cols 			= uint_params[COLS];
+	uint margin 		= uint_params[MARGIN];
+	uint mm_cols		= uint_params[MM_COLS];
+
+	uint base_row		= global_id/cols ;
+	uint base_col		= global_id%cols ;
+	uint img_row		= base_row + margin;
+	uint img_col		= base_col + margin;
+
+	uint read_index 	= read_offset_  +  base_row  * mm_cols  + base_col  ;
+	uint global_id_u 	= get_global_id(0);
+
+	if (global_id_u    >= mipmap_params[MiM_PIXELS]) return;
+	float depth 		= depth_mem_temp[global_id_u]/factor;
+
+	//if (global_id_u == 0)printf("\n__kernel void convert_depth(..) invert=%u, factor=%f, depth_mem[global_id_u]=%f,  depth=%f,  1/depth=%f   ", invert, factor, depth_mem[global_id_u], depth, 1/depth  );
+
+	if (!(depth==0)){
+		if ( invert==true ) depth_mem_GT[read_index] =  1/depth;
+		else depth_mem_GT[read_index] = depth;
+	}
+}
+
+
+
+/////////
 
 __kernel void cvt_color_space_linear(																// Writes the first entry in a linear mipmap, and computes img_mean
 	__global	uchar*	base,			//0															// NB for debugging the mimpam is arranged as a series below eachother with margins.

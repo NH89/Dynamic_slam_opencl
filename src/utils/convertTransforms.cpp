@@ -146,36 +146,7 @@ Matx16f LieAdd(Matx16f A, Matx16f B){
                                                                                                                                         }
     return out;
 }
-/*
-template<class tp>
-tp median_(const Mat& _M) {
-    Mat M=_M.clone();
-    int iSize=M.cols*M.rows;
-    tp* dpSorted=(tp*)M.data;
-                                                                                                                                            // Allocate an array of the same size and sort it.
-    std::sort (dpSorted, dpSorted+iSize);
-                                                                                                                                            // Middle or average of middle values in the sorted array.
-    tp dMedian = 0.0;
-    if ((iSize % 2) == 0) {
-        dMedian = (dpSorted[iSize/2] + dpSorted[(iSize/2) - 1])/2.0;
-    } else {
-        dMedian = dpSorted[iSize/2];
-    }
-    return dMedian;
-}
 
-double median(const Mat& M) {                                                                                                               // NB only used for tp median_(const Mat& _M) above, which recasts to type tp.
-    if(M.type()==CV_32FC1)
-        return median_<float>(M);
-    if(M.type()==CV_64FC1)
-        return median_<double>(M);
-    if(M.type()==CV_32SC1)
-        return median_<int>(M);
-    if(M.type()==CV_16UC1)
-        return median_<unsigned int>(M);
-    assert(!"Unsupported type");
-}
-*/
 
 void Matx44f_To_float16arry(Matx44f matx, float arry[16]){
     for (int i=0; i<16; i++){ arry[i] = matx.operator()(i/4, i%4);}

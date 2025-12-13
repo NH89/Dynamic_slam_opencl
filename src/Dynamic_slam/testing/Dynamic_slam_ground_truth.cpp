@@ -71,9 +71,7 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 		datum.K2K							= MATX44F_EYE;
 		datum.keyframe2pose_algebra			= {0,0,0,  0,0,0} ;
 	}
-	//frame_data.back().keyframe_index		= runcl.dataset_frame_num;
-	frame_data.back().frame_data_GT			= datum;
-	// frame_data.back().frame_data			= datum;						// TODO if(use GT),  but move it out to Dynamic_slam::next_frame()
+	frame_data.back().frame_data_GT			= datum;						// TODO if(use GT),  but move it out to Dynamic_slam::next_frame()
 																																			if ( runcl.baseImage.empty() ) {cerr << "\nDynamic_slam::getFrameData_vec():   Error runcl.baseImage.empty() "<<flush;  runcl.exit_(1); }
 	int r 									= runcl.baseImage.rows;
 	int c 									= runcl.baseImage.cols;
@@ -90,15 +88,7 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 void Dynamic_slam::use_GT_pose_vec(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_USE_GT_POSE;//verbosity_mp["Dynamic_slam::use_GT_pose"];// -1;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::use_GT_pose_chk_0,"<<flush;
-/*
-	frame_data.back().frame_data = frame_data.back().frame_data_GT;
-	Matx44f inv_k2k = frame_data.back().frame_data.K2K.inv();								// NB this will need to be changed to be frame to frame, and to hold the series of frames.
-	for (int i=0; i<16; i++){ runcl.fp32_k2keyframe[i] = inv_k2k.operator()(i/4, i%4);}
 
-	float pose_arry[16];
-	Matx44f_To_float16arry( frame_data.back().frame_data.keyframe2pose.inv(), pose_arry );
-	runcl.update_k2k_buf( runcl.fp32_k2keyframe, pose_arry );
-*/
 	float pose_arry[16];
 	Matx44f_To_float16arry(		runcl.current_frames[  runcl.current_frames_idx[0]  ].pose_gt,			pose_arry );
 	runcl.update_k2k_buf(		runcl.current_frames[  runcl.current_frames_idx[0]  ].k2k_0to1_est,		pose_arry );
@@ -147,8 +137,6 @@ void Dynamic_slam::artificial_pose_error_vec(){
 
 	frame_data.back().frame_data.inv_pose						= getInvPose(frame_data.back().frame_data.pose, verbosity);
 																																				PRINT_MATX44F(frame_data.back().frame_data.inv_pose , );
-	// frame_data.back().frame_data.inv_pose						= frame_data.back().frame_data.pose.inv();
-	// 																																			PRINT_MATX44F(frame_data.back().frame_data.inv_pose , );
 
 	uint 			index 										= frame_data.back().keyframe_index;
 	cv::Matx44f		invPose_index								= keyframe_data[index].frame_data.frame_data_GT.inv_pose ;  				// getInvPose( keyframe_data[index].frame_data.frame_data_GT.keyframe2pose, verbosity);

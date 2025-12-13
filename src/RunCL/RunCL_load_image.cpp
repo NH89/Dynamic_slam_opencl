@@ -248,49 +248,6 @@ void RunCL::sample_image_variance(){
 																																			}
 }
 
-/*
-void RunCL::blur_image(){//cl_mem in_buff, cl_mem blurred_buf, std::string folder ){
-	string fname = "RunCL::blur_image()";
-	int local_verbosity_threshold = V_RUNCL_BLUR_IMAGE;//verbosity_mp["RunCL::blur_image"];// -1;
-
-	/ * const * / cl_mem imgmem_   = current_frames[ current_frames_idx[0] ].img_buf;
-
-	size_t local_size = local_work_size;
-	uint layer = 0;
-	_clSetKernelArg(blur_image_kernel, 0, sizeof(uint), 						&layer, fname );											//__constant uint*		mipmap_params,	//0
-    _clSetKernelArg(blur_image_kernel, 1, sizeof(cl_mem), 						&mipmap_buf, fname );										//__constant uint*		mipmap_params,	//1
-	_clSetKernelArg(blur_image_kernel, 2, sizeof(cl_mem), 						&uint_param_buf, fname );									//__constant uint*		uint_params,	//2
-	_clSetKernelArg(blur_image_kernel, 3, sizeof(cl_mem), 						&imgmem_, fname );											//__global   float4*	img,			//3
-	_clSetKernelArg(blur_image_kernel, 4, sizeof(cl_mem), 						&imgmem_blurred, fname );									//__global   float4*	img,			//4
-	_clSetKernelArg(blur_image_kernel, 5, (local_size+4) *5*4* sizeof(float), 	NULL, fname );												//__local    float4*	local_img_patch //5
-																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_chk1,  global_work_size="<< global_work_size <<flush;
-	_clEnqueueNDRangeKernel(m_queue, blur_image_kernel, 1, 0, &global_work_size, &local_work_size, fname ); 								// run blur_image_kernel
-                                                                                                                                            if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_chk2"<<flush;
-	_clSetKernelArg(blur_image_kernel, 4, sizeof(cl_mem), 						&imgmem_, fname );											//__global   float4*	img,			//3
-	_clSetKernelArg(blur_image_kernel, 3, sizeof(cl_mem), 						&imgmem_blurred, fname );									//__global   float4*	img,			//4
-
-	_clEnqueueNDRangeKernel(m_queue, blur_image_kernel, 1, 0, &global_work_size, &local_work_size, fname ); 								// run blur_image_kernel
-																																			if (verbosity>local_verbosity_threshold){
-                                                                                                                                                stringstream ss;		ss << dataset_frame_num << "_blur_image";
-                                                                                                                                                stringstream ss_path;	ss_path << "imgmem_blurred";
-
-                                                                                                                                                cv::Size new_Image_size = cv::Size(mm_width, mm_height);
-                                                                                                                                                size_t   new_size_bytes = mm_width * mm_height * 4* 4;
-
-                                                                                                                                                cout << "imgmem_blurred="<< imgmem_blurred << endl << flush;
-                                                                                                                                                cout <<", ss.str()="<< ss.str() << endl << flush;
-                                                                                                                                                cout <<", paths.at(\"imgmem_blurred\")="<< paths.at("imgmem_blurred") << endl << flush;
-
-                                                                                                                                                cout <<", paths.at(" << ss_path.str() <<")="<< paths.at(ss_path.str()) << endl << flush;
-                                                                                                                                                cout <<", new_size_bytes="<< new_size_bytes << endl << flush;
-                                                                                                                                                cout <<", new_Image_size="<< new_Image_size <<"" << endl << flush;
-
-                                                                                                                                                DownloadAndSave_3Channel(	imgmem_blurred, ss.str(), paths.at( ss_path.str() ), new_size_bytes / * mm_size_bytes_C4 * / , new_Image_size / * mm_Image_size * / ,  CV_32FC4  / * mm_Image_type * / , 	false );
-																																			}
-	// swap( imgmem_blurred, imgmem_ );
-																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_Finished"<<flush;
-}
-*/
 
 void RunCL::mipmap_linear(cl_mem image_buf, std::string folder){
 	string fname = "RunCL::mipmap_linear()";
@@ -311,82 +268,12 @@ void RunCL::mipmap_linear(cl_mem image_buf, std::string folder){
 																																				cv::Size new_Image_size = cv::Size(mm_width, mm_height);
 																																				size_t   new_size_bytes = mm_width * mm_height * 4*4;
 																																				ss << "_raw_";
-																																				//stringstream ss_path;	ss_path << "imgmem";
-																																				//
-	//void DownloadAndSave_3Channel( buffer, count, folder_tiff, image_size_bytes, size_mat, type_mat, show,            max_range=1, offset=0, exception_tiff=false )
-	//	   DownloadAndSave_3Channel( buffer, count, folder_tiff, image_size_bytes, size_mat, type_mat, show,  &bufImg,  max_range,   offset,   exception_tiff );
-	//void DownloadAndSave_3Channel( buffer, count, folder_tiff, image_size_bytes, size_mat, type_mat, show,  *bufImg,  max_range=1, offset=0, exception_tiff=false );
 																																				DownloadAndSave_3Channel( image_buf, ss.str(), paths.at(folder/*ss_path.str()*/), new_size_bytes, new_Image_size, CV_32FC4, false, 1, 0, true );
 																																				cout << "\n  (local_size+4) *5*4* sizeof(float) = "<<  (local_size+4) *5*4* sizeof(float) << " ,   (local_size+4) = " <<  (local_size+4) << endl << flush;
 																																			}
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_linear(..)_chk4 Finished"<<flush;}
 }
-/*
-void RunCL::mipmap_3x3blur_linear(cl_mem image_buf, std::string folder){
-	string fname = "RunCL::mipmap_linear()";
-	int local_verbosity_threshold = V_RUNCL_MIPMAP_LINEAR;																					if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_linear(..)_chk0"<<flush;}
 
-	size_t local_size = local_work_size;																									// set kernel args
-	//      __private	 uint layer, set in mipmap_call_kernel(..) below                                                                      __private	 uint	    layer,		    //0
-    _clSetKernelArg( mipmap_3x3blur_flt4_kernel, 1, sizeof(cl_mem), 					 	&mipmap_buf, fname);									//__constant uint*		mipmap_params,	//1
-	_clSetKernelArg( mipmap_3x3blur_flt4_kernel, 2, sizeof(cl_mem), 					 	&uint_param_buf, fname);								//__constant uint*		uint_params,	//3
-	_clSetKernelArg( mipmap_3x3blur_flt4_kernel, 3, sizeof(cl_mem), 						&image_buf, fname);										//__global   float4*	img,			//4
-	_clSetKernelArg( mipmap_3x3blur_flt4_kernel, 4, (local_size+4) *5*4* sizeof(float), 	NULL, fname);											//__local    float4*	local_img_patch //5
-
-	mipmap_call_kernel( mipmap_3x3blur_flt4_kernel, m_queue, true );   // TODO Start at first reduction, rehash __kernel void mipmap_linear_flt(..) and call only the num threads required. NB currently uses 4x as many threads as needed.
-
-																																			if(verbosity>local_verbosity_threshold) {
-																																				cout<<"\n\nRunCL::mipmap(..)_chk3 Finished all loops."<<flush;
-																																				stringstream ss;	ss << dataset_frame_num << "_mipmap_linear";
-																																				cv::Size new_Image_size = cv::Size(mm_width, mm_height);
-																																				size_t   new_size_bytes = mm_width * mm_height * 4*4;
-																																				ss << "_raw_";
-																																				//stringstream ss_path;	ss_path << "imgmem";
-																																				//
-																																				DownloadAndSave_3Channel( image_buf, ss.str(), paths.at(folder / *  ss_path.str()  * / ), new_size_bytes, new_Image_size, CV_32FC4, false, 1, 0, true );
-																																				cout << "\n  (local_size+4) *5*4* sizeof(float) = "<<  (local_size+4) *5*4* sizeof(float) << " ,   (local_size+4) = " <<  (local_size+4) << endl << flush;
-																																			}
-																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_linear(..)_chk4 Finished"<<flush;}
-}
-*/
-/* void RunCL::img_gradients(){ //getFrame();
-	string fname = "RunCL::img_gradients()";
-	int local_verbosity_threshold = V_RUNCL_IMG_GRADIENTS;																					if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::img_gradients(..)_chk0"<<flush;}
-	size_t num_threads = ceil( (float)(mm_layerstep)/(float)local_work_size ) * local_work_size ;
-
-	const cl_mem imgmem_   = current_frames[ current_frames_idx[0] ].img_buf;
-																																			if(verbosity>local_verbosity_threshold) {cout << "\n num_threads = " << num_threads << ",   mm_layerstep = " << mm_layerstep << ",  local_work_size = " << local_work_size  <<endl << flush;}
-	//      __private	 uint layer, set in mipmap_call_kernel(..) below                                                                      __private	 uint	    layer,		//0
-    _clSetKernelArg(img_grad_kernel,  1, sizeof(cl_mem), &mipmap_buf, fname);																//__constant uint*	mipmap_params,	//1
-	_clSetKernelArg(img_grad_kernel,  2, sizeof(cl_mem), &uint_param_buf, fname);															//__constant uint*	uint_params		//2
-	_clSetKernelArg(img_grad_kernel,  3, sizeof(cl_mem), &fp32_param_buf, fname);															//__constant float*	fp32_params		//3
-	_clSetKernelArg(img_grad_kernel,  4, sizeof(cl_mem), &imgmem_, fname);																	//__global   float4*	img,		//4
-	_clSetKernelArg(img_grad_kernel,  5, sizeof(cl_mem), &SE3_map_mem, fname);																//__constant float2*	SE3_map,	//8
-	_clSetKernelArg(img_grad_kernel,  6, sizeof(cl_mem), &SE3_grad_map_mem, fname);															//__global 	 float4*	SE3_grad_map//9
-	_clSetKernelArg(img_grad_kernel,  7, sizeof(cl_mem), &HSV_grad_mem, fname);																//__global 	 float4*	HSV_grad_mem//10
-																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::img_gradients(..)_chk2"<<flush;}
-	mipmap_call_kernel( img_grad_kernel, m_queue );
-																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::img_gradients(..)_chk3 Finished all loops. Saving gxmem, gymem."<<flush;  // , g1mem
-																																				stringstream ss;	ss << dataset_frame_num << "__img_grad_kernel";
-																																				stringstream ss_path;
-																																				///
-																																				ss_path.str(std::string()); // reset ss_path
-																																				ss_path << "SE3_grad_map_mem"<<flush;
-																																				cout << "\n" << ss_path.str() <<flush;
-																																				cout << "\n" <<  paths.at(ss_path.str()) <<flush;
-																																				DownloadAndSave_6Channel_volume(  SE3_grad_map_mem, ss.str(), paths.at(ss_path.str()), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, -1, 6 );
-																																				///
-																																				ss_path.str(std::string()); // reset ss_path
-																																				ss_path << "HSV_grad_mem"<<flush;
-																																				cout << "\n" << ss_path.str() <<flush;
-																																				cout << "\n" <<  paths.at(ss_path.str()) <<flush;
-																																				DownloadAndSave_HSV_grad(  HSV_grad_mem, ss.str(), paths.at(ss_path.str()), mm_size_bytes_C8, mm_Image_size, CV_32FC(8), false, -1, 0 );
-
-																																				cout << "\n\n SE3_grad_map_mem = SE3_grad_map_mem = "<<SE3_grad_map_mem;
-																																			}
-																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::img_gradients(..)_chk4 Finished."<<flush;}
-}
-*/
 void RunCL::load_GT_depth(cv::Mat GT_depth, bool invert){ //getFrameData();,  cv::Matx44f GT_K2K,   cv::Matx44f GT_pose2pose
 	string fname = "RunCL::load_GT_depth(..)";
 	int local_verbosity_threshold = V_RUNCL_LOAD_GT_DEPTH;
@@ -433,7 +320,6 @@ void RunCL::load_GT_depth(cv::Mat GT_depth, bool invert){ //getFrameData();,  cv
 																																			DownloadAndSave( depth_mem_GT,   	ss.str(),   paths.at("depth_GT"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
 																																			vtp = old_vtp;
 																																		}
-
 																																		if(verbosity>local_verbosity_threshold) cout << "\nRunCL::load_GT_depth(..)_chk_finished:##########################################################"<<flush;
 }
 

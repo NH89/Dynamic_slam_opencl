@@ -303,37 +303,6 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 	_clSetKernelArg( kernel,	9, sizeof( cl_mem),		&imgmem_,						fname);									// __global 	float4*		img,					//6		//	"current_frames[idx].img_buf	= imgmem[idx];", NB changes every new frame.
 	_clSetKernelArg( kernel,	12,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,			//9		// local_Hessian[ sizeof(float4) *6*6 *local_size]
 
-	/* // Debugging kernel arg setting
-	// size_t		param_value_size		= 0;
-	// char		param_value[32]			= {' '};
- //
-	// cl_int ret = clGetKernelArgInfo(
-	// 	kernel,								//cl_kernel kernel,
-	// 	(cl_uint)2,							//cl_uint arg_index,
-	// 	CL_KERNEL_ARG_TYPE_NAME,			//cl_kernel_arg_info param_name,
-	// 	param_value_size,					//size_t  param_value_size,
-	// 	param_value,						//void*   param_value,
-	// 	NULL								//size_t* param_value_size_ret
-	// );
- //
-	// cout << "\n\nRunCL::patch_img_gradients(..) ret = "<<ret<<",  CL_KERNEL_ARG_TYPE_NAME = "<< string(param_value, param_value_size) << "\n" << flush;
-	*/
-	/*
-	cout <<"\nRunCL::patch_img_gradients()_chk1.5   threads_to_launch="<<threads_to_launch<<",		local_work_size_="<<local_work_size_<<flush;
-	for (uint layer_=0; layer_<max_mipmap_layers; layer_++){
-		cout<<"\npatch_num_threads["<<layer_<<"] = "											<<patch_num_threads[					layer_]
-			<<",		patch_cols_per_row[layer_] = "											<<patch_cols_per_row[					layer_]
-			<<",		patch_num_threads[] = "													<<patch_num_threads[					layer_]
-			<<",		patch_img_gradients_workgroup_size[	layer_] = "							<<patch_img_gradients_workgroup_size[	layer_]
-			<<",		patch_num_threads[] / patch_img_gradients_workgroup_size[ layer_] = "	<<(float)patch_num_threads[				layer_] / patch_img_gradients_workgroup_size[ layer_]
-			<<flush;
-	}
-
-	cout<<"\n\nlocal_Hessian_size 		= "	<<local_Hessian_size
-			<<" = sizeof(cl_float4)"<<sizeof(cl_float4)<<"   * num_SE3_DoF "<<num_SE3_DoF<<"    * num_SE3_DoF "<<num_SE3_DoF<<"    *local_work_size_ "<<local_work_size_
-			<<"\ndevice_local_mem_size 	= "<< device_local_mem_size
-			<<flush;
-	*/
 	cl_event	ev;
 	cl_int		res, status;
 
@@ -418,11 +387,6 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 	size_t		offset		=	layer*8*6 ;																					cout<<"\noffset="<<offset<<flush;
 
 	ReadOutput( hessian_Mat.data, SE3_hessian_pinv_map_mem, data_size, offset*sizeof(cl_float4) );
-/*
-	Mat			test_Mat(	42,	15,	CV_32FC4);
-	ReadOutput( test_Mat.data, SE3_hessian_pinv_map_mem, 42*15*sizeof(cl_float4), 0);
-	cout<<"\ntest_mat=\n"<<test_Mat<<endl<<endl<<flush;
-*/
 
 	Mat J					= Mat( hessian_Mat, Rect(0,0,6,1)	);
 

@@ -102,15 +102,6 @@ add_executable(Dynamic_slam
          src/utils/convertAhandaPovRayToStandard.hpp
          src/utils/convertAhandaPovRayToStandard.cpp
 
-
-       #  src/Dynamic_slam/Dynamic_slam_binocular_disparity.cpp
-       #  src/Dynamic_slam/Dynamic_slam_keyframe.cpp
-       #  src/Dynamic_slam/Dynamic_slam_mapping.cpp
-
-       #  src/RunCL/RunCL_binocular_disparity.cpp
-       #  src/RunCL/RunCL_mapping.cpp
-       #  src/RunCL/RunCL_setup_keyframe.cpp
-       #  src/RunCL/RunCL_tracking.cpp
          )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE 

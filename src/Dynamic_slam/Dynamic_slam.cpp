@@ -77,15 +77,12 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 																																			}
 	runcl.initialize_RunCL( imread(png[runcl.dataset_frame_num].string() ) );																// Set image params, ref for dimensions and data type. ########################################################################
 	runcl.allocatemem();																													// Allocate buffers on the GPU ######
-	//runcl.compute_lookup_table(runcl.mm_start, runcl.mm_stop);																				// Calls kernel. Used for disparity kernels now, maybe  more later...
 
 	runcl.initialize_patch_params();
 	runcl.compute_patch_lookup_table( runcl.mm_start, runcl.mm_stop);
 	runcl.patch_img_gradients_set_params( 4/*out_block_size*/ );		//TODO set in .conf file,  uint out_block_sizefor ST3_hessian		// will need a runcl.set_patch_kernels_params() function
 
 	initialize_camera_vec();
-	// initialize_keyframe_vec();																												// First keyframe
-	// initialize_resultsMat();
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_ finished "
 																																				<< "#####################################################################################\f" << flush;
 };
@@ -175,7 +172,6 @@ void Dynamic_slam::initialize_camera_vec(){
 	generate_SE3_k2k_vec( SE3_k2k );																										// fills float[96] ie 6xfloat[16] from conf.json intrinsic camera matrix + SE3 increments.
 	runcl.precomp_param_maps ( SE3_k2k );																										// GPU computes J(u,v/SE3) Jacobian of optical flow wrt SE3.
 	getFrame();
-//	runcl.costvol_frame_num++;
 	runcl.dataset_frame_num++;
 																																			if (verbosity>local_verbosity_threshold){ cout << "\nDynamic_slam::initialize_camera_vec Finished:"
 																																				<<"##############################################################################\f" <<flush;
@@ -198,10 +194,8 @@ int Dynamic_slam::nextFrame() {
 																																			// 	report_GT_pose_error();
 																																			// 	//display_frame_resluts();
 																																			// }
-//	if (runcl.costvol_frame_num>1)					{	predictFrame_vec(); }
 																						auto step_2 = high_resolution_clock::now();			// Loads GT depth of the new frame. NB depends on image.size from getFrame().
-//	if(obj["use_GT_pose"].asBool() == true )		{	use_GT_pose_vec();	}
-//	if(obj["initialize_tracking_from_GT_depth"].asBool()==true){ runcl.update_current_frame_depth_mem(runcl.depth_mem_GT);}
+
 																						auto step_3 = high_resolution_clock::now();			// use_GT_pose();
 																																			// if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 2, Pose error after use_GT_pose:" << flush;
 																																			// 	report_GT_pose_error();
@@ -218,25 +212,20 @@ int Dynamic_slam::nextFrame() {
 //	patch_slam();		// new tracking prototype.
 	estimateSLAM();		// kernel basedtracking - no data offload. nor CPU computing.
 																						auto step_6 = high_resolution_clock::now();			// own thread ? num iter ?
-	//disparity();
-	//binocular_reference_frame();
-//	binocular_disparity();
+
 	//estimateCalibration(); 																												// own thread, one iter.
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 4, Pose error after tracking:" << flush;
 																																				report_GT_pose_error();
 																																				//display_frame_resluts();
 																																			}
-	////////////////////////////////// Test kernels
-	//runcl.atomic_test1();
-	//runcl.atomic_test2();
+
 	////////////////////////////////// Parallax depth mapping
 																						auto step_7 = high_resolution_clock::now();
 // TODO replace with patch_slam and multi-frame depth+motion+accel maps,  together with vel, accel, jolt of camera,   and later reflectance & illum etc...
-//	updateDepthCostVol();
+
 																						auto step_8 = high_resolution_clock::now();			// Update cost vol with the new frame, and repeat optimization of the depth map.
 																																			// NB Cost vol needs to be initialized on a particular keyframe.
 	getNextFrameProfile(step_0, step_1, step_2, step_3, step_4, step_5, step_6, step_7, step_8);											// A previous depth map can be transfered, and the updated depth map after each frame, can be used to track the next frame.
-//	runcl.costvol_frame_num++;
 	runcl.dataset_frame_num++;
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame Finished "
 																																				<<"##################################################################################\f" << flush; }
@@ -261,7 +250,6 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 																																				cout << "\nruncl.mm_Image_size =" 		<< runcl.mm_Image_size ;
 																																				cout << "\n" << flush ;
 																																			}
-	//runcl.update_current_frames_idx();
 	image = imread( png[runcl.dataset_frame_num].string() );																				if(verbosity>local_verbosity_threshold){
 																																				cout << "\n Dynamic_slam::getFrame_chk 0.5, Image file = " << png[runcl.dataset_frame_num].string() << "\t" << flush;
 																																			}
@@ -274,8 +262,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 	runcl.loadFrame( image );																												// NB Nvidia GeForce have 'Tensor Compute" FP16, accessible by PTX. AMD have RDNA and CDNA. These need PTX/assembly code and may use BF16 instead of FP16.
 																																			// load a basic image in CV_8UC3, then convert on GPU to 'half'
 	runcl.cvt_color_space( );
-	//runcl.blur_image();//runcl.imgmem, runcl.imgmem_blurred , "imgmem_blurred");
-	//runcl.mipmap_linear(	runcl.current_frames[ 	runcl.current_frames_idx[0] ].img_buf, 		"imgmem");
+
 	uint reductions			= 5;	// given 640x480 base img.
 	uint blur_layers		= 3;
 	std::string folder		= "imgmem";
@@ -283,18 +270,12 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 
 	runcl.current_frames[	runcl.current_frames_idx[0] ].frame_num		=	runcl.dataset_frame_num;
 
-	//runcl.sum_image_variance();
-//	runcl.sample_image_variance();
-//	runcl.img_gradients();
-
-	//runcl.patch_img_gradients( 0/*0*/, 4 ); //  uint layer, uint out_block_size.  NB (0, 4) are the largest sizes that will fit in the buffer.
 	float zero  = 0;
 	cl_int 			status;
 	cl_event 		writeEvt;
 	status = clEnqueueFillBuffer(runcl.uload_queue, runcl.SE3_hessian_pinv_map_mem, &zero, 	sizeof(float), 	0, runcl.mm_size_bytes_C4, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << runcl.checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;runcl.exit_(status);}	clFlush(runcl.uload_queue); status = clFinish(runcl.uload_queue);
 
 	for(int layer=SE3_start_layer; layer>=0/*SE3_stop_layer*/; layer-- ){
-		//cout << "\nDynamic_slam::getFrame(): layer="<<layer<<"  SE3_start_layer="<<SE3_start_layer<<"   SE3_stop_layer="<<SE3_stop_layer<<flush;
 		runcl.patch_img_gradients(	layer);
 		runcl.patch_hessian_reduce(	layer);
 	}

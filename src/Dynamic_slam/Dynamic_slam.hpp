@@ -12,7 +12,7 @@
 #include "../utils/convertAhandaPovRayToStandard.hpp"
 
 
-#define Rx	0
+#define Rx	0	// TODO  correct to match Python code and convention ( st(3), so(3) )
 #define Ry  1
 #define Rz	2
 #define Tx	3
@@ -116,6 +116,31 @@ class Dynamic_slam
 
 
     // functions ////////////////////////////////////////
+
+    // return the filenames of all files that have the specified extension
+    // in the specified directory and all subdirectories
+    void get_all(const fs::path& root , const string& ext, vector<fs::path>& ret ) {
+      if (!fs::exists(root))        return;
+      if (fs::is_directory(root))   {
+        typedef std::set<std::filesystem::path> Files;
+        Files files;
+        fs::recursive_directory_iterator it0(root);
+        fs::recursive_directory_iterator endit0;
+        std::copy(it0, endit0, std::inserter(files, files.begin()));
+        Files::iterator it= files.begin();
+        Files::iterator endit= files.end();
+
+        while(it != endit)
+        {
+          if (fs::is_regular_file(*it) && (*it).extension() == ext)
+          {
+            ret.push_back(*it);
+          }
+          ++it;
+        }
+      }
+    }
+
     /////////////////////////////////////// Dynamic_slam_class.cpp
     void generate_deltas();
     void initialize_resultsMat();
@@ -136,72 +161,11 @@ class Dynamic_slam
     void ParsimonyCostFns();
     void ExhaustiveSearch();
 
-    // Result
-//    void getResult();                         // called at end of main(). Currentlyshows mapping params and saves amem & dmem depth maps.
-//    void print_pose_vectors(uint start, uint stop);
-
-/*    /////////////////////////////////////// Dynamic_slam_disparity.cpp
-    void binocular_reference_frame();
-    void binocular_disparity();
-*/
-/*    /////////////////////////////////////// Dynamic_slam_keyframe.cpp
-    void initialize_keyframe_vec(  );
-
-    void initialize_keyframe();
-    void initialize_keyframe_from_GT();
-    void initialize_keyframe_from_tracking();
-    void initialize_new_keyframe();
-*/
-/*    /////////////////////////////////////// Dynamic_slam_mapping.cpp
-    void optimize_depth();
-    void updateDepthCostVol();                 // Built forwards. Updates keframe only when needed.
-    void buildDepthCostVol_fast_peripheral();  // Higher levels only, built on current frame.
-    void updateQD();
-    void cacheGValues();
-    bool updateA();
-*/
     /////////////////////////////////////// Dynamic_slam_tracking.cpp
     void report_GT_pose_error();
-//    void display_frame_resluts();
-
     void artificial_pose_error_vec();
-//    void predictFrame_vec();
-
     void generate_SE3_k2k_vec( float _SE3_k2k[6*16] );		// TODO chk all maths vs Python version. Also ensure compatibility with new code.
-
-//    void update_k2k(int case_idx, float k2k_4_16[tracking_tot_samples][16]  );
-//    void update_k2k(Matx16f update_);
-//    void update_k2k(Matx16f update_,  Matx44f local_keyframe_pose2pose);
-
-//    void update_k2k_4(float steps[3], cv::Matx16f update_,  Matx44f K,  Matx44f keyframe2pose,  Matx44f inv_K,  Matx44f keyframe_k2k,  float local_k2k_4_16[4][16] );
-
     void compute_optimum( float steps[3], float Rho_sq_results_[tracking_num_samples][8][tracking_num_colour_channels], int layer, int channel, float *prediction, float *optimum, float *stepsize );
-
-//    void estimateSE3();                         // version with adaptive step and halting
-  
-    // return the filenames of all files that have the specified extension
-    // in the specified directory and all subdirectories
-    void get_all(const fs::path& root , const string& ext, vector<fs::path>& ret ) {  
-      if (!fs::exists(root))        return;
-      if (fs::is_directory(root))   {
-        typedef std::set<std::filesystem::path> Files;
-        Files files;
-        fs::recursive_directory_iterator it0(root);
-        fs::recursive_directory_iterator endit0;
-        std::copy(it0, endit0, std::inserter(files, files.begin()));
-        Files::iterator it= files.begin();
-        Files::iterator endit= files.end();
-        
-        while(it != endit)
-        {
-          if (fs::is_regular_file(*it) && (*it).extension() == ext)
-          {
-            ret.push_back(*it);
-          }
-          ++it;
-        }
-      }
-    }
 
     //////////////////////////////////// Dynamic_slam_patch_slam.cpp
     void patch_slam();
@@ -210,13 +174,5 @@ class Dynamic_slam
     ///////////////////////////////////// Dynamic_slam_pose_vec_print_fns.cpp
     void print_pose_datum(      Dynamic_slam::pose_datum datum );
     void print_frame_datum(     Dynamic_slam::frame_datum datum );
-//    void print_keyframe_datum(  Dynamic_slam::keyframe_datum datum );
-
     void print_frame_data_vector(       uint start,     uint stop,  vector<Dynamic_slam::frame_datum>       frame_data_vector,      string vector_name );
-//    void print_keyframe_data_vector(    uint start,     uint stop,  vector<Dynamic_slam::keyframe_datum>    keyframe_data_vector,   string vector_name );
-
-
-  // private:   replaced by runcl.fp32_params[..]
-  //   float old_theta, theta, thetaStart, thetaStep, thetaMin, epsilon, lambda, sigma_d, sigma_q;     // DTAM depthmap smoothing & optimization parameters
-
 };

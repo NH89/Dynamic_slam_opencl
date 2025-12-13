@@ -1,6 +1,6 @@
 #include "RunCL.hpp"
 
-void RunCL::_clEnqueueNDRangeKernel(
+void RunCL::_clEnqueueNDRangeKernel(	// TODO will become obsolete when all kernels use newest patch system.
 	cl_command_queue _queue,
 	cl_kernel        kernel,
 	cl_uint          work_dim,
