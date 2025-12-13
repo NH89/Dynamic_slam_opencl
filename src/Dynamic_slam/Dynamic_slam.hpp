@@ -137,47 +137,47 @@ class Dynamic_slam
     void ExhaustiveSearch();
 
     // Result
-    void getResult();                         // called at end of main(). Currentlyshows mapping params and saves amem & dmem depth maps.
-    void print_pose_vectors(uint start, uint stop);
+//    void getResult();                         // called at end of main(). Currentlyshows mapping params and saves amem & dmem depth maps.
+//    void print_pose_vectors(uint start, uint stop);
 
-    /////////////////////////////////////// Dynamic_slam_disparity.cpp
+/*    /////////////////////////////////////// Dynamic_slam_disparity.cpp
     void binocular_reference_frame();
     void binocular_disparity();
-
-    /////////////////////////////////////// Dynamic_slam_keyframe.cpp
+*/
+/*    /////////////////////////////////////// Dynamic_slam_keyframe.cpp
     void initialize_keyframe_vec(  );
 
     void initialize_keyframe();
     void initialize_keyframe_from_GT();
     void initialize_keyframe_from_tracking();
     void initialize_new_keyframe();
-
-    /////////////////////////////////////// Dynamic_slam_mapping.cpp
+*/
+/*    /////////////////////////////////////// Dynamic_slam_mapping.cpp
     void optimize_depth();
     void updateDepthCostVol();                 // Built forwards. Updates keframe only when needed.
     void buildDepthCostVol_fast_peripheral();  // Higher levels only, built on current frame.
     void updateQD();
     void cacheGValues();
     bool updateA();
-
+*/
     /////////////////////////////////////// Dynamic_slam_tracking.cpp
     void report_GT_pose_error();
-    void display_frame_resluts();
+//    void display_frame_resluts();
 
     void artificial_pose_error_vec();
-    void predictFrame_vec();
+//    void predictFrame_vec();
 
-    void generate_SE3_k2k_vec( float _SE3_k2k[6*16] );
+    void generate_SE3_k2k_vec( float _SE3_k2k[6*16] );		// TODO chk all maths vs Python version. Also ensure compatibility with new code.
 
-    void update_k2k(int case_idx, float k2k_4_16[tracking_tot_samples][16]  );
-    void update_k2k(Matx16f update_);
-    void update_k2k(Matx16f update_,  Matx44f local_keyframe_pose2pose);
+//    void update_k2k(int case_idx, float k2k_4_16[tracking_tot_samples][16]  );
+//    void update_k2k(Matx16f update_);
+//    void update_k2k(Matx16f update_,  Matx44f local_keyframe_pose2pose);
 
-    void update_k2k_4(float steps[3], cv::Matx16f update_,  Matx44f K,  Matx44f keyframe2pose,  Matx44f inv_K,  Matx44f keyframe_k2k,  float local_k2k_4_16[4][16] );
+//    void update_k2k_4(float steps[3], cv::Matx16f update_,  Matx44f K,  Matx44f keyframe2pose,  Matx44f inv_K,  Matx44f keyframe_k2k,  float local_k2k_4_16[4][16] );
 
     void compute_optimum( float steps[3], float Rho_sq_results_[tracking_num_samples][8][tracking_num_colour_channels], int layer, int channel, float *prediction, float *optimum, float *stepsize );
 
-    void estimateSE3();                         // version with adaptive step and halting
+//    void estimateSE3();                         // version with adaptive step and halting
   
     // return the filenames of all files that have the specified extension
     // in the specified directory and all subdirectories
@@ -210,10 +210,10 @@ class Dynamic_slam
     ///////////////////////////////////// Dynamic_slam_pose_vec_print_fns.cpp
     void print_pose_datum(      Dynamic_slam::pose_datum datum );
     void print_frame_datum(     Dynamic_slam::frame_datum datum );
-    void print_keyframe_datum(  Dynamic_slam::keyframe_datum datum );
+//    void print_keyframe_datum(  Dynamic_slam::keyframe_datum datum );
 
     void print_frame_data_vector(       uint start,     uint stop,  vector<Dynamic_slam::frame_datum>       frame_data_vector,      string vector_name );
-    void print_keyframe_data_vector(    uint start,     uint stop,  vector<Dynamic_slam::keyframe_datum>    keyframe_data_vector,   string vector_name );
+//    void print_keyframe_data_vector(    uint start,     uint stop,  vector<Dynamic_slam::keyframe_datum>    keyframe_data_vector,   string vector_name );
 
 
   // private:   replaced by runcl.fp32_params[..]

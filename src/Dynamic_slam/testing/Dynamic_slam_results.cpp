@@ -16,12 +16,12 @@ void Dynamic_slam::print_frame_datum( Dynamic_slam::frame_datum datum ){
     cout << "\n\f frame_data_GT ++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.frame_data_GT	);
     cout << "\n\f error_data +++++++++++++++++++++++++++++++++++++++++++++";		print_pose_datum( datum.error_data		);
 }
-
+/*
 void Dynamic_slam::print_keyframe_datum( Dynamic_slam::keyframe_datum datum ){
     cout << "\n first_frame_index = " << datum.first_frame_index ;
     cout << "\n ";      print_frame_datum( datum.frame_data  );
 }
-
+*/
 void Dynamic_slam::print_frame_data_vector(       uint start,     uint stop,  vector<Dynamic_slam::frame_datum>       frame_data_vector,  string vector_name ){
     cout << "\n\f Dynamic_slam::print_frame_data_vector :  vector<Dynamic_slam::frame_datum> " << vector_name << " : ##############################################################################";
     if (stop > frame_data_vector.size() ) stop = frame_data_vector.size();
@@ -33,7 +33,7 @@ void Dynamic_slam::print_frame_data_vector(       uint start,     uint stop,  ve
     }
     cout << "\n\n Dynamic_slam::print_frame_data_vector :  vector<Dynamic_slam::frame_datum> Finished " << vector_name << " : ##############################################################################\n\f";
 }
-
+/*
 void Dynamic_slam::print_keyframe_data_vector(    uint start,     uint stop,  vector<Dynamic_slam::keyframe_datum>    keyframe_data_vector,  string vector_name  ){
     cout << "\n\f Dynamic_slam::print_keyframe_data_vector():  vector<Dynamic_slam::keyframe_datum> " << vector_name << " : ###########################################################################";
     if (stop > keyframe_data_vector.size() ) stop = keyframe_data_vector.size();
@@ -45,12 +45,13 @@ void Dynamic_slam::print_keyframe_data_vector(    uint start,     uint stop,  ve
     }
     cout << "\n\n Dynamic_slam::print_keyframe_data_vector():  vector<Dynamic_slam::keyframe_datum> Finished " << vector_name << " : ###########################################################################\n\f";
 }
-
+*/
+/*
 void Dynamic_slam::print_pose_vectors(uint start, uint stop){
 	print_frame_data_vector( 	start, stop, frame_data, 		"dynamic_slam.frame_data" 		);
-	print_keyframe_data_vector(	start, stop, keyframe_data, 	"dynamic_slam.keyframe_data" 	);
+	//print_keyframe_data_vector(	start, stop, keyframe_data, 	"dynamic_slam.keyframe_data" 	);
 }
-
+*/
 
 void Dynamic_slam::report_GT_pose_error(){																																		// An expensive function, use only for debugging.
 	string fname="Dynamic_slam::report_GT_pose_error()";

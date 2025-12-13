@@ -393,7 +393,7 @@ void RunCL::load_GT_depth(cv::Mat GT_depth, bool invert){ //getFrameData();,  cv
 																																		if(verbosity>local_verbosity_threshold) cout << "\nRunCL::load_GT_depth(..)_chk_0:"<<flush;
 																																		if ( GT_depth.empty() ) {cerr << "\nRunCL::load_GT_depth(..)_chk_0:   Error  GT_depth.empty() "<<flush;  exit_(1); }
 	stringstream 	ss;
-	ss << "__load_GT_depth" << (keyFrameCount*1000 + costvol_frame_num);
+	ss << "__load_GT_depth";// << (keyFrameCount*1000 + costvol_frame_num);
 
 	float default_depth  = (fp32_params[MAX_INV_DEPTH] + fp32_params[MIN_INV_DEPTH])/2.0;
 
@@ -427,7 +427,7 @@ void RunCL::load_GT_depth(cv::Mat GT_depth, bool invert){ //getFrameData();,  cv
 																																		}
 																																		if(verbosity>local_verbosity_threshold) cout << "\nRunCL::load_GT_depth(..)_chk_2:"<<flush;
 	ss << "__3";
-																																		if(costvol_frame_num > 0){
+																																		if(verbosity>local_verbosity_threshold+1){	//(costvol_frame_num > 0)
 																																			bool old_vtp = vtp;
 																																			vtp = true;
 																																			DownloadAndSave( depth_mem_GT,   	ss.str(),   paths.at("depth_GT"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;

@@ -153,7 +153,7 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){										// call
 																																}
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_patch_lookup_table( )_chk6 ."<<flush;	// Save buffers to file ###########
 																																	stringstream ss;
-																																	ss << "compute_patch_lookup_table_" << save_index ;
+																																	ss << "compute_patch_lookup_table_";// << save_index ;
 																																	bool show 		= false;
 																																	bool old_tiff 	= tiff;
 																																	tiff 			= true;
@@ -344,7 +344,7 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_chk2 ."<<flush;	// Save buffers to file ###########
 																																	stringstream ss;
-																																	ss << "patch_img_gradients_" << save_index ;
+																																	ss << "patch_img_gradients_";// << save_index ;
 																																	bool show 		= false;
 																																	bool old_tiff 	= tiff;
 																																	tiff 			= true;
