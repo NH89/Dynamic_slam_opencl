@@ -1,4 +1,3 @@
-
 #include "Dynamic_slam.hpp"
 
 #include <fstream>
@@ -7,15 +6,13 @@
 using namespace cv;
 using namespace std;
 
-
 Dynamic_slam::~Dynamic_slam(){ runcl.~RunCL(); };
-
 
 Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map verbosity_mp_
 	obj = obj_;																																// NB save obj_ to class member obj, so that it persists within this Dynamic_slam object.
 	verbosity 						= obj["verbosity"].asInt();
 	int local_verbosity_threshold 	= V_DYNAMIC_SLAM_DYNAMIC_SLAM;//verbosity_mp["Dynamic_slam::Dynamic_slam"];
-																																			if(verbosity>local_verbosity_threshold) cout << "\f Dynamic_slam::Dynamic_slam_chk -1\n" << flush;
+																																			if(verbosity>local_verbosity_threshold) cout << "\f Dynamic_slam::Dynamic_slam_chk 0\n" << flush;
 	runcl.dataset_frame_num 		= obj["data_file_offset"].asUInt();
 	invert_GT_depth  				= obj["invert_GT_depth"].asBool();
 
@@ -24,41 +21,8 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 	SE_iter_per_layer 				= obj["SE_iter_per_layer"].asUInt();
 	SE_iter 						= obj["SE_iter"].asUInt();
 	SE_factor						= obj["SE_factor"].asFloat();
+	generate_deltas();																														if(verbosity>local_verbosity_threshold) cout << "\n  Dynamic_slam::Dynamic_slam_chk 1\n" << flush;
 
-	generate_deltas();
-/*
-	// f								= ( obj["cameraMatrix"][0].asFloat() + obj["cameraMatrix"][4].asFloat() ) /2.0;		// focal length in pixels.
-	// delta							= obj["ST3_delta"].asFloat() * obj["min_depth"].asFloat()  / f ;					// ST3_delta * (Translation to cause 1 pixel of parallax at min_depth)  	//1.0;//0.01; //0.001;  //  * obj["min_depth"].asFloat()
-	// delta_theta						= obj["SO3_delta_theta"].asFloat() / f;												// SO3_delta_theta * (Rotation to cause 1 pixel of rotation flow) //0.01; //0.001;
-	// cos_theta						= cos(delta_theta);
-	// sin_theta						= sin(delta_theta);
-*/
-																																			if(verbosity>local_verbosity_threshold) cout << "\n  Dynamic_slam::Dynamic_slam_chk -0.5\n" << flush;
-
-	for (int layer=0; layer<MAX_LAYERS; layer++){for (int chan=0; chan<3; chan++)	SE3_Rho_sq_threshold[layer][chan]  	= obj["SE3_Rho_sq_threshold"][layer][chan].asFloat();  }
-																																			if(verbosity>local_verbosity_threshold) cout << "\n  Dynamic_slam::Dynamic_slam_chk -0.4\n" << flush;
-
-	for (int se3=0; se3<6; se3++)													SE3_update_dof_weights[se3] 		= obj["SE3_update_dof_weights"][se3].asFloat();
-																																			if(verbosity>local_verbosity_threshold) cout << "\n  Dynamic_slam::Dynamic_slam_chk -0.3\n" << flush;
-
-	for (int layer2 = 0; layer2 < 5 ; layer2++) {
-		SE3_update_layer_weights[layer2] 	= obj["SE3_float update_layer_weights"][layer2].asFloat();
-
-		cout << "\nMAX_LAYERS = " << MAX_LAYERS << ",\t layer2 = " << layer2 << "\t  SE3_update_layer_weights[layer2] = " <<  SE3_update_layer_weights[layer2]  <<flush;
-
-		if (layer2 > 6) {
-			cout << "\t (layer2 > 5)" << flush;
-			break;
-		}
-	}
-																																			if(verbosity>local_verbosity_threshold) {cout << "\n Dynamic_slam::Dynamic_slam_chk 0,  SE3_Rho_sq_threshold[i][j] = ";
-																																				for (int i=0; i<5; i++){cout << "( "; for (int j=0; j<3; j++) {
-																																					std::cout << "dummy text" << 2 ;
-																																					cout << ", [" << i <<"]["<<j<<"]" << SE3_Rho_sq_threshold[i][j]; }   cout << " )";
-																																				}
-																																				cout << ",\t SE_factor = "<<SE_factor;
-																																				cout << endl << flush;
-																																			}
 	stringstream  ss0;
 	ss0 << obj["data_path"].asString()  <<  obj["data_file"].asString();																	// Collect the filenames of all the input images, plus ground truth files for camera data and depth maps- #####################
 	rootpath 	= ss0.str();
@@ -67,21 +31,15 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 	if ( exists(root)==false )		{ cout << "Data folder "<< ss0.str()  <<" does not exist.\n" <<flush; runcl.exit_(0); }
 	if ( is_directory(root)==false ){ cout << "Data folder "<< ss0.str()  <<" is not a folder.\n"<<flush; runcl.exit_(0); }
 	if ( empty(root)==true )		{ cout << "Data folder "<< ss0.str()  <<" is empty.\n"		 <<flush; runcl.exit_(0); }
-																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_chk 1\n" << flush;
+																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_chk 2\n" << flush;
 	get_all(root, ".txt",   txt);																											// Get lists of files. Gathers all filepaths with each suffix, into c++ vectors.
 	get_all(root, ".png",   png);
 	get_all(root, ".depth", depth);
-																																			if(verbosity>local_verbosity_threshold){cout << "\n Dynamic_slam::Dynamic_slam_chk 2\n" << flush;
+																																			if(verbosity>local_verbosity_threshold){cout << "\n Dynamic_slam::Dynamic_slam_chk 3\n" << flush;
 																																				cout << "\nDynamic_slam::Dynamic_slam(): "<< png.size()  <<" .png images found in data folder.\t"
 																																				<<"png[runcl.dataset_frame_num].string()="<< png[runcl.dataset_frame_num].string()  <<flush;
 																																			}
-	runcl.initialize_RunCL( imread(png[runcl.dataset_frame_num].string() ) );																// Set image params, ref for dimensions and data type. ########################################################################
-	runcl.allocatemem();																													// Allocate buffers on the GPU ######
-
-	runcl.initialize_patch_params();
-	runcl.compute_patch_lookup_table( runcl.mm_start, runcl.mm_stop);
-	runcl.patch_img_gradients_set_params( 4/*out_block_size*/ );		//TODO set in .conf file,  uint out_block_sizefor ST3_hessian		// will need a runcl.set_patch_kernels_params() function
-
+	runcl.initialize_RunCL( imread( png[ runcl.dataset_frame_num ].string() ) );															// Set image params, ref for dimensions and data type. ########################################################################
 	initialize_camera_vec();
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_ finished "
 																																				<< "#####################################################################################\f" << flush;
@@ -277,6 +235,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 
 	for(int layer=SE3_start_layer; layer>=0/*SE3_stop_layer*/; layer-- ){
 		runcl.patch_img_gradients(	layer);
+
 		runcl.patch_hessian_reduce(	layer);
 	}
 	// Will need to decide which layers and ST3 patch sizes to compute Hessians for, then store them in a buffer on the GPU.

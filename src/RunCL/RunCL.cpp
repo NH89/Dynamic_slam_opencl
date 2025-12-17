@@ -271,7 +271,6 @@ void RunCL::createKernels(){
 	sum_image_variance_kernel		= clCreateKernel(m_program, "sum_image_variance",			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'sum_image_variance'  kernel not built.\n"		<<flush; exit_(0);   }
 	sample_image_variance_kernel	= clCreateKernel(m_program, "sample_image_variance",		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'sample_image_variance'  kernel not built.\n"	<<flush; exit_(0);   }
 
-//	img_grad_kernel					= clCreateKernel(m_program, "img_grad", 					&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'img_grad'  kernel not built.\n"					<<flush; exit_(0);   }
 	comp_param_maps_kernel			= clCreateKernel(m_program, "compute_param_maps", 			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'compute_param_maps'  kernel not built.\n"		<<flush; exit_(0);   }
 
 	//  1st gen patch kernels ?
@@ -327,9 +326,8 @@ void RunCL::initialize_fp32_params(){	// TODO remove most, ie DTAM pararms
 	} else { fp32_params[MIN_INV_DEPTH]	=  1/obj["max_depth"].asFloat()		;   }
 
 	fp32_params[MAX_INV_DEPTH]	=  1/obj["min_depth"].asFloat()		;																		// This works: Initialize 'params[]' from conf.json .
-
 	fp32_params[INV_DEPTH_STEP]	=	 ( fp32_params[MAX_INV_DEPTH] - fp32_params[MIN_INV_DEPTH] ) /  uint_params[COSTVOL_LAYERS]	;
-
+/*
 	fp32_params[ALPHA_G]		=    obj["alpha_g"].asFloat()		;
 	fp32_params[BETA_G]			=    obj["beta_g"].asFloat()		;
 	fp32_params[EPSILON]		=    obj["epsilon"].asFloat()		;
@@ -342,6 +340,7 @@ void RunCL::initialize_fp32_params(){	// TODO remove most, ie DTAM pararms
 	fp32_params[SCALE_EAUX]		=    obj["scale_E_aux"].asFloat()	;
 	fp32_params[SE3_LM_A]		=    obj["SE3_LM_A"].asFloat()		;
 	fp32_params[SE3_LM_B]		=    obj["SE3_LM_B"].asFloat()		;
+*/
 																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_fp32_params_finished,  fp32_params[MIN_INV_DEPTH] = "<<fp32_params[MIN_INV_DEPTH]<<"\n\n" << flush;
 }
 
@@ -374,7 +373,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	mm_num_reductions	= obj["num_reductions"].asUInt();																					// Constant parameters of the mipmap, (as opposed to per-layer mipmap_buf)
 	mm_num_blur_layers	= obj["num_blur_layers"].asUInt();
 	mm_start			= 0;
-	mm_stop				= mm_num_reductions;																								if(verbosity>local_verbosity_threshold) cout << "\nRunCL::initialize_RunCL_chk0.5,  mm_start="<<mm_start<<",  mm_stop="<<mm_stop<<" \n" << flush;
+	mm_stop				= mm_num_reductions + mm_num_blur_layers;																								if(verbosity>local_verbosity_threshold) cout << "\nRunCL::initialize_RunCL_chk0.5,  mm_start="<<mm_start<<",  mm_stop="<<mm_stop<<" \n" << flush;
 	mm_gaussian_size	= obj["gaussian_size"].asUInt();
 	mm_margin			= obj["MipMap_margin"].asUInt() * mm_num_reductions;
 	mm_width 			= baseImage_width  + 2 * mm_margin;
@@ -397,7 +396,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	status = clGetKernelWorkGroupInfo(cvt_color_space_linear_kernel, deviceId, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_work_size), &local_work_size, NULL); 										if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
 	status = clGetKernelWorkGroupInfo(cvt_color_space_linear_kernel, deviceId, CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE, sizeof(kernel_work_size_multiple), &kernel_work_size_multiple, NULL); 	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
 	status = clGetDeviceInfo( deviceId, CL_DEVICE_PREFERRED_WORK_GROUP_SIZE_MULTIPLE, sizeof(device_work_size_multiple), &device_work_size_multiple, NULL); 										if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
-
+/*
 	// cl_int clGetDeviceInfo(
 	// 	cl_device_id 	device,
 	// 	cl_device_info 	param_name,
@@ -405,7 +404,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	// 	void* 			param_value,
 	// 	size_t* 		param_value_size_ret
 	// );
-
+*/
 																																			// Number of total work items, calculated here after 1st image is loaded &=> know the size.
 																																			// NB localSize must be devisor
 																																			// NB global_work_size must be a whole number of "Preferred work group size multiple" for Nvidia.
@@ -450,6 +449,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																				cout << "\nfp32_params[0 MAX_INV_DEPTH]="	<<fp32_params[MAX_INV_DEPTH]		<<"\t\t1/obj[\"min_depth\"].asFloat()="	<<1/obj["min_depth"].asFloat();
 																																				cout << "\nfp32_params[1 MIN_INV_DEPTH]="	<<fp32_params[MIN_INV_DEPTH]		<<"\t\t1/obj[\"max_depth\"].asFloat()="	<<1/obj["max_depth"].asFloat();
 																																				cout << "\nfp32_params[2 INV_DEPTH_STEP]="	<<fp32_params[INV_DEPTH_STEP];
+																																				/*
 																																				cout << "\nfp32_params[3 ALPHA_G]="			<<fp32_params[ALPHA_G]				<<"\t\tobj[\"alpha_g\"].asFloat()="		<<obj["alpha_g"].asFloat();
 																																				cout << "\nfp32_params[4 BETA_G]="			<<fp32_params[BETA_G]				<<"\t\tobj[\"beta_g\"].asFloat()="		<<obj["beta_g"].asFloat();
 																																				cout << "\nfp32_params[5 EPSILON]="			<<fp32_params[EPSILON]				<<"\t\tobj[\"epsilon\"].asFloat()="		<<obj["epsilon"].asFloat();
@@ -458,7 +458,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																				cout << "\nfp32_params[8 THETA]="			<<fp32_params[THETA]				<<"\t\tobj[\"thetaStart\"].asFloat()="	<<obj["thetaStart"].asFloat();
 																																				cout << "\nfp32_params[9 LAMBDA]="			<<fp32_params[LAMBDA]				<<"\t\tobj[\"lambda\"].asFloat()="		<<obj["lambda"].asFloat();
 																																				cout << "\nfp32_params[10 SCALE_EAUX]="		<<fp32_params[SCALE_EAUX]			<<"\t\tobj[\"scale_E_aux\"].asFloat()="	<<obj["scale_E_aux"].asFloat();
-																																				cout << "\n" << flush;
+																																				*/ cout << "\n" << flush;
 																																			}
 	for (int i=0; i<3; i++){ fp32_so3_k2k[i+ i*3]		=1.0; }																				// initialize fp32_so3_k2k & fp32_k2k as 'unity' transform, i.e. zero rotation & zero translation.
 	for (int i=0; i<4; i++){ fp32_k2keyframe[i+ i*4]    =1.0; }																				// NB instantiated as {{0}}.
@@ -468,6 +468,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	fp32_k2k[10] =  1.0 ;	// (0,0,1,0)
 	fp32_k2k[15] =  1.0 ;	// (0,0,0,1)
 	*/
+	set_mimpmap_offsets();
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\n";
 																																				cout << ",mm_Image_size = " << mm_Image_size << endl;
@@ -482,9 +483,38 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																				cout << ",mm_vol_size_bytes = " << mm_vol_size_bytes << endl;
 																																				cout << "\n" << flush;
 																																			}
-	// ####################################################################################################################################################################
+																																			// Summation buffer sizes
+	se3_sum_size 			= 1 + ceil( (float)(MipMap[(mm_num_reductions+1)*8 + MiM_READ_OFFSET]) / (float)local_work_size ) ;				// i.e. num workgroups used = MiM_READ_OFFSET for 1 layer more than used / local_work_size,   will give one row of vector per group.
+	se3_sum_size 			*= 2;  																											// *2 incr num grps for reduced groupsize
+	uint num_DoFs			= 6 ; 																											// 6 DoF of float4 channels, + 1 DoF to compute global Rho.
+	se3_sum_size_bytes		= se3_sum_size * sizeof(float) * 4 * num_DoFs ;																	if(verbosity>local_verbosity_threshold) cout <<"\n\n se3_sum_size="<< se3_sum_size<<",    se3_sum_size_bytes="<<se3_sum_size_bytes<<flush;
+	se3_sum2_size_bytes 	= 2 * mm_num_reductions * sizeof(float) * 4 * num_DoFs;															// NB the data returned is 6xfloat4 per group, holding one float4 per 6DoF of SE3, where alpha channel=pixel count.
+	se3_sum2_size_bytes 	= ((se3_sum2_size_bytes%32) + 1) * 32;																			// Needed for Nvidia, to ensure memory allocations are multiples of 32bytes.
+
+	so3_sum_size_bytes		= se3_sum_size_bytes / 2;
+	so3_sum_size			= se3_sum_size ;
+
+	pix_sum_size			= se3_sum_size;
+	pix_sum_size_bytes		= pix_sum_size * sizeof(float) * 4;																				// NB the data returned is one float4 per group, for the base image, holding hsv channels plus entry[3]=pixel count.
+																																			if(verbosity>local_verbosity_threshold) cout <<"\nRunCL::initialize_RunCL_chk finished -1 ############################################################\n"<<flush;
+	allocatemem();																													// Allocate buffers on the GPU ######
+	initialize_patch_params();
+	compute_patch_lookup_table( mm_start, mm_stop);
+																																			if(verbosity>local_verbosity_threshold){ cout <<"\nRunCL::initialize_RunCL_chk finished -0.5 ############################################################\n"<<flush;
+																																				for(uint layer = 0; layer <= mm_stop; layer++) {
+																																					cout <<"\npatch_local_work_size["<<layer<<"] = "<<patch_local_work_size[layer]<< flush;
+																																				}
+																																			}
+	patch_img_gradients_set_params( 4/*out_block_size*/ );		//TODO set in .conf file,  uint out_block_sizefor ST3_hessian		// will need a runcl.set_patch_kernels_params() function
+																																			if(verbosity>local_verbosity_threshold) cout <<"\nRunCL::initialize_RunCL_chk finished ############################################################\n"<<flush;
+}
+
+
+void RunCL::set_mimpmap_offsets(){
+	int local_verbosity_threshold = V_RUNCL_INITIALIZE_RUNCL;
+	// #### Set offsets for the mipmap of img pyr + blur layers ####################################################################################################################################################################
 																																			if(verbosity>local_verbosity_threshold) {
-																																				cout <<"	\nRunCL::initialize"<<endl;
+																																				cout <<"	\nRunCL::set_mimpmap_offsets()"<<endl;
 																																				cout <<"	#define MiM_PIXELS			0	// for mipmap_buf, 				when launching one kernel per layer. 	Updated for each layer."<<endl;
 																																				cout <<"	#define MiM_READ_OFFSET		1	// for ths layer, 				start of image data"<<endl;
 																																				cout <<"	#define MiM_WRITE_OFFSET	2"<<endl;
@@ -507,41 +537,39 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	mipmap[MiM_READ_COLS]			= baseImage_width;
 	mipmap[MiM_WRITE_COLS]			= mipmap[MiM_READ_COLS]/2;
 	mipmap[MiM_PIXELS]				= mipmap[MiM_READ_COLS] * mipmap[MiM_READ_ROWS];
-
-	int stop 						= min(mm_num_reductions, max_mipmap_layers-1);	// TODO compute required reduction and blur depending on img size
+																																			// TODO compute required reduction and blur depending on img size
+	int stop1 						= min(mm_num_reductions, max_mipmap_layers-1);								// #### Img pyr layers ##########
 	int reduction = 0;
-	for(; reduction <= stop; reduction++) {
+	for(; reduction <= stop1; reduction++) {
 		num_threads[reduction]		= ceil( (float)(mipmap[MiM_PIXELS])/(float)local_work_size ) * local_work_size ;						// global_work_size formula for num_treads req for this layer.
-		for (int i=0; i<8; i++) 	{																										// Initialize the global MipMap[8*8] array.
-			MipMap[reduction*8 +i] = mipmap[i];
-																																			if(verbosity>local_verbosity_threshold) { cout << "\nMipMap["<<reduction<<"*8 +"<<i<<"]="<<MipMap[reduction*8 +i] ;}
+		for (int i=0; i<8; i++)		{																										// Initialize the global MipMap[8*8] array.
+			MipMap[reduction*8 +i]	= mipmap[i];																							if(verbosity>local_verbosity_threshold) { cout << "\nMipMap["<<reduction<<"*8 +"<<i<<"]="<<MipMap[reduction*8 +i] ;}
 		}																																	if(verbosity>local_verbosity_threshold) { cout << endl << flush; }
-		mipmap[MiM_READ_OFFSET] 	= mipmap[MiM_WRITE_OFFSET];
-		mipmap[MiM_WRITE_OFFSET] 	= mipmap[MiM_WRITE_OFFSET] + read_cols_with_margin * (margin + write_rows);
-		mipmap[MiM_READ_ROWS] 		= write_rows;
+		mipmap[MiM_READ_OFFSET]		= mipmap[MiM_WRITE_OFFSET];
+		mipmap[MiM_WRITE_OFFSET]	= mipmap[MiM_WRITE_OFFSET] + read_cols_with_margin * (margin + write_rows);
+		mipmap[MiM_READ_ROWS]		= write_rows;
 		write_rows					= write_rows/2;
 		mipmap[MiM_WRITE_ROWS]		= write_rows;
-		mipmap[MiM_READ_COLS] 		= mipmap[MiM_WRITE_COLS];
-		mipmap[MiM_WRITE_COLS] 		= mipmap[MiM_WRITE_COLS]/2;
+		mipmap[MiM_READ_COLS]		= mipmap[MiM_WRITE_COLS];
+		mipmap[MiM_WRITE_COLS]		= mipmap[MiM_WRITE_COLS]/2;
 		mipmap[MiM_PIXELS]			= mipmap[MiM_READ_COLS] * mipmap[MiM_READ_ROWS];
 	}
 	mipmap[MiM_WRITE_ROWS]			= mipmap[MiM_READ_ROWS];
-	mipmap[MiM_WRITE_COLS] 			= mipmap[MiM_READ_COLS];
-	mipmap[MiM_WRITE_OFFSET] 		= mipmap[MiM_READ_OFFSET] + mipmap[MiM_READ_COLS] + 2*margin;
+	mipmap[MiM_WRITE_COLS]			= mipmap[MiM_READ_COLS];
+	mipmap[MiM_WRITE_OFFSET]		= mipmap[MiM_READ_OFFSET] + mipmap[MiM_READ_COLS] + 2*margin;
 
-	stop 							= min( (mm_num_reductions + mm_num_blur_layers),  max_mipmap_layers-1);
-	int layer 						= reduction;
-	for(; layer <= stop; layer++) {
+	int stop2 							= min( (mm_num_reductions + mm_num_blur_layers),  max_mipmap_layers-1);		// #### Blur layers #############
+	int layer 						= reduction;																							if(verbosity>local_verbosity_threshold) { cout << "\nblur layers"<<flush;}
+	for(; layer <= stop2; layer++) {
 		for (int i=0; i<8; i++) 	{																										// Initialize the global MipMap[8*8] array.
-			MipMap[layer*8 +i] = mipmap[i];
-																																			if(verbosity>local_verbosity_threshold) { cout << "\nMipMap["<<layer<<"*8 +"<<i<<"]="<<MipMap[layer*8 +i] ;}
+			MipMap[layer*8 +i] = mipmap[i];																									if(verbosity>local_verbosity_threshold) { cout << "\nMipMap["<<layer<<"*8 +"<<i<<"]="<<MipMap[layer*8 +i] ;}
 		}																																	if(verbosity>local_verbosity_threshold) { cout << endl << flush; }
 		mipmap[MiM_READ_OFFSET]		= mipmap[MiM_WRITE_OFFSET];
 		mipmap[MiM_WRITE_OFFSET] 	= mipmap[MiM_READ_OFFSET] + mipmap[MiM_READ_COLS] + 2*margin;
 	}
-
 																																			if(verbosity>local_verbosity_threshold) {
-																																				cout <<"	\nRunCL::initialize"<<endl;
+																																				cout <<"	\nRunCL::set_mimpmap_offsets()"<<endl;
+																																				cout << "\n\nImg pyr layers"<<flush;
 																																				for(int reduction = 0; reduction < max_mipmap_layers; reduction++) {
 																																					cout << "\n\n reduction = " 		<< reduction;
 																																					cout << "\n MiM_PIXELS = " 			<< MipMap[reduction*8 +MiM_PIXELS];
@@ -552,26 +580,45 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																					//cout << "\n MiM_GAUSSIAN_SIZE = " 	<< MipMap[reduction*8 +MiM_GAUSSIAN_SIZE];
 																																					cout << "\n MiM_READ_ROWS = " 		<< MipMap[reduction*8 +MiM_READ_ROWS];
 																																					cout << "\n MiM_WRITE_ROWS = " 		<< MipMap[reduction*8 +MiM_WRITE_ROWS];
-																																					cout << "\n row = "					<< MipMap[reduction*8 +MiM_READ_OFFSET] / mm_width;
-																																					cout << "\n col = "					<< MipMap[reduction*8 +MiM_READ_OFFSET] % mm_width;
+																																					cout << "\n offset row = "			<< MipMap[reduction*8 +MiM_READ_OFFSET] / mm_width;
+																																					cout << "\n offset col = "			<< MipMap[reduction*8 +MiM_READ_OFFSET] % mm_width;
+
+																																					if(reduction == stop1 ) { cout << "\n\nblur layers"<<flush;}
 																																				}
 																																			}
-																																			// Summation buffer sizes
-	se3_sum_size 			= 1 + ceil( (float)(MipMap[(mm_num_reductions+1)*8 + MiM_READ_OFFSET]) / (float)local_work_size ) ;				// i.e. num workgroups used = MiM_READ_OFFSET for 1 layer more than used / local_work_size,   will give one row of vector per group.
-	se3_sum_size 			*= 2;  																											// *2 incr num grps for reduced groupsize
-	uint num_DoFs			= 6 ; 																											// 6 DoF of float4 channels, + 1 DoF to compute global Rho.
-	se3_sum_size_bytes		= se3_sum_size * sizeof(float) * 4 * num_DoFs ;																	if(verbosity>local_verbosity_threshold) cout <<"\n\n se3_sum_size="<< se3_sum_size<<",    se3_sum_size_bytes="<<se3_sum_size_bytes<<flush;
-	se3_sum2_size_bytes 	= 2 * mm_num_reductions * sizeof(float) * 4 * num_DoFs;															// NB the data returned is 6xfloat4 per group, holding one float4 per 6DoF of SE3, where alpha channel=pixel count.
-	se3_sum2_size_bytes 	= ((se3_sum2_size_bytes%32) + 1) * 32;																			// Needed for Nvidia, to ensure memory allocations are multiples of 32bytes.
+	// ## set array of arrays for workgoup offsets, for patch kernels on mipmaps #################################################################
+	// Allocate array of arrays, and set counter array.
+	uint num_levels		= mm_num_reductions + mm_num_blur_layers;
+	wg_counter			= (uint*)calloc(  num_levels, sizeof(uint)  );
+	wg_offsets 			= (uint**)calloc( num_levels, sizeof(uint*) );
 
-	so3_sum_size_bytes		= se3_sum_size_bytes / 2;
-	so3_sum_size			= se3_sum_size ;
+	for (int iter = 0; iter<num_levels; iter ++){									// #### Image pyramid ###############
+		int wg_cols			= ceil((float)MipMap[ iter*8 +  MiM_READ_COLS] / (float)local_work_size);
+		int wg_rows			= ceil((float)MipMap[ iter*8 +  MiM_READ_ROWS] / (float)patch_size);
 
-	pix_sum_size			= se3_sum_size;
-	pix_sum_size_bytes		= pix_sum_size * sizeof(float) * 4;																				// NB the data returned is one float4 per group, for the base image, holding hsv channels plus entry[3]=pixel count.
+		wg_counter[iter]	=  wg_cols * wg_rows;
+		wg_offsets[iter]	= (uint*)calloc( wg_counter[iter], sizeof(uint) );
 
-																																			if(verbosity>local_verbosity_threshold) cout <<"\nRunCL::initialize_RunCL_chk finished ############################################################\n"<<flush;
+		int iter2 			= 0;
+		int offset			= MipMap[ iter*8 +  MiM_READ_OFFSET];
+		for (int row=0; row<wg_rows ; row++){
+			offset			+= patch_size * mm_width;
+			for (int col=0; col<wg_cols; col++){
+				wg_offsets[iter][iter2]			= offset + local_work_size * col;		// offset for each workgroup, assuming no wrapping. NB Wrapping would req lookup table.
+			}
+		}
+	}
+
 }
+
+void RunCL::free_wg_offsets(){	// NB must call on exit.
+	uint num_levels	= mm_num_reductions + mm_num_blur_layers;
+		for (int iter=0; iter<num_levels; iter ++){
+			free( wg_offsets[iter] );
+		}
+		free( wg_offsets );
+		free( wg_counter );
+	}
 
 
 void RunCL::set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k ){
@@ -836,7 +883,10 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 
 	// release context
 	clReleaseContext(m_context);	if (status != CL_SUCCESS)	{ cout << "\nm_context 	status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_72"<<flush;
-																																			cout<<"\nRunCL::~RunCL_chk1_finished"<<flush;
+
+	free_wg_offsets();
+
+	cout<<"\nRunCL::~RunCL_chk1_finished"<<flush;
 }
 
 void RunCL::exit_(int res)   // TODO convert all uses to exit_(res); Will call RunCL::~RunCL() automatically.

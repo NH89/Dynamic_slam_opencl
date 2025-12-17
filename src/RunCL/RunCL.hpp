@@ -40,18 +40,14 @@
 #include <filesystem>							// C++17 TODO <replace boost/filesystem>
 #include <chrono>								// For measuring time of execution.
 
-
 using namespace std::chrono;
 constexpr uint tracking_num_colour_channels = TRACKING_NUM_COLOR_CHANNELS;
-constexpr uint tracking_num_samples 		= TRACKING_NUM_SAMPLES +1;			// One more on host, for original Rho sample.
+constexpr uint tracking_num_samples 		= TRACKING_NUM_SAMPLES +1;				// One more on host, for original Rho sample.
 constexpr uint tracking_tot_samples 		= TRACKING_TOT_SAMPLES;
 constexpr uint max_mipmap_layers 			= MAX_MIPMAP_LAYERS;
 constexpr uint num_SE3_DoF					= NUM_SE3_DOF;
-
-constexpr uint block_size					= BLOCK_SIZE;										// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
-//constexpr uint num_SE3_DoF						= 6;
-constexpr uint num_past_frames				= NUM_PAST_FRAMES;										// 1,2,4,8,16,32,64 // variable select window of 4 frames.
-
+constexpr uint block_size					= BLOCK_SIZE;							// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
+constexpr uint num_past_frames				= NUM_PAST_FRAMES;						// 1,2,4,8,16,32,64 // variable select window of 4 frames.
 
 using namespace std;
 class RunCL
@@ -74,7 +70,7 @@ public:
 	cl_kernel			cvt_color_space_kernel, cvt_color_space_linear_kernel, sum_image_variance_kernel, sample_image_variance_kernel, blur_image_kernel;
 	cl_kernel 			mipmap_float4_kernel, mipmap_float_kernel,  comp_param_maps_kernel;
 	// 1st gen patch kernels ?
-	cl_kernel			rho_sq_kernel, reduce_patch_Rho_kernel, update_k2k_kernel;// TODO declare, create, release kernel in Run_cl.h etc.
+	cl_kernel			rho_sq_kernel, reduce_patch_Rho_kernel, update_k2k_kernel;	// TODO declare, create, release kernel in Run_cl.h etc.
 	// RunCL_patchslam.cpp
 	cl_kernel			compute_patch_lookup_table_kernel, patch_img_grad_kernel, patch_hessian_reduce_kernel;
 	// RunCL_patch_tracking.cpp
@@ -82,7 +78,7 @@ public:
 
 	// GPU Buffers
 	static const uint 	num_current_frames	= 5;																												// static = same for all instances of class Dynamic_slam.
-	cl_mem 				imgmem[num_current_frames], velmap[num_current_frames], depth_mem, g1mem;
+	cl_mem 				imgmem[num_current_frames], 	velmap[num_current_frames], 	depth_mem, 	g1mem;
 	/////////////////////////////
 	struct frame{
 		int 			frame_num;
@@ -192,6 +188,9 @@ public:
 	//
 	cv::Mat 			baseImage, key_frame;
 
+	uint*				wg_counter = NULL;
+	uint**				wg_offsets = NULL;
+
 	size_t  			global_work_size, mm_global_work_size, local_work_size, image_size_bytes, image_size_bytes_C1, mm_size_bytes_C1;
 	size_t				kernel_work_size_multiple, device_work_size_multiple;
 	size_t 				mm_size_bytes_C3, mm_size_bytes_C4, mm_size_bytes_C8, mm_size_bytes_half4, mm_vol_size_bytes;
@@ -238,7 +237,6 @@ public:
 
 	///////////////////////////////////// RunCL_class.cpp
 
-
 	void testOpencl();
 	void getDeviceInfoOpencl(cl_platform_id platform);
 	int  convertToString(const char *filename, std::string& s);
@@ -252,6 +250,8 @@ public:
 
 	void initialize_fp32_params();
 	void initialize_RunCL( cv::Mat baseImage_ );																						// Setting up buffers & mipmap parameters
+	void set_mimpmap_offsets();
+	void free_wg_offsets();
 	void allocatemem();
 
 	void CleanUp();																														// Exit...

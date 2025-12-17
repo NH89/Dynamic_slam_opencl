@@ -482,7 +482,7 @@ __kernel void mipmap_linear_flt4(		// Mipmap layers must be executed sesequentia
 	img[ write_index] = reduced_pixel;
 }
 
-
+/*
 __kernel void mipmap_3x3blur_flt4(		// Mipmap layers must be executed sesequentially			// Nvidia Geforce GPUs cannot use "half"
 	__private	uint	layer,			//0
 	__constant 	uint8*	mipmap_params,	//1
@@ -569,7 +569,7 @@ __kernel void mipmap_3x3blur_flt4(		// Mipmap layers must be executed sesequenti
 	reduced_pixel[3] = 1.0f;
 	img[ write_index] = reduced_pixel;
 }
-
+*/
 
  /*
  * 	mipmap_linear_flt(..) only used for depthmap_GT  // This version with 5x5 box blur .

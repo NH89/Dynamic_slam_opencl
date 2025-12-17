@@ -8,9 +8,7 @@
 #include <filesystem>
 #include <set>
 
-//#include "../utils/convertTransforms.hpp"
 #include "../utils/convertAhandaPovRayToStandard.hpp"
-
 
 #define Rx	0	// TODO  correct to match Python code and convention ( st(3), so(3) )
 #define Ry  1
@@ -19,10 +17,7 @@
 #define Ty	4
 #define Tz	5
 
-#define MAX_LAYERS  6
-
 namespace fs = std::filesystem;
-
 
 class Dynamic_slam
 {
@@ -30,23 +25,15 @@ class Dynamic_slam
     ~Dynamic_slam();
     Dynamic_slam(Json::Value obj_);
     Json::Value             obj;
+    int                     verbosity;
+    RunCL                   runcl;
     bool                    invert_GT_depth = false;
 
-    RunCL                   runcl;
-
-    int                     verbosity;
     uint                    SE_iter_per_layer;
     uint                    SE3_stop_layer;
     uint                    SE3_start_layer;
     uint                    SE_iter;
     float                   SE_factor;
-    float                   SE3_Rho_sq_threshold[5][3];
-    float                   SE3_update_dof_weights[6];
-    float                   SE3_update_layer_weights[5];
-
-    // image parameters
-    cv::Size                base_image_size;
-    int                     base_image_type;
 
     // data files
     std::string             rootpath;
@@ -67,16 +54,7 @@ class Dynamic_slam
     const cv::Matx44f       Matx44f_zero = {0,0,0,0,  0,0,0,0,  0,0,0,0,  0,0,0,0};   //  = cv::Matx44f::zeros();//
     const cv::Matx44f       Matx44f_eye  = {1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1};
     #define                 MATX44F_EYE    {1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1}
-/*
-    // #define D_K             0
-    // #define D_inv_K         1
-    // #define D_pose          2
-    // #define D_inv_pose      3
-    // #define D_keyframe2pose 4
-    // #define D_K2K           5
-    //
-    // std::vector<cv::Matx44f > Mat_pose_vec;
-*/
+
     struct pose_datum{      // default intitialization, if instatiated with " ... = {}; "
       cv::Matx16f           keyframe2pose_algebra   = {0} ;
 
@@ -104,15 +82,15 @@ class Dynamic_slam
       frame_datum           frame_data              = {};
     };
 
-    std::vector<frame_datum>     frame_data;      // (frame_data start, old, current, key_frame) are now indices of elements in the vector.
-    std::vector<keyframe_datum>  keyframe_data;
+    std::vector<frame_datum>     frame_data;		// (frame_data start, old, current, key_frame) are now indices of elements in the vector.
+    std::vector<keyframe_datum>  keyframe_data;		// TODO remove keyframes ?
 
     // GT data loading ?
-    cv::Mat image, depth_GT, cameraMatrix;        // TODO should these be Matx ?   , projection   NB cameraMatrix => K_GT
+    cv::Mat image, depth_GT, cameraMatrix;			// TODO should these be Matx ?   , projection   NB cameraMatrix => K_GT
     cv::Mat R,     T;
     cv::Mat old_R, old_T;
 
-    float SE3_k2k[6*16];                          // used for param_maps, minimal steps in SE3
+    float SE3_k2k[6*16];							// used for param_maps, minimal steps in SE3
 
 
     // functions ////////////////////////////////////////

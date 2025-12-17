@@ -140,12 +140,13 @@ void RunCL::pad_image_top_bottom2( uint layer ){
 
 																																if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::pad_image_top_bottom2(..)_chk1"<<flush;
 																																	cout \
-																																	<<" local_work_size_ = "	<< local_work_size_
-																																	<<" threads_to_launch = "	<< threads_to_launch
-																																	<<" offset1 = "				<< offset1
-																																	<<" buf_width = "			<< buf_width
-																																	<<" offset2 = "				<< offset2
-																																	<<" img_pixels = "			<< img_pixels
+																																	<<"\n layer = "				<< layer
+																																	<<"\n local_work_size_ = "	<< local_work_size_ 	<< " = patch_img_gradients_workgroup_size[	layer];"
+																																	<<"\n threads_to_launch = "	<< threads_to_launch	<< " = patch_num_threads[					layer];"
+																																	<<"\n offset1 = "			<< offset1
+																																	<<"\n buf_width = "			<< buf_width
+																																	<<"\n offset2 = "			<< offset2
+																																	<<"\n img_pixels = "		<< img_pixels
 																																	<<flush;
 																																}
 

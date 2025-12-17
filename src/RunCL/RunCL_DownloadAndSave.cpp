@@ -86,41 +86,15 @@ void RunCL::createFolders(){
 										"dmem","amem","lomem","himem","qmem","qmem2","cdatabuf","cdatabuf_8chan","hdatabuf","dbg_databuf","img_sum_buf", \
 										"HSV_grad_mem", "dmem_disparity", \
 										\
-										"jacobian","hessian","depth_mem"\
+										"jacobian","hessian","depth_mem",\
+										"lookup_table_buf"\
 	};
-	// TODO remove mames2 etc
-	std::vector<std::string> names2 = {\
-										"lookup_table_buf"/*,				"ref_img_buf",					"new_img_buf",					"warped_img_buf",\
-										"ref_img_mean_rows_buf",		"ref_img_mean_buf",				"warped_img_mean_rows_buf",		"warped_img_mean_buf",\
-										"ref_img_diff_buf",												"warped_img_diff_buf",	\
-										"ref_img_sigma_3rows",			"ref_img_sigma_3cols",			"warped_img_sigma_3rows",		"warped_img_sigma_3cols",\
-										"covariance_rows_buf", 			"covariance_buf",\
-										"correlation_buf",				"warp_buf",						"confidence_buf",\
-										"warp_buf_regularized",			"confidence_buf_regularized",\
-										"binoc_depth"*/\
-	};
-
 	std::pair<std::string, std::filesystem::path> tempPair;
-
 	tempPair = {"folder", out_path};																										// Top level output folder, used to std::out file.
 	paths.insert(tempPair);
 
 	for (std::string key : names){
 		temp_path = out_path;
-		temp_path += key;
-		tempPair = {key, temp_path};
-		paths.insert(tempPair);
-		std::filesystem::create_directory(temp_path);
-		temp_path += "/tiff/";									// "/png/";
-		std::filesystem::create_directory(temp_path);
-	}
-
-	std::filesystem::path temp_path2 = out_path;																							// "/binoc_disparity/" sub-folder
-	temp_path2 +="/binocular_disparity/";
-	std::filesystem::create_directory(temp_path2);
-
-	for (std::string key : names2){
-		temp_path = temp_path2;
 		temp_path += key;
 		tempPair = {key, temp_path};
 		paths.insert(tempPair);
