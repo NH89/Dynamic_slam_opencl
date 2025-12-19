@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 	Json::Value obj;
 	conf_params j_params(argv[1], obj);																					// Construct conf_params object j_params,  i.e. read all three .json files.#################################
 
-	int verbosity_ 		= obj["imagesPerCV"].asUInt() ;																	// Global verbosity: -1= none, 0=errors only, 1=basic, 2=lots.
+	int verbosity_ 		= obj["verbosity"].asUInt() ;																	// Global verbosity: -1= none, 0=errors only, 1=basic, 2=lots.
 	int imagesPerCV 	= obj["imagesPerCV"].asUInt() ;																	// j_params.int_mp["imagesPerCV"]; 			//
 	int max_frame_count = obj["max_frame_count"].asUInt();																// j_params.int_mp["max_frame_count"]; 		//
 	int frame_count 	= 0;

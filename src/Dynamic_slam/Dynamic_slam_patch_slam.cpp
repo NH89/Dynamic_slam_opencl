@@ -22,8 +22,17 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 	Matx16f	keyframe2pose_SE3[3]				={{0}};
 	keyframe2pose_SE3[0] 						= PToLie( keyframe2pose[0] );
 
-	const Matx44f keyframe2pose_GT 				= frame_data.back().frame_data_GT.keyframe2pose;
-	const Matx16f Pose_GT						= PToLie( keyframe2pose_GT);
+	Matx44f gt_keyframe2pose;
+	Matx16f gt_Pose;
+	if(GT_available==true){
+		gt_keyframe2pose		 				= frame_data.back().frame_data_GT.keyframe2pose;	// TODO if(GT_available==true){}else{}
+		gt_Pose									= PToLie( gt_keyframe2pose);
+	}else{
+		gt_keyframe2pose		 				= Matx44f_eye;
+		gt_Pose									= {0};
+	}
+	const Matx44f keyframe2pose_GT				= gt_keyframe2pose;
+	const Matx16f Pose_GT						= gt_Pose;
 
 	Matx44f keyframe_k2k						= K*keyframe2pose[0]*inv_K;
 	float 	k2k_4_16[tracking_tot_samples][16]	= {{0}};
@@ -146,12 +155,13 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 																																			Pose_estimate[iter] = PToLie( keyframe2pose[ iter+1 ] );
 																																			PRINT_MATX16F( Pose_estimate[iter], )
 
-																																			PRINT_MATX16F( Pose_GT, )
+																																			if(GT_available==true){
+																																				PRINT_MATX16F( Pose_GT, )
 
-																																			Matx44f error = keyframe2pose_GT * keyframe2pose[ iter+1 ].inv();
-																																			Pose_error[iter] = PToLie( (error) ) ;
-																																			PRINT_MATX16F( Pose_error[iter], )
-
+																																				Matx44f error 		= keyframe2pose_GT * keyframe2pose[ iter+1 ].inv();
+																																				Pose_error[iter] 	= PToLie( (error) );
+																																				PRINT_MATX16F( Pose_error[iter], );
+																																			}
 																																			PRINT_MATX44F(  keyframe_k2k, );
 																																			PRINT_FLOAT_16( k2k_4_16[ iter+1 ], );
 																																		}
@@ -183,13 +193,15 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 																																				if(iter%3 == 2) cout << endl<<flush;
 																																			}
 
-																																			Matx16f Pose_GT	= PToLie( keyframe2pose_GT);
-																																			PRINT_MATX16F( Pose_GT, )
+																																			if(GT_available==true){
+																																				Matx16f Pose_GT	= PToLie( keyframe2pose_GT);
+																																				PRINT_MATX16F( Pose_GT, )
 
-																																			cout<<"\n\nPose_error:";
-																																			for(uint iter=0; iter<SE_iter; iter++){
-																																				print_matx16f(Pose_error[iter]);
-																																				if(iter%3 == 2) cout << endl<<flush;
+																																				cout<<"\n\nPose_error:";
+																																				for(uint iter=0; iter<SE_iter; iter++){
+																																					print_matx16f(Pose_error[iter]);
+																																					if(iter%3 == 2) cout << endl<<flush;
+																																				}
 																																			}
 																																			cout <<"\n\nRho/valid_pixels[iter]:" << flush;
 																																			for(uint iter=0; iter<SE_iter; iter++){

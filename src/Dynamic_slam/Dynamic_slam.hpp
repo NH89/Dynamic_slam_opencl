@@ -27,13 +27,16 @@ class Dynamic_slam
     Json::Value             obj;
     int                     verbosity;
     RunCL                   runcl;
-    bool                    invert_GT_depth = false;
+    bool					GT_available						= false;
+    bool					use_conf_camera_matx				= false;
+    bool					invert_GT_depth						= false;
+    bool					initialize_keyframe_from_GT 		= false;
+	bool					initialize_tracking_from_GT_depth 	= false;
 
-    uint                    SE_iter_per_layer;
+    //uint                    SE_iter_per_layer;
     uint                    SE3_stop_layer;
     uint                    SE3_start_layer;
     uint                    SE_iter;
-    float                   SE_factor;
 
     // data files
     std::string             rootpath;
@@ -43,6 +46,7 @@ class Dynamic_slam
     std::vector<fs::path>   depth;
 
     // camera & pose params
+    cv::Matx44f initial_K;
 	float f;			//= fmaxf(	obj["cameraMatrix"][0].asFloat(),	obj["cameraMatrix"][4].asFloat()	);	// focal length in pixels.
 	float delta;		//= obj["min_depth"].asFloat() /f ;														// ST3_delta * (Translation to cause 1 pixel of parallax at min_depth)
 	float delta_theta;	//= 1/f																					// SO3_delta_theta * (Rotation to cause 1 pixel of rotation flow)
@@ -122,6 +126,7 @@ class Dynamic_slam
     /////////////////////////////////////// Dynamic_slam_class.cpp
     void generate_deltas();
     void initialize_resultsMat();
+    void initialize_camera_intrinsic_matrix();
     void initialize_camera_vec();
 
     int  nextFrame();
@@ -143,7 +148,7 @@ class Dynamic_slam
     void report_GT_pose_error();
     void artificial_pose_error_vec();
     void generate_SE3_k2k_vec( float _SE3_k2k[6*16] );		// TODO chk all maths vs Python version. Also ensure compatibility with new code.
-    void compute_optimum( float steps[3], float Rho_sq_results_[tracking_num_samples][8][tracking_num_colour_channels], int layer, int channel, float *prediction, float *optimum, float *stepsize );
+//    void compute_optimum( float steps[3], float Rho_sq_results_[tracking_num_samples][8][tracking_num_colour_channels], int layer, int channel, float *prediction, float *optimum, float *stepsize );
 
     //////////////////////////////////// Dynamic_slam_patch_slam.cpp
     void patch_slam();

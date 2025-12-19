@@ -44,10 +44,13 @@ using namespace std::chrono;
 constexpr uint tracking_num_colour_channels = TRACKING_NUM_COLOR_CHANNELS;
 constexpr uint tracking_num_samples 		= TRACKING_NUM_SAMPLES +1;				// One more on host, for original Rho sample.
 constexpr uint tracking_tot_samples 		= TRACKING_TOT_SAMPLES;
-constexpr uint max_mipmap_layers 			= MAX_MIPMAP_LAYERS;
+constexpr uint max_mipmap_layers 			= MAX_MIPMAP_LAYERS;					// Determines max image size, for img pyr apex < 10x10. 10k=>10, 8k=>9, 4k=>8, 2k=>7, SD(640x480)=>6 (2^6=64).
+																					// Insufficient layers would reduce tracking robustness, due to more pixels in apex of image pyramid.
 constexpr uint num_SE3_DoF					= NUM_SE3_DOF;
 constexpr uint block_size					= BLOCK_SIZE;							// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
+constexpr uint out_block_size				= OUT_BLOCK_SIZE;
 constexpr uint num_past_frames				= NUM_PAST_FRAMES;						// 1,2,4,8,16,32,64 // variable select window of 4 frames.
+static constexpr uint max_patches_per_layer = 2^max_mipmap_layers * 2^max_mipmap_layers; //
 
 using namespace std;
 class RunCL
@@ -104,7 +107,7 @@ public:
 			current_frames[idx].frame_num			= -1;
 			current_frames[idx].img_buf				= imgmem[idx];
 			//current_frames[idx].depth_buf			= depth_mem[idx];
-			current_frames[idx].r_vel_buf			= velmap[idx];						// velocity _relative_ to the camera.
+			current_frames[idx].r_vel_buf			= velmap[idx];					// velocity _relative_ to the camera.
 			current_frames[idx].frame_data_index	= idx;
 			current_frames[idx].pose_gt				= Matx44f::eye();
 			for(uint i=0; i<16; i++){
@@ -187,9 +190,11 @@ public:
 
 	//
 	cv::Mat 			baseImage, key_frame;
-
-	uint*				wg_counter = NULL;
-	uint**				wg_offsets = NULL;
+																						// Assuming 32x32 patches. NB some GPUs may hold multipler patches pers workgroup, especially at the higher layers.
+	uint				wg_counter[max_mipmap_layers] = {0};							// 10k = 10240x4320  => 10240/2^10=10, 4320/2^10=4.21.., so 10 reductions to img pyr apex <10x10.		// Workgroups per layer
+	uint				wg_offsets[max_mipmap_layers][max_patches_per_layer] = {{0}};	// 10k = 10240x4320  => 320x135=43200 (32x32)patches,	NB >75% unused, BUT avoids calloc & free.		// Workgroup start idx, for each layer
+																						// Requires 432000*sizeof(uint) = 1,728,000bytes on 32bit, or 3,456,000bytes on 64bitsystem.
+																						// Can be reduced by reducing MAX_MIPMAP_LAYERS, and => max image size.
 
 	size_t  			global_work_size, mm_global_work_size, local_work_size, image_size_bytes, image_size_bytes_C1, mm_size_bytes_C1;
 	size_t				kernel_work_size_multiple, device_work_size_multiple;
@@ -251,7 +256,7 @@ public:
 	void initialize_fp32_params();
 	void initialize_RunCL( cv::Mat baseImage_ );																						// Setting up buffers & mipmap parameters
 	void set_mimpmap_offsets();
-	void free_wg_offsets();
+	//void free_wg_offsets();
 	void allocatemem();
 
 	void CleanUp();																														// Exit...
@@ -324,10 +329,10 @@ public:
 	uint		patch_cols_per_row[			max_mipmap_layers]	= {0};
 
 	void	initialize_patch_params();
-	void	compute_patch_lookup_table( uint start, uint stop);
+	void	compute_patch_lookup_table( );
 
 	size_t	patch_img_gradients_workgroup_size[	max_mipmap_layers]	= {0};
-	void	patch_img_gradients_set_params( uint out_block_size );
+	void	patch_img_gradients_set_params();
 	void	patch_img_gradients( uint layer);								// NB this version uses patch_lookup_table.
 
 	void	patch_hessian_reduce(uint layer);
@@ -339,7 +344,7 @@ public:
 	void	patch_hessian_reduce();
 
 	////////////////////////////////////// RunCL_patch_tracking.cpp
-	void	build_img_pyramid( uint reductions, uint blur_layers, std::string folder );
+	void	build_img_pyramid( std::string folder );
 
 	void	blur_image_layer( uint layer );
 	void	pad_image_top_bottom2(uint layer);

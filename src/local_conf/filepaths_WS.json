@@ -21,8 +21,8 @@
                                                                         // /home/hockingsn/Programming/DataSets/computer_vision_data/
                                                                         // /home/hockingsn/Programming/computer_vision_data/
                                                                         // /home/nick/programming/ComputerVision/DataSets
-
-    "data_file":"ahanda-icl/Trajectory_for_Variable_Frame-Rate/200fps/200fps_GT_archieve", // ahanda-icl/LivingRoom'lt kt0'/living_room_traj3_loop
+				// "Video_samples/011-20251217T141225Z-3-001/011_8K_sample_pngs",//8k //
+    "data_file":"Video_samples/011-20251217T141225Z-3-001/4K_sample_pngs",//"ahanda-icl/Trajectory_for_Variable_Frame-Rate/200fps/200fps_GT_archieve", // ahanda-icl/LivingRoom'lt kt0'/living_room_traj3_loop
     "data_file_increment":1,
     "data_file_offset":0       //475;//10;//46;//462;//380;//0;
 }

@@ -47,11 +47,11 @@ void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {															
 	transform[Tz] = cv::Matx44f(1,0,0,0, 		0,1,0,0,		0,0,1,delta,	0,0,0,1);
 
 	cv::Matx44f cam2cam[6];
-																																			if(verbosity>local_verbosity_threshold) {
+																																			if(verbosity>local_verbosity_threshold && GT_available==true) {
 																																				PRINT_MATX44F(frame_data.back().frame_data_GT.K,);
 																																				PRINT_MATX44F(frame_data.back().frame_data_GT.inv_K,);
 																																			}
-	for (int i=0; i<6; i++) {  cam2cam[i] = frame_data.back().frame_data_GT.K  *  transform[i]  *  frame_data.back().frame_data_GT.inv_K;
+	for (int i=0; i<6; i++) {  cam2cam[i] = frame_data.back().frame_data.K  *  transform[i]  *  frame_data.back().frame_data.inv_K;
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\ni=" << i << endl;
 																																				PRINT_MATX44F(transform[i],);
@@ -93,7 +93,7 @@ void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {															
 																																			}
 }
 
-
+/*
 void Dynamic_slam::compute_optimum( float steps[3], float Rho_sq_results_[tracking_num_samples][max_mipmap_layers][tracking_num_colour_channels], int layer, int channel, float *prediction, float *optimum, float *stepsize  ){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_COMPUTE_OPTIMUM;//verbosity_mp["Dynamic_slam::compute_tracking_increment"];
 
@@ -117,7 +117,7 @@ void Dynamic_slam::compute_optimum( float steps[3], float Rho_sq_results_[tracki
 		float x 		= -b /(2*a);
 		*prediction 	= a*(x*x) + b*x + c;
 		*optimum 		= x;																												// dy/dx = 0 = 2*a*x + b   =>  x = -b /(2*a)
-/*
+/ *
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\n Dynamic_slam::compute_optimum: if (a>0)"
 																																				<< ", \ta=" << a
@@ -139,16 +139,16 @@ void Dynamic_slam::compute_optimum( float steps[3], float Rho_sq_results_[tracki
 																																				<< ", \tstepsize="<<*stepsize
 																																				<< endl << flush;
 																																			}
-*/
+* /
 	}else{																																	// IF concavity leads to a maximum, pick the best sample so far.
 		if (e>=i){
 			*prediction = i;
 			*optimum 	= h;
-			//*stepsize 	*=2;
+			// *stepsize 	*=2;
 		}else{
 			*prediction = e;
 			*optimum 	= d;
-			//*stepsize 	/=2;
+			// *stepsize 	/=2;
 		}
 	}
 																																			if(verbosity>local_verbosity_threshold) {
@@ -169,3 +169,4 @@ void Dynamic_slam::compute_optimum( float steps[3], float Rho_sq_results_[tracki
 																																		if( e<prediction_ || g<prediction_ || i<prediction_ ) {
 																																			cout <<"\n logic error: prediction > sample." << flush; runcl.exit_(1); }
 }
+*/

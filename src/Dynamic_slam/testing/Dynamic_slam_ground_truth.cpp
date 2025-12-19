@@ -99,7 +99,7 @@ void Dynamic_slam::use_GT_pose_vec(){
 																																			}
 }
 
-void Dynamic_slam::artificial_pose_error_vec(){
+void Dynamic_slam::artificial_pose_error_vec(){	// TODO if(GT_available==true){}else{}
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_ARTIFICIAL_POSE_ERROR;//verbosity_mp["Dynamic_slam::artificial_pose_error"];
 																																			if(verbosity>local_verbosity_threshold){
 																																				cout << "\n\n##Dynamic_slam::artificial_pose_error()_chk_0 ##########################################" << endl << flush;
@@ -124,7 +124,7 @@ void Dynamic_slam::artificial_pose_error_vec(){
 																																				PRINT_MATX44F(frame_data.back().frame_data.pose , );
 	Matx44f	old							= frame_data.back().frame_data.pose;
 
-	frame_data.back().frame_data.pose							= poseStep	*	frame_data.back().frame_data.pose/* * poseStep*/;	// TODO which side to multiply from ?
+	frame_data.back().frame_data.pose	= poseStep	*	frame_data.back().frame_data.pose;	// TODO which side to multiply from ?
 																																				PRINT_MATX44F(frame_data.back().frame_data.pose , );
 	Matx44f test1						= old.inv() * 	frame_data.back().frame_data.pose;
 	Matx44f test2						= old 		* 	frame_data.back().frame_data.pose.inv();			// Correct, negative.

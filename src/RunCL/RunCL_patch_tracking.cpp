@@ -75,54 +75,41 @@ void RunCL::update_k2k_buf( Matx44f k2k, Matx44f pose ){
 
 // Image pyramid
 
-void RunCL::build_img_pyramid( uint reductions, uint blur_layers, std::string folder ){
+void RunCL::build_img_pyramid( std::string folder ){
 	string fname = "RunCL::build_img_pyramid()";
-	int local_verbosity_threshold = V_RUNCL_REDUCE_IMG;																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::build_img_pyramid(..)_chk0"<<flush;}
-
-	int stop 		= min(mm_num_reductions+1,  max_mipmap_layers-1);	// TODO compute required reduction and blur depending on img size
-	int layer 		= 0;
-																																			cout << "\nlayer = "<<layer<<flush;
+	int local_verbosity_threshold = V_RUNCL_REDUCE_IMG;
+	int layer		= 0;																										if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::build_img_pyramid(..)_chk0"<<flush;
+																																	cout << "\nlayer = "<<layer<<flush;
+																																	cout << "\nmm_stop = "<<mm_stop<<flush;
+																																}
 	reduce_img( layer, folder);
-	for (layer=1; layer<=stop ; layer++){
-																																			if(verbosity>local_verbosity_threshold) {	cout<<"\n\nRunCL::build_img_pyramid(..) pyramid layer = "<<layer<<flush;	}
-																																			cout << "\nlayer = "<<layer<<flush;
+	for (layer=1; layer<mm_stop ; layer++){
+																																if(verbosity>local_verbosity_threshold) {	cout<<"\n\nRunCL::build_img_pyramid(..) pyramid layer = "<<layer<<flush;
+																																	cout << "\nlayer = "<<layer<<flush;
+																																}
 		blur_image_layer( layer);
 		reduce_img( layer, folder);
 	}
-																																			cout << "\nlayer = "<<layer<<",  old stop = "<< stop << flush;
-	stop 			= min( (mm_num_reductions + mm_num_blur_layers),  max_mipmap_layers-1);
-	layer--;
-																																			cout << "\nnew stop = "<< stop << flush;
-	for (; layer<stop  ; layer++){
-																																			cout << "\nblur layer = "<<layer<<flush;
-		copy_translate_img( layer );																										if(verbosity>local_verbosity_threshold) {	cout<<"\n\nRunCL::build_img_pyramid(..) blur layer = "<<layer<<flush;	}
-
-		for (int iter = 0; iter<3; iter++){				// NB 3x (5x5) boxblur
-			blur_image_layer( layer );					// NB will need new locations for non-reduced layers.
-		}
-	}
-
-																																			cout << "\nlast layer = "<<layer<<flush;
-	size_t 			local_size 		= local_work_size;
+	size_t			local_size		= local_work_size;
 	const cl_mem 	imgmem_			= current_frames[	current_frames_idx[0] ].img_buf;
-																																			if(verbosity>local_verbosity_threshold) {
-																																				cout<<"\n\nRunCL::build_img_pyramid(..)_chk3 Finished all loops."<<flush;
-																																				stringstream ss;	ss << dataset_frame_num << "build_img_pyramid";
-																																				cv::Size new_Image_size = cv::Size(mm_width, mm_height);
-																																				size_t   new_size_bytes = mm_width * mm_height * 4*4;
-																																				ss << "_raw_";
-
-																																				DownloadAndSave_3Channel( imgmem_, ss.str(), paths.at(folder), new_size_bytes, new_Image_size, CV_32FC4, false, 1, 0, true );
-																																				cout << "\n  (local_size+4) *5*4* sizeof(float) = "<<  (local_size+4) *5*4* sizeof(float) << " ,   (local_size+4) = " <<  (local_size+4) << endl << flush;
-																																			}
-																																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_linear(..)_chk4 Finished"<<flush;}
+																																if(verbosity>local_verbosity_threshold) {
+																																	cout << "\nlast layer = "<<layer<<flush;
+																																	cout<<"\n\nRunCL::build_img_pyramid(..)_chk3 Finished all loops."<<flush;
+																																	stringstream ss;	ss << dataset_frame_num << "build_img_pyramid";
+																																	cv::Size new_Image_size = cv::Size(mm_width, mm_height);
+																																	size_t   new_size_bytes = mm_width * mm_height * 4*4;
+																																	ss << "_raw_";
+																																	DownloadAndSave_3Channel( imgmem_, ss.str(), paths.at(folder), new_size_bytes, new_Image_size, CV_32FC4, false, 1, 0, true );
+																																	cout << "\n  (local_size+4) *5*4* sizeof(float) = "<<  (local_size+4) *5*4* sizeof(float) << " ,   (local_size+4) = " <<  (local_size+4) << endl << flush;
+																																}
+																																if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_linear(..)_chk4 Finished"<<flush;}
 }
 
 void RunCL::blur_image_layer( uint layer ){
-		pad_image_top_bottom2( 		layer );
-		vertcal_blur5( 			layer );
-		pad_image_left_right2( 	layer );
-		horiz_blur5( 			layer );
+		pad_image_top_bottom2(	layer );
+		vertcal_blur5(			layer );
+		pad_image_left_right2(	layer );
+		horiz_blur5(			layer );
 }
 
 void RunCL::pad_image_top_bottom2( uint layer ){
@@ -352,9 +339,7 @@ void RunCL::reduce_img(uint layer, std::string folder){
 																																			}
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::reduce_img(..)_finished layer = "<<layer<< "#############################################################"<<flush; }
 }
-
-// Add blurred top layers to image pyramid
-void RunCL::copy_translate_img( uint layer ){
+/*void RunCL::copy_translate_img( uint layer ){	// Add blurred top layers to image pyramid
 	string fname = "RunCL::copy_translate_img()";
 	int local_verbosity_threshold = V_RUNCL_REDUCE_IMG;																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::copy_translate_img(..)_chk0,  layer = "<<layer<< "#############################################################"<<flush;}
 	//cl_kernel 		kernel 						= reduce_img_kernel;
@@ -435,7 +420,7 @@ void RunCL::copy_translate_img( uint layer ){
 																																}
 																																if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::copy_translate_img(..)_finished "<<flush;}
 }
-
+*/
 
 
 

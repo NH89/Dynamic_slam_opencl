@@ -327,20 +327,6 @@ void RunCL::initialize_fp32_params(){	// TODO remove most, ie DTAM pararms
 
 	fp32_params[MAX_INV_DEPTH]	=  1/obj["min_depth"].asFloat()		;																		// This works: Initialize 'params[]' from conf.json .
 	fp32_params[INV_DEPTH_STEP]	=	 ( fp32_params[MAX_INV_DEPTH] - fp32_params[MIN_INV_DEPTH] ) /  uint_params[COSTVOL_LAYERS]	;
-/*
-	fp32_params[ALPHA_G]		=    obj["alpha_g"].asFloat()		;
-	fp32_params[BETA_G]			=    obj["beta_g"].asFloat()		;
-	fp32_params[EPSILON]		=    obj["epsilon"].asFloat()		;
-				//SIGMA_Q ;
-				//SIGMA_D ;
-	fp32_params[THETA]			=    obj["thetaStart"].asFloat()	;
-	fp32_params[OLD_THETA]		=    fp32_params[THETA];
-
-	fp32_params[LAMBDA]			=    obj["lambda"].asFloat()		;
-	fp32_params[SCALE_EAUX]		=    obj["scale_E_aux"].asFloat()	;
-	fp32_params[SE3_LM_A]		=    obj["SE3_LM_A"].asFloat()		;
-	fp32_params[SE3_LM_B]		=    obj["SE3_LM_B"].asFloat()		;
-*/
 																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_fp32_params_finished,  fp32_params[MIN_INV_DEPTH] = "<<fp32_params[MIN_INV_DEPTH]<<"\n\n" << flush;
 }
 
@@ -370,10 +356,24 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	baseImage_height	= baseImage.rows;
 	layerstep 			= baseImage_width * baseImage_height;
 
-	mm_num_reductions	= obj["num_reductions"].asUInt();																					// Constant parameters of the mipmap, (as opposed to per-layer mipmap_buf)
-	mm_num_blur_layers	= obj["num_blur_layers"].asUInt();
+	uint num_reductions_width		= log2(baseImage_width/5);
+	uint num_reductions_height		= log2(baseImage_height/5);
+	mm_num_reductions				= min(num_reductions_width, num_reductions_height);		cout << "\nnum_reductions_width="<<num_reductions_width<<",  num_reductions_height="<<num_reductions_height<<", mm_num_reductions="<<mm_num_reductions	<<flush;
+
+	//mm_num_reductions	= obj["num_reductions"].asUInt();									cout << "\nmm_num_reductions="<<mm_num_reductions	<<flush;
+																							// Constant parameters of the mipmap, (as opposed to per-layer mipmap_buf)
+	if (mm_num_reductions >= max_mipmap_layers) {
+		cout << "\n\n BEWARE (mm_num_reductions="<<mm_num_reductions<<" >= max_mipmap_layers="<<max_mipmap_layers<<")  #############\n\n"<<flush;
+		mm_num_reductions = max_mipmap_layers-1;
+	}
+	uint apexImage_width	= baseImage_width	/ pow(2, mm_num_reductions);
+	uint apexImage_height	= baseImage_height	/ pow(2, mm_num_reductions);
+	cout << "\nmm_num_reductions = "<<mm_num_reductions<<",  apexImage_width = "<<apexImage_width<<",  apexImage_height = "<<apexImage_height<<flush;
+
+
+	//mm_num_blur_layers	= obj["num_blur_layers"].asUInt();
 	mm_start			= 0;
-	mm_stop				= mm_num_reductions + mm_num_blur_layers;																								if(verbosity>local_verbosity_threshold) cout << "\nRunCL::initialize_RunCL_chk0.5,  mm_start="<<mm_start<<",  mm_stop="<<mm_stop<<" \n" << flush;
+	mm_stop				= mm_num_reductions;// + mm_num_blur_layers;																								if(verbosity>local_verbosity_threshold) cout << "\nRunCL::initialize_RunCL_chk0.5,  mm_start="<<mm_start<<",  mm_stop="<<mm_stop<<" \n" << flush;
 	mm_gaussian_size	= obj["gaussian_size"].asUInt();
 	mm_margin			= obj["MipMap_margin"].asUInt() * mm_num_reductions;
 	mm_width 			= baseImage_width  + 2 * mm_margin;
@@ -499,13 +499,13 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																			if(verbosity>local_verbosity_threshold) cout <<"\nRunCL::initialize_RunCL_chk finished -1 ############################################################\n"<<flush;
 	allocatemem();																													// Allocate buffers on the GPU ######
 	initialize_patch_params();
-	compute_patch_lookup_table( mm_start, mm_stop);
+	compute_patch_lookup_table();
 																																			if(verbosity>local_verbosity_threshold){ cout <<"\nRunCL::initialize_RunCL_chk finished -0.5 ############################################################\n"<<flush;
 																																				for(uint layer = 0; layer <= mm_stop; layer++) {
 																																					cout <<"\npatch_local_work_size["<<layer<<"] = "<<patch_local_work_size[layer]<< flush;
 																																				}
 																																			}
-	patch_img_gradients_set_params( 4/*out_block_size*/ );		//TODO set in .conf file,  uint out_block_sizefor ST3_hessian		// will need a runcl.set_patch_kernels_params() function
+	patch_img_gradients_set_params();		//TODO set in .conf file,  uint out_block_sizefor ST3_hessian		// will need a runcl.set_patch_kernels_params() function
 																																			if(verbosity>local_verbosity_threshold) cout <<"\nRunCL::initialize_RunCL_chk finished ############################################################\n"<<flush;
 }
 
@@ -557,7 +557,7 @@ void RunCL::set_mimpmap_offsets(){
 	mipmap[MiM_WRITE_ROWS]			= mipmap[MiM_READ_ROWS];
 	mipmap[MiM_WRITE_COLS]			= mipmap[MiM_READ_COLS];
 	mipmap[MiM_WRITE_OFFSET]		= mipmap[MiM_READ_OFFSET] + mipmap[MiM_READ_COLS] + 2*margin;
-
+/*
 	int stop2 							= min( (mm_num_reductions + mm_num_blur_layers),  max_mipmap_layers-1);		// #### Blur layers #############
 	int layer 						= reduction;																							if(verbosity>local_verbosity_threshold) { cout << "\nblur layers"<<flush;}
 	for(; layer <= stop2; layer++) {
@@ -567,6 +567,7 @@ void RunCL::set_mimpmap_offsets(){
 		mipmap[MiM_READ_OFFSET]		= mipmap[MiM_WRITE_OFFSET];
 		mipmap[MiM_WRITE_OFFSET] 	= mipmap[MiM_READ_OFFSET] + mipmap[MiM_READ_COLS] + 2*margin;
 	}
+*/
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout <<"	\nRunCL::set_mimpmap_offsets()"<<endl;
 																																				cout << "\n\nImg pyr layers"<<flush;
@@ -586,18 +587,18 @@ void RunCL::set_mimpmap_offsets(){
 																																					if(reduction == stop1 ) { cout << "\n\nblur layers"<<flush;}
 																																				}
 																																			}
-	// ## set array of arrays for workgoup offsets, for patch kernels on mipmaps #################################################################
+	// ## set array of arrays for workgoup offsets, for patch kernels on mipmaps ########################################################### TODO Replace with fixed arrays capable of 10K images
 	// Allocate array of arrays, and set counter array.
-	uint num_levels		= mm_num_reductions + mm_num_blur_layers;
-	wg_counter			= (uint*)calloc(  num_levels, sizeof(uint)  );
-	wg_offsets 			= (uint**)calloc( num_levels, sizeof(uint*) );
+	uint num_levels		= mm_num_reductions;// + mm_num_blur_layers;
+	//wg_counter			= (uint*)calloc(  num_levels, sizeof(uint)  );
+	//wg_offsets 			= (uint**)calloc( num_levels, sizeof(uint*) );
 
 	for (int iter = 0; iter<num_levels; iter ++){									// #### Image pyramid ###############
 		int wg_cols			= ceil((float)MipMap[ iter*8 +  MiM_READ_COLS] / (float)local_work_size);
 		int wg_rows			= ceil((float)MipMap[ iter*8 +  MiM_READ_ROWS] / (float)patch_size);
 
 		wg_counter[iter]	=  wg_cols * wg_rows;
-		wg_offsets[iter]	= (uint*)calloc( wg_counter[iter], sizeof(uint) );
+		//wg_offsets[iter]	= (uint*)calloc( wg_counter[iter], sizeof(uint) );
 
 		int iter2 			= 0;
 		int offset			= MipMap[ iter*8 +  MiM_READ_OFFSET];
@@ -610,7 +611,7 @@ void RunCL::set_mimpmap_offsets(){
 	}
 
 }
-
+/*
 void RunCL::free_wg_offsets(){	// NB must call on exit.
 	uint num_levels	= mm_num_reductions + mm_num_blur_layers;
 		for (int iter=0; iter<num_levels; iter ++){
@@ -619,7 +620,7 @@ void RunCL::free_wg_offsets(){	// NB must call on exit.
 		free( wg_offsets );
 		free( wg_counter );
 	}
-
+*/
 
 void RunCL::set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k ){
 	int local_verbosity_threshold = -2; //V_RUNCL_SET_CAM_BUFS;
@@ -689,6 +690,10 @@ void RunCL::allocatemem(){
 	for (uint i=0; i<num_current_frames; i++ ) {
 		imgmem[i]		= clCreateBuffer(m_context, CL_MEM_READ_WRITE  						, mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 		velmap[i]		= clCreateBuffer(m_context, CL_MEM_READ_WRITE  						, mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	}
+	cout <<"\nmm_size_bytes_C4 = "<<mm_size_bytes_C4<<flush;
+	for (uint i=0; i<num_current_frames; i++ ) {
+		cout<<"\nimgmem["<<i<<"] = "<<imgmem[i]<<flush;
 	}
 	initialize_current_frames();
 	// test_update_current_frames_idx(64);	// NB Only for debugging.
@@ -884,7 +889,7 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	// release context
 	clReleaseContext(m_context);	if (status != CL_SUCCESS)	{ cout << "\nm_context 	status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_72"<<flush;
 
-	free_wg_offsets();
+	//free_wg_offsets();
 
 	cout<<"\nRunCL::~RunCL_chk1_finished"<<flush;
 }

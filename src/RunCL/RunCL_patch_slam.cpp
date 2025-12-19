@@ -33,13 +33,13 @@ void RunCL::initialize_patch_params(){																// called by Dynamic_slam:
 }
 
 
-void RunCL::compute_patch_lookup_table( uint start, uint stop){										// called by Dynamic_slam::Dynamic_slam
+void RunCL::compute_patch_lookup_table(){										// called by Dynamic_slam::Dynamic_slam
 	string fname = "RunCL::compute_patch_lookup_table( )";
 	int local_verbosity_threshold = V_RUNCL_COMPUTE_PATCH_LOOKUP_TABLE;
 	cl_kernel kernel = compute_patch_lookup_table_kernel;
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_patch_lookup_table( ..)_chk1 #############################################################"<<flush;
 																																	cout << "\n local_work_size = " << local_work_size
-																																	<< ",  start = " << start << ",  stop = " << stop
+																																	<< ",  mm_stop = " << mm_stop
 																																	<< flush;
 																																}
 	size_t kernel_workgroup_size;
@@ -64,8 +64,7 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){										// call
 	_clSetKernelArg( kernel,  6, sizeof( cl_mem), &patch_lookup_table_buf,	fname);												// __global		float4*		lookup_table			//6
 																																if(verbosity>local_verbosity_threshold+1) {
 																																	cout<<"\nRunCL::compute_patch_lookup_table( )_chk3"
-																																	<<",  start="				<<start
-																																	<<",  stop="				<<stop
+																																	<<",  mm_stop="				<<mm_stop
 																																	<<",  local_work_size="		<<local_work_size
 																																	<<flush;
 																																}
@@ -73,7 +72,7 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){										// call
 	cl_int			res, status;
 	patch_lookup_table_offset[0]	= 0; 																						// NB 'start' may not be set to zero
 
-	for(uint layer = 0; layer <= stop; layer++) {																				// NB processes largest layer first.
+	for(uint layer = 0; layer <= mm_stop; layer++) {																				// NB processes largest layer first.
 																																if(verbosity>local_verbosity_threshold+1) { cout<<"\n\n\nRunCL::compute_patch_lookup_table( )_chk4,  reduction="\
 																																	<<layer<<",  patch_num_threads[reduction]="<<patch_num_threads[layer]<<"  local_work_size="<<local_work_size<<flush;
 																																}
@@ -124,7 +123,7 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){										// call
 																																	<<"},  local_work_size_[0]="					<<local_work_size_[0]
 																																	<<",  patch_local_work_size["<<layer<<"]="		<<patch_local_work_size[layer]
 																																	<< flush;
-																																	for (uint reduction = 0; reduction < 8  ; reduction ++){
+																																	for (uint reduction = 0; reduction < max_mipmap_layers; reduction ++){
 																																		cout << "\n reduction = "					<< reduction
 																																		<<"  patch_num_threads[reduction] = "		<< patch_num_threads[reduction]
 																																		<< flush;
@@ -132,9 +131,9 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){										// call
 																																	cout<<"\ntracking_num_samples*2*mm_size_bytes_C4="<<tracking_num_samples*2*mm_size_bytes_C4
 																																		<<"     24 * mm_size_bytes_C1="<<24 * mm_size_bytes_C1<<"\n"<<flush;
 
-																																	for(uint layer = 0; layer <= stop; layer++) {
-																																		cout <<"\npatch_local_work_size["<<layer<<"] = "<<patch_local_work_size[layer]<< flush;
-																																	}
+																																	// for(uint layer = 0; layer <= stop; layer++) {
+																																	// 	cout <<"\npatch_local_work_size["<<layer<<"] = "<<patch_local_work_size[layer]<< flush;
+																																	// }
 																																}
 		uint 	lookup_table_offset_uint 				= patch_lookup_table_offset[layer];
 		res 	= clSetKernelArg(kernel, 0, sizeof(int), &layer );																// __private	uint		layer,					//0
@@ -146,13 +145,13 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){										// call
 																															if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
 		status	= clFlush(m_queue);																							if (status != CL_SUCCESS)	{ cout << "\nRunCL::compute_patch_lookup_table( ),  clFlush(m_queue) status  = "<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
 		status	= clWaitForEvents (1, &ev);																					if (status != CL_SUCCESS)	{ cout << "\nRunCL::compute_patch_lookup_table( ),  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
-		if (layer < stop){
+		if (layer < mm_stop ){
 			patch_lookup_table_offset[layer +1]				=	patch_lookup_table_offset[layer] + threads_to_launch;			// NB this pads the lookup table, so that local work groups will not be shared betwen layers.
 																																// It also  means that this offset should be used to launch layers from the lookup table.
 		}
 	}
 																																if( verbosity>local_verbosity_threshold+1) {
-																																	for(uint reduction = 0; reduction <= stop; reduction++) {
+																																	for(uint reduction = 0; reduction <= mm_stop; reduction++) {
 																																		cout << "\npatch_num_threads["<<reduction<<"] = "<<patch_num_threads[reduction]<<",   MipMap[reduction*8 +MiM_PIXELS] = "<<MipMap[reduction*8 +MiM_PIXELS]<<flush;
 																																	}
 																																	cout <<"\nNB there will only be a gap in the lookuptable when:  patch_num_threads[reduction] > MipMap[reduction*8 +MiM_PIXELS]  , which depends on the image dimensions and local_work_size"<<flush;
@@ -173,18 +172,18 @@ void RunCL::compute_patch_lookup_table( uint start, uint stop){										// call
 																																	tiff 			= old_tiff;
 																																}
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::compute_patch_lookup_table( )_finished #############################################################"<<flush;
-																																	for(uint layer = 0; layer <= stop; layer++) {
-																																		cout <<"\npatch_local_work_size["<<layer<<"] = "<<patch_local_work_size[layer]<< flush;
-																																	}
+																																	// for(uint layer = 0; layer <= stop; layer++) {
+																																	// 	cout <<"\npatch_local_work_size["<<layer<<"] = "<<patch_local_work_size[layer]<< flush;
+																																	// }
 																																}
 
 }
 
 
-void RunCL::patch_img_gradients_set_params( uint out_block_size ){	// Uses patch lookup table		// called by Dynamic_slam::Dynamic_slam
+void RunCL::patch_img_gradients_set_params(){	// Uses patch lookup table		// called by Dynamic_slam::Dynamic_slam
 	string fname = "RunCL::patch_img_gradients_set_params()";
 	int local_verbosity_threshold = V_RUNCL_PATCH_IMG_GRADIENTS;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients_set_params()_chk1 #############################################################"<<flush;
-																																	for(uint layer = 0; layer <= max_mipmap_layers; layer++) {
+																																	for(uint layer = 0; layer < max_mipmap_layers; layer++) {
 																																		cout <<"\npatch_local_work_size["<<layer<<"] = "<<patch_local_work_size[layer]<< flush;
 																																	}
 																																}
@@ -220,9 +219,9 @@ void RunCL::patch_img_gradients_set_params( uint out_block_size ){	// Uses patch
 																																if( verbosity>local_verbosity_threshold+1 ) {
 																																	cout <<"\npatches_per_workgroup_local_mem 	= "<<patches_per_workgroup_local_mem<<flush;
 																																	cout <<"\npatch_size = "<<patch_size<<flush;
-																																	for(uint layer = 0; layer <= max_mipmap_layers; layer++) {
-																																		cout <<"\npatch_local_work_size["<<layer<<"] = "<<patch_local_work_size[layer]<< flush;
-																																	}
+																																	// for(uint layer = 0; layer < max_mipmap_layers; layer++) {
+																																	// 	cout <<"\npatch_local_work_size["<<layer<<"] = "<<patch_local_work_size[layer]<< flush;
+																																	// }
 																																}
 	for (uint layer_=0; layer_<max_mipmap_layers; layer_++){
 		patch_img_gradients_workgroup_size[layer_]	= min( patch_local_work_size[layer_],  patches_per_workgroup_local_mem * patch_size );
@@ -288,10 +287,17 @@ void RunCL::patch_img_gradients_set_params( uint out_block_size ){	// Uses patch
 																																	<<",    st3_hessian_row_step ="						<<st3_hessian_row_step
 																																	<<",    out_block_size ="							<<out_block_size
 																																	<<"\n"<<flush;
+
+
 																																}
 		hessian_layer_offset			+=		6* hessian_elem_step;					//MipMap[layer*8 + MiM_READ_OFFSET]	/mm_width;
 		st3_hessian_layer_offset		+=		3* st3_hessian_row_step;
 	}
+																																if( verbosity>local_verbosity_threshold ) {
+																																	for (uint layer =0; layer<mm_stop; layer++){
+																																		cout<<"\npatch_ST3_hessian_start_idx[	layer="<<layer<<"][row][col] = "<<patch_hessian_start_idx[layer][0][0]<<flush;
+																																	}
+																																}
 }
 
 // called by Dynamic_slam::getFrame //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -300,16 +306,32 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 	string fname = "RunCL::patch_img_gradients()";
 	int local_verbosity_threshold = V_RUNCL_PATCH_IMG_GRADIENTS;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_chk1 #############################################################"<<flush;}
 	cl_kernel		kernel						= patch_img_grad_kernel;
+																																cout<<"  chk_1 , layer = "<<layer<<flush;
 	const cl_mem 	imgmem_						= current_frames[ 						current_frames_idx[0] ].img_buf;
+
+																																cout<<"  chk_2 "<<flush;
 	size_t			local_work_size_			= patch_img_gradients_workgroup_size[	layer];											// patch_local_work_size[	layer];						//patch_img_gradients_workgroup_size; // patch_img_gradients_local_work_size_;
 	size_t			threads_to_launch			= patch_num_threads[					layer];
 	size_t			local_Hessian_size			= sizeof(cl_float4)						*num_SE3_DoF *num_SE3_DoF	*local_work_size_;	//*patch_img_gradients_workgroup_size;
 	uint			lookup_table_offset_uint 	= patch_lookup_table_offset[			layer];
-
+																																if( verbosity>local_verbosity_threshold ) {
+																																	for (uint layer_ =0; layer_<mm_stop; layer_++){
+																																		cout<<"\npatch_ST3_hessian_start_idx[	layer="<<layer_<<"][row][col] = "<<patch_hessian_start_idx[layer_][0][0]<<flush;
+																																	}
+																																}
+																																cout<<"  chk_3 "<<flush;
 	uint			SE3_h_offset				= patch_hessian_start_idx[layer][0][0];
 	uint			ST3_h_offset				= patch_ST3_hessian_start_idx[layer][0][0];
 	cl_uint3		SE3_hessian_offset			= {{ SE3_h_offset,	(patch_hessian_start_idx[layer][0][1]     - SE3_h_offset) ,	(patch_hessian_start_idx[layer][1][0]     - SE3_h_offset)  }};
 	cl_uint3		ST3_out_offset				= {{ ST3_h_offset,	(patch_ST3_hessian_start_idx[layer][0][1] - ST3_h_offset) ,	(patch_ST3_hessian_start_idx[layer][1][0] - ST3_h_offset)  }};
+																																cout<<"  chk_4, local_Hessian_size = "<<local_Hessian_size<<"  "<<flush;
+
+																																cout<<" out_block_size = "<<out_block_size
+																																<<"\n SE3_h_offset = "<<SE3_h_offset
+																																<<"\n ST3_h_offset = "<<ST3_h_offset
+																																<<"\n SE3_hessian_offset = ("<<SE3_hessian_offset.x <<", "<<SE3_hessian_offset.y <<", "<<SE3_hessian_offset.z <<")"
+																																<<"\n ST3_out_offset = ("<<ST3_out_offset.x <<", "<<ST3_out_offset.y <<", "<<ST3_out_offset.z <<")"
+																																<<flush;
 
 	_clSetKernelArg( kernel,	0, sizeof(int),			&layer,							fname);									// __private	uint		layer,						//0
 	_clSetKernelArg( kernel,	1, sizeof(int),			&lookup_table_offset_uint,		fname);									// __private	uint		lookup_table_offset_uint,	//1
@@ -320,13 +342,14 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 	_clSetKernelArg( kernel,	9, sizeof( cl_mem),		&imgmem_,						fname);									// __global 	float4*		img,					//6		//	"current_frames[idx].img_buf	= imgmem[idx];", NB changes every new frame.
 	_clSetKernelArg( kernel,	12,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,			//9		// local_Hessian[ sizeof(float4) *6*6 *local_size]
 
+																																cout<<"  chk_5 "<<flush;
 	cl_event	ev;
 	cl_int		res, status;
 
 	res 	= clEnqueueNDRangeKernel(m_queue,		kernel, 1, 0, &threads_to_launch, &local_work_size_, 0, NULL, &ev);
 																	if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
-	status	= clFlush(m_queue);										if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_img_gradients( ),  clFlush(m_queue) status  = "<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
-	status	= clWaitForEvents (1, &ev);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_img_gradients( ),  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
+	status	= clFlush(m_queue);										if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_img_gradients( ),  clFlush(m_queue) status  = "<<status<<" "<<checkerror(status) <<"\n"<<flush; exit_(status);}
+	status	= clWaitForEvents (1, &ev);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_img_gradients( ),  clWaitForEventsh(1, &ev) =" <<status<<" "<<checkerror(status) <<"\n"<<flush; exit_(status);}
 
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_chk2 ."<<flush;	// Save buffers to file ###########
 																																	stringstream ss;
