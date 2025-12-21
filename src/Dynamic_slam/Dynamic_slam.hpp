@@ -87,7 +87,7 @@ class Dynamic_slam
     };
 
     std::vector<frame_datum>     frame_data;		// (frame_data start, old, current, key_frame) are now indices of elements in the vector.
-    std::vector<keyframe_datum>  keyframe_data;		// TODO remove keyframes ?
+//    std::vector<keyframe_datum>  keyframe_data;		// TODO remove keyframes ?
 
     // GT data loading ?
     cv::Mat image, depth_GT, cameraMatrix;			// TODO should these be Matx ?   , projection   NB cameraMatrix => K_GT
@@ -146,7 +146,7 @@ class Dynamic_slam
 
     /////////////////////////////////////// Dynamic_slam_tracking.cpp
     void report_GT_pose_error();
-    void artificial_pose_error_vec();
+//    void artificial_pose_error_vec();
     void generate_SE3_k2k_vec( float _SE3_k2k[6*16] );		// TODO chk all maths vs Python version. Also ensure compatibility with new code.
 //    void compute_optimum( float steps[3], float Rho_sq_results_[tracking_num_samples][8][tracking_num_colour_channels], int layer, int channel, float *prediction, float *optimum, float *stepsize );
 

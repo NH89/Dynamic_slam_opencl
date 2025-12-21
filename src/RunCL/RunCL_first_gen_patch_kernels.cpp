@@ -202,6 +202,7 @@ void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer )					
 	string fname = "RunCL::reduce_patch_Rho( ..)";
 	int local_verbosity_threshold = V_RUNCL_REDUCE_PATCH_RHO;
 																																		if( verbosity>local_verbosity_threshold) {cout<<"\nRunCL::reduce_patch_Rho( ..)_chk_1 _____________________"<<flush;}
+																																		cout<<" layer = "<<layer<<flush;
 																																			// if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_SE3( ..)_chk0 .##################################################################"<<flush;
 																																			// 	float pose_update_ary[6];
 																																			// 	ReadOutput( (uchar*)pose_update_ary, pose_update_buf, sizeof(float)*6, 0);	//ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
@@ -210,20 +211,21 @@ void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer )					
 	cl_kernel		kernel 				= reduce_patch_Rho_kernel;																			//NB call just one workgroup to sum the whole image maps from the patch kernel.
 	const uint		patch_size 			= 32;																								//TODO set global patch size from device parameters // generally:  device_work_size_multiple = patch_size * integer,   eg 32, 64, 128
 	const uint		SE3_DoF				= 6;
-	uint			read_rows			= MipMap[layer * 8 + MiM_READ_ROWS] ;
+	uint			read_rows			= MipMap[layer * 8 + MiM_READ_ROWS] ;								cout <<" chk1 "<<flush;
 	uint			read_cols			= MipMap[layer * 8 + MiM_READ_COLS] ;																// NB the largest (layer 0) read_cols, is the unreduced size of the input image. (here 640x480)
 	uint			rows_blocks			= read_rows/patch_size ; //ceil( (float) read_rows/patch_size );								//0 // num rows in the fully reduced map  640/32=20 => 32 cols_blocs.  32*6=192 which would fit IFF groupsize >=256.
-	uint			cols_blocks			= ceil( (float) read_cols/patch_size );															//1 // num cols in the fully reduced map. 1920x1080 1920/32=60 => 64 cols_blocs
+	uint			cols_blocks			= ceil( (float) read_cols/patch_size );								cout <<" chk2 "<<flush;							//1 // num cols in the fully reduced map. 1920x1080 1920/32=60 => 64 cols_blocs
 																											// threads_per_DoF must be the first 2^n > cols per SE3 patch.
 	uint			threads_per_DoF		= powf(2,ceil( log2((float)cols_blocks) )); 						// 10 layer 1 =>  pown(2,ciel(log2(10.0f) ))=16; 6*16=96.      // * rows_blocks  ;//	8x10=80 layer1 => 96 threads to launch?		// num pixels in fully reduced map. Req per SE3 DoF.
-	uint 			DoF_per_workgroup	= device_work_size_multiple / threads_per_DoF;
-	size_t			threads_required	= (device_work_size_multiple * SE3_DoF) / DoF_per_workgroup;		// NB device_work_size_multiple is usually a poer of 2, DoF_per_workgroup will also be a power of 2.
-	uint 			workgroups_required	= ceil( (float)threads_required / device_work_size_multiple );
-	size_t			threads_to_launch	= workgroups_required  *  device_work_size_multiple;
+	uint 			DoF_per_workgroup	= device_work_size_multiple / threads_per_DoF;						cout <<" chk3 "<<flush;
+	size_t			threads_required	= (device_work_size_multiple * SE3_DoF) / DoF_per_workgroup;		cout <<" chk3.1 "<<flush;// NB device_work_size_multiple is usually a poer of 2, DoF_per_workgroup will also be a power of 2.
+	uint 			workgroups_required	= ceil( (float)threads_required / device_work_size_multiple );		cout <<" chk3.2 "<<flush;
+	size_t			threads_to_launch	= workgroups_required  *  device_work_size_multiple;				cout <<" chk4 "<<flush;
 
 	uint 			row_offset			= rows_blocks + 4;																				//2
 	uint			thread_offset		= threads_per_DoF;																				//3     2^n  > pixels in fully reduced patch
 	uint			mm_cols				= uint_params[MM_COLS];																			//4
+																											cout <<" chk5 "<<flush;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::reduce_patch_Rho( ..)_chk_2 . "<<flush;
 																																			cout<<"\nRunCL::reduce_patch_Rho(..)"\
 																																				<<",  layer="						<<layer\

@@ -7,7 +7,7 @@ using namespace std;
 
 void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {																			// Generates a set of 6 k2k to be used to compute the SE3 maps for the current camera intrinsic matrix.
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_GENERATE_SE3_K2K;//verbosity_mp["Dynamic_slam::generate_SE3_k2k"];// -2;
-																																			if(verbosity>local_verbosity_threshold) cout << "\nDynamic_slam::generate_SE3_k2k( float _SE3_k2k[6*16] ) chk_0" << endl << flush;
+																																			if(verbosity>local_verbosity_threshold) cout << "\nDynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) chk_0" << endl << flush;
 	// SE3
 	//const float res			= ( obj["cameraMatrix"][2].asFloat() + obj["cameraMatrix"][5].asFloat() ) /2.0;
 	// const float f			= ( obj["cameraMatrix"][0].asFloat() + obj["cameraMatrix"][4].asFloat() ) /2.0;									// focal length in pixels.
@@ -16,8 +16,8 @@ void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {															
 	// const float cos_theta   = cos(delta_theta);
 	// const float sin_theta   = sin(delta_theta);
 																																			// Old :  Rotate 0.01 radians i.e 0.573  degrees.  Translate 0.001 'units' of distance
-																																			if(verbosity>local_verbosity_threshold){ cout << "\nDynamic_slam::generate_SE3_k2k( ) chk_1,"<<endl << flush;
-																																				print_json_float_9(obj, "cameraMatrix");
+																																			if(verbosity>local_verbosity_threshold){ cout << "\nDynamic_slam::generate_SE3_k2k_vec( ) chk_1,"<<endl << flush;
+																																				print_json_float_9(obj, "cameraMatrix");										cout	<<endl << flush;
 																																				cout << "  delta_theta = "	<<delta_theta	<< " radians," 								<<endl << flush;
 																																				cout << "  delta = "		<<delta			<< " units distance," 						<<endl << flush;
 																																				cout << "  f = "			<<f				<< " pixels," 								<<endl << flush;
@@ -47,9 +47,14 @@ void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {															
 	transform[Tz] = cv::Matx44f(1,0,0,0, 		0,1,0,0,		0,0,1,delta,	0,0,0,1);
 
 	cv::Matx44f cam2cam[6];
-																																			if(verbosity>local_verbosity_threshold && GT_available==true) {
+																																			if(verbosity>local_verbosity_threshold){
+																																				if(GT_available==true) {
 																																				PRINT_MATX44F(frame_data.back().frame_data_GT.K,);
 																																				PRINT_MATX44F(frame_data.back().frame_data_GT.inv_K,);
+																																				}
+																																				PRINT_MATX44F(frame_data.back().frame_data.K,);
+																																				PRINT_MATX44F(frame_data.back().frame_data.inv_K,);
+																																				cout<<"\nuse_conf_camera_matx = "<<use_conf_camera_matx<<flush;
 																																			}
 	for (int i=0; i<6; i++) {  cam2cam[i] = frame_data.back().frame_data.K  *  transform[i]  *  frame_data.back().frame_data.inv_K;
 																																			if(verbosity>local_verbosity_threshold) {
@@ -89,7 +94,7 @@ void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {															
 																																				cout << "\n bottomleft *  identity = " << bottomleft * 	identity << flush;
 																																				cout << "\n bottomright * identity = " << bottomright * identity << flush;
 																																				*/
-																																				cout << "\n\nDynamic_slam::generate_SE3_k2k( float _SE3_k2k[6*16] )   finished" << endl << flush;
+																																				cout << "\n\nDynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] )   finished" << endl << flush;
 																																			}
 }
 

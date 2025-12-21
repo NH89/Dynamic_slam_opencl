@@ -342,6 +342,15 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 	_clSetKernelArg( kernel,	9, sizeof( cl_mem),		&imgmem_,						fname);									// __global 	float4*		img,					//6		//	"current_frames[idx].img_buf	= imgmem[idx];", NB changes every new frame.
 	_clSetKernelArg( kernel,	12,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,			//9		// local_Hessian[ sizeof(float4) *6*6 *local_size]
 
+/*
+cl_int clGetMemObjectInfo(
+cl_mem memobj,
+cl_mem_info param_name,   CL_MEM_SIZE
+size_t param_value_size,
+void* param_value,
+size_t* param_value_size_ret);
+*/
+
 																																cout<<"  chk_5 "<<flush;
 	cl_event	ev;
 	cl_int		res, status;

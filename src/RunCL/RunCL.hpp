@@ -92,6 +92,7 @@ public:
 		Matx44f			pose_gt;
 		float			pose[16];						// Absolute pose of the frame. i.e. relative to initial frame. Computed from the local sample frames. Will req adjustment at loop closure.
 		float			k2k_0to1_est[16];				// Reprojection matrix to the current img. Estimated, then fitted for each new frame, also with updates of camera inrinsic mattix.
+		float			k2k[num_past_frames][16];
 		Matx16f			Jacobian[max_mipmap_layers];
 		Matx66f			invHessian[max_mipmap_layers];
 	};
@@ -166,21 +167,21 @@ public:
 			dataset_frame_num++;
 			update_current_frames_idx();
 			current_frames[current_frames_idx[0]].frame_data_index = dataset_frame_num;			//iter;
-
-			cout<<"\niter="<<iter;
-			for (uint idx=0; idx<5; idx++){
-				cout<<"\t\t current_frames_idx["<<idx<<"]="<<current_frames_idx[idx]<<", frame="<< current_frames[current_frames_idx[idx]].frame_data_index<<",";
-			}
-			cout << flush;
+																																		cout<<"\niter="<<iter;
+																																		for (uint idx=0; idx<5; idx++){
+																																			cout<<"\t\t current_frames_idx["<<idx<<"]="<<current_frames_idx[idx]
+																																			<<", frame="<< current_frames[current_frames_idx[idx]].frame_data_index<<",";
+																																		}
+																																		cout << flush;
 		}
 	}
 
-	cl_mem 				basemem, imgmem_blurred, SE3_grad_map_mem, SE3_incr_map_mem;
-	cl_mem 				depth_mem_temp, depth_mem_GT;																								// 'depth_mem_temp' is use to load & prepare data for depth_mem_GT and transform_depthmap
+	cl_mem				basemem, imgmem_blurred, SE3_grad_map_mem, SE3_incr_map_mem;
+	cl_mem				depth_mem_temp, depth_mem_GT;																					// 'depth_mem_temp' is use to load & prepare data for depth_mem_GT and transform_depthmap
 
 	cl_mem				k2kbuf, SE3_k2kbuf, fp32_param_buf, uint_param_buf, mipmap_buf, img_stats_buf;
-	cl_mem 				SE3_map_mem, SE3_rho_map_mem, SE3_weight_map_mem;
-	cl_mem 				pix_sum_mem, var_sum_mem;
+	cl_mem				SE3_map_mem, SE3_rho_map_mem, SE3_weight_map_mem;
+	cl_mem				pix_sum_mem, var_sum_mem;
 	cl_mem				HSV_grad_mem;
 
 	// buffers for patch kernel based Dynamic_slam
@@ -189,7 +190,7 @@ public:
 	cl_mem				pose_buf, pose_update_buf,	distorsion_update_buf,		old_results_buf,				K_buf, inv_K_buf;
 
 	//
-	cv::Mat 			baseImage, key_frame;
+	cv::Mat				baseImage, key_frame;
 																						// Assuming 32x32 patches. NB some GPUs may hold multipler patches pers workgroup, especially at the higher layers.
 	uint				wg_counter[max_mipmap_layers] = {0};							// 10k = 10240x4320  => 10240/2^10=10, 4320/2^10=4.21.., so 10 reductions to img pyr apex <10x10.		// Workgroups per layer
 	uint				wg_offsets[max_mipmap_layers][max_patches_per_layer] = {{0}};	// 10k = 10240x4320  => 320x135=43200 (32x32)patches,	NB >75% unused, BUT avoids calloc & free.		// Workgroup start idx, for each layer
@@ -204,7 +205,7 @@ public:
 
 	cl_device_id 		deviceId;
 	
-	static const uint	img_stats_size									= max_mipmap_layers*4*2;							// 8 layers, 4 channels, 2 variables.
+	static const uint	img_stats_size									= max_mipmap_layers*4*2;										// 8 layers, 4 channels, 2 variables.
 	size_t				img_stats_size_bytes							= sizeof(float)*img_stats_size;
 	float				img_stats[				img_stats_size]			= {0};
 	size_t 				num_threads[			max_mipmap_layers]		= {0};

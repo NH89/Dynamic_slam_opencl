@@ -70,12 +70,12 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	uint	group_id									= get_group_id(0);
 	const	uint local_size								= get_local_size(0);
 
-	float4	lookup_ref									= lookup_table[global_id_uint + lookup_table_offset];
+	float4	lookup_ref									= lookup_table[global_id_uint + lookup_table_offset];	//0;
 	uint	read_index									= floor(lookup_ref.z);
 	uint	u											= lookup_ref.x;														// read_column
 	uint	v											= lookup_ref.y;														// read_row
 
-	float4	lookup_ref_layer							= lookup_table[lookup_table_offset];
+	float4	lookup_ref_layer							= lookup_table[lookup_table_offset];	//0;
 	uint	layer_offset								= floor(lookup_ref_layer.z);
 
 	uint8	mipmap_params_ 								= mipmap_params[layer];
@@ -157,9 +157,9 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 				Hessian_pinv_pvt_arr[row_in_block][i][j]		= Jacobian[i] * Jacobian[j];						// Moore-Penrose pseudo inverse of H = J^T * J.		/*denom * */
 			}
 		}
-		float H 										= img[read_index][0] * 2*M_PI_F;
-		float S 										= img[read_index][1];
-		float V 										= img[read_index][2];
+		float H 										= 0; img[read_index][0] * 2*M_PI_F;
+		float S 										= 0; img[read_index][1];
+		float V 										= 0; img[read_index][2];
 		float8 temp_float8								= { sin(H) , cos(H), S, V, gx[1], gy[1], gx[2], gy[2] };			// HSV_grad = { sin(H) , cos(H), S, V, gx[1], gy[1], gx[2], gy[2] };
 		HSV_grad[read_index]							= temp_float8;
 

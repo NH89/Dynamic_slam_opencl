@@ -52,15 +52,15 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 	Matx44f pose_error_4		= pose_frame0to1_gt				* pose_frame0to1.inv();														PRINT_MATX44F( pose_error_4, pose_frame0to1_gt		* pose_frame0to1.inv()	);
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/*Below is code for older Dynamic_slam::frame_data. Above is for RunCL::current_frames[..] and direct write to k2kbuf & pose_buf.*/		if(verbosity>local_verbosity_threshold) {cout << "\n Dynamic_slam::getFrameData_vec_chk 2, "
+	/*Below is code for older Dynamic_slam::frame_data.    Above is for RunCL::current_frames[..] and direct write to k2kbuf & pose_buf.	if(verbosity>local_verbosity_threshold) {cout << "\n Dynamic_slam::getFrameData_vec_chk 2, "
 																																				<<"\truncl.dataset_frame_num="<<runcl.dataset_frame_num
 																																				<<"\tframe_data.size()="<<frame_data.size()
 																																				<<endl<<flush;}
 	if (runcl.dataset_frame_num > 0){
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec_chk 2.1,  (runcl.dataset_frame_num > 0)"<<flush;
-		uint 			index 				= frame_data.back().keyframe_index;
-		cv::Matx44f		invPose_index		= keyframe_data[index].frame_data.frame_data_GT.inv_pose;
-		datum.keyframe2pose					= datum.pose	* invPose_index;
+		uint 			index 				= frame_data.back().keyframe_index;																cout<<"chk1 "<<flush; cout<<"keyframe_data["<<index<<"].frame_data.frame_data_GT.inv_pose"<<flush;
+		cv::Matx44f		invPose_index		= keyframe_data[index].frame_data.frame_data_GT.inv_pose;										cout<<"chk2 "<<flush;
+		datum.keyframe2pose					= datum.pose	* invPose_index;																cout<<"chk3 "<<flush;
 																																			PRINT_MATX44F(invPose_index  		,Dynamic_slam::getFrameData_vec()  );
 																																			PRINT_MATX44F(datum.pose  			,Dynamic_slam::getFrameData_vec()  );
 																																			PRINT_MATX44F(datum.keyframe2pose  	,Dynamic_slam::getFrameData_vec()  );
@@ -82,6 +82,7 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 																																				cout << "\n### Dynamic_slam::getFrameData_vec_chk 2.3";
 																																				print_pose_datum( frame_data.back().frame_data_GT );
 																																			}
+*/
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec_chk Finished ######################################"<<flush;
 }
 
@@ -99,6 +100,7 @@ void Dynamic_slam::use_GT_pose_vec(){
 																																			}
 }
 
+/* old artificial_pose_error_vec()
 void Dynamic_slam::artificial_pose_error_vec(){	// TODO if(GT_available==true){}else{}
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_ARTIFICIAL_POSE_ERROR;//verbosity_mp["Dynamic_slam::artificial_pose_error"];
 																																			if(verbosity>local_verbosity_threshold){
@@ -173,3 +175,4 @@ void Dynamic_slam::artificial_pose_error_vec(){	// TODO if(GT_available==true){}
 																																				PRINT_FLOAT_16(runcl.fp32_k2keyframe,New);
 																																				cout << "\nDynamic_slam::artificial_pose_error()_finish ##############################################\n\n" << flush;	}
 }
+*/
