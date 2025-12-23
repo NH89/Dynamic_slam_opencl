@@ -86,6 +86,7 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	uint	mm_rows										= uint_params[MM_ROWS];
 	uint	mm_pixels									= uint_params[MM_PIXELS];
 
+
 //	if(global_id_uint==0)printf("\n\n__kernel void  patch_img_grad():  mm_cols=%u,  mm_rows=%u,  mm_pixels=%u   ST3_offset3=%u, %u, %u \n", mm_cols,  mm_rows, mm_pixels,  ST3_offset3.x, ST3_offset3.y, ST3_offset3.z );
 // 	float4	blue		= {1,0,0,1};
 // 	float4 	green		= {0,1,0,1};
@@ -113,6 +114,7 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	//uint	write_spacing								= block_size/out_block_size;
 	uint	write_index									= u/out_block_size			 + (v/out_block_size)*mm_cols	+ ST3_offset;			// *write_spacing
 	uint	write_index_2								= u/block_size				 + (v/block_size)*mm_cols		+ SE3_offset;
+	uint 	offset_1_1_max								= mm_cols * read_rows_ / out_block_size 		 			+ ST3_offset;
 																															//,  write_index +=write_spacing*mm_cols,  write_index_2 +=mm_cols
 
 	for (uint row_in_block=0; row_in_block<block_size; row_in_block++, v++,  read_index +=mm_cols){
@@ -217,23 +219,36 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 		if (step==out_block_size/2){																																							// save ST3 map at out_block_size, to use for updating depth_map and rel_vel_map
 			uint frame_offset 		= write_index + past_frame_idx * 100 + 25 ;																													// NB 100 works for current img size . // stacks frame ST3 maps in adjacent collumns..
 			uint write_block_row	= 0;
+			bool inbounds			= false;
 			uint offset_1_1			= 0;
 
 			for (uint block_row=0; block_row < block_size ; block_row += step*2, write_block_row++){
+				inbounds																= false;
+				if ( (write_index + write_block_row*mm_cols) < offset_1_1_max) inbounds	= true;
 				for (uint i=0; i<3; i++) {																																						// select only ST3
+
 					if( fmod((float)lid,out_block_size) == 0  ){																																// write Jacobian to 2nd page of SE3_Hessian_pinv_map buffer.
 																						offset_1_1 								= write_index		+ i*ST3_v_step	+ mm_pixels + write_block_row*mm_cols;
+
 																						float4	pvt_Jacobian 					= Jacobian_pvt_arr[		block_row][i];
 																					/*
 																					 *	pvt_Jacobian.x							= pvt_Jacobian.x / pvt_Jacobian.w;
 																						pvt_Jacobian.y							= pvt_Jacobian.y / pvt_Jacobian.w;
 																						pvt_Jacobian.z							= pvt_Jacobian.z / pvt_Jacobian.w;
 																					*/
-																						SE3_Hessian_pinv_map[	offset_1_1 ]	= pvt_Jacobian;
+																					/*
+																						pvt_Jacobian.x							= offset_1_1;
+																						pvt_Jacobian.y							= offset_1_1_max ;
+																						pvt_Jacobian.z							= group_id;
+																						pvt_Jacobian.w							= block_row;
+																					*/
+																						if( inbounds == true ){
+																							SE3_Hessian_pinv_map[	offset_1_1 ]	= pvt_Jacobian;
+																						}
 					}
 					barrier(CLK_GLOBAL_MEM_FENCE );  // TODO is this needed?
 					for (uint j=0; j<3; j++) {																																					//float4	debug						= {(float)(i)/3, (float)(j)/3, global_id_uint, 1 };
-						if( fmod((float)lid,out_block_size) == 0  ){																															// write Hessian to 1st page of SE3_Hessian_pinv_map buffer.		// selects columns i.e. threads within the workgroup
+						if( /*inbounds == true*/ fmod((float)lid,out_block_size) == 0 ){																															// write Hessian to 1st page of SE3_Hessian_pinv_map buffer.		// selects columns i.e. threads within the workgroup
 																						offset_1_1								= write_index		+ i*ST3_v_step	+ j*ST3_u_step + write_block_row*mm_cols;
 																						float4	pvt_Hessian 					= Hessian_pinv_pvt_arr[	block_row ][i][j];
 																					/*
@@ -241,7 +256,9 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 																						pvt_Hessian.y							= pvt_Hessian.y / pvt_Hessian.w;
 																						pvt_Hessian.z							= pvt_Hessian.z / pvt_Hessian.w;
 																					*/
-																						SE3_Hessian_pinv_map[	offset_1_1 ]	= pvt_Hessian;													// Hessian_pinv_pvt_arr[	block_row ][i][j] / Hessian_pinv_pvt_arr[	block_row ][i][j].w;
+																						if( inbounds == true ){
+																							SE3_Hessian_pinv_map[	offset_1_1 ]	= pvt_Hessian;												// Hessian_pinv_pvt_arr[	block_row ][i][j] / Hessian_pinv_pvt_arr[	block_row ][i][j].w;
+																						}
 /*
 // 							if( group_id==0 && / * lid==0 && * /  j==0 &&     ((i==0 && block_row==0)    ||    / * (i==2 && block_row==0)  || * / (i>=2 && block_row>=28 )  ) )  {
 // 								printf("\n__kernel void  patch_img_grad():  layer=%u,   ST3_offset=%u,   write_index=%u,   offset_1_1=%u,  offset_1_1/mm_cols=%u,  i=%u,  block_row=%u",  \

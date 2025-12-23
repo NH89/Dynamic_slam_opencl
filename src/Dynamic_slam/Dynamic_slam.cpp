@@ -265,16 +265,16 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 	status = clEnqueueFillBuffer(runcl.uload_queue, runcl.SE3_hessian_pinv_map_mem, &zero, 	sizeof(float), 	0, runcl.mm_size_bytes_C4, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << runcl.checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;runcl.exit_(status);}	clFlush(runcl.uload_queue); status = clFinish(runcl.uload_queue);
 
 
-	cout<<"\nSE3_start_layer = "<<SE3_start_layer<<flush;
-	for(int layer=runcl.mm_stop-1; layer>=0/*SE3_stop_layer*/; layer-- ){ cout<<"\nlayer = "<<layer<<flush;
+																																			cout<<"\nDynamic_slam::getFrame_chk 1:    runcl.mm_start = "<<runcl.mm_start
+																																				<<								"      runcl.mm_stop = "<<runcl.mm_stop<<flush;
+	for(int layer=runcl.mm_stop; layer>=0; layer-- ){ cout<<"\nlayer = "<<layer<<flush;
 		runcl.patch_img_gradients(	layer);
-
 		runcl.patch_hessian_reduce(	layer);
 	}
 	// Will need to decide which layers and ST3 patch sizes to compute Hessians for, then store them in a buffer on the GPU.
 																																			// # Get 1st & 2nd order image gradients of MipMap
 																																			// see CostVol::cacheGValues(), RunCL::cacheGValue2 & __kernel void CacheG3
-																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::getFrame_chk 1  Finished "
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::getFrame_chk 2  Finished "
 																																				<<"###########################################################################\f" << flush;}
 }
 

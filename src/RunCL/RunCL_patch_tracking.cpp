@@ -83,7 +83,7 @@ void RunCL::build_img_pyramid( std::string folder ){
 																																	cout << "\nmm_stop = "<<mm_stop<<flush;
 																																}
 	reduce_img( layer, folder);
-	for (layer=1; layer<mm_stop ; layer++){
+	for (layer=1; layer<=mm_stop ; layer++){
 																																if(verbosity>local_verbosity_threshold) {	cout<<"\n\nRunCL::build_img_pyramid(..) pyramid layer = "<<layer<<flush;
 																																	cout << "\nlayer = "<<layer<<flush;
 																																}

@@ -373,7 +373,9 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 
 	//mm_num_blur_layers	= obj["num_blur_layers"].asUInt();
 	mm_start			= 0;
-	mm_stop				= mm_num_reductions;// + mm_num_blur_layers;																								if(verbosity>local_verbosity_threshold) cout << "\nRunCL::initialize_RunCL_chk0.5,  mm_start="<<mm_start<<",  mm_stop="<<mm_stop<<" \n" << flush;
+	float short_side	= fmin(baseImage_width, baseImage_height);
+	uint num_reductions	= floor(log2(short_side)) -2;																						// i.e. at leat 8 pixels remain on short side of img at apex of img pyramid.
+	mm_stop				= num_reductions; /*mm_num_reductions;// + mm_num_blur_layers;*/													if(verbosity>local_verbosity_threshold) cout << "\nRunCL::initialize_RunCL_chk0.5,  mm_start="<<mm_start<<",  mm_stop="<<mm_stop<<" \n" << flush;
 	mm_gaussian_size	= obj["gaussian_size"].asUInt();
 	mm_margin			= obj["MipMap_margin"].asUInt() * mm_num_reductions;
 	mm_width 			= baseImage_width  + 2 * mm_margin;

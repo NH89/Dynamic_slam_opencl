@@ -217,8 +217,14 @@ void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer )					
 	uint			cols_blocks			= ceil( (float) read_cols/patch_size );								cout <<" chk2 "<<flush;							//1 // num cols in the fully reduced map. 1920x1080 1920/32=60 => 64 cols_blocs
 																											// threads_per_DoF must be the first 2^n > cols per SE3 patch.
 	uint			threads_per_DoF		= powf(2,ceil( log2((float)cols_blocks) )); 						// 10 layer 1 =>  pown(2,ciel(log2(10.0f) ))=16; 6*16=96.      // * rows_blocks  ;//	8x10=80 layer1 => 96 threads to launch?		// num pixels in fully reduced map. Req per SE3 DoF.
-	uint 			DoF_per_workgroup	= device_work_size_multiple / threads_per_DoF;						cout <<" chk3 "<<flush;
-	size_t			threads_required	= (device_work_size_multiple * SE3_DoF) / DoF_per_workgroup;		cout <<" chk3.1 "<<flush;// NB device_work_size_multiple is usually a poer of 2, DoF_per_workgroup will also be a power of 2.
+																											cout <<" cols_blocks = "<<cols_blocks
+																												<<"   log2((float)cols_blocks) = "		<<log2((float)cols_blocks)
+																												<<"   threads_per_DoF = "				<<threads_per_DoF <<flush;
+	float 			DoF_per_workgroup	= device_work_size_multiple / threads_per_DoF;						cout <<" chk3  device_work_size_multiple = "<<device_work_size_multiple
+																												<<"   * SE3_DoF = "						<<SE3_DoF
+																												<<") / DoF_per_workgroup = "			<<DoF_per_workgroup <<flush;
+
+	size_t			threads_required	= ceil((device_work_size_multiple * SE3_DoF) / DoF_per_workgroup);	cout <<" chk3.1 "<<flush;// NB device_work_size_multiple is usually a poer of 2, DoF_per_workgroup will also be a power of 2.
 	uint 			workgroups_required	= ceil( (float)threads_required / device_work_size_multiple );		cout <<" chk3.2 "<<flush;
 	size_t			threads_to_launch	= workgroups_required  *  device_work_size_multiple;				cout <<" chk4 "<<flush;
 
@@ -272,7 +278,7 @@ void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer )					
 																																				cout<<"\n old_result_arry = " <<old_result_arry[0]<<flush;
 
 																																				stringstream ss;
-																																				ss << "_ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_iter"<<iter<<"_out_bock_size"<<out_block_size<<"_rho_sq()";
+																																				ss << "_ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_iter"<<iter<<"_out_bock_size"<<out_block_size<<"_reduce_rho_sq()";
 																																				stringstream  ss_path;
 																																				bool show				= false;
 																																				float max_range			= -1;
