@@ -23,7 +23,7 @@ __kernel void reduce_img(
 	)
 {
 	int global_id_u 			= (int)get_global_id(0);
-	if (global_id_u > img_pixels)	return;
+	//if (global_id_u > img_pixels/patch_height)	return;
 
 	uint row					= global_id_u / img_cols;
 	uint col					= fmod((float)global_id_u, img_cols);
@@ -31,11 +31,14 @@ __kernel void reduce_img(
 	uint read_idx 				= offset1 + col*2 + (row*2 * buf_width * patch_height);
 	uint write_idx 				= offset2 + col   + (row   * buf_width * patch_height);
 
+// 	if (global_id_u==(img_cols-1)) printf("\n__kernel void reduce_img()  read_idx=%u 	= offset1=%u + col=%u*2 + (row=%u*2 * buf_width=%u * patch_height=%u),   write_idx=%u,	img_pixels=%u,   stop_offset=%u",
+// 						 													read_idx,		offset1,	col,		row,		buf_width,		patch_height,		write_idx,	img_pixels,			stop_offset);
 	for (int i=0; i<patch_height; i++){
+		if (write_idx >= stop_offset) return;
 		img[write_idx ]			= (  img[read_idx ] + img[read_idx +1]   + img[read_idx + buf_width] + img[read_idx + buf_width +1] )  /4.0f;
 		read_idx 				+= buf_width*2;
 		write_idx 				+= buf_width;
-		if (write_idx > stop_offset) return;
+		//if (global_id_u==0) printf("\n__kernel void reduce_img()  read_idx=%u  write_idx=%u", read_idx, write_idx);
 	}
 }
 
@@ -147,27 +150,23 @@ __kernel void pad_image_top_bottom2(			// Apply before vertical blur
 	__private	uint	offset1,			//0	top left corner
 	__private	uint	offset2,			//1 bottom left corner
 	__private	uint	buf_width,			//2 mm_cols, i.e. width of the buffer holding the image pyramid
-	__private	uint	img_pixels,			//3 num rows of this level of the image pyramid
+	__private	uint	img_cols,			//3 num rows of this level of the image pyramid
 
 	__global 	float4*	img					//4
 		)
 {
 	int global_id_u 			= (int)get_global_id(0);
-	if (global_id_u > img_pixels) 	return;
+	if (global_id_u > img_cols) return;
 
 	uint read_idx 				= global_id_u + offset1;					// pad top
 	float4 pixel				= img[read_idx ];
-
 	img[read_idx - buf_width]	= pixel;
 	img[read_idx - buf_width*2]	= pixel;
 
 	read_idx					= global_id_u + offset2;					// pad bottom
 	pixel						= img[read_idx ];
-
 	img[read_idx + buf_width]	= pixel;
 	img[read_idx + buf_width*2]	= pixel;
-
-	barrier(CLK_GLOBAL_MEM_FENCE);
 }
 
 
@@ -191,12 +190,18 @@ __kernel void vertcal_blur5(
 	uint read_idx 				= offset1 + col + (row * 32 * buf_width);
 	float4 pixel				= 0;
 
+// 	if (global_id_u==(img_cols-1)) printf("\n__kernel void vertcal_blur5()  read_idx=%u 	offset1=%u,  col=%u,  row=%u,  buf_width=%u,     img_pixels=%u,   img_cols=%u,   stop_offset=%u",
+// 																			read_idx,		offset1,		col,	row,	buf_width,		img_pixels,		img_cols,		stop_offset);
+
 	for (int i =0; i<32; i++){
+		if( read_idx > stop_offset ) return;
 		pixel = ( img[read_idx - buf_width*2] + img[read_idx - buf_width] + img[read_idx ] + img[read_idx + buf_width ] + img[read_idx + buf_width*2 ] )/5.0f;
 
 		tmp_img[read_idx ]		= pixel;
 		read_idx				+= buf_width;
-		if( read_idx > stop_offset ) return;
+
+// 		if (global_id_u==(img_cols-1)) printf("\n__kernel void vertcal_blur5()  read_idx=%u ,  buf_width=%u,     i=%u,   stop_offset=%u",
+// 																				read_idx,		buf_width,		i,		stop_offset);
 	}
 }
 
@@ -239,27 +244,29 @@ __kernel void horiz_blur5(
 	)
 {
 	int global_id_u 			= (int)get_global_id(0);
-	if (global_id_u==0){	printf("\n__kernel void horiz_blur5(..)" ); }
-	if (global_id_u > img_pixels)	return;
+	//if (global_id_u==0){	printf("\n__kernel void horiz_blur5(..)" ); }
+	//if (global_id_u > img_pixels)	return;
 
 	uint row					= global_id_u / img_cols;
 	uint col					= fmod((float)global_id_u, img_cols);
 	uint read_idx				= offset1 + col + (row * 32 * buf_width);
+	//if( read_idx > stop_offset ) return;
 
 	if (global_id_u < img_cols){						// erase the previous top & bottom padding.
 		img[read_idx - buf_width*2]			= zero_f4;
 		img[read_idx - buf_width]			= zero_f4;
 
-		uint tmp_idx = stop_offset + global_id_u;
-		img[tmp_idx ]						= zero_f4;
+		uint tmp_idx = stop_offset + global_id_u - img_cols;
 		img[tmp_idx + buf_width]			= zero_f4;
+		img[tmp_idx + buf_width*2]			= zero_f4;
 	}
+	barrier( CLK_GLOBAL_MEM_FENCE );
 
 	for (int i =0; i<32; i++){							// Write fully blurred img back to current imgmem.
+		if( read_idx > stop_offset ) return;
 		float4 pixel			= ( tmp_img[read_idx - 2] + tmp_img[read_idx - 1] + tmp_img[read_idx ] + tmp_img[read_idx + 1 ] + tmp_img[read_idx + 2 ] )/5.0f;
 		img[read_idx ]			= pixel;
 		read_idx				+= buf_width;
-		if( read_idx > stop_offset ) return;
 	}
 }
 

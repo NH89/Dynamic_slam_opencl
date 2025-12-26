@@ -89,7 +89,8 @@ void RunCL::compute_patch_lookup_table(){										// called by Dynamic_slam::Dy
 							patches_per_compute_uint	= min( patches_per_compute_uint,  blocks_per_k_wg_size );
 
 		uint				blocks_required				= ceil( (float)patches_required / patches_per_compute_uint );
-		size_t				local_work_size_[1] 		= { patches_per_compute_uint	* patch_size };
+		blocks_required									= fmax(blocks_required, 1);
+		size_t				local_work_size_[1] 		= { patches_per_compute_uint	* patch_size };							// NB "patch_size" must be an integer fraction of the minimum workgroup for the particular GPU.
 		size_t				threads_to_launch 			= blocks_required 				* local_work_size_[0];
 																																if( verbosity>local_verbosity_threshold+1){
 																																	cout<<"\nread_rows= 				"<<read_rows;
@@ -114,14 +115,14 @@ void RunCL::compute_patch_lookup_table(){										// called by Dynamic_slam::Dy
 																																	// ? Have a subclass and object for each kernel ?
 																																if( verbosity>local_verbosity_threshold+1) {cout<<"\n\nRunCL::compute_patch_lookup_table( )_chk_5 "<<flush;
 																																	cout <<"\n layer = "							<<layer
-																																	<<",  patches_required="						<<patches_required
-																																	<<",  patches_per_compute_uint="				<<patches_per_compute_uint
-																																	<<",  blocks_per_k_wg_size="					<<blocks_per_k_wg_size
-																																	<<",  blocks_required="							<<blocks_required
-																																	<<",  threads_to_launch="						<<threads_to_launch
-																																	<<",  local_work_size="							<<local_work_size
-																																	<<"},  local_work_size_[0]="					<<local_work_size_[0]
-																																	<<",  patch_local_work_size["<<layer<<"]="		<<patch_local_work_size[layer]
+																																	<<"\n,  patches_required="						<<patches_required
+																																	<<"\n,  patches_per_compute_uint="				<<patches_per_compute_uint
+																																	<<"\n,  blocks_per_k_wg_size="					<<blocks_per_k_wg_size
+																																	<<"\n,  blocks_required="						<<blocks_required
+																																	<<"\n,  threads_to_launch="						<<threads_to_launch
+																																	<<"\n,  local_work_size="						<<local_work_size
+																																	<<"\n,  local_work_size_[0]="					<<local_work_size_[0]
+																																	<<"\n,  patch_local_work_size["<<layer<<"]="	<<patch_local_work_size[layer]
 																																	<< flush;
 																																	for (uint reduction = 0; reduction < max_mipmap_layers; reduction ++){
 																																		cout << "\n reduction = "					<< reduction
@@ -140,6 +141,11 @@ void RunCL::compute_patch_lookup_table(){										// called by Dynamic_slam::Dy
 		res 	= clSetKernelArg(kernel, 1, sizeof(int), &lookup_table_offset_uint );											// __private	uint		lookup_table_offset,	//1
 		res 	= clSetKernelArg(kernel, 2, sizeof(int), &cols_per_row);														// __private	uint		cols_per_row,			//2
 																															if (res    !=CL_SUCCESS)	{ cout <<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}	;
+																																if( verbosity>local_verbosity_threshold+1) {cout<<"\n\nRunCL::compute_patch_lookup_table( )_chk_6"
+																																	<<",  threads_to_launch="						<<threads_to_launch
+																																	<<",    local_work_size_="						<< local_work_size_
+																																	<<flush;
+																																}
 
 		res 	= clEnqueueNDRangeKernel(m_queue,		kernel, 1, 0, &threads_to_launch, local_work_size_, 0, NULL, &ev); // run mipmap_float4_kernel, NB wait for own previous iteration.
 																															if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
@@ -149,8 +155,9 @@ void RunCL::compute_patch_lookup_table(){										// called by Dynamic_slam::Dy
 			patch_lookup_table_offset[layer +1]				=	patch_lookup_table_offset[layer] + threads_to_launch;			// NB this pads the lookup table, so that local work groups will not be shared betwen layers.
 																																// It also  means that this offset should be used to launch layers from the lookup table.
 		}
+																																if( verbosity>local_verbosity_threshold+1) {cout<<"\n\nRunCL::compute_patch_lookup_table( )_chk_7"<<flush;}
 	}
-																																if( verbosity>local_verbosity_threshold+1) {
+																																if( verbosity>local_verbosity_threshold) {
 																																	for(uint reduction = 0; reduction <= mm_stop; reduction++) {
 																																		cout << "\npatch_num_threads["<<reduction<<"] = "<<patch_num_threads[reduction]<<",   MipMap[reduction*8 +MiM_PIXELS] = "<<MipMap[reduction*8 +MiM_PIXELS]<<flush;
 																																	}
@@ -254,7 +261,7 @@ void RunCL::patch_img_gradients_set_params(){	// Uses patch lookup table		// cal
 	uint	hessian_layer_offset		=	5	+		mm_width;
 	uint	st3_hessian_layer_offset	=	5	+		( 4+( MipMap[	 0*8 + MiM_READ_ROWS]		/block_size) )*mm_width   * (num_SE3_DoF + 1);
 
-	for (uint layer =0; layer<mm_stop; layer++){																				// NB must match where the SE3 Hessian is written in SE3_hessian_map_mem.
+	for (uint layer =0; layer<=mm_stop; layer++){																				// NB must match where the SE3 Hessian is written in SE3_hessian_map_mem.
 																																// i.e. 6x6 elems in img pyramid horizontally across the top of the buffer.
 		patch_hessian_cols[		layer]	= ceil( (float)		  MipMap[layer*8 + MiM_READ_COLS]		/block_size );
 		patch_hessian_rows[		layer]	= ceil( (float)		  MipMap[layer*8 + MiM_READ_ROWS]		/block_size );
@@ -286,7 +293,7 @@ void RunCL::patch_img_gradients_set_params(){	// Uses patch lookup table		// cal
 																																	<<",    st3_hessian_elem_step ="					<<st3_hessian_elem_step
 																																	<<",    st3_hessian_row_step ="						<<st3_hessian_row_step
 																																	<<",    out_block_size ="							<<out_block_size
-																																	<<"\n"<<flush;
+																																	<<flush;
 
 
 																																}
@@ -360,32 +367,32 @@ size_t* param_value_size_ret);
 	status	= clFlush(m_queue);										if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_img_gradients( ),  clFlush(m_queue) status  = "<<status<<" "<<checkerror(status) <<"\n"<<flush; exit_(status);}
 	status	= clWaitForEvents (1, &ev);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_img_gradients( ),  clWaitForEventsh(1, &ev) =" <<status<<" "<<checkerror(status) <<"\n"<<flush; exit_(status);}
 
-																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_chk2 ."<<flush;	// Save buffers to file ###########
-																																	stringstream ss;
-																																	ss << "patch_img_gradients_";// << save_index ;
-																																	bool show 		= false;
-																																	bool old_tiff 	= tiff;
-																																	tiff 			= true;
-																																	float max_range	= 1;
-																																	cv::Mat bufImg;
-																																	_cl_flush_finish(m_queue, fname);
-																																	//DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show);
-																																	DownloadAndSave_3Channel( 	SE3_hessian_pinv_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  0,			false);
-																																	DownloadAndSave_3Channel( 	SE3_hessian_pinv_map_mem,	ss.str( ), paths.at( "jacobian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  mm_size_bytes_C4/*mm_layerstep*/, false);
-																																	// NB the tiff file holda the int32 values as float32. This is okay because they fit in the mantissa.
-																																	// BGRA format, B=u, G=v, R=read_index, A=alpha.
-																																	////////////////
-																																	if( layer==0){
-																																		stringstream 	ss_path;
-																																		ss_path.str(std::string()); // reset ss_path
-																																		ss_path 		<< "SE3_grad_map_mem"<<flush;
-																																		cout 			<< "\n" << ss_path.str() <<flush;
-																																		cout 			<< "\n" << paths.at(ss_path.str()) <<flush;
-																																		DownloadAndSave_6Channel_volume(  SE3_grad_map_mem, ss.str(), paths.at(ss_path.str()), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, -1, 6 );
-																																	}
-																																	//////////
-																																	tiff 			= old_tiff;
-																																}
+																																// if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_chk2 ."<<flush;	// Save buffers to file ###########
+																																// 	stringstream ss;
+																																// 	ss << "patch_img_gradients_";// << save_index ;
+																																// 	bool show 		= false;
+																																// 	bool old_tiff 	= tiff;
+																																// 	tiff 			= true;
+																																// 	float max_range	= 1;
+																																// 	cv::Mat bufImg;
+																																// 	_cl_flush_finish(m_queue, fname);
+																																// 	//DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show);
+																																// 	DownloadAndSave_3Channel( 	SE3_hessian_pinv_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  0,			false);
+																																// 	DownloadAndSave_3Channel( 	SE3_hessian_pinv_map_mem,	ss.str( ), paths.at( "jacobian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  mm_size_bytes_C4/*mm_layerstep*/, false);
+																																// 	// NB the tiff file holda the int32 values as float32. This is okay because they fit in the mantissa.
+																																// 	// BGRA format, B=u, G=v, R=read_index, A=alpha.
+																																// 	////////////////
+																																// 	if( layer==0){
+																																// 		stringstream 	ss_path;
+																																// 		ss_path.str(std::string()); // reset ss_path
+																																// 		ss_path 		<< "SE3_grad_map_mem"<<flush;
+																																// 		cout 			<< "\n" << ss_path.str() <<flush;
+																																// 		cout 			<< "\n" << paths.at(ss_path.str()) <<flush;
+																																// 		DownloadAndSave_6Channel_volume(  SE3_grad_map_mem, ss.str(), paths.at(ss_path.str()), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, -1, 6 );
+																																// 	}
+																																// 	//////////
+																																// 	tiff 			= old_tiff;
+																																// }
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_finished #############################################################"<<flush;
 																																}
 }
@@ -416,7 +423,7 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 
 	for( uint row = 0; row<6; row++){
 		for( uint col = 0; col<6; col++){
-			uint start_idx	=	patch_hessian_start_idx[layer][row][col];
+			uint start_idx	=	patch_hessian_start_idx[layer][row][col];														if( verbosity>local_verbosity_threshold) {cout<<"\nRunCL::patch_hessian_reduce()_chk2  patch_hessian_start_idx["<<layer<<"]["<<row<<"]["<<col<<"] = "<<patch_hessian_start_idx[layer][row][col]<<flush; }
 			uint elem 		=	row * 6 + col;
 			_clSetKernelArg( kernel,	0, sizeof(int),	&start_idx,					fname);									// __private	uint	start_idx	//0
 			_clSetKernelArg( kernel,	5, sizeof(int),	&elem,						fname);									// __private	uint	elem		//5
@@ -429,7 +436,7 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 	status	= clWaitForEvents (1, &ev);					if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_hessian_reduce( ),  clWaitForEventsh(1, &ev) = "<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 	status	= clFinish(m_queue);						if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_hessian_reduce( ),  clFinish(m_queue) status = "<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 
-	Matx16f		jacobian;
+	Matx16f		Jacobian;
 	Matx66f		Hessian;
 	Mat			hessian_Mat(	(num_SE3_DoF+1),	num_SE3_DoF,	CV_32FC4);
 	size_t		data_size	=	(num_SE3_DoF+1) *	num_SE3_DoF *	sizeof(cl_float4);
@@ -441,7 +448,7 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 
 	for(int row=0; row<1; row++){																									// per_pixel division currently done in kernel, TODO which is better ?
 		for(int col=0; col<num_SE3_DoF; col++){
-			jacobian.operator()(row,col)		= J.at<cl_float4>( row,col ).x / J.at<cl_float4>( row,col ).w;						// NB choose colour channel of Hessian
+			Jacobian.operator()(row,col)		= J.at<cl_float4>( row,col ).x / J.at<cl_float4>( row,col ).w;						// NB choose colour channel of Hessian
 		}
 	}
 
@@ -455,11 +462,43 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 		}
 	}
 
-	current_frames[ current_frames_idx[0] ].Jacobian[layer]			= jacobian;
-	current_frames[ current_frames_idx[0] ].invHessian[layer]		= Hessian.inv();							//inv_Hessian.inv();
+	current_frames[ current_frames_idx[0] ].Jacobian[layer]			= Jacobian;
+	//current_frames[ current_frames_idx[0] ].invHessian[layer]		= Hessian.inv();							//inv_Hessian.inv();
+
+	Matx66f GN_Hessian =  Jacobian.t()  * Jacobian ;
+	invert(GN_Hessian,	current_frames[ current_frames_idx[0] ].invHessian[layer]	);
+																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_hessian_reduce()_chk3 ."<<flush;	// Save buffers to file ###########
+																																	stringstream ss;
+																																	ss << "patch_hessian_reduce_";// << save_index ;
+																																	bool show 		= false;
+																																	bool old_tiff 	= tiff;
+																																	tiff 			= true;
+																																	float max_range	= 1;
+																																	cv::Mat bufImg;
+																																	_cl_flush_finish(m_queue, fname);
+																																	//DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show);
+																																	DownloadAndSave_3Channel( 	SE3_hessian_pinv_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  0,			false);
+																																	DownloadAndSave_3Channel( 	SE3_hessian_pinv_map_mem,	ss.str( ), paths.at( "jacobian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  mm_size_bytes_C4/*mm_layerstep*/, false);
+																																	// NB the tiff file holda the int32 values as float32. This is okay because they fit in the mantissa.
+																																	// BGRA format, B=u, G=v, R=read_index, A=alpha.
+																																	////////////////
+																																	if( layer==0){
+																																		stringstream 	ss_path;
+																																		ss_path.str(std::string()); // reset ss_path
+																																		ss_path 		<< "SE3_grad_map_mem"<<flush;
+																																		cout 			<< "\n" << ss_path.str() <<flush;
+																																		cout 			<< "\n" << paths.at(ss_path.str()) <<flush;
+																																		DownloadAndSave_6Channel_volume(  SE3_grad_map_mem, ss.str(), paths.at(ss_path.str()), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, -1, 6 );
+																																	}
+																																	//////////
+																																	tiff 			= old_tiff;
+																																}
+
 																																if( verbosity>local_verbosity_threshold) {
-																																	cout <<"\nJacobian \n" << current_frames[ current_frames_idx[0] ].Jacobian[layer]	<< endl << endl <<flush;
-																																	cout <<"\ninvHessian  \n" << current_frames[ current_frames_idx[0] ].invHessian[layer]	<< endl << endl <<flush;
+																																	cout <<"\nJacobian \n"		<< current_frames[ current_frames_idx[0] ].Jacobian[layer]		<< endl << endl <<flush;
+																																	cout <<"\nGN_Hessian \n"	<< GN_Hessian													<< endl << endl <<flush;
+																																	cout <<"\nGN_Hessian.inv() \n"	<< GN_Hessian.inv()											<< endl << endl <<flush;
+																																	cout <<"\ninvHessian \n"	<< current_frames[ current_frames_idx[0] ].invHessian[layer]	<< endl << endl <<flush;
 																																	cout <<"\n\nRunCL::patch_hessian_reduce()_finished #############################################################"<<flush;
 																																}
 }

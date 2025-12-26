@@ -83,7 +83,7 @@ void RunCL::build_img_pyramid( std::string folder ){
 																																	cout << "\nmm_stop = "<<mm_stop<<flush;
 																																}
 	reduce_img( layer, folder);
-	for (layer=1; layer<=mm_stop ; layer++){
+	for (layer=1; layer<mm_stop ; layer++){
 																																if(verbosity>local_verbosity_threshold) {	cout<<"\n\nRunCL::build_img_pyramid(..) pyramid layer = "<<layer<<flush;
 																																	cout << "\nlayer = "<<layer<<flush;
 																																}
@@ -102,7 +102,7 @@ void RunCL::build_img_pyramid( std::string folder ){
 																																	DownloadAndSave_3Channel( imgmem_, ss.str(), paths.at(folder), new_size_bytes, new_Image_size, CV_32FC4, false, 1, 0, true );
 																																	cout << "\n  (local_size+4) *5*4* sizeof(float) = "<<  (local_size+4) *5*4* sizeof(float) << " ,   (local_size+4) = " <<  (local_size+4) << endl << flush;
 																																}
-																																if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_linear(..)_chk4 Finished"<<flush;}
+																																if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::build_img_pyramid(..)_chk4 Finished"<<flush;}
 }
 
 void RunCL::blur_image_layer( uint layer ){
@@ -123,7 +123,7 @@ void RunCL::pad_image_top_bottom2( uint layer ){
 	uint	offset1					= MipMap[layer * 8 + MiM_READ_OFFSET];									//0	top left corner
 	uint	buf_width				= uint_params[MM_COLS];													//2 mm_cols, i.e. width of the buffer holding the image pyramid
 	uint	offset2					= offset1 + buf_width * (MipMap[layer * 8 + MiM_READ_ROWS] - 1);		//1 bottom left corner
-	uint	img_pixels				= MipMap[layer * 8 + MiM_PIXELS];										//3 num rows of this level of the image pyramid
+	uint	img_cols				= MipMap[layer * 8 + MiM_READ_COLS];									//3 num cols of this level of the image pyramid
 
 																																if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::pad_image_top_bottom2(..)_chk1"<<flush;
 																																	cout \
@@ -133,22 +133,22 @@ void RunCL::pad_image_top_bottom2( uint layer ){
 																																	<<"\n offset1 = "			<< offset1
 																																	<<"\n buf_width = "			<< buf_width
 																																	<<"\n offset2 = "			<< offset2
-																																	<<"\n img_pixels = "		<< img_pixels
+																																	<<"\n img_cols = "			<< img_cols
 																																	<<flush;
 																																}
 
 	_clSetKernelArg( kernel,	0, sizeof(int), 		&offset1,						fname );								//	__private	uint	offset1,			//0	top left corner
 	_clSetKernelArg( kernel,	1, sizeof(int), 		&offset2,						fname );								//	__private	uint	offset2,			//1 bottom left corner
 	_clSetKernelArg( kernel,	2, sizeof(int), 		&buf_width,						fname );								//	__private	uint	buf_width,			//2 mm_cols, i.e. width of the buffer holding the image pyramid
-	_clSetKernelArg( kernel,	3, sizeof(int), 		&img_pixels,					fname );								//	__private	uint	img_pixels,			//3 num rows of this level of the image pyramid
+	_clSetKernelArg( kernel,	3, sizeof(int), 		&img_cols,						fname );								//	__private	uint	img_cols,			//3 num rows of this level of the image pyramid
 
 	_clSetKernelArg( kernel,	4, sizeof( cl_mem),		&imgmem_,						fname );								//	__global 	float4*	img					//5
 	cl_event	ev;
 	cl_int		res, status;
 	res 	= clEnqueueNDRangeKernel(m_queue,		kernel, 1, 0, &threads_to_launch, &local_work_size_, 0, NULL, &ev);
 																if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
-	status	= clFlush(m_queue);									if (status != CL_SUCCESS)	{ cout << "\nRunCL::reduce_img( ),  clFlush(m_queue) status  = "<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
-	status	= clWaitForEvents (1, &ev);							if (status != CL_SUCCESS)	{ cout << "\nRunCL::reduce_img( ),  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
+	status	= clFlush(m_queue);									if (status != CL_SUCCESS)	{ cout << "\nRunCL::pad_image_top_bottom2( ),  clFlush(m_queue) status  = "<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
+	status	= clWaitForEvents (1, &ev);							if (status != CL_SUCCESS)	{ cout << "\nRunCL::pad_image_top_bottom2( ),  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout<<"\n\nRunCL::pad_image_top_bottom2(..)_chk3 Finished all loops."<<flush;
 																																				stringstream ss;	ss << dataset_frame_num << "pad_image_top_bottom2";
@@ -173,8 +173,8 @@ void RunCL::vertcal_blur5( uint layer ){
 	uint	img_pixels				= MipMap[layer * 8 + MiM_PIXELS];										//2 num rows of this level of the image pyramid
 	uint	img_cols				= MipMap[layer * 8 + MiM_READ_COLS];									//3
 	uint	img_rows				= MipMap[layer * 8 + MiM_READ_ROWS];									//
-	uint	stop_offset				= offset1 + img_rows * buf_width;										//4
-
+	uint	stop_offset				= offset1 + (img_rows-1) * buf_width + img_cols;						//4
+																																if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::vertcal_blur5(..)_chk1"<<flush;}
 	_clSetKernelArg( kernel,	0, sizeof(int), 		&offset1,						fname );								//	__private	uint	offset1,			//0	top left corner
 	_clSetKernelArg( kernel,	1, sizeof(int), 		&buf_width,						fname );								//	__private	uint	buf_width,			//1 mm_cols, i.e. width of the buffer holding the image pyramid
 	_clSetKernelArg( kernel,	2, sizeof(int), 		&img_pixels,					fname );								//	__private	uint	img_pixels,			//2 num rows of this level of the image pyramid
@@ -183,12 +183,13 @@ void RunCL::vertcal_blur5( uint layer ){
 
 	_clSetKernelArg( kernel,	5, sizeof( cl_mem),		&imgmem_,						fname );								//	__global 	float4*	img,				//4
 	_clSetKernelArg( kernel,	6, sizeof( cl_mem),		&tmp_img,						fname );								//	__global 	float4*	tmp_img				//5
+																																if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::vertcal_blur5(..)_chk2"<<flush;}
 	cl_event	ev;
 	cl_int		res, status;
 	res 	= clEnqueueNDRangeKernel(m_queue,		kernel, 1, 0, &threads_to_launch, &local_work_size_, 0, NULL, &ev);
 																if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
-	status	= clFlush(m_queue);									if (status != CL_SUCCESS)	{ cout << "\nRunCL::reduce_img( ),  clFlush(m_queue) status  = "<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
-	status	= clWaitForEvents (1, &ev);							if (status != CL_SUCCESS)	{ cout << "\nRunCL::reduce_img( ),  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
+	status	= clFlush(m_queue);									if (status != CL_SUCCESS)	{ cout << "\nRunCL::vertcal_blur5( ),  clFlush(m_queue) status  = "<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
+	status	= clWaitForEvents (1, &ev);							if (status != CL_SUCCESS)	{ cout << "\nRunCL::vertcal_blur5( ),  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout<<"\n\nRunCL::vertcal_blur5(..)_chk3 Finished all loops."<<flush;
 																																				stringstream ss;	ss << dataset_frame_num << "vertcal_blur5";
@@ -223,8 +224,8 @@ void RunCL::pad_image_left_right2( uint layer ){
 	cl_int		res, status;
 	res 	= clEnqueueNDRangeKernel(m_queue,		kernel, 1, 0, &threads_to_launch, &local_work_size_, 0, NULL, &ev);
 																if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
-	status	= clFlush(m_queue);									if (status != CL_SUCCESS)	{ cout << "\nRunCL::reduce_img( ),  clFlush(m_queue) status  = "<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
-	status	= clWaitForEvents (1, &ev);							if (status != CL_SUCCESS)	{ cout << "\nRunCL::reduce_img( ),  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
+	status	= clFlush(m_queue);									if (status != CL_SUCCESS)	{ cout << "\nRunCL::pad_image_left_right2( ),  clFlush(m_queue) status  = "<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
+	status	= clWaitForEvents (1, &ev);							if (status != CL_SUCCESS)	{ cout << "\nRunCL::pad_image_left_right2( ),  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout<<"\n\nRunCL::pad_image_left_right2(..)_chk3 Finished all loops."<<flush;
 																																				stringstream ss;	ss << dataset_frame_num << "pad_image_left_right2";
@@ -249,7 +250,7 @@ void RunCL::horiz_blur5( uint layer ){
 	uint	img_pixels				=  MipMap[layer * 8 + MiM_PIXELS];					//2 num rows of this level of the image pyramid
 	uint	img_cols				=  MipMap[layer * 8 + MiM_READ_COLS];				//3
 	uint	img_rows				= MipMap[layer * 8 + MiM_READ_ROWS];				//
-	uint	stop_offset				= offset1 + img_rows * buf_width;					//4
+	uint	stop_offset				= offset1 + (img_rows-1) * buf_width + img_cols;	//4
 
 
 	_clSetKernelArg( kernel,	0, sizeof(int), 		&offset1,						fname );								//	__private	uint	offset1,			//0	top left corner
@@ -264,8 +265,8 @@ void RunCL::horiz_blur5( uint layer ){
 	cl_int		res, status;
 	res 	= clEnqueueNDRangeKernel(m_queue,		kernel, 1, 0, &threads_to_launch, &local_work_size_, 0, NULL, &ev);
 																if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
-	status	= clFlush(m_queue);									if (status != CL_SUCCESS)	{ cout << "\nRunCL::reduce_img( ),  clFlush(m_queue) status  = "<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
-	status	= clWaitForEvents (1, &ev);							if (status != CL_SUCCESS)	{ cout << "\nRunCL::reduce_img( ),  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
+	status	= clFlush(m_queue);									if (status != CL_SUCCESS)	{ cout << "\nRunCL::horiz_blur5( ),  clFlush(m_queue) status  = "<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
+	status	= clWaitForEvents (1, &ev);							if (status != CL_SUCCESS)	{ cout << "\nRunCL::horiz_blur5( ),  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout<<"\n\nRunCL::horiz_blur5(..)_chk3 Finished all loops."<<flush;
 																																				stringstream ss;	ss << dataset_frame_num << "horiz_blur5";
@@ -293,7 +294,7 @@ void RunCL::reduce_img(uint layer, std::string folder){
 		uint	img_cols			= MipMap[layer * 8 + MiM_WRITE_COLS];			//4
 
 		uint	img_rows			= MipMap[layer * 8 + MiM_WRITE_ROWS];			//5
-		uint	stop_offset			= offset2 + img_rows * buf_width;				//7 bottom right corner of dest image
+		uint	stop_offset			= offset2 + (img_rows-1) * buf_width + img_cols;	//7 bottom right corner of dest image
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::reduce_img(..)_chk1 #############################################################"<<flush;
 																																	cout << "\n local_work_size = " << local_work_size
 																																			<<"\nthreads_to_launch = " 	<< threads_to_launch

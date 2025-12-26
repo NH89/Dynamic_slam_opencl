@@ -374,8 +374,17 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	//mm_num_blur_layers	= obj["num_blur_layers"].asUInt();
 	mm_start			= 0;
 	float short_side	= fmin(baseImage_width, baseImage_height);
-	uint num_reductions	= floor(log2(short_side)) -2;																						// i.e. at leat 8 pixels remain on short side of img at apex of img pyramid.
-	mm_stop				= num_reductions; /*mm_num_reductions;// + mm_num_blur_layers;*/													if(verbosity>local_verbosity_threshold) cout << "\nRunCL::initialize_RunCL_chk0.5,  mm_start="<<mm_start<<",  mm_stop="<<mm_stop<<" \n" << flush;
+	uint num_reductions	= floor(log2(short_side)) -2;																						// i.e. at least 4 pixels remain on short side of img at apex of img pyramid.
+//	if( (short_side/pow(2,num_reductions)) < 6) num_reductions--;																			// i.e. at least 6 pixels remain on short side of img at apex of img pyramid.
+//	mm_stop				= num_reductions; /*mm_num_reductions;// + mm_num_blur_layers;*/
+	mm_stop				= min(num_reductions, max_mipmap_layers-2);
+																																			if(verbosity>local_verbosity_threshold) cout << "\nRunCL::initialize_RunCL_chk0.5"
+																																						<<",  mm_start="<<mm_start
+																																						<<",  mm_stop="<<mm_stop
+																																						<<",  short_side="<<short_side
+																																						<<",  log2(short_side)="<<log2(short_side)
+
+																																						<<" \n" << flush;
 	mm_gaussian_size	= obj["gaussian_size"].asUInt();
 	mm_margin			= obj["MipMap_margin"].asUInt() * mm_num_reductions;
 	mm_width 			= baseImage_width  + 2 * mm_margin;
@@ -540,13 +549,14 @@ void RunCL::set_mimpmap_offsets(){
 	mipmap[MiM_WRITE_COLS]			= mipmap[MiM_READ_COLS]/2;
 	mipmap[MiM_PIXELS]				= mipmap[MiM_READ_COLS] * mipmap[MiM_READ_ROWS];
 																																			// TODO compute required reduction and blur depending on img size
-	int stop1 						= min(mm_num_reductions, max_mipmap_layers-1);								// #### Img pyr layers ##########
+	//int stop1 						= min(mm_num_reductions, max_mipmap_layers-1);								// #### Img pyr layers ##########
 	int reduction = 0;
-	for(; reduction <= stop1; reduction++) {
-		num_threads[reduction]		= ceil( (float)(mipmap[MiM_PIXELS])/(float)local_work_size ) * local_work_size ;						// global_work_size formula for num_treads req for this layer.
-		for (int i=0; i<8; i++)		{																										// Initialize the global MipMap[8*8] array.
-			MipMap[reduction*8 +i]	= mipmap[i];																							if(verbosity>local_verbosity_threshold) { cout << "\nMipMap["<<reduction<<"*8 +"<<i<<"]="<<MipMap[reduction*8 +i] ;}
-		}																																	if(verbosity>local_verbosity_threshold) { cout << endl << flush; }
+	num_threads[reduction]		= ceil( (float)(mipmap[MiM_PIXELS])/(float)local_work_size ) * local_work_size ;						// global_work_size formula for num_treads req for this layer.
+	for (int i=0; i<8; i++)		{																										// Initialize the global MipMap[8*8] array.
+		MipMap[reduction*8 +i]	= mipmap[i];																							if(verbosity>local_verbosity_threshold) { cout << "\nMipMap["<<reduction<<"*8 +"<<i<<"]="<<MipMap[reduction*8 +i] ;}
+	}																																	if(verbosity>local_verbosity_threshold) { cout << endl << flush; }
+
+	for(; reduction <= mm_stop/*stop1*/; reduction++) {
 		mipmap[MiM_READ_OFFSET]		= mipmap[MiM_WRITE_OFFSET];
 		mipmap[MiM_WRITE_OFFSET]	= mipmap[MiM_WRITE_OFFSET] + read_cols_with_margin * (margin + write_rows);
 		mipmap[MiM_READ_ROWS]		= write_rows;
@@ -555,11 +565,18 @@ void RunCL::set_mimpmap_offsets(){
 		mipmap[MiM_READ_COLS]		= mipmap[MiM_WRITE_COLS];
 		mipmap[MiM_WRITE_COLS]		= mipmap[MiM_WRITE_COLS]/2;
 		mipmap[MiM_PIXELS]			= mipmap[MiM_READ_COLS] * mipmap[MiM_READ_ROWS];
+
+		num_threads[reduction+1]	= ceil( (float)(mipmap[MiM_PIXELS])/(float)local_work_size ) * local_work_size ;						// global_work_size formula for num_treads req for this layer.
+		for (int i=0; i<8; i++)		{																										// Initialize the global MipMap[8*8] array.
+			MipMap[(reduction+1)*8 +i]	= mipmap[i];																							if(verbosity>local_verbosity_threshold) { cout << "\nMipMap["<<reduction<<"*8 +"<<i<<"]="<<MipMap[reduction*8 +i] ;}
+		}																																	if(verbosity>local_verbosity_threshold) { cout << endl << flush; }
+
 	}
+/*
 	mipmap[MiM_WRITE_ROWS]			= mipmap[MiM_READ_ROWS];
 	mipmap[MiM_WRITE_COLS]			= mipmap[MiM_READ_COLS];
 	mipmap[MiM_WRITE_OFFSET]		= mipmap[MiM_READ_OFFSET] + mipmap[MiM_READ_COLS] + 2*margin;
-/*
+
 	int stop2 							= min( (mm_num_reductions + mm_num_blur_layers),  max_mipmap_layers-1);		// #### Blur layers #############
 	int layer 						= reduction;																							if(verbosity>local_verbosity_threshold) { cout << "\nblur layers"<<flush;}
 	for(; layer <= stop2; layer++) {
@@ -586,7 +603,7 @@ void RunCL::set_mimpmap_offsets(){
 																																					cout << "\n offset row = "			<< MipMap[reduction*8 +MiM_READ_OFFSET] / mm_width;
 																																					cout << "\n offset col = "			<< MipMap[reduction*8 +MiM_READ_OFFSET] % mm_width;
 
-																																					if(reduction == stop1 ) { cout << "\n\nblur layers"<<flush;}
+																																					if(reduction == mm_stop ) { cout << "\n\nunused layers"<<flush;}
 																																				}
 																																			}
 	// ## set array of arrays for workgoup offsets, for patch kernels on mipmaps ########################################################### TODO Replace with fixed arrays capable of 10K images

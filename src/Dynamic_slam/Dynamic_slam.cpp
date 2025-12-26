@@ -267,7 +267,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 
 																																			cout<<"\nDynamic_slam::getFrame_chk 1:    runcl.mm_start = "<<runcl.mm_start
 																																				<<								"      runcl.mm_stop = "<<runcl.mm_stop<<flush;
-	for(int layer=runcl.mm_stop; layer>=0; layer-- ){ cout<<"\nlayer = "<<layer<<flush;
+	for(int layer=runcl.mm_stop-1; layer>=0; layer-- ){ cout<<"\nlayer = "<<layer<<flush;
 		runcl.patch_img_gradients(	layer);
 		runcl.patch_hessian_reduce(	layer);
 	}
