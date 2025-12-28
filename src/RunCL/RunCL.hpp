@@ -26,6 +26,9 @@
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/highgui.hpp>
 
+#include <eigen3/Eigen/QR>						// For (pseudo)inverse of hessian
+#include <eigen3/Eigen/Dense>
+
 #include <boost/format.hpp>
 
 #include <CL/opencl.hpp>

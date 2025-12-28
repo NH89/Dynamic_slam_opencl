@@ -467,6 +467,36 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 
 	Matx66f GN_Hessian =  Jacobian.t()  * Jacobian ;
 	invert(GN_Hessian,	current_frames[ current_frames_idx[0] ].invHessian[layer]	);
+
+	Eigen::MatrixXd GN_H(6,6);
+	for (int i=0;i<6;i++){
+		for (int j=0;j<6;j++){
+			GN_H(i,j) = GN_Hessian.operator()(i,j);
+		}
+	}
+	Eigen::MatrixXd pinv 	= GN_H.completeOrthogonalDecomposition().pseudoInverse();
+/*
+	typedef Eigen::Matrix<double,3,3> 		Matrix3x3;
+	Matrix3x3	m = Matrix3x3::Random();
+
+	Eigen::Matrix3f A ;
+	A <<1,2,3,4,5,6,7,8,9;
+
+	Eigen::FullPivLU<Eigen::Matrix3f>	lu(  A  ) ;
+*//* //Prove inv = pinv when invertible. NB pinv is numerically safer.
+	typedef Eigen::Matrix<double,6,6> Matrix6x6d;
+	Matrix6x6d GN_H2;
+
+	for (int i=0;i<6;i++){
+		for (int j=0;j<6;j++){
+			GN_H2(i,j) = GN_Hessian.operator()(i,j);
+		}
+	}
+
+	Eigen::FullPivLU<Matrix6x6d> lu_GN_H2(GN_H2);
+	bool invertible				= lu_GN_H2.isInvertible();
+	Matrix6x6d 			inv 	= lu_GN_H2.inverse();
+*/
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_hessian_reduce()_chk3 ."<<flush;	// Save buffers to file ###########
 																																	stringstream ss;
 																																	ss << "patch_hessian_reduce_";// << save_index ;
@@ -495,10 +525,19 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 																																}
 
 																																if( verbosity>local_verbosity_threshold) {
-																																	cout <<"\nJacobian \n"		<< current_frames[ current_frames_idx[0] ].Jacobian[layer]		<< endl << endl <<flush;
-																																	cout <<"\nGN_Hessian \n"	<< GN_Hessian													<< endl << endl <<flush;
-																																	cout <<"\nGN_Hessian.inv() \n"	<< GN_Hessian.inv()											<< endl << endl <<flush;
-																																	cout <<"\ninvHessian \n"	<< current_frames[ current_frames_idx[0] ].invHessian[layer]	<< endl << endl <<flush;
+																																	cout <<"\nJacobian \n"				<< current_frames[ current_frames_idx[0] ].Jacobian[layer]		<< endl << endl <<flush;
+																																	/*
+																																	// cout <<"\nGN_Hessian \n"			<< GN_Hessian													<< endl << endl <<flush;
+																																	// cout <<"\nGN_Hessian.inv() \n"		<< GN_Hessian.inv()												<< endl << endl <<flush;
+																																	// cout <<"\nocv invHessian \n"		<< current_frames[ current_frames_idx[0] ].invHessian[layer]	<< endl << endl <<flush;
+																																	*/
+																																	cout <<"\nEigen GN_H \n" 			<< GN_H															<< endl << endl <<flush;
+																																	cout <<"\nEigen pinv \n" 			<< pinv															<< endl << endl <<flush;
+																																	/*
+																																	cout <<"\nEigen FullPivLU GN_H2 \n" << GN_H2															<< endl << endl <<flush;
+																																	cout <<"\nEigen FullPivLU isInvertible = "<< invertible <<endl<<flush;
+																																	cout <<"\nEigen FullPivLU inv \n" 	<< inv															<< endl << endl <<flush;
+																																	*/
 																																	cout <<"\n\nRunCL::patch_hessian_reduce()_finished #############################################################"<<flush;
 																																}
 }
