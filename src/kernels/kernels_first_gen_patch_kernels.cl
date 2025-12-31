@@ -169,7 +169,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 				}
 
 				for (uint se3_dim=3; se3_dim<num_SE3_DoF; se3_dim++) {
-					SE3_incr_pvt_flt4										= inv_depth_1 * grad_pvt_flt4_SE3[se3_dim] * rho_pvt_flt4;
+					SE3_incr_pvt_flt4										= /*inv_depth_1 * */grad_pvt_flt4_SE3[se3_dim] * rho_pvt_flt4;  // ? does SE3_grad_map_cur_frame already take account of depth ?
 					SE3_incr_pvt_flt2.x										= SE3_incr_pvt_flt4.x;
 					SE3_incr_pvt_arr[ se3_dim*block_size + row_in_block ]	= SE3_incr_pvt_flt2 ;
 				}
@@ -226,7 +226,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 					}
 				}
 			}
-		}
+		}//////////////////////////////////////////////////////////////////////
 	}
 	/// Save maximally reduced SE3 32x32 patches for pose updates ////////////////////																											// Writes dense blocks. Reduces required transfer to host.
 	uint write_block_row			=  0;

@@ -250,9 +250,9 @@ void RunCL::patch_img_gradients_set_params(){	// Uses patch lookup table		// cal
 	//_clSetKernelArg( kernel,	9, sizeof( cl_mem), 	&imgmem_,						fname);									// __global 	float4*		img,					//6
 	//Outputs:
 	//__global
-	_clSetKernelArg( kernel,	10, sizeof( cl_mem), 	&SE3_grad_map_mem,				fname);									// __global 	float8*		SE3_grad_map,			//7		// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
-	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&SE3_hessian_pinv_map_mem,		fname);									// __global 	float4*		SE3_Hessian_pinv_map,	//8		// HSV (6x6) matrix so 36*float8
-	_clSetKernelArg( kernel,	13, sizeof( cl_mem), 	&HSV_grad_mem,					fname);									// __global 	float8*		HSV_grad				//10
+	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&SE3_grad_map_mem,				fname);									// __global 	float8*		SE3_grad_map,			//7		// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
+	_clSetKernelArg( kernel,	12, sizeof( cl_mem), 	&SE3_hessian_pinv_map_mem,		fname);									// __global 	float4*		SE3_Hessian_pinv_map,	//8		// HSV (6x6) matrix so 36*float8
+	_clSetKernelArg( kernel,	14, sizeof( cl_mem), 	&HSV_grad_mem,					fname);									// __global 	float8*		HSV_grad				//10
 
 	// For the SE3 Hessian patches, and their reduction.	/////////////
 																																if( verbosity>local_verbosity_threshold+1 ) {
@@ -347,7 +347,10 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 	_clSetKernelArg( kernel,	4, sizeof(cl_uint3),	&ST3_out_offset,				fname);									// __private	uint		SE3_hessian_offset,			//3
 
 	_clSetKernelArg( kernel,	9, sizeof( cl_mem),		&imgmem_,						fname);									// __global 	float4*		img,					//6		//	"current_frames[idx].img_buf	= imgmem[idx];", NB changes every new frame.
-	_clSetKernelArg( kernel,	12,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,			//9		// local_Hessian[ sizeof(float4) *6*6 *local_size]
+	_clSetKernelArg( kernel,	10, sizeof( cl_mem), 	&depth_mem,						fname);									// __global		float* 		depth_map,				//12	// current frame depth, now stored as inv_depth
+
+
+	_clSetKernelArg( kernel,	13,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,			//9		// local_Hessian[ sizeof(float4) *6*6 *local_size]
 
 /*
 cl_int clGetMemObjectInfo(
@@ -366,7 +369,7 @@ size_t* param_value_size_ret);
 																	if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
 	status	= clFlush(m_queue);										if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_img_gradients( ),  clFlush(m_queue) status  = "<<status<<" "<<checkerror(status) <<"\n"<<flush; exit_(status);}
 	status	= clWaitForEvents (1, &ev);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_img_gradients( ),  clWaitForEventsh(1, &ev) =" <<status<<" "<<checkerror(status) <<"\n"<<flush; exit_(status);}
-
+																																/*
 																																// if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_chk2 ."<<flush;	// Save buffers to file ###########
 																																// 	stringstream ss;
 																																// 	ss << "patch_img_gradients_";// << save_index ;
@@ -378,7 +381,7 @@ size_t* param_value_size_ret);
 																																// 	_cl_flush_finish(m_queue, fname);
 																																// 	//DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show);
 																																// 	DownloadAndSave_3Channel( 	SE3_hessian_pinv_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  0,			false);
-																																// 	DownloadAndSave_3Channel( 	SE3_hessian_pinv_map_mem,	ss.str( ), paths.at( "jacobian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  mm_size_bytes_C4/*mm_layerstep*/, false);
+																																// 	DownloadAndSave_3Channel( 	SE3_hessian_pinv_map_mem,	ss.str( ), paths.at( "jacobian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  mm_size_bytes_C4 / * mm_layerstep * / , false);
 																																// 	// NB the tiff file holda the int32 values as float32. This is okay because they fit in the mantissa.
 																																// 	// BGRA format, B=u, G=v, R=read_index, A=alpha.
 																																// 	////////////////
@@ -393,6 +396,7 @@ size_t* param_value_size_ret);
 																																// 	//////////
 																																// 	tiff 			= old_tiff;
 																																// }
+																																*/
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_finished #############################################################"<<flush;
 																																}
 }
@@ -440,41 +444,48 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 	Matx66f		Hessian;
 	Mat			hessian_Mat(	(num_SE3_DoF+1),	num_SE3_DoF,	CV_32FC4);
 	size_t		data_size	=	(num_SE3_DoF+1) *	num_SE3_DoF *	sizeof(cl_float4);
-	size_t		offset		=	layer*8*6 ;																					cout<<"\noffset="<<offset<<flush;
+	size_t		offset		=	layer*8*6 ;																						cout<<"\noffset="<<offset<<flush;
 
 	ReadOutput( hessian_Mat.data, SE3_hessian_pinv_map_mem, data_size, offset*sizeof(cl_float4) );
-
-	Mat J					= Mat( hessian_Mat, Rect(0,0,6,1)	);
+																																cout<<"\nhessian_Mat = \n"<<hessian_Mat<<flush;
+	Mat J									= Mat( hessian_Mat, Rect(0,0,6,1)	);
 
 	for(int row=0; row<1; row++){																									// per_pixel division currently done in kernel, TODO which is better ?
 		for(int col=0; col<num_SE3_DoF; col++){
-			Jacobian.operator()(row,col)		= J.at<cl_float4>( row,col ).x / J.at<cl_float4>( row,col ).w;						// NB choose colour channel of Hessian
+			Jacobian.operator()(row,col)	= J.at<cl_float4>( row,col ).x / J.at<cl_float4>( row,col ).w;						// NB choose colour channel of Hessian
 		}
 	}
-
+/*
 	// NB we have one Hessian per color channel. HSV=>4,  HSV_grad => 8, likewise for the Jacobian.
 
 	//Mat H					= Mat( hessian_Mat, Rect(0,1,6,6)	); 																	//hessian.inv()  NB computed in kernel: sum of pixelwise pseudo-inverse of the Hessian.
-
+*/
 	for(int row=0; row<num_SE3_DoF; row++){																							// per_pixel division currently done in kernel, TODO which is better ?
 		for(int col=0; col<num_SE3_DoF; col++){
 			Hessian.operator()(row,col)		= hessian_Mat.at<cl_float4>( row+1,col ).x; // / hessian_Mat.at<cl_float4>( row+1,col ).w;	// NB choose colour channel of Hessian
 		}
 	}
-
 	current_frames[ current_frames_idx[0] ].Jacobian[layer]			= Jacobian;
+/*
 	//current_frames[ current_frames_idx[0] ].invHessian[layer]		= Hessian.inv();							//inv_Hessian.inv();
+*/
+	//Matx66f GN_Hessian 						=  Jacobian.t()  * Jacobian ; /// #### TODO wrong !  need GN_H  = sum( elementwise J.t * J )
+	//invert(GN_Hessian,	current_frames[ current_frames_idx[0] ].invHessian[layer]	);
 
-	Matx66f GN_Hessian =  Jacobian.t()  * Jacobian ;
-	invert(GN_Hessian,	current_frames[ current_frames_idx[0] ].invHessian[layer]	);
-
-	Eigen::MatrixXd GN_H(6,6);
-	for (int i=0;i<6;i++){
+	Eigen::MatrixXd GN_H(6,6);																					// TODO replace Eigen with a kernel for 6x6 matrix pseudo-inverse or inverse.
+	for (int i=0;i<6;i++){																						// Hard code efficient computation of 6x6 inversion, & Det.
 		for (int j=0;j<6;j++){
-			GN_H(i,j) = GN_Hessian.operator()(i,j);
+			GN_H(i,j) 						= Hessian.operator()(i,j);	// GN_Hessian.operator()(i,j);
 		}
 	}
-	Eigen::MatrixXd pinv 	= GN_H.completeOrthogonalDecomposition().pseudoInverse();
+	Eigen::MatrixXd pinv 					= GN_H.completeOrthogonalDecomposition().pseudoInverse();
+	Matx66f pinv_H;
+	for (int i=0;i<6;i++){
+		for (int j=0;j<6;j++){
+			pinv_H.operator()(i,j)			= pinv(i,j) ;
+		}
+	}
+	current_frames[ current_frames_idx[0] ].invHessian[layer]		= pinv_H;
 /*
 	typedef Eigen::Matrix<double,3,3> 		Matrix3x3;
 	Matrix3x3	m = Matrix3x3::Random();
@@ -483,7 +494,8 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 	A <<1,2,3,4,5,6,7,8,9;
 
 	Eigen::FullPivLU<Eigen::Matrix3f>	lu(  A  ) ;
-*//* //Prove inv = pinv when invertible. NB pinv is numerically safer.
+
+	////Prove inv = pinv when invertible. NB pinv is numerically safer.
 	typedef Eigen::Matrix<double,6,6> Matrix6x6d;
 	Matrix6x6d GN_H2;
 
@@ -523,17 +535,18 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 																																	//////////
 																																	tiff 			= old_tiff;
 																																}
-
 																																if( verbosity>local_verbosity_threshold) {
+																																	const auto old_precision{ cout.precision() };
+																																	cout << setprecision(15);
 																																	cout <<"\nJacobian \n"				<< current_frames[ current_frames_idx[0] ].Jacobian[layer]		<< endl << endl <<flush;
+																																	cout <<"\nEigen GN_H \n" 			<< GN_H															<< endl << endl <<flush;
+																																	cout <<"\nEigen pinv \n" 			<< pinv															<< endl << endl <<flush;
+																																	cout << setprecision(old_precision);
 																																	/*
 																																	// cout <<"\nGN_Hessian \n"			<< GN_Hessian													<< endl << endl <<flush;
 																																	// cout <<"\nGN_Hessian.inv() \n"		<< GN_Hessian.inv()												<< endl << endl <<flush;
 																																	// cout <<"\nocv invHessian \n"		<< current_frames[ current_frames_idx[0] ].invHessian[layer]	<< endl << endl <<flush;
-																																	*/
-																																	cout <<"\nEigen GN_H \n" 			<< GN_H															<< endl << endl <<flush;
-																																	cout <<"\nEigen pinv \n" 			<< pinv															<< endl << endl <<flush;
-																																	/*
+
 																																	cout <<"\nEigen FullPivLU GN_H2 \n" << GN_H2															<< endl << endl <<flush;
 																																	cout <<"\nEigen FullPivLU isInvertible = "<< invertible <<endl<<flush;
 																																	cout <<"\nEigen FullPivLU inv \n" 	<< inv															<< endl << endl <<flush;

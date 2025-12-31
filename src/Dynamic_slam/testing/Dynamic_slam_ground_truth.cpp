@@ -5,13 +5,15 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_GETFRAMEDATA;//verbosity_mp["Dynamic_slam::getFrameData"];
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec_chk 0.  runcl.dataset_frame_num = "<< runcl.dataset_frame_num
 																																				<< "\t###################################" << flush;
-	std::string str 						= txt[runcl.dataset_frame_num].c_str();																					// grab .txt file from array of files (e.g. "scene_00_0000.txt")
-	char		*ch 						= new char [str.length()+1];
-	std::strcpy (ch, str.c_str());
-	cv::Mat		T_alt;
-	convertAhandaPovRayToStandard_2( obj,  ch, R, T, cameraMatrix );	// TODO  which of these 2 versions of convertAhandaPovRayToStandard() is correct ?
-	convertAhandaPovRayToStandard(   obj,  ch, R, T, cameraMatrix );
-	delete [] ch; //free(ch);
+																																			cout<<"\nruncl.dataset_frame_num="<<runcl.dataset_frame_num<<flush;
+
+	std::string str 						= txt[runcl.dataset_frame_num].c_str();															cout<<"chk1 "<<flush;						// grab .txt file from array of files (e.g. "scene_00_0000.txt")
+	char		*ch 						= new char [str.length()+1];																	cout<<"chk2 "<<flush;
+	std::strcpy (ch, str.c_str());																											cout<<"chk3 "<<flush;
+	cv::Mat		T_alt;																														cout<<"chk4 "<<flush;
+	convertAhandaPovRayToStandard_2( obj,  ch, R, T, cameraMatrix );	cout<<"chk5 "<<flush;	// TODO  which of these 2 versions of convertAhandaPovRayToStandard() is correct ?
+	convertAhandaPovRayToStandard(   obj,  ch, R, T, cameraMatrix );	cout<<"chk6 "<<flush;
+	delete [] ch; 														cout<<"chk7 "<<flush;	//free(ch);
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\n Dynamic_slam::getFrameData_vec_chk 1";
 																																				cout << "\n\n R = \n" << R;
@@ -40,7 +42,7 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 																																					PRINT_MATX44F(	runcl.current_frames[ runcl.current_frames_idx[i] ].pose_gt,   );
 																																			}
 	Matx44f pose_frame0to1_gt	= runcl.current_frames[ runcl.current_frames_idx[1] ].pose_gt	*	datum.inv_pose;							PRINT_MATX44F( pose_frame0to1_gt, );
-	Matx16f	artif_error			= {0.0f, 0.0f, 0.0f,		2.0f, 0.0f, 0.0f };																PRINT_MATX16F( artif_error,);
+	Matx16f	artif_error			= {0.10f, 0.0f, 0.0f,		2.0f, 0.0f, 0.0f };																PRINT_MATX16F( artif_error,);
 	Matx44f artif_error_matx	= LieToP_Matx( artif_error );																				PRINT_MATX44F( artif_error_matx,);
 	Matx44f pose_frame0to1		= pose_frame0to1_gt * artif_error_matx;																		PRINT_MATX44F( pose_frame0to1,);
 	Matx44f k2k_0to1			= datum.K			* pose_frame0to1	* datum.K.inv();													PRINT_MATX44F( k2k_0to1,);

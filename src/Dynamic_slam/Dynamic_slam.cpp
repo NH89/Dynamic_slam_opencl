@@ -38,7 +38,12 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 	get_all(root, ".txt",   txt);																											// Get lists of files. Gathers all filepaths with each suffix, into c++ vectors.
 	get_all(root, ".png",   png);
 	get_all(root, ".depth", depth);
+	if (txt.size()<=0){	GT_available = false;		cout<<",  WARNING no gound truth .txt file."<<flush;}
+	if (png.size()<=0){	GT_available = false;		cout<<",  WARNING no gound truth .depth file."<<flush;}
+
 																																			if(verbosity>local_verbosity_threshold){cout << "\n Dynamic_slam::Dynamic_slam_chk 3\n" << flush;
+																																				cout<<"\n txt.size() = "<<txt.size() <<flush;
+
 																																				cout << "\nDynamic_slam::Dynamic_slam(): "<< png.size()  <<" .png images found in data folder.\t"
 																																				<<"png[runcl.dataset_frame_num].string()="<< png[runcl.dataset_frame_num].string()  <<flush;
 																																			}

@@ -90,12 +90,12 @@ void RunCL::rho_sq( uint out_block_size, uint iter, uint layer  ){	// To be laun
 	uint				patches_required			= cols_blocks  * rows_blocks;
 
 	uint				patches_per_compute_uint	= ceil( (float)patches_required / device_max_compute_units );
-	uint 				blocks_per_k_wg_size		= max_workgroup_size			/ device_work_size_multiple;
+	uint				blocks_per_k_wg_size		= max_workgroup_size			/ device_work_size_multiple;
 						patches_per_compute_uint	= min( patches_per_compute_uint,  blocks_per_k_wg_size );
 
 	uint				blocks_required				= ceil( (float)patches_required / patches_per_compute_uint );
-	size_t				local_work_size_[1] 		= { patches_per_compute_uint	* patch_size };
-	size_t				threads_to_launch 			= blocks_required 				* local_work_size_[0];									// TODO precompute an array for this function. ? where to store
+	size_t				local_work_size_[1]			= { patches_per_compute_uint	* patch_size };
+	size_t				threads_to_launch			= blocks_required 				* local_work_size_[0];									// TODO precompute an array for this function. ? where to store
 																																			// ? Have a subclass and object for each kernel ?
 																																			if( verbosity>local_verbosity_threshold-3) {cout<<"\n\nRunCL::rho_sq( ..)_chk_3 "<<flush;
 																																				cout <<"\n"
@@ -167,7 +167,7 @@ void RunCL::rho_sq( uint out_block_size, uint iter, uint layer  ){	// To be laun
 																																				"Execution time = "<<  duration_cast<microseconds>(step_1 - step_0).count() \
 																																				<<" , "<<duration_cast<microseconds>(step_2 - step_1).count() <<flush;
 																																			}
-																																			if( verbosity>local_verbosity_threshold -3) {cout<<"\n\nRunCL::rho_sq( ..)_chk_6 ."<<flush;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_6 ."<<flush;
 
 																																				stringstream ss;
 																																				ss << "_ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_iter"<<iter<<"_out_bock_size"<<out_block_size<<"_rho_sq()";
@@ -201,13 +201,13 @@ void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer )					
 {
 	string fname = "RunCL::reduce_patch_Rho( ..)";
 	int local_verbosity_threshold = V_RUNCL_REDUCE_PATCH_RHO;
-																																		if( verbosity>local_verbosity_threshold) {cout<<"\nRunCL::reduce_patch_Rho( ..)_chk_1 _____________________"<<flush;}
+																																		if( verbosity>local_verbosity_threshold) {cout<<"\nRunCL::reduce_patch_Rho( ..)_chk_1 _____________________"<<flush;
 																																		cout<<" layer = "<<layer<<flush;
 																																			// if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_SE3( ..)_chk0 .##################################################################"<<flush;
 																																			// 	float pose_update_ary[6];
 																																			// 	ReadOutput( (uchar*)pose_update_ary, pose_update_buf, sizeof(float)*6, 0);	//ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
 																																			// 	cout<<"\n pose_update_ary = {"; for (int i=0; i<6; i++){ cout<<pose_update_ary[i]<<", "; }cout<<"}"<<flush;
-																																			// }
+																																		}
 	cl_kernel		kernel 				= reduce_patch_Rho_kernel;																			//NB call just one workgroup to sum the whole image maps from the patch kernel.
 	const uint		patch_size 			= 32;																								//TODO set global patch size from device parameters // generally:  device_work_size_multiple = patch_size * integer,   eg 32, 64, 128
 	const uint		SE3_DoF				= 6;
@@ -297,9 +297,6 @@ void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer )					
 }
 
 
-
-
-
 void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){ /* float delta_theta, float delta,*/
 	string		fname						= "RunCL::update_k2k_cpu(..)";
 	int			local_verbosity_threshold	= V_RUNCL_UPDATE_K2K;
@@ -328,25 +325,25 @@ void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){
 /*
 	float		rho			=	sqrtf(Rho.x) / Rho.y;																												cout<<"\nrho	= "<< rho 					<<endl<<flush;
 */
-	Matx16f		J			=			current_frames[ current_frames_idx[0] ].Jacobian[layer];													PRINT_MATX16F( J, );
-	Matx66f		invH		=			current_frames[ current_frames_idx[0] ].invHessian[layer];													PRINT_MATX66F( invH, );				PRINT_MATX66F( invH.inv(), );
+	//Matx16f		J			=			current_frames[ current_frames_idx[0] ].Jacobian[layer];													PRINT_MATX16F( J, );
+	Matx66f		invH		=			current_frames[ current_frames_idx[0] ].invHessian[layer];													PRINT_MATX66F( invH, );			//	PRINT_MATX66F( invH.inv(), );
 																																					//PRINT_MATX66F( (H * H.inv() ), );	PRINT_MATX66F( (H.inv() * H ), );
 	float		SE3_incr_arry[6*2];		ReadOutput(			(uchar*)SE3_incr_arry,		SE3_incr_map_mem,	6*sizeof(cl_float2),	32*sizeof(cl_float2)	);
 																																						cout<<"\nSE3_incr_arry[]= (";
 																																						for(int i=0; i<6*2; i++) cout << ", "<< SE3_incr_arry[i];
 																																						cout<<" ) "<<endl<<flush;
-
 	float		sum_rho		=	Rho.x;		// currently .x colour channel only.
 	float		sum_rho_sq	=	Rho.y;
 	float		num_pixels	=	SE3_incr_arry[1];																		// TODO move numpixels to SE3_incr.w   & reduce SE3_incr_map_mem from float8 tro float4
-	Matx16f		sum_rhoXgrad;	for (int i=0;	i<6; i++){	sum_rhoXgrad.operator()(i)	=	SE3_incr_arry[i*2];  };
-	Matx16f		sum_grad	=	current_frames[ current_frames_idx[0] ].Jacobian[layer];
-	Matx16f		SE3_incr	=	sum_rhoXgrad	;//		-	sum_rho * sum_grad / num_pixels;
-																																			if( verbosity>local_verbosity_threshold ){cout<<"\n\nRunCL::update_k2k_cpu( ..)_chk_1"<< \
-																																				"\nsum_rho = "<< sum_rho <<",	sum_rho_sq	= "<< sum_rho_sq <<",	num_pixels = "<<num_pixels <<endl<<flush;
-																																				PRINT_MATX16F( sum_rhoXgrad, );
-																																				PRINT_MATX16F( sum_grad, );
-																																				PRINT_MATX16F( (-sum_rho * sum_grad / num_pixels), );
+	Matx16f		SE3_incr;	for (int i=0;	i<6; i++){	SE3_incr.operator()(i)	=	SE3_incr_arry[i*2];  };
+	//Matx16f		sum_grad	=	current_frames[ current_frames_idx[0] ].Jacobian[layer];
+
+																																			if( verbosity>local_verbosity_threshold ){cout<<"\n\nRunCL::update_k2k_cpu( ..)_chk_1"<<
+																																				"\nsum_rho = "			<< sum_rho		<<
+																																				",	sum_rho_sq	= "		<< sum_rho_sq	<<
+																																				",	num_pixels = "		<< num_pixels	<< endl<<flush;
+																																				//PRINT_MATX16F( sum_grad, );
+																																				//PRINT_MATX16F( (-sum_rho * sum_grad / num_pixels), );
 																																				PRINT_MATX16F( SE3_incr, );
 																																			}
 /*
@@ -385,33 +382,35 @@ void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){
 	//
 	for(uint i=0; i<num_SE3_DoF; i++) pose_update += pose_update_H[lid*6 +i];
 */
-	Matx16f pose_update_cpu		= ( SE3_incr * invH ) /8.0f;																								PRINT_MATX16F( pose_update_cpu, );
-	//pose_update_cpu				= pose_update_cpu.mul( deltas_matx);																				PRINT_MATX16F( deltas_matx, );		PRINT_MATX16F( pose_update_cpu, );
+	Matx16f pose_update_cpu		= SE3_incr * invH;																									PRINT_MATX16F( pose_update_cpu, );
+	pose_update_cpu				= pose_update_cpu.mul( deltas_matx);																				PRINT_MATX16F( deltas_matx, );		PRINT_MATX16F( pose_update_cpu, );
 																																					PRINT_MATX44F( LieToP_Matx(pose_update_cpu), );
 																																					PRINT_MATX44F( LieToP_Matx(pose_update_cpu).inv(), );		// TODO order of matrix multiplication & transpose 1x6  vs 6x1 ?
-
 																																					PRINT_MATX16F( pose_update_cpu.div( pose_update_gt_algebra ) , );
 /*
 //	Matx61f	pose_update_cpu_1	= H.inv() * SE3_incr.t(); 	/ *  pose_update_cpu *  H.inv();  * /													PRINT_MATX61F( pose_update_cpu_1, );
 //	Matx61f	pose_update_cpu_2	= H / * .inv()  * /   * pose_update_cpu.t();																				PRINT_MATX61F( pose_update_cpu_2, );
 */
-	Matx44f newPose				= LieToP_Matx( pose_update_cpu ).inv()  *  pose;																	PRINT_MATX44F( newPose,			);		// TODO order of matrix multiplication ?
+	Matx44f newPose				= LieToP_Matx( pose_update_cpu )/*.inv()*/  *  pose;																PRINT_MATX44F( newPose,			);		// TODO order of matrix multiplication ?
 /*
 //Matx44f newK2K				= invK  * newPose  * K ;																							PRINT_MATX44F( newK2K,			);
 */
-
 	Matx44f eye_Matx44f			= {	1,0,0,10,  \
 									0,1,0,0,  \
 									0,0,1,0,  \
 									0,0,0,1};
 
-	Matx44f newK2K				= K  * /*eye_Matx44f*/  newPose  * invK ;				PRINT_MATX44F( newK2K,			);
+	// Matx44f test1 = eye_Matx44f;
+	// Matx41f test2 = {1,2,3,4};
+	// Matx41f test3 = test2 * test2;
+
+	Matx44f newK2K				= K  * /*eye_Matx44f*/  newPose  * invK ;																			PRINT_MATX44F( newK2K,			);
 
 	float 	newPoseArry[16],	newK2KArry[16];
 	Matx44f_To_float16arry(		newK2K,			newK2KArry );
 	Matx44f_To_float16arry(		newPose,		newPoseArry);
 
-	Matx44f		k2k_old			=			ReadOutput_44f(						k2kbuf);																PRINT_MATX44F( k2k_old,	);
+	Matx44f		k2k_old			=			ReadOutput_44f(						k2kbuf);															PRINT_MATX44F( k2k_old,	);
 
 	update_k2k_buf(				newK2KArry,		newPoseArry);
 /*

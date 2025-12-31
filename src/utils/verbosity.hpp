@@ -30,8 +30,7 @@
 
     // DYNAIC_SLAM/ ##############################################
     /////////////////////////////////////// DYNAMIC_SLAM_CLASS.CPP
-	#define	V__DYNAMIC_SLAM								0
-	#define	V_DYNAMIC_SLAM_DYNAMIC_SLAM					0
+	#define	V_DYNAMIC_SLAM_DYNAMIC_SLAM					-1
 	#define V_DYNAMIC_GENERATE_DELTAS					-1
 	#define	V_DYNAMIC_SLAM_INITIALIZE_CAMERA			-2
 	#define	V_DYNAMIC_SLAM_NEXTFRAME					-2
@@ -113,17 +112,17 @@
 	#define	V_RUNCL_DOWNLOADANDSAVEVOLUME				2
 
 	////////////////////////////////////// RUNCL_LOAD_IMAGE.CPP
-	#define	V_RUNCL_LOADFRAME							-1
+	#define	V_RUNCL_LOADFRAME							1
 	#define	V_RUNCL_CVT_COLOR_SPACE						0
 	#define	V_RUNCL_SUM_IMAGE_VARIANCE					1
 	#define	V_RUNCL_SAMPLE_IMAGE_VARIANCE				0
 
-	#define	V_RUNCL_MIPMAP_LINEAR						-1
-	#define	V_RUNCL_IMG_GRADIENTS						-1
+	#define	V_RUNCL_MIPMAP_LINEAR						1
+	#define	V_RUNCL_IMG_GRADIENTS						1
 
-	#define	V_RUNCL_LOAD_GT_DEPTH						-1
-	#define	V_RUNCL_CONVERT_DEPTH						-1
-	#define	V_RUNCL_MIPMAP_DEPTHMAP						-2
+	#define	V_RUNCL_LOAD_GT_DEPTH						1
+	#define	V_RUNCL_CONVERT_DEPTH						1
+	#define	V_RUNCL_MIPMAP_DEPTHMAP						2
 
 	/////////////////////////////////////// RUNCL_MAPPING.CPP
 
@@ -133,12 +132,12 @@
 
 	/////////////////////////////////////// RUNCL_PATCH_SLAM.CPP
 	#define V_RUNCL_INITIALIZE_PATCH_PARAMS				-1
-	#define	V_RUNCL_COMPUTE_PATCH_LOOKUP_TABLE			-2
+	#define	V_RUNCL_COMPUTE_PATCH_LOOKUP_TABLE			2
 	#define	V_RUNCL_PATCH_IMG_GRADIENTS					-2
 
 	/////////////////////////////////////// RUNCL_PATCH_TRACKING.CPP
-	#define V_RUNCL_REDUCE_IMG							-1
-	#define V_RUNCL_BLUR_IMG							-1
+	#define V_RUNCL_REDUCE_IMG							2
+	#define V_RUNCL_BLUR_IMG							2
 
 
 	/////////////////////////////////////// RUNCL_SETUP_KEYFRAME.CPP
