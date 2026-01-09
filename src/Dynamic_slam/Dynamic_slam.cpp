@@ -17,6 +17,7 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 
 	use_conf_camera_matx				= obj["use_conf_camera_matx"].asBool();
 	GT_available						= obj["GT_available"].asBool();
+	use_artif_pose_error				= obj["Artif_pose_err_bool"].asBool();
 	invert_GT_depth						= obj["invert_GT_depth"].asBool();
 	initialize_keyframe_from_GT  		= obj["initialize_keyframe_from_GT"].asBool();
 	initialize_tracking_from_GT_depth	= obj["initialize_tracking_from_GT_depth"].asBool();
@@ -58,7 +59,7 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 void Dynamic_slam::initialize_camera_intrinsic_matrix(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_INITIALIZE_CAMERA;
 																																			if (verbosity>local_verbosity_threshold) { cout << "\fDynamic_slam::initialize_camera_vec_chk 0:" <<flush;}
-	cv::Matx44f k 					= Matx44f_eye;;												// NB In DTAM_opencl, "cameraMatrix" found by convertAhandPovRay, called by fileLoader
+	cv::Matx44f k 					= Matx44f::eye();;												// NB In DTAM_opencl, "cameraMatrix" found by convertAhandPovRay, called by fileLoader
 	if(use_conf_camera_matx==true){
 		for (int i=0; i<9; i++){ k.operator()(i/3,i%3) = obj["cameraMatrix"][i].asFloat(); }												// Camera matrix from conf file.
 	}else{
@@ -122,10 +123,10 @@ void Dynamic_slam::initialize_camera_vec(){
 	if(GT_available==true){
 		getFrameData_vec();
 	}else{
-		frame_data.back().frame_data.keyframe2pose	=	Matx44f_eye;
-		frame_data.back().frame_data.K2K			=	Matx44f_eye;
+		frame_data.back().frame_data.keyframe2pose	=	Matx44f::eye();
+		frame_data.back().frame_data.K2K			=	Matx44f::eye();
 	}
-	runcl.set_cam_bufs( initial_K , inv_k, Matx44f_eye, Matx44f_eye );																	// NB K uses camera matrix from conf.json.
+	runcl.set_cam_bufs( initial_K , inv_k, Matx44f::eye(), Matx44f::eye() ); /*( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k )*/	// NB K uses camera matrix from conf.json.
 																																			// We use orthographic matrix, then convert to perspectiveby dividing by depth.
 																																			// See notes in convertTransforms.cpp
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 3:" <<flush;
@@ -178,15 +179,20 @@ int Dynamic_slam::nextFrame() {
 																																				<<",\t depth = runcl.amem  \n" << flush; //  runcl.frame_bool_idx="<<runcl.frame_bool_idx<<"
 																						auto step_0 = high_resolution_clock::now();
 	frame_data.push_back( frame_data.back() ); //////////////////////////////////////////   new_frame										// duplicate last frame, as basis for new frame.
+
 	runcl.update_current_frames_idx();																										// move to next img buffer and RunCL "frame" struct in the current_frames[] array. NB current_frames_idx[..] pointer swap.
-//TODO regularize amem //	if ( obj["initialize_tracking_from_GT_depth"].asBool() == false  ){ runcl.update_tracking_depthmap( runcl.amem   );	}					// copies buffer: amem to keyframe_depth_mem.  NB amem initialization will affect 1st tracking.
-																																			// This would update keyframe_depth_mem ith the raw amem, every frame.
+
 	if(GT_available==true){
-		getFrameData_vec();		/*Only IF GT available*/
+		getFrameData_vec();
+
+		if(use_artif_pose_error==true){
+			set_artif_pose_error();
+		}
 	}else{
-		frame_data.back().frame_data.keyframe2pose	=	Matx44f_eye;
-		frame_data.back().frame_data.K2K			=	Matx44f_eye;
-	}																					auto step_1 = high_resolution_clock::now();			// updates pose2pose for next frame in cost volume.
+		frame_data.back().frame_data.keyframe2pose	=	Matx44f::eye();
+		frame_data.back().frame_data.K2K			=	Matx44f::eye();
+	}
+																						auto step_1 = high_resolution_clock::now();			// updates pose2pose for next frame in cost volume.
 																																			// if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 1, Pose error after getFrameData_vec():" << flush;
 																																			// 	report_GT_pose_error();
 																																			// 	//display_frame_resluts();

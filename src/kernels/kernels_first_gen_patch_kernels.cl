@@ -1,4 +1,4 @@
-#include "kernels_macros.h"
+#include "kernels__macros.h"
 #include "kernels.h"
 
 // 1st gen patch kernels  //////////////////////////////////////////////////////
@@ -24,7 +24,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 
 	__global	float*		depth_map,				//12	// current frame depth, now stored as inv_depth
 	__global	float8*		g1p,					//13	// current frame g1mem
-	__global 	float8*		SE3_grad_map_cur_frame,	//14
+	__global 	float4*		SE3_grad_map_cur_frame,	//14
 
 	__global	float4*		vel_cur,				//15	// multiple past frames.
 	__global	float4*		vel_past_0,				//16	// TODO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
@@ -89,12 +89,6 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	float8 grad_v8									= {zero_f4, zero_f4};
 	float2 grad_pvt_arr[block_size*num_SE3_DoF]		= {zero_f2};								// pvt variable for values in this column.
 	float4 grad_pvt_flt4_SE3[6]						= {zero_f4};
-	float  grad_pvt_flt_SE3[6]						= {0.0f};
-	float  grad_pvt_SE3_mag							= 0.0f;
-	//float  grad_pvt_ST_mag							= 0.0f;
-
-	float depth_weight								= 0.0f;
-	float weights									= 0.0f;
 
 	float4 grad_pvt_flt4							= zero_f4;
 	float2 grad_pvt_flt2							= zero_f2;
@@ -112,7 +106,8 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
 		local_SE3_incr[lid + se3_dim*local_size]	= zero_f2;
 	}
-																								// PATCH KERNEL //
+																								// PATCH KERNEL //  TODO need to transfer computation of Huber Norm weighting, Jacobian and Hessian here,
+																								// because Hessian must include weights and therefore be updated if weights change.
 	////////////////////////////////////////////////////////////////////////////				// transfer data from global memory.
 	for (uint past_frame_idx=0; past_frame_idx</*num_past_frames*/1; past_frame_idx++){			// step though past frames ///////////////////////////////////////////////////////////////////////////////
 		for (uint row_in_block=0; row_in_block<block_size; row_in_block ++){					// step through rows of the patch, /////////////////////////////////////////////////////////////
@@ -142,34 +137,18 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 											(u2_flt_1>margin)	&& (u2_flt_1<=read_cols_-margin)	&& (v2_flt_1>margin)	&& (v2_flt_1<=read_rows_-margin)	&& \
 											(global_id_u<=layer_pixels)		&&	(inv_depth_1>=min_inv_depth)	&& (inv_depth_1<=max_inv_depth);												// if images overlap
 			rho_pvt_flt4				= zero_f4;
-			float edge_weight			= 0;
-			float value_sq_pvt			= 0;
 			//////////////////////////////////////////////////
 			if (intersection){
-				edge_weight				= (1.0f - g1p_pvt[row_in_block].s3);
+
 				// Photometric error rho ///////
 				old_px					= bilinear_flt4( img_past[past_frame_idx],  u2_flt_1,  v2_flt_1,  mm_cols,  read_offset_ )	;
 				rho_pvt_flt4			= (img_cur_pvt[row_in_block] - old_px) ;
 				rho_pvt_flt4.w			= 1.0f;																																					// rho.w holds pixel count.
 
-				// Magnitude of gradient of Rho wrt SE3 rotation & translation //////
-				grad_pvt_SE3_mag		= 0.0f;
-				for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
-					grad_v8 												=  SE3_grad_map_cur_frame[ read_index_row + (se3_dim * mm_pixels) ] ;
-					grad_pvt_flt4_SE3[se3_dim]								=  grad_v8.hi + grad_v8.lo;																							// sum (u,v) components ####
-					grad_pvt_flt4_SE3[se3_dim].w							=  1.0f;
-					grad_pvt_flt_SE3[se3_dim]								= grad_pvt_flt4_SE3[se3_dim].x;
-				}
+				// Gradient of pixel value wrt SE3 rotation & translation, taking account of current depth map //////
 				SE3_incr_pvt_flt2.y											=  1;
-
-				for (uint se3_dim=0; se3_dim<3; se3_dim++) {
-					SE3_incr_pvt_flt4										= grad_pvt_flt4_SE3[se3_dim] * rho_pvt_flt4;
-					SE3_incr_pvt_flt2.x										= SE3_incr_pvt_flt4.x;
-					SE3_incr_pvt_arr[ se3_dim*block_size + row_in_block ]	= SE3_incr_pvt_flt2;
-				}
-
-				for (uint se3_dim=3; se3_dim<num_SE3_DoF; se3_dim++) {
-					SE3_incr_pvt_flt4										= /*inv_depth_1 * */grad_pvt_flt4_SE3[se3_dim] * rho_pvt_flt4;  // ? does SE3_grad_map_cur_frame already take account of depth ?
+				for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
+					SE3_incr_pvt_flt4										= rho_pvt_flt4 		* 	SE3_grad_map_cur_frame[ read_index_row + (se3_dim * mm_pixels) ] ;
 					SE3_incr_pvt_flt2.x										= SE3_incr_pvt_flt4.x;
 					SE3_incr_pvt_arr[ se3_dim*block_size + row_in_block ]	= SE3_incr_pvt_flt2 ;
 				}

@@ -1,7 +1,7 @@
 #ifndef KERNELS_H
 #define KERNELS_H
 
-#include "kernels_macros.h"
+#include "kernels__macros.h"
 
 __constant float2 zero_f2				= {0.0f,0.0f};
 __constant float4 zero_f4				= {0.0f,0.0f,0.0f,0.0f};

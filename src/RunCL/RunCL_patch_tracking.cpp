@@ -41,34 +41,26 @@ void RunCL::precomp_param_maps ( float SE3_k2k[6*16]){ //  Compute maps of pixel
 }
 */
 
-void RunCL::update_k2k_buf( float k2k_3_16_[16],		float pose_arry[16] ) {
+void RunCL::update_k2k_buf( float k2k_array[16],		float pose_arry[16] ) {
 	string fname = "RunCL::update_k2k_buf( ..)";
 	int local_verbosity_threshold = V_RUNCL_UPDATE_K2K_BUF;
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k_buf( ..)_chk0 .##################################################################"<<flush;
-																																				PRINT_FLOAT_16( k2k_3_16_, );
-																																				PRINT_FLOAT_16( pose_arry, );
-																																			}
-	_clEnqueueWriteBuffer( uload_queue, 	k2kbuf,		CL_FALSE, 0, 16*sizeof( float), k2k_3_16_,  	fname);
-	_clEnqueueWriteBuffer( uload_queue, 	pose_buf,	CL_FALSE, 0, 16*sizeof( float), pose_arry, 		fname);
-}
-
-void RunCL::update_k2k_buf( Matx44f k2k, Matx44f pose ){
-	string fname = "RunCL::update_k2k_buf( ..)";
-	int local_verbosity_threshold = V_RUNCL_UPDATE_K2K_BUF;
-	float k2k_array[16], pose_array[16];
-	Matx44f_To_float16arry(	k2k,	k2k_array );
-	Matx44f_To_float16arry( pose,	pose_array );
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k_buf( ..)_chk0 .##################################################################"<<flush;
 																																				PRINT_FLOAT_16( k2k_array, );
-																																				PRINT_FLOAT_16( pose_array, );
+																																				PRINT_FLOAT_16( pose_arry, );
 																																			}
-	_clEnqueueWriteBuffer( uload_queue, 	k2kbuf,		CL_FALSE, 0, 16*sizeof( float), k2k_array,	fname);
-	_clEnqueueWriteBuffer( uload_queue, 	pose_buf,	CL_FALSE, 0, 16*sizeof( float), pose_array,	fname);
+	_clEnqueueWriteBuffer( uload_queue, 	k2kbuf,		CL_FALSE, 0, 16*sizeof( float), k2k_array,  	fname);
+	_clEnqueueWriteBuffer( uload_queue, 	pose_buf,	CL_FALSE, 0, 16*sizeof( float), pose_arry, 		fname);
+
 	for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].k2k_0to1_est[i]	=	k2k_array[i];	}
 }
 
+void RunCL::update_k2k_buf( 	Matx44f k2k, 	Matx44f pose ){
+	float 	k2k_array[16], 	pose_array[16];
+	Matx44f_To_float16arry(	k2k,	k2k_array );
+	Matx44f_To_float16arry( pose,	pose_array );
 
-
+	update_k2k_buf( k2k_array, pose_array);
+}
 
 
 // new functions ////////////////////////////////////////////////

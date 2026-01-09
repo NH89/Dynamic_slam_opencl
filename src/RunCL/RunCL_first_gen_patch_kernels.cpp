@@ -19,7 +19,7 @@ void RunCL::rho_sq( uint out_block_size, uint iter, uint layer  ){	// To be laun
 																																					<<",  iter="				<<iter
 																																					<<",  layer="				<<layer
 																																					<< flush;
-																																				PRINT_FLOAT_16( fp32_k2keyframe, cpu array);
+																																				//PRINT_FLOAT_16( fp32_k2keyframe, cpu array);
 																																				float pose_ary[16];
 																																				ReadOutput( (uchar*)pose_ary, pose_buf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
 																																				PRINT_FLOAT_16(pose_ary, gpu buf);
@@ -269,12 +269,13 @@ void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer )					
 	status 	= clWaitForEvents(1, &ev);																if (status != CL_SUCCESS)	{ cout << "\nRunCL::reduce_patch_Rho( ..) call_kernel( cl_kernel "<<kernel<<") final,  clWaitForEventsh(1, &ev) ="<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 																									auto step_2 = high_resolution_clock::now();
 	clReleaseEvent(ev);
+																																			/*
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::reduce_patch_Rho( ..)_chk_2 . "<<\
 																																				"Execution time = "<<  duration_cast<microseconds>(step_1 - step_0).count() \
 																																				<<" , "<<duration_cast<microseconds>(step_2 - step_1).count() <<flush;
 
 																																				float old_result_arry[6];
-																																				ReadOutput( (uchar*)old_result_arry, old_results_buf, sizeof(float), 0);	//ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
+																																				ReadOutput( (uchar*)old_result_arry, old_results_buf, sizeof(float), 0);	//ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset)  //  size_t offset=0
 																																				cout<<"\n old_result_arry = " <<old_result_arry[0]<<flush;
 
 																																				stringstream ss;
@@ -294,6 +295,7 @@ void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer )					
 
 																																				cout<<"\nRunCL::reduce_patch_Rho( ..)_finished _____________________"<<flush;
 																																			}
+																																			*/
 }
 
 
@@ -304,12 +306,12 @@ void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){
 																																					cout << "\nlayer = "	<< layer 	<<endl<<flush;
 	Matx44f	current_frame_pose_gt	=	current_frames[ current_frames_idx[0] ].pose_gt;												PRINT_MATX44F( current_frame_pose_gt, );
 	Matx44f	previous_frame_pose_gt	=	current_frames[ current_frames_idx[1] ].pose_gt;												PRINT_MATX44F( previous_frame_pose_gt, );
-																																		PRINT_MATX44F( current_frame_pose_gt.inv(), );
-																																		PRINT_MATX44F( getInvPose( current_frame_pose_gt, verbosity) , );
+																																		//PRINT_MATX44F( current_frame_pose_gt.inv(), );
+																																		//PRINT_MATX44F( getInvPose( current_frame_pose_gt, verbosity) , );
 
 	Matx44f pose_update_gt			=	previous_frame_pose_gt	*	current_frame_pose_gt.inv();										PRINT_MATX44F( pose_update_gt, );
 	Matx16f pose_update_gt_algebra	=	PToLie(pose_update_gt);																			PRINT_MATX16F( pose_update_gt_algebra, );
-																																		PRINT_MATX44F( previous_frame_pose_gt	*	current_frame_pose_gt.inv(),	);
+																																		//PRINT_MATX44F( previous_frame_pose_gt	*	current_frame_pose_gt.inv(),	);
 /*
 	uint		J_offset	=	layer	* 48;																										cout << "\nJ_offset = "	<< J_offset	<<endl<<flush;
 
@@ -346,77 +348,24 @@ void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){
 																																				//PRINT_MATX16F( (-sum_rho * sum_grad / num_pixels), );
 																																				PRINT_MATX16F( SE3_incr, );
 																																			}
-/*
-//				SE3_incr	/=			SE3_incr_arry[1];					 																		PRINT_MATX16F( SE3_incr, );
+	Matx44f		pose		=			ReadOutput_44f( 					pose_buf );																PRINT_MATX44F( pose,	);			PRINT_MATX16F( PToLie(pose),);
+	Matx44f		invK		=			ReadOutput_44f(						inv_K_buf);																//PRINT_MATX44F( invK,	);
+	Matx44f		K			=			ReadOutput_44f(						K_buf	 );																//PRINT_MATX44F( K,		);
+																																					//PRINT_MATX44F( K * invK,		);
+																																					//PRINT_MATX44F( invK * K,		);
 
-//				H			/=			SE3_incr_arry[1];																							PRINT_MATX66F( H, );				PRINT_MATX66F( H.inv(), );
-*/
-	Matx44f		pose		=			ReadOutput_44f( 					pose_buf );																PRINT_MATX44F( pose, 	);
-	Matx44f		invK		=			ReadOutput_44f(						inv_K_buf);																PRINT_MATX44F( invK,	);
-	Matx44f		K			=			ReadOutput_44f(						K_buf	 );																PRINT_MATX44F( K,		);
-																																					PRINT_MATX44F( K * invK,		);
-																																					PRINT_MATX44F( invK * K,		);
-/*
-																																	if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k_cpu( ..)_chk_1 . ################################"<< flush;
-																																			Matx44f pose_error						= pose	*	GT_pose.inv();	// correct, i.e. reproduces the artif error:  pose = poseStep * pose
-																																			Matx16f pose_error_algebra				= PToLie(pose_error);
-
-																																			PRINT_MATX16F( pose_error_algebra, );
-																																			PRINT_MATX44F( GT_pose, );
-																																			PRINT_MATX44F( pose, );
-																																			PRINT_MATX44F( pose_error, );
-																																	}
-*/
-/*
-	//for (uint i=0; i<num_SE3_DoF; i++) {	J[i] 	= Hessian_map[i 	+ layer*8*6];	}
-
-	//
-	pose_update_J[lid]			=	SE3_incr_map_[lid].s0	-	(  rho  *  J[lid].x );
-
-	//
-	uint 	elem				=	lid/num_SE3_DoF;
-	float	pose_update_		=	pose_update_J[	elem];
-	float	H_elem				=	Hessian_map[	lid + 6	+ layer*8*6].x;
-	pose_update_H[lid]			=	H_elem * pose_update_;
-
-	//
-	for(uint i=0; i<num_SE3_DoF; i++) pose_update += pose_update_H[lid*6 +i];
-*/
 	Matx16f pose_update_cpu		= SE3_incr * invH;																									PRINT_MATX16F( pose_update_cpu, );
-	pose_update_cpu				= pose_update_cpu.mul( deltas_matx);																				PRINT_MATX16F( deltas_matx, );		PRINT_MATX16F( pose_update_cpu, );
-																																					PRINT_MATX44F( LieToP_Matx(pose_update_cpu), );
-																																					PRINT_MATX44F( LieToP_Matx(pose_update_cpu).inv(), );		// TODO order of matrix multiplication & transpose 1x6  vs 6x1 ?
+	pose_update_cpu				= {0.0f,0.0f,0.0f,  0.0f,0.0f,0.0f }; /*(-1.0f) * pose_update_cpu.mul( deltas_matx);*/								PRINT_MATX16F( deltas_matx, );		PRINT_MATX16F( pose_update_cpu, );
+																																					//PRINT_MATX44F( LieToP_Matx(pose_update_cpu), );
+																																					PRINT_MATX16F( PToLie( LieToP_Matx(pose_update_cpu).inv() ), );		// TODO order of matrix multiplication & transpose 1x6  vs 6x1 ?
 																																					PRINT_MATX16F( pose_update_cpu.div( pose_update_gt_algebra ) , );
-/*
-//	Matx61f	pose_update_cpu_1	= H.inv() * SE3_incr.t(); 	/ *  pose_update_cpu *  H.inv();  * /													PRINT_MATX61F( pose_update_cpu_1, );
-//	Matx61f	pose_update_cpu_2	= H / * .inv()  * /   * pose_update_cpu.t();																				PRINT_MATX61F( pose_update_cpu_2, );
-*/
-	Matx44f newPose				= LieToP_Matx( pose_update_cpu )/*.inv()*/  *  pose;																PRINT_MATX44F( newPose,			);		// TODO order of matrix multiplication ?
-/*
-//Matx44f newK2K				= invK  * newPose  * K ;																							PRINT_MATX44F( newK2K,			);
-*/
-	Matx44f eye_Matx44f			= {	1,0,0,10,  \
-									0,1,0,0,  \
-									0,0,1,0,  \
-									0,0,0,1};
+	Matx44f newPose				= LieToP_Matx( pose_update_cpu )/*.inv()*/  *  pose;																PRINT_MATX44F( newPose,			);	PRINT_MATX16F( PToLie( newPose ), );
+	Matx44f newK2K				= K  *  newPose  * invK ;																							PRINT_MATX44F( newK2K,			);
+																																		Matx44f	k2k_old		= ReadOutput_44f(	k2kbuf);	PRINT_MATX44F( k2k_old,	);
+	update_k2k_buf(				newK2K,		newPose);
+																																		Matx44f	pose_now	= ReadOutput_44f( pose_buf );	PRINT_MATX44F( pose_now, );
+																																		Matx44f	k2k_now		= ReadOutput_44f(	k2kbuf);	PRINT_MATX44F( k2k_now,	);
 
-	// Matx44f test1 = eye_Matx44f;
-	// Matx41f test2 = {1,2,3,4};
-	// Matx41f test3 = test2 * test2;
-
-	Matx44f newK2K				= K  * /*eye_Matx44f*/  newPose  * invK ;																			PRINT_MATX44F( newK2K,			);
-
-	float 	newPoseArry[16],	newK2KArry[16];
-	Matx44f_To_float16arry(		newK2K,			newK2KArry );
-	Matx44f_To_float16arry(		newPose,		newPoseArry);
-
-	Matx44f		k2k_old			=			ReadOutput_44f(						k2kbuf);															PRINT_MATX44F( k2k_old,	);
-
-	update_k2k_buf(				newK2KArry,		newPoseArry);
-/*
-	Matx44f		pose_now		=			ReadOutput_44f( 					pose_buf );																PRINT_MATX44F( pose_now, 	);
-	Matx44f		k2k_now			=			ReadOutput_44f(						k2kbuf);																PRINT_MATX44F( k2k_now,	);
-*/
 																																	if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k_cpu( ..)_chk_2 . ################################"<< flush;
 																																			Matx44f pose_error						= pose	*	GT_pose.inv();	// correct, i.e. reproduces the artif error:  pose = poseStep * pose
 																																			Matx16f pose_error_algebra				= PToLie(pose_error);
@@ -425,6 +374,7 @@ void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){
 																																			PRINT_MATX44F( GT_pose, );
 																																			PRINT_MATX44F( pose, );
 																																			PRINT_MATX44F( pose_error, );
+																																			PRINT_MATX44F( newPose, );
 																																											  cout<<"\n\nRunCL::update_k2k_cpu( ..)_finished ###############################"<< flush;}
 }
 

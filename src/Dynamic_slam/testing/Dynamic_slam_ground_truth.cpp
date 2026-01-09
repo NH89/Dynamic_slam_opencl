@@ -36,22 +36,38 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 	datum.pose								= getPose(R,T, verbosity);																		PRINT_MATX44F( datum.pose, );
 	datum.inv_pose							= getInvPose(datum.pose, verbosity);															PRINT_MATX44F( datum.inv_pose, );
 
+	frame_data.back().frame_data_GT			= datum; // TODO entirely remove Dynamic_slam::frame_data.
+
 	runcl.current_frames[ runcl.current_frames_idx[0] ].pose_gt		= datum.pose;															cout << "\n\n runcl.current_frames_idx[0-5] = ";
 																																			for(int i=0; i<5; i++){ cout<< runcl.current_frames_idx[i] << ",  "; }	cout << flush;
 																																			for(int i=0; i<5; i++){	cout<<"\ni="<<i<<"  ";
 																																					PRINT_MATX44F(	runcl.current_frames[ runcl.current_frames_idx[i] ].pose_gt,   );
 																																			}
+}
+
+void Dynamic_slam::set_artif_pose_error(){
+	int local_verbosity_threshold = V_DYNAMIC_SLAM_GETFRAMEDATA;
+
+	pose_datum datum 			= frame_data.back().frame_data_GT;
+
 	Matx44f pose_frame0to1_gt	= runcl.current_frames[ runcl.current_frames_idx[1] ].pose_gt	*	datum.inv_pose;							PRINT_MATX44F( pose_frame0to1_gt, );
-	Matx16f	artif_error			= {0.10f, 0.0f, 0.0f,		2.0f, 0.0f, 0.0f };																PRINT_MATX16F( artif_error,);
+
+	Matx16f	artif_error;
+	for (int SE3=0; SE3<6; SE3++)  artif_error.operator()(0,SE3) = obj["Artif_pose_err_algebra"][SE3].asFloat();
+
 	Matx44f artif_error_matx	= LieToP_Matx( artif_error );																				PRINT_MATX44F( artif_error_matx,);
 	Matx44f pose_frame0to1		= pose_frame0to1_gt * artif_error_matx;																		PRINT_MATX44F( pose_frame0to1,);
 	Matx44f k2k_0to1			= datum.K			* pose_frame0to1	* datum.K.inv();													PRINT_MATX44F( k2k_0to1,);
-	runcl.update_k2k_buf(		k2k_0to1, pose_frame0to1);																					// NB Rotation is in Radians. Translation is in world units. Translation is depth range dependent.
+
+
+	//runcl.update_k2k_buf(		k2k_0to1, pose_frame0to1);																					// NB Rotation is in Radians. Translation is in world units. Translation is depth range dependent.
 
 	Matx44f pose_error_1		= pose_frame0to1_gt				* pose_frame0to1.inv();														PRINT_MATX44F( pose_error_1, pose_frame0to1_gt		* pose_frame0to1.inv()	);
 	Matx44f pose_error_2		= pose_frame0to1.inv()			* pose_frame0to1_gt;														PRINT_MATX44F( pose_error_2, pose_frame0to1.inv()	* pose_frame0to1_gt		);
 	Matx44f pose_error_3		= pose_frame0to1_gt.inv()		* pose_frame0to1;															PRINT_MATX44F( pose_error_3, pose_frame0to1_gt.inv()* pose_frame0to1		);
 	Matx44f pose_error_4		= pose_frame0to1_gt				* pose_frame0to1.inv();														PRINT_MATX44F( pose_error_4, pose_frame0to1_gt		* pose_frame0to1.inv()	);
+
+
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/*Below is code for older Dynamic_slam::frame_data.    Above is for RunCL::current_frames[..] and direct write to k2kbuf & pose_buf.	if(verbosity>local_verbosity_threshold) {cout << "\n Dynamic_slam::getFrameData_vec_chk 2, "

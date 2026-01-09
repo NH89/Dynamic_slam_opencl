@@ -1,4 +1,4 @@
-#include "kernels_macros.h"
+#include "kernels__macros.h"
 #include "kernels.h"
 
 // old kernels - may req conversion to patch operation, lookup tables etc.

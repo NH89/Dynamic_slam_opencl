@@ -1,4 +1,4 @@
-#include "kernels_macros.h"
+#include "kernels__macros.h"
 
 /* NB GPU limits
  * For Intel iRIS Xe

@@ -28,6 +28,7 @@ class Dynamic_slam
     int                     verbosity;
     RunCL                   runcl;
     bool					GT_available						= false;
+    bool					use_artif_pose_error				= false;
     bool					use_conf_camera_matx				= false;
     bool					invert_GT_depth						= false;
     bool					initialize_keyframe_from_GT 		= false;
@@ -55,19 +56,15 @@ class Dynamic_slam
 	float delta_depth;	//= f*2.0f / ( min_depth * fmaxf(  obj["cameraMatrix"][2].asFloat(),	obj["cameraMatrix"][5].asFloat() )  );
 	Matx16f deltas_matx;// used to multiply SE3 update results.
 
-    const cv::Matx44f       Matx44f_zero = {0,0,0,0,  0,0,0,0,  0,0,0,0,  0,0,0,0};   //  = cv::Matx44f::zeros();//
-    const cv::Matx44f       Matx44f_eye  = {1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1};
-    #define                 MATX44F_EYE    {1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1}
-
     struct pose_datum{      // default intitialization, if instatiated with " ... = {}; "
       cv::Matx16f           keyframe2pose_algebra   = {0} ;
 
-      cv::Matx44f           K                       = MATX44F_EYE ;             // camera intrinsic matrix
-      cv::Matx44f           inv_K                   = MATX44F_EYE ;
-      cv::Matx44f           pose                    = MATX44F_EYE ;             // pose in global coords. (not pose2pose from prev_frame, nor from keyframe) ?
-      cv::Matx44f           inv_pose                = MATX44F_EYE ;
-      cv::Matx44f           keyframe2pose           = MATX44F_EYE ;
-      cv::Matx44f           K2K                     = MATX44F_EYE ;             //
+      cv::Matx44f           K                       = Matx44f::eye() ;             // camera intrinsic matrix
+      cv::Matx44f           inv_K                   = Matx44f::eye() ;
+      cv::Matx44f           pose                    = Matx44f::eye() ;             // pose in global coords. (not pose2pose from prev_frame, nor from keyframe) ?
+      cv::Matx44f           inv_pose                = Matx44f::eye() ;
+      cv::Matx44f           keyframe2pose           = Matx44f::eye() ;
+      cv::Matx44f           K2K                     = Matx44f::eye() ;             //
                                                                                 //cv::Matx44f           pose_from_start         = MATX44F_EYE ;             // pose2pose_accumulated
       // lens distortion params
     };
@@ -133,6 +130,7 @@ class Dynamic_slam
     void use_GT_pose_vec();
     void getFrame();
     void getFrameData_vec();
+    void set_artif_pose_error();
 
     // Code profiling
     typedef std::chrono::_V2::system_clock::time_point time_pt;

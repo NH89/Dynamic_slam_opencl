@@ -16,7 +16,7 @@
 #include "../utils/CV_chk.hpp"
 #include "../utils/time_utils.hpp"
 
-#include "../kernels/kernels_macros.h"
+#include "../kernels/kernels__macros.h"
 
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
@@ -88,14 +88,22 @@ public:
 	/////////////////////////////
 	struct frame{
 		int 			frame_num;
+		uint			frame_data_index;					// Index of this frame in the recycled arrays of cl_mem buffers above: imgmem[], 	velmap[]
+
 		cl_mem			img_buf;
 		cl_mem			depth_buf;
 		cl_mem			r_vel_buf;
-		uint			frame_data_index;
-		Matx44f			pose_gt;
-		float			pose[16];						// Absolute pose of the frame. i.e. relative to initial frame. Computed from the local sample frames. Will req adjustment at loop closure.
-		float			k2k_0to1_est[16];				// Reprojection matrix to the current img. Estimated, then fitted for each new frame, also with updates of camera inrinsic mattix.
+
+		Matx44f			pose_gt			= Matx44f::eye() ;
+		float			pose[16];							// Absolute pose of the frame. i.e. relative to initial frame. Computed from the local sample frames. Will req adjustment at loop closure.
+		Matx44f			pose_0to1		= Matx44f::eye() ;
+
+		Matx44f			K				= Matx44f::eye() ;	// camera intrinsic matrix
+		Matx44f			inv_K			= Matx44f::eye() ;
+
+		float			k2k_0to1_est[16];					// Reprojection matrix to the current img. Estimated, then fitted for each new frame, also with updates of camera inrinsic mattix.
 		float			k2k[num_past_frames][16];
+
 		Matx16f			Jacobian[max_mipmap_layers];
 		Matx66f			invHessian[max_mipmap_layers];
 	};
@@ -109,10 +117,12 @@ public:
 	void initialize_current_frames(){
 		for (uint idx = 0; idx < num_current_frames; idx++){
 			current_frames[idx].frame_num			= -1;
+			current_frames[idx].frame_data_index	= idx;							// Initialized with cl_mem buffers in order. This will change with update_current_frames_idx().
+
 			current_frames[idx].img_buf				= imgmem[idx];
-			//current_frames[idx].depth_buf			= depth_mem[idx];
 			current_frames[idx].r_vel_buf			= velmap[idx];					// velocity _relative_ to the camera.
-			current_frames[idx].frame_data_index	= idx;
+			//current_frames[idx].depth_buf			= depth_mem[idx];
+
 			current_frames[idx].pose_gt				= Matx44f::eye();
 			for(uint i=0; i<16; i++){
 				current_frames[idx].pose[i]			= identity_flt16[i];
@@ -211,14 +221,13 @@ public:
 	static const uint	img_stats_size									= max_mipmap_layers*4*2;										// 8 layers, 4 channels, 2 variables.
 	size_t				img_stats_size_bytes							= sizeof(float)*img_stats_size;
 	float				img_stats[				img_stats_size]			= {0};
+
 	size_t 				num_threads[			max_mipmap_layers]		= {0};
 	size_t 				lookup_table_offset[	max_mipmap_layers]		= {0};
+
 	uint				MipMap[					max_mipmap_layers	*8]	= {0};
 	uint				uint_params[			8]						= {0};
-	
 	float				fp32_params[			16]						= {0};
-	float				fp32_so3_k2k[			9]						= {0};
-	float 				fp32_k2keyframe[		16]						= {0};
 	
 	uint	 			mm_num_reductions;				//	
 	uint				mm_num_blur_layers;				//

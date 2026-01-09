@@ -460,25 +460,8 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																				cout << "\nfp32_params[0 MAX_INV_DEPTH]="	<<fp32_params[MAX_INV_DEPTH]		<<"\t\t1/obj[\"min_depth\"].asFloat()="	<<1/obj["min_depth"].asFloat();
 																																				cout << "\nfp32_params[1 MIN_INV_DEPTH]="	<<fp32_params[MIN_INV_DEPTH]		<<"\t\t1/obj[\"max_depth\"].asFloat()="	<<1/obj["max_depth"].asFloat();
 																																				cout << "\nfp32_params[2 INV_DEPTH_STEP]="	<<fp32_params[INV_DEPTH_STEP];
-																																				/*
-																																				cout << "\nfp32_params[3 ALPHA_G]="			<<fp32_params[ALPHA_G]				<<"\t\tobj[\"alpha_g\"].asFloat()="		<<obj["alpha_g"].asFloat();
-																																				cout << "\nfp32_params[4 BETA_G]="			<<fp32_params[BETA_G]				<<"\t\tobj[\"beta_g\"].asFloat()="		<<obj["beta_g"].asFloat();
-																																				cout << "\nfp32_params[5 EPSILON]="			<<fp32_params[EPSILON]				<<"\t\tobj[\"epsilon\"].asFloat()="		<<obj["epsilon"].asFloat();
-																																				cout << "\nfp32_params[6 SIGMA_Q]="			<<fp32_params[SIGMA_Q];
-																																				cout << "\nfp32_params[7 SIGMA_D ]="		<<fp32_params[SIGMA_D ];
-																																				cout << "\nfp32_params[8 THETA]="			<<fp32_params[THETA]				<<"\t\tobj[\"thetaStart\"].asFloat()="	<<obj["thetaStart"].asFloat();
-																																				cout << "\nfp32_params[9 LAMBDA]="			<<fp32_params[LAMBDA]				<<"\t\tobj[\"lambda\"].asFloat()="		<<obj["lambda"].asFloat();
-																																				cout << "\nfp32_params[10 SCALE_EAUX]="		<<fp32_params[SCALE_EAUX]			<<"\t\tobj[\"scale_E_aux\"].asFloat()="	<<obj["scale_E_aux"].asFloat();
-																																				*/ cout << "\n" << flush;
+																																				cout << "\n" << flush;
 																																			}
-	for (int i=0; i<3; i++){ fp32_so3_k2k[i+ i*3]		=1.0; }																				// initialize fp32_so3_k2k & fp32_k2k as 'unity' transform, i.e. zero rotation & zero translation.
-	for (int i=0; i<4; i++){ fp32_k2keyframe[i+ i*4]    =1.0; }																				// NB instantiated as {{0}}.
-	/*
-	fp32_k2k[0]  =  1.0 ;	// (1,0,0,0)
-	fp32_k2k[5]  =  1.0 ;	// (0,1,0,0)
-	fp32_k2k[10] =  1.0 ;	// (0,0,1,0)
-	fp32_k2k[15] =  1.0 ;	// (0,0,0,1)
-	*/
 	set_mimpmap_offsets();
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\n";
@@ -642,15 +625,13 @@ void RunCL::free_wg_offsets(){	// NB must call on exit.
 */
 
 void RunCL::set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k ){
-	int local_verbosity_threshold = -2; //V_RUNCL_SET_CAM_BUFS;
+	int local_verbosity_threshold = V_RUNCL_SET_CAM_BUFS;
 	string fname = "RunCL::set_cam_bufs( )";
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout<<"\nRunCL::"<<fname<<"(  )_chk0"<<flush;
 																																			}
 																																			// NB Orthographic camera, See notes in convertTransforms.cpp , cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){..}
 																																			// 4x4 perspective matrix is not invertable for points at infinity. We correct ortho->perspective in the kernel by dividing by Z.
-	//Matx44f_To_float16arry(Matx44f matx, float arry[16]);
-	//PRINT_FLOAT_16(a, txt)
 	float k_arry[16], inv_k_arry[16], pose_arry[16], k2k_arry[16];
 	Matx44f_To_float16arry( k,		k_arry		);		PRINT_FLOAT_16(k_arry, )
 	Matx44f_To_float16arry( inv_k,	inv_k_arry	);
@@ -664,13 +645,9 @@ void RunCL::set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose, 
 																																			PRINT_MATX44F(inv_k,);
 	_clEnqueueWriteBuffer( uload_queue, 	inv_K_buf,	CL_FALSE, 0, 16 * sizeof( float), inv_k_arry, 		fname);							cout<<"\nRunCL::"<<fname<<"(  )_chk2"<<flush;
 																																			PRINT_MATX44F(pose,);
-	_clEnqueueWriteBuffer( uload_queue, 	pose_buf,	CL_FALSE, 0, 16 * sizeof( float), pose_arry, 		fname);							cout<<"\nRunCL::"<<fname<<"(  )_chk3"<<flush;
-																																			PRINT_MATX44F(k2k,);
-	_clEnqueueWriteBuffer( uload_queue, 	k2kbuf,		CL_FALSE, 0, 16 * sizeof( float), k2k_arry,			fname);							cout<<"\nRunCL::"<<fname<<"(  )_chk4"<<flush;
-
-	ReadOutput( (uchar*)ptr, K_buf, sizeof(float)*16, 0 );
-	PRINT_FLOAT_16(k_buf_arr, )
-
+	update_k2k_buf( k2k_arry, pose_arry );
+																																			ReadOutput( (uchar*)ptr, K_buf, sizeof(float)*16, 0 );
+																																			PRINT_FLOAT_16(k_buf_arr, )
 }
 
 
@@ -719,7 +696,7 @@ void RunCL::allocatemem(){
 
 	imgmem_blurred		= clCreateBuffer(m_context, CL_MEM_READ_WRITE  						, mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
-	SE3_grad_map_mem 	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 					,6*2* mm_size_bytes_C8,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 7= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // SE3_map * img grad, 6DoF*8channels=48     // 6DoF*3channels=18,but 4*6=24 because hsv img gradient is held in float4
+	SE3_grad_map_mem 	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 					,6*2* mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 7= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // SE3_map * img grad, 6DoF*8channels=48     // 6DoF*3channels=18,but 4*6=24 because hsv img gradient is held in float4
 
 	SE3_weight_map_mem	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 					,24 * mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 9= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
@@ -777,7 +754,6 @@ void RunCL::allocatemem(){
 																																		}
 
 	status = clEnqueueWriteBuffer(uload_queue, fp32_param_buf, 	CL_FALSE, 0, 16 * sizeof(float), fp32_params, 			0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.5\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
-	status = clEnqueueWriteBuffer(uload_queue, k2kbuf,			CL_FALSE, 0, 16 * sizeof(float), fp32_k2keyframe, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.5\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueWriteBuffer(uload_queue, uint_param_buf,	CL_FALSE, 0,  8 * sizeof(uint),	 uint_params, 			0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.5\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueWriteBuffer(uload_queue, mipmap_buf,		CL_FALSE, 0,  8*8* sizeof(uint), MipMap, 				0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.5\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 
