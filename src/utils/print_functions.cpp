@@ -1,6 +1,8 @@
 #include "print_functions.hpp"
 using namespace std;
 
+#define PRECISION 10
+
 void print_matx33f(cv::Matx33f matx){
      for(int row=0;row<3;row++){
          cout<<"  \n";
@@ -22,7 +24,7 @@ void print_matx44_32f(cv::Matx44f matx){
 }
 
 void print_matx44f(cv::Matx44f matx){
-    cout << fixed << setprecision(6) ;
+    cout << fixed << setprecision( PRECISION ) ;
     for(int row=0;row<4;row++){
          cout<<"  \n";
          for(int col=0; col<4;col++){
@@ -33,7 +35,7 @@ void print_matx44f(cv::Matx44f matx){
 }
 
 void print_matx66f(cv::Matx66f matx){
-    cout << fixed << setprecision(6) ;
+    cout << fixed << setprecision( PRECISION ) ;
     for(int row=0;row<6;row++){
          cout<<"  \n";
          for(int col=0; col<6;col++){
@@ -87,7 +89,7 @@ void print_float_6(float float_6[6]){
 }
 
 void print_float_9(float float_9[9]){
-    cout << fixed << setprecision(6) ;
+    cout << fixed << setprecision( PRECISION ) ;
      for(int row=0;row<3;row++){
          cout<<"  \n";
          for(int col=0; col<3;col++){
@@ -98,7 +100,7 @@ void print_float_9(float float_9[9]){
 }
 
 void print_float_16(float float_16[16]){
-    cout << fixed << setprecision(6) ;
+    cout << fixed << setprecision( PRECISION ) ;
      for(int row=0;row<4;row++){
          cout<<"  \n";
          for(int col=0; col<4;col++){
@@ -109,7 +111,7 @@ void print_float_16(float float_16[16]){
 }
 
 void print_json_float_9(Json::Value obj, std::string name){
-    cout << fixed << setprecision(6) ;
+    cout << fixed << setprecision( PRECISION ) ;
     cout << "\n\nobj["<<name<<"] ="<<flush;
     for (int row=0; row<3; row++){
         cout << "\n";
@@ -118,7 +120,7 @@ void print_json_float_9(Json::Value obj, std::string name){
 }
 
 void print_matf(cv::Mat mat, int rows, int cols){
-    cout << fixed << setprecision(6) ;
+    cout << fixed << setprecision( PRECISION ) ;
     for(int row=0;row<rows;row++){
          cout<<"  \n";
          for(int col=0; col<cols;col++){

@@ -5,7 +5,7 @@ void Dynamic_slam::print_pose_datum( Dynamic_slam::pose_datum datum ){
       PRINT_MATX44F(    datum.inv_K                   ,inv_k                    );
       PRINT_MATX44F(    datum.pose                    ,pose                     );              // pose in abs coords. (not pose2pose from prev_frame, nor from keyframe) ?
       PRINT_MATX44F(    datum.inv_pose                ,inv_pose                 );
-      PRINT_MATX44F(    datum.keyframe2pose           ,keyframe2pose            );
+      PRINT_MATX44F(    datum.prev_pose2pose           ,keyframe2pose            );
       PRINT_MATX16F(    datum.keyframe2pose_algebra   ,keyframe2pose_algebra    );				// SE(3) algebra.
       PRINT_MATX44F(    datum.K2K                     ,K2K                      );
 }
@@ -38,9 +38,9 @@ void Dynamic_slam::report_GT_pose_error(){																																		// A
 	frame_data.back().error_data.inv_K						= frame_data.back().frame_data.inv_K					*	frame_data.back().frame_data_GT.inv_K.inv();					// to verify that the specialist pose and intrinsic matrix inverses are correct.
 	frame_data.back().error_data.pose						= frame_data.back().frame_data.pose						*	frame_data.back().frame_data_GT.pose.inv();
 	frame_data.back().error_data.inv_pose					= frame_data.back().frame_data.inv_pose					*	frame_data.back().frame_data_GT.inv_pose.inv();
-	frame_data.back().error_data.keyframe2pose				= frame_data.back().frame_data.keyframe2pose			*	frame_data.back().frame_data_GT.keyframe2pose.inv();
+	frame_data.back().error_data.prev_pose2pose				= frame_data.back().frame_data.prev_pose2pose			*	frame_data.back().frame_data_GT.prev_pose2pose.inv();
 	frame_data.back().error_data.K2K						= frame_data.back().frame_data.K2K						*	frame_data.back().frame_data_GT.K2K.inv();
-	frame_data.back().error_data.keyframe2pose_algebra		= PToLie(frame_data.back().error_data.keyframe2pose);
+	frame_data.back().error_data.keyframe2pose_algebra		= PToLie(frame_data.back().error_data.prev_pose2pose );
 
 	print_frame_datum( frame_data.back()   );																																	// Print the whole set for frame_data, frame_data_GT, and error_data.
 

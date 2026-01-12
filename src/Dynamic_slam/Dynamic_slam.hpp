@@ -29,6 +29,7 @@ class Dynamic_slam
     RunCL                   runcl;
     bool					GT_available						= false;
     bool					use_artif_pose_error				= false;
+    bool					use_GT_pose							= false;
     bool					use_conf_camera_matx				= false;
     bool					invert_GT_depth						= false;
     bool					initialize_keyframe_from_GT 		= false;
@@ -63,8 +64,8 @@ class Dynamic_slam
       cv::Matx44f           inv_K                   = Matx44f::eye() ;
       cv::Matx44f           pose                    = Matx44f::eye() ;             // pose in global coords. (not pose2pose from prev_frame, nor from keyframe) ?
       cv::Matx44f           inv_pose                = Matx44f::eye() ;
-      cv::Matx44f           keyframe2pose           = Matx44f::eye() ;
-      cv::Matx44f           K2K                     = Matx44f::eye() ;             //
+      cv::Matx44f           prev_pose2pose          = Matx44f::eye() ;
+      cv::Matx44f           K2K                     = Matx44f::eye() ;             // Kamera to Kamera reprojection.
                                                                                 //cv::Matx44f           pose_from_start         = MATX44F_EYE ;             // pose2pose_accumulated
       // lens distortion params
     };
@@ -127,10 +128,7 @@ class Dynamic_slam
     void initialize_camera_vec();
 
     int  nextFrame();
-    void use_GT_pose_vec();
     void getFrame();
-    void getFrameData_vec();
-    void set_artif_pose_error();
 
     // Code profiling
     typedef std::chrono::_V2::system_clock::time_point time_pt;
@@ -141,6 +139,11 @@ class Dynamic_slam
     void SpatialCostFns();
     void ParsimonyCostFns();
     void ExhaustiveSearch();
+
+    /////////////////////////////////////// Dynamic_slam_grount_truth.cpp
+    void getFrameData_vec();
+    void set_artif_pose_error();
+    void use_GT_pose_vec();
 
     /////////////////////////////////////// Dynamic_slam_tracking.cpp
     void report_GT_pose_error();

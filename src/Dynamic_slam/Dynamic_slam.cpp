@@ -60,17 +60,19 @@ void Dynamic_slam::initialize_camera_intrinsic_matrix(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_INITIALIZE_CAMERA;
 																																			if (verbosity>local_verbosity_threshold) { cout << "\fDynamic_slam::initialize_camera_vec_chk 0:" <<flush;}
 	cv::Matx44f k 					= Matx44f::eye();;												// NB In DTAM_opencl, "cameraMatrix" found by convertAhandPovRay, called by fileLoader
-	if(use_conf_camera_matx==true){
-		for (int i=0; i<9; i++){ k.operator()(i/3,i%3) = obj["cameraMatrix"][i].asFloat(); }												// Camera matrix from conf file.
-	}else{
-		for (int i=0; i<9; i++){ k.operator()(i/3,i%3) = 0.0f;}																				// Default naive camera matrix.
-		f	= 	2*min( runcl.baseImage_height, runcl.baseImage_width);
-		 k.operator()(0,0) = f;
-		 k.operator()(1,1) = f;
-		 k.operator()(0,2) = runcl.baseImage_width  / 2.0;
-		 k.operator()(1,2) = runcl.baseImage_height / 2.0;
-		 k.operator()(2,2) = 1.0;
-	}
+
+		if(use_conf_camera_matx==true){
+			for (int i=0; i<9; i++){ k.operator()(i/3,i%3) = obj["cameraMatrix"][i].asFloat(); }												// Camera matrix from conf file.
+		}else{
+			for (int i=0; i<9; i++){ k.operator()(i/3,i%3) = 0.0f;}																				// Default naive camera matrix.
+			f	= 	2*min( runcl.baseImage_height, runcl.baseImage_width);
+			 k.operator()(0,0) = f;
+			 k.operator()(1,1) = f;
+			 k.operator()(0,2) = runcl.baseImage_width  / 2.0;
+			 k.operator()(1,2) = runcl.baseImage_height / 2.0;
+			 k.operator()(2,2) = 1.0;
+		}
+
 	initial_K = k;
 }
 
@@ -118,39 +120,46 @@ void Dynamic_slam::initialize_camera_vec(){
 
 	frame_data.push_back( datum );																											// pushback a pose_datum, ready for getFrameData_vec() to write to.
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 2:" <<flush;
-																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);  // gets corrupted by getFrameData_vec()
+																																				PRINT_MATX44F(frame_data.back().frame_data.prev_pose2pose,);  // gets corrupted by getFrameData_vec()
 																																			}
 	if(GT_available==true){
-		getFrameData_vec();
-	}else{
-		frame_data.back().frame_data.keyframe2pose	=	Matx44f::eye();
+		getFrameData_vec();																													// Sets frame_data.back().frame_data_GT
+	}/*else{																				not needed, default value
+		frame_data.back().frame_data.prev_pose2pose	=	Matx44f::eye();
 		frame_data.back().frame_data.K2K			=	Matx44f::eye();
-	}
-	runcl.set_cam_bufs( initial_K , inv_k, Matx44f::eye(), Matx44f::eye() ); /*( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k )*/	// NB K uses camera matrix from conf.json.
+	}*/
+	//runcl.set_cam_bufs( initial_K , inv_k, Matx44f::eye(), Matx44f::eye() ); /*( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k )*/	// NB K uses camera matrix from conf.json.
 																																			// We use orthographic matrix, then convert to perspectiveby dividing by depth.
 																																			// See notes in convertTransforms.cpp
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 3:" <<flush;
 																																				if(GT_available==true){
 																																					PRINT_MATX44F(frame_data.back().frame_data_GT.pose,);
-																																					PRINT_MATX44F(frame_data.back().frame_data_GT.keyframe2pose,);
+																																					PRINT_MATX44F(frame_data.back().frame_data_GT.prev_pose2pose,);
 																																				}
-																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);
+																																				PRINT_MATX44F(frame_data.back().frame_data.prev_pose2pose,);
 																																			}
-	if(GT_available==true && initialize_keyframe_from_GT==true){
-		frame_data.back().frame_data 	= frame_data.back().frame_data_GT;
+	// if(GT_available==true && initialize_keyframe_from_GT==true){
+	// 	frame_data.back().frame_data 	= frame_data.back().frame_data_GT;
+	// }
+	if(			 GT_available		 ==true){				getFrameData_vec();																// Sets frame_data.back().frame_data_GT
+		if(		 use_artif_pose_error==true){				set_artif_pose_error();	}
+		else if( use_GT_pose		 ==true){				use_GT_pose_vec();		}
 	}
+																									cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
+	runcl.set_cam_bufs(  frame_data.back().frame_data.K ,  frame_data.back().frame_data.inv_K,  frame_data.back(). frame_data.pose,  frame_data.back().frame_data.K2K  );
+																									cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
 	frame_data.push_back( frame_data.back() );																								// Propagate the initialization over the first three entries in the "frame_data" vector.
 	frame_data.push_back( frame_data.back() );																								// Required because predictFrame_vec() samples previous pose and inverse pose.
 																																			if(verbosity>local_verbosity_threshold) {
 																																				if(GT_available==true){
 																																					PRINT_MATX44F(frame_data.back().frame_data_GT.K,);
 																																					PRINT_MATX44F(frame_data.back().frame_data_GT.inv_K,);
-																																					PRINT_MATX44F(frame_data.back().frame_data_GT.keyframe2pose,);
+																																					PRINT_MATX44F(frame_data.back().frame_data_GT.prev_pose2pose,);
 																																				}
 																																				PRINT_MATX44F(frame_data.back().frame_data.K,);
 																																				PRINT_MATX44F(frame_data.back().frame_data.inv_K,);
 
-																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);
+																																				PRINT_MATX44F(frame_data.back().frame_data.prev_pose2pose,);
 																																				PRINT_MATX16F(frame_data.back().frame_data.keyframe2pose_algebra,);
 
 																																				cout << "\n\nPrevious frames :  ############################################" << flush;
@@ -179,19 +188,16 @@ int Dynamic_slam::nextFrame() {
 																																				<<",\t depth = runcl.amem  \n" << flush; //  runcl.frame_bool_idx="<<runcl.frame_bool_idx<<"
 																						auto step_0 = high_resolution_clock::now();
 	frame_data.push_back( frame_data.back() ); //////////////////////////////////////////   new_frame										// duplicate last frame, as basis for new frame.
-
+																											cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
 	runcl.update_current_frames_idx();																										// move to next img buffer and RunCL "frame" struct in the current_frames[] array. NB current_frames_idx[..] pointer swap.
+																											cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
+	if(			 GT_available		 ==true){				getFrameData_vec();																// Sets frame_data.back().frame_data_GT
+		if(		 use_artif_pose_error==true){				set_artif_pose_error();	}
+		else if( use_GT_pose		 ==true){				use_GT_pose_vec();		}
+	}																																		// else implies ( GT_available==false || (use_artif_pose_erro==false && use_GT_pose== flase) )
+																																			// NB new frame_data element was a copy of the previous one, so identity for first step, and constant vel thereafter.
+	runcl.set_cam_bufs(  frame_data.back().frame_data.K ,  frame_data.back().frame_data.inv_K,  frame_data.back(). frame_data.pose,  frame_data.back().frame_data.K2K  );
 
-	if(GT_available==true){
-		getFrameData_vec();
-
-		if(use_artif_pose_error==true){
-			set_artif_pose_error();
-		}
-	}else{
-		frame_data.back().frame_data.keyframe2pose	=	Matx44f::eye();
-		frame_data.back().frame_data.K2K			=	Matx44f::eye();
-	}
 																						auto step_1 = high_resolution_clock::now();			// updates pose2pose for next frame in cost volume.
 																																			// if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 1, Pose error after getFrameData_vec():" << flush;
 																																			// 	report_GT_pose_error();
@@ -286,9 +292,8 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 																																			// # Get 1st & 2nd order image gradients of MipMap
 																																			// see CostVol::cacheGValues(), RunCL::cacheGValue2 & __kernel void CacheG3
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::getFrame_chk 2  Finished "
-																																				<<"###########################################################################\f" << flush;}
+																																				<<"###########################################################################\n" << flush;}
 }
-
 
 
 //////

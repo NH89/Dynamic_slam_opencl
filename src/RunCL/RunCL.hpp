@@ -55,6 +55,8 @@ constexpr uint out_block_size				= OUT_BLOCK_SIZE;
 constexpr uint num_past_frames				= NUM_PAST_FRAMES;						// 1,2,4,8,16,32,64 // variable select window of 4 frames.
 static constexpr uint max_patches_per_layer = 2^max_mipmap_layers * 2^max_mipmap_layers; //
 
+#define FLOAT_16_EYE 	{1.0f, 0.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f, 0.0f,		0.0f, 0.0f, 1.0f, 0.0f,		0.0f, 0.0f, 0.0f, 1.0f}
+
 using namespace std;
 class RunCL
 {
@@ -87,32 +89,32 @@ public:
 	cl_mem 				imgmem[num_current_frames], 	velmap[num_current_frames], 	depth_mem, 	g1mem;
 	/////////////////////////////
 	struct frame{
-		int 			frame_num;
-		uint			frame_data_index;					// Index of this frame in the recycled arrays of cl_mem buffers above: imgmem[], 	velmap[]
+		int 			frame_num		= 0;
+		uint			frame_data_index= 0;				// Index of this frame in the recycled arrays of cl_mem buffers above: imgmem[], 	velmap[]
 
-		cl_mem			img_buf;
-		cl_mem			depth_buf;
-		cl_mem			r_vel_buf;
+		cl_mem			img_buf			= nullptr;
+		cl_mem			depth_buf		= nullptr;
+		cl_mem			r_vel_buf		= nullptr;
 
 		Matx44f			pose_gt			= Matx44f::eye() ;
-		float			pose[16];							// Absolute pose of the frame. i.e. relative to initial frame. Computed from the local sample frames. Will req adjustment at loop closure.
+		float			pose[16]		= FLOAT_16_EYE;		// Absolute pose of the frame. i.e. relative to initial frame. Computed from the local sample frames. Will req adjustment at loop closure.
 		Matx44f			pose_0to1		= Matx44f::eye() ;
 
 		Matx44f			K				= Matx44f::eye() ;	// camera intrinsic matrix
 		Matx44f			inv_K			= Matx44f::eye() ;
 
-		float			k2k_0to1_est[16];					// Reprojection matrix to the current img. Estimated, then fitted for each new frame, also with updates of camera inrinsic mattix.
-		float			k2k[num_past_frames][16];
+		float			k2k_0to1_est[16]				= FLOAT_16_EYE;				// Reprojection matrix to the current img. Estimated, then fitted for each new frame, also with updates of camera inrinsic mattix.
+		float			k2k[num_past_frames][16]		= {FLOAT_16_EYE};
 
-		Matx16f			Jacobian[max_mipmap_layers];
-		Matx66f			invHessian[max_mipmap_layers];
+		Matx16f			Jacobian[max_mipmap_layers]		= { Matx16f::zeros() };
+		Matx66f			invHessian[max_mipmap_layers]	= { Matx66f::eye() };
 	};
 
 	std::array<frame, num_current_frames> 					current_frames;			// Needs to be initialized after the buffers are created.
 	uint current_frames_idx[num_current_frames]				= {4,3,2,1,0};			// NB always access via:    current_frames[  current_frames_idx[ idx ]].img_buf   or   runcl.current_frames[ runcl.current_frames_idx[0] ].img_buf...
 	uint new_current_frames_idx[num_current_frames]			= {4,3,2,1,0};			// Must be set correctly, because it will be swaped to current_frames_idx[.idx.]
 
-	const float identity_flt16[16]	=	{1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1};
+	const float identity_flt16[16]	=	FLOAT_16_EYE;
 
 	void initialize_current_frames(){
 		for (uint idx = 0; idx < num_current_frames; idx++){
@@ -168,9 +170,12 @@ public:
 		}
 		swap( new_current_frames_idx, current_frames_idx);
 
-		for(uint i=0; i<max_mipmap_layers; i++){
-			current_frames[ current_frames_idx[0] ].invHessian[i]	=  Matx66f::eye();
-		}
+		// for(uint i=0; i<max_mipmap_layers; i++){
+		// 	current_frames[ current_frames_idx[0] ].invHessian[i]	=  Matx66f::eye();
+		// }
+
+		current_frames[ current_frames_idx[0] ]		=	current_frames[ current_frames_idx[1] ];	// NB This will initialize the new frame with the values from the previous frame.
+
 		return;
 	};
 
@@ -261,6 +266,7 @@ public:
 	void createQueues();
 	void createAndBulidProgramFromSource(cl_device_id *devices);
 	void createKernels();
+
 	void set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k );
 
 	void mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_to_call, uint start, uint stop, bool layers_sequential, const size_t local_work_size);						// Call kernels on mipmap: start,stop allow running specific layers.

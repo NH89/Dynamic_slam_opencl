@@ -76,7 +76,7 @@
 	#define	V_RUNCL_MIPMAP_CALL_KERNEL					0
 	#define V_RUNCL_LAYER_CALL_KERNEL					-1
 	#define	V_RUNCL_WAITFOREVENTANDRELEASE				0
-	#define	V_RUNCL_SET_CAM_BUFS						0
+	#define	V_RUNCL_SET_CAM_BUFS						1
 	#define	V_RUNCL_ALLOCATEMEM							0
 	#define	V__RUNCL									0
 	#define	V_EXIT_										0

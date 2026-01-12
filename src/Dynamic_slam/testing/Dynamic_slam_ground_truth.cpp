@@ -19,7 +19,7 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 																																				cout << "\n\n R = \n" << R;
 																																				cout << "\n\n T = \n" << T;
 																																				cout << "\n\n cameraMatrix = \n" << cameraMatrix;
-																																				PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);		// correct here
+																																				PRINT_MATX44F(frame_data.back().frame_data.prev_pose2pose,);		// correct here
 																																				cout << endl << flush;
 																																			}
 	cv::Matx44f K_GT						= cv::Matx44f::zeros();
@@ -35,6 +35,9 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 	datum.inv_K								= generate_invK_(K_GT, verbosity);
 	datum.pose								= getPose(R,T, verbosity);																		PRINT_MATX44F( datum.pose, );
 	datum.inv_pose							= getInvPose(datum.pose, verbosity);															PRINT_MATX44F( datum.inv_pose, );
+	if( frame_data.size() > 1 ){
+		datum.prev_pose2pose				= frame_data[ frame_data.size() -2].frame_data_GT.inv_pose	*	datum.pose;
+	}
 
 	frame_data.back().frame_data_GT			= datum; // TODO entirely remove Dynamic_slam::frame_data.
 
@@ -43,11 +46,13 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 																																			for(int i=0; i<5; i++){	cout<<"\ni="<<i<<"  ";
 																																					PRINT_MATX44F(	runcl.current_frames[ runcl.current_frames_idx[i] ].pose_gt,   );
 																																			}
+																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec Finished ######################################"<<flush;
 }
 
 void Dynamic_slam::set_artif_pose_error(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_GETFRAMEDATA;
-
+																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::set_artif_pose_error_chk 0.  runcl.dataset_frame_num = "<< runcl.dataset_frame_num
+																																				<< "\t###################################" << flush;
 	pose_datum datum 			= frame_data.back().frame_data_GT;
 
 	Matx44f pose_frame0to1_gt	= runcl.current_frames[ runcl.current_frames_idx[1] ].pose_gt	*	datum.inv_pose;							PRINT_MATX44F( pose_frame0to1_gt, );
@@ -58,17 +63,22 @@ void Dynamic_slam::set_artif_pose_error(){
 	Matx44f artif_error_matx	= LieToP_Matx( artif_error );																				PRINT_MATX44F( artif_error_matx,);
 	Matx44f pose_frame0to1		= pose_frame0to1_gt * artif_error_matx;																		PRINT_MATX44F( pose_frame0to1,);
 	Matx44f k2k_0to1			= datum.K			* pose_frame0to1	* datum.K.inv();													PRINT_MATX44F( k2k_0to1,);
+																																			PRINT_MATX44F( datum.K, );		PRINT_MATX44F( datum.K.inv(), );
 
+																																					PRINT_MATX44F(  datum.K * datum.K.inv(),		);
+																																					PRINT_MATX44F( datum.K.inv() *  datum.K,		);
+	frame_data.back().frame_data 		= frame_data.back().frame_data_GT;
+	frame_data.back().frame_data.pose	= pose_frame0to1;
+	frame_data.back().frame_data.K2K	= k2k_0to1;
 
 	//runcl.update_k2k_buf(		k2k_0to1, pose_frame0to1);																					// NB Rotation is in Radians. Translation is in world units. Translation is depth range dependent.
 
+/*
 	Matx44f pose_error_1		= pose_frame0to1_gt				* pose_frame0to1.inv();														PRINT_MATX44F( pose_error_1, pose_frame0to1_gt		* pose_frame0to1.inv()	);
 	Matx44f pose_error_2		= pose_frame0to1.inv()			* pose_frame0to1_gt;														PRINT_MATX44F( pose_error_2, pose_frame0to1.inv()	* pose_frame0to1_gt		);
 	Matx44f pose_error_3		= pose_frame0to1_gt.inv()		* pose_frame0to1;															PRINT_MATX44F( pose_error_3, pose_frame0to1_gt.inv()* pose_frame0to1		);
 	Matx44f pose_error_4		= pose_frame0to1_gt				* pose_frame0to1.inv();														PRINT_MATX44F( pose_error_4, pose_frame0to1_gt		* pose_frame0to1.inv()	);
-
-
-
+*/
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/*Below is code for older Dynamic_slam::frame_data.    Above is for RunCL::current_frames[..] and direct write to k2kbuf & pose_buf.	if(verbosity>local_verbosity_threshold) {cout << "\n Dynamic_slam::getFrameData_vec_chk 2, "
 																																				<<"\truncl.dataset_frame_num="<<runcl.dataset_frame_num
@@ -101,16 +111,16 @@ void Dynamic_slam::set_artif_pose_error(){
 																																				print_pose_datum( frame_data.back().frame_data_GT );
 																																			}
 */
-																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec_chk Finished ######################################"<<flush;
+																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::set_artif_pose_error_chk Finished ######################################"<<flush;
 }
 
 void Dynamic_slam::use_GT_pose_vec(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_USE_GT_POSE;//verbosity_mp["Dynamic_slam::use_GT_pose"];// -1;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::use_GT_pose_chk_0,"<<flush;
-
+	frame_data.back().frame_data 	= frame_data.back().frame_data_GT;
 	float pose_arry[16];
 	Matx44f_To_float16arry(		runcl.current_frames[  runcl.current_frames_idx[0]  ].pose_gt,			pose_arry );
-	runcl.update_k2k_buf(		runcl.current_frames[  runcl.current_frames_idx[0]  ].k2k_0to1_est,		pose_arry );
+	//runcl.update_k2k_buf(		runcl.current_frames[  runcl.current_frames_idx[0]  ].k2k_0to1_est,		pose_arry );
 																																			if(verbosity>local_verbosity_threshold){
 																																				//PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);
 																																				//PRINT_FLOAT_16(runcl.fp32_k2keyframe,);

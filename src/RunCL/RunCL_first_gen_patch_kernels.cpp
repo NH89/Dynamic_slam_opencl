@@ -348,14 +348,14 @@ void RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){
 																																				//PRINT_MATX16F( (-sum_rho * sum_grad / num_pixels), );
 																																				PRINT_MATX16F( SE3_incr, );
 																																			}
-	Matx44f		pose		=			ReadOutput_44f( 					pose_buf );																PRINT_MATX44F( pose,	);			PRINT_MATX16F( PToLie(pose),);
-	Matx44f		invK		=			ReadOutput_44f(						inv_K_buf);																//PRINT_MATX44F( invK,	);
-	Matx44f		K			=			ReadOutput_44f(						K_buf	 );																//PRINT_MATX44F( K,		);
-																																					//PRINT_MATX44F( K * invK,		);
-																																					//PRINT_MATX44F( invK * K,		);
+	Matx44f		pose		=			ReadOutput_44f( 					pose_buf );																PRINT_MATX44F( pose,	from pose_buf );	PRINT_MATX16F( PToLie(pose),);
+	Matx44f		invK		=			ReadOutput_44f(						inv_K_buf);																PRINT_MATX44F( invK,	);
+	Matx44f		K			=			ReadOutput_44f(						K_buf	 );																PRINT_MATX44F( K,		);
+																																					PRINT_MATX44F( K * invK,		);
+																																					PRINT_MATX44F( invK * K,		);
 
 	Matx16f pose_update_cpu		= SE3_incr * invH;																									PRINT_MATX16F( pose_update_cpu, );
-	pose_update_cpu				= {0.0f,0.0f,0.0f,  0.0f,0.0f,0.0f }; /*(-1.0f) * pose_update_cpu.mul( deltas_matx);*/								PRINT_MATX16F( deltas_matx, );		PRINT_MATX16F( pose_update_cpu, );
+	pose_update_cpu				= (-1.0f) *  pose_update_cpu.mul( deltas_matx);/* {0.0f,0.0f,0.0f,  0.0f,0.0f,0.0f }; */							PRINT_MATX16F( deltas_matx, );		PRINT_MATX16F( pose_update_cpu, );
 																																					//PRINT_MATX44F( LieToP_Matx(pose_update_cpu), );
 																																					PRINT_MATX16F( PToLie( LieToP_Matx(pose_update_cpu).inv() ), );		// TODO order of matrix multiplication & transpose 1x6  vs 6x1 ?
 																																					PRINT_MATX16F( pose_update_cpu.div( pose_update_gt_algebra ) , );

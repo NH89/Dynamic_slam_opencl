@@ -1,4 +1,4 @@
-#include "kernels_macros.h"
+#include "kernels__macros.h"
 #include "kernels.h"
 
 #define	SO3_x		0

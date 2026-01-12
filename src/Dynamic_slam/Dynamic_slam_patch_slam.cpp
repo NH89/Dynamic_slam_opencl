@@ -18,14 +18,14 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 
 	Matx44f K 									= frame_data.back().frame_data.K;															// load function local variables fot the current frame.
 	Matx44f inv_K 								= frame_data.back().frame_data.inv_K;
-	Matx44f keyframe2pose[3] 					= {frame_data.back().frame_data.keyframe2pose};
+	Matx44f keyframe2pose[3] 					= {frame_data.back().frame_data.prev_pose2pose};
 	Matx16f	keyframe2pose_SE3[3]				={{0}};
 	keyframe2pose_SE3[0] 						= PToLie( keyframe2pose[0] );
 
 	Matx44f gt_keyframe2pose;
 	Matx16f gt_Pose;
 	if(GT_available==true){
-		gt_keyframe2pose		 				= frame_data.back().frame_data_GT.keyframe2pose;	// TODO if(GT_available==true){}else{}
+		gt_keyframe2pose		 				= frame_data.back().frame_data_GT.prev_pose2pose;	// TODO if(GT_available==true){}else{}
 		gt_Pose									= PToLie( gt_keyframe2pose);
 	}else{
 		gt_keyframe2pose		 				= Matx44f::eye();
@@ -264,13 +264,13 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 		//for (uint out_block_size = 4/*32*/; out_block_size > 2; out_block_size /=2){
 		uint out_block_size = 4;
 																																		//cout << "\nDynamic_slam::estimate_SLAM() chk_0.7  out_block_size="<<out_block_size <<flush;
-			for (uint iter = 0; iter</*SE_iter/2*/ 3; iter++){
+			for (uint iter = 0; iter<SE_iter; iter++){
 				count[0]  = iter;
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_1: layer="<<layer<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
 				{
 					uint	out_block_size		= 2;
 					uint	layer				= 0;
-					runcl.rho_sq( out_block_size, iter, layer	);													// For debugging, get a larger, finer Rho map
+					runcl.rho_sq( out_block_size, iter, layer	);																		// For debugging, get a larger, finer Rho map
 				}
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_2: ,  ###########################"<<flush;
 				runcl.rho_sq( out_block_size, iter, (uint)layer	);
@@ -280,7 +280,7 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 				runcl.reduce_patch_Rho ( out_block_size, iter, (uint)layer );
 				//runcl.ReadOutput( (uchar*)ptr, runcl.K_buf, sizeof(float)*16, 0 );
 				//PRINT_FLOAT_16(k_buf_arr, )
-				runcl.update_k2k_cpu( 	(uint)layer,	deltas_matx,	frame_data.back().frame_data_GT.keyframe2pose );		// frame_data_GT.keyframe2pose for comparision only.
+				runcl.update_k2k_cpu( 	(uint)layer,	deltas_matx,	frame_data.back().frame_data_GT.prev_pose2pose );				// frame_data_GT.keyframe2pose for comparision only.
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_4: ,  ###########################"<<flush;
 				//runcl.update_k2k(  		(uint)layer, delta_theta, delta, frame_data.back().frame_data_GT.keyframe2pose );
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_5: ,  ##############################################################"<<endl<<flush;

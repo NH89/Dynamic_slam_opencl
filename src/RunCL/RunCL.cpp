@@ -627,9 +627,7 @@ void RunCL::free_wg_offsets(){	// NB must call on exit.
 void RunCL::set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k ){
 	int local_verbosity_threshold = V_RUNCL_SET_CAM_BUFS;
 	string fname = "RunCL::set_cam_bufs( )";
-																																			if(verbosity>local_verbosity_threshold) {
-																																				cout<<"\nRunCL::"<<fname<<"(  )_chk0"<<flush;
-																																			}
+																																			if(verbosity>local_verbosity_threshold) { cout<<"\n"<<fname<<"(  )_chk0"<<flush; }
 																																			// NB Orthographic camera, See notes in convertTransforms.cpp , cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){..}
 																																			// 4x4 perspective matrix is not invertable for points at infinity. We correct ortho->perspective in the kernel by dividing by Z.
 	float k_arry[16], inv_k_arry[16], pose_arry[16], k2k_arry[16];
@@ -640,6 +638,9 @@ void RunCL::set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose, 
 
 	float k_buf_arr[16];
 	void * ptr = k_buf_arr;
+
+	current_frames[ current_frames_idx[0] ].K		= k;
+	current_frames[ current_frames_idx[0] ].inv_K	= inv_k;
 																																			PRINT_MATX44F(k,);
 	_clEnqueueWriteBuffer( uload_queue, 	K_buf,		CL_FALSE, 0, 16 * sizeof( float), k_arry, 			fname);							cout<<"\nRunCL::"<<fname<<"(  )_chk1"<<flush;
 																																			PRINT_MATX44F(inv_k,);
@@ -648,6 +649,7 @@ void RunCL::set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose, 
 	update_k2k_buf( k2k_arry, pose_arry );
 																																			ReadOutput( (uchar*)ptr, K_buf, sizeof(float)*16, 0 );
 																																			PRINT_FLOAT_16(k_buf_arr, )
+																																			if(verbosity>local_verbosity_threshold) { cout<<"\n"<<fname<<"_finished"<<flush; }
 }
 
 

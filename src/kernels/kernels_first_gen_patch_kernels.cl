@@ -54,9 +54,9 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	uint  group_id									= get_group_id(0);
 	const uint local_size 							= get_local_size(0);
 
-// 	if (global_id_u < num_past_frames){printf("\n__kernel void Rho_sq()  past_frame_num= %u,  invk2k buf = (%f,	%f,	%f,	%f),	(%f,	%f,	%f,	%f),	(%f,	%f,	%f,	%f),	(%f,	%f,	%f,	%f),	   ",\
-// 		lid, inv_k2k[lid][0], inv_k2k[lid][1], inv_k2k[lid][2], inv_k2k[lid][3], 	inv_k2k[lid][4], inv_k2k[lid][5], inv_k2k[lid][6], inv_k2k[lid][7], 	inv_k2k[lid][8], inv_k2k[lid][9], inv_k2k[lid][10], inv_k2k[lid][11], 	inv_k2k[lid][12], inv_k2k[lid][13], inv_k2k[lid][14], inv_k2k[lid][15] );
-// 	}
+	if (global_id_u < 1 /*num_past_frames*/){printf("\n__kernel void Rho_sq()  past_frame_num= %u,  invk2k buf = \n(%f,	%f,	%f,	%f),	\n(%f,	%f,	%f,	%f),	\n(%f,	%f,	%f,	%f),	\n(%f,	%f,	%f,	%f),	   ",\
+		lid, inv_k2k[lid][0], inv_k2k[lid][1], inv_k2k[lid][2], inv_k2k[lid][3], 	inv_k2k[lid][4], inv_k2k[lid][5], inv_k2k[lid][6], inv_k2k[lid][7], 	inv_k2k[lid][8], inv_k2k[lid][9], inv_k2k[lid][10], inv_k2k[lid][11], 	inv_k2k[lid][12], inv_k2k[lid][13], inv_k2k[lid][14], inv_k2k[lid][15] );
+	}
 
 	const uint8 mipmap_params_						= mipmap_params[layer];
 	uint read_offset_ 								= mipmap_params_[MiM_READ_OFFSET];
@@ -101,6 +101,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	float8 g1p_pvt[block_size];
 	float4 old_px;
 	bool   intersection;
+
 
 	local_rho[lid]									= zero_f2;
 	for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
