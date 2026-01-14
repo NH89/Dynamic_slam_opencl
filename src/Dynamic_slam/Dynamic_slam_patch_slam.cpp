@@ -110,8 +110,8 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 		float mag_ST3 = 	sqrt( result_[iter][3]*result_[iter][3] 	+ result_[iter][4]*result_[iter][4] 	+ result_[iter][5]*result_[iter][5] );		// magnitude of the ST3 (translation) update
 		if (iter==0){
 			for (uint i=0; i<3; i++){
-				update_[iter][i]						= result_[iter][i]		* delta_theta	/ mag_SO3;									// delta_theta is the minimal step used to compute the partial gradient wrt SO3.
-				update_[iter][i+3]						= result_[iter][i+3]	* delta 		/ mag_ST3;									// delta is the minimal step used to compute the partial gradient wrt ST3. NB this depend on the the scale and range of the depthmap.
+				update_[iter][i]						= result_[iter][i]		* delta_theta[layer]	/ mag_SO3;									// delta_theta is the minimal step used to compute the partial gradient wrt SO3.
+				update_[iter][i+3]						= result_[iter][i+3]	* delta[layer] 		/ mag_ST3;									// delta is the minimal step used to compute the partial gradient wrt ST3. NB this depend on the the scale and range of the depthmap.
 			}
 			for (int SE3=0; SE3<6; SE3++) { update[iter].operator()(SE3) = update_[iter][SE3]; }											// For 1st iter take a 1 pixel step, in the direction of the gradient of Rho.
 		}else if(iter>=1){
@@ -120,16 +120,16 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 			for (uint i=0; i<3; i++){
 				update_[iter][i]						= result_[iter][i]		* delta_SO3/mag_SO3; 						//( mag_SO3	/ delta_SO3 * 2 );
 				update_[iter][i+3]						= result_[iter][i+3]	* delta_ST3/mag_ST3; 						//( mag_ST3	/ delta_ST3 * 2 );
-				if ( update_[iter][i] 	< -delta_theta	|| update_[iter][i] 	<	delta_theta	){		cout << "\n update_["<<i<<"]="		<<update_[i]	<<",  delta_theta="<<delta_theta<<flush; }
-				if ( update_[iter][i+3] < -delta		|| update_[iter][i+3] 	<	delta		){		cout << "\n update_["<<i+3<<"]="	<<update_[i+3]	<<",  delta="<<delta<<flush; }
+				if ( update_[iter][i] 	< -delta_theta[layer]	|| update_[iter][i] 	<	delta_theta[layer]	){		cout << "\n update_["<<i<<"]="		<<update_[i]	<<",  delta_theta[layer]="<<delta_theta[layer]<<flush; }
+				if ( update_[iter][i+3] < -delta[layer]		|| update_[iter][i+3] 	<	delta[layer]		){		cout << "\n update_["<<i+3<<"]="	<<update_[i+3]	<<",  delta[layer]="<<delta[layer]<<flush; }
 
 				// TODO break out of layer loop if gradient nears zero....  OR change technique.  e.g. use optimim from 3rd iter.
 			}
 		}
 
 		for (uint i=0; i<3; i++){
-			update[iter].operator()(i)					= std::clamp(update_[iter][i],		-delta_theta,	delta_theta	);
-			update[iter].operator()(i+3)				= std::clamp(update_[iter][i+3],	-delta,			delta		);					// For iter>=1, scale update to reach zero gradient, i.e. optimum. Clamp to prevent giant steps at low gradient.
+			update[iter].operator()(i)					= std::clamp(update_[iter][i],		-delta_theta[layer],	delta_theta[layer]	);
+			update[iter].operator()(i+3)				= std::clamp(update_[iter][i+3],	-delta[layer],			delta[layer]		);					// For iter>=1, scale update to reach zero gradient, i.e. optimum. Clamp to prevent giant steps at low gradient.
 		}
 
 		keyframe2pose[ iter + 1 ]						=  keyframe2pose[iter]  *  LieToP_Matx( update[iter] );
@@ -280,7 +280,7 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 				runcl.reduce_patch_Rho ( out_block_size, iter, (uint)layer );
 				//runcl.ReadOutput( (uchar*)ptr, runcl.K_buf, sizeof(float)*16, 0 );
 				//PRINT_FLOAT_16(k_buf_arr, )
-				runcl.update_k2k_cpu( 	(uint)layer,	deltas_matx,	frame_data.back().frame_data_GT.prev_pose2pose );				// frame_data_GT.keyframe2pose for comparision only.
+				runcl.update_k2k_cpu( 	(uint)layer,	deltas_matx[layer],	frame_data.back().frame_data_GT.prev_pose2pose );				// frame_data_GT.keyframe2pose for comparision only.
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_4: ,  ###########################"<<flush;
 				//runcl.update_k2k(  		(uint)layer, delta_theta, delta, frame_data.back().frame_data_GT.keyframe2pose );
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_5: ,  ##############################################################"<<endl<<flush;

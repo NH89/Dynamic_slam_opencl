@@ -321,7 +321,7 @@ public:
 
 	////////////////////////////////////// RunCL_load_image.cpp
 
-	void precomp_param_maps (float SO3_k2k[6*16]);																						// Image loading & preparation
+	void precomp_param_maps (float SE3_k2k[max_mipmap_layers*num_SE3_DoF*16]);																						// Image loading & preparation
 	void loadFrame(cv::Mat image);
 	void cvt_color_space();
 	void sum_image_variance();

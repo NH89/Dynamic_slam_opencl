@@ -5,7 +5,7 @@
 using namespace cv;
 using namespace std;
 
-void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {																			// Generates a set of 6 k2k to be used to compute the SE3 maps for the current camera intrinsic matrix.
+void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[  max_mipmap_layers* num_SE3_DoF *16  ] ) {																			// Generates a set of 6 k2k to be used to compute the SE3 maps for the current camera intrinsic matrix.
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_GENERATE_SE3_K2K;//verbosity_mp["Dynamic_slam::generate_SE3_k2k"];// -2;
 																																			if(verbosity>local_verbosity_threshold) cout << "\nDynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) chk_0" << endl << flush;
 	// SE3
@@ -21,30 +21,12 @@ void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {															
 																																				cout << "  delta_theta = "	<<delta_theta	<< " radians," 								<<endl << flush;
 																																				cout << "  delta = "		<<delta			<< " units distance," 						<<endl << flush;
 																																				cout << "  f = "			<<f				<< " pixels," 								<<endl << flush;
-																																				cout << "  obj[\"ST3_delta\"] =  "            <<obj["ST3_delta"].asFloat()				<<endl << flush;
+																																				//cout << "  obj[\"ST3_delta\"] =  "            <<obj["ST3_delta"].asFloat()				<<endl << flush;
 																																				cout << "  obj[\"min_depth\"] =  "            <<obj["min_depth"].asFloat()				<<endl << flush;
-																																				cout << "  obj[\"SO3_delta_theta\"] =  "      <<obj["SO3_delta_theta"].asFloat()		<<endl << flush;
+																																				//cout << "  obj[\"SO3_delta_theta\"] =  "      <<obj["SO3_delta_theta"].asFloat()		<<endl << flush;
 																																			}
 	//Identity =				(1,			0,			0,			0,  			0,			1,			0,			0,  			0,			0,			1,			0,  			0,	0,	0,	1);
 	cv::Matx44f transform[6];
-	transform[Rx] = cv::Matx44f(1,				0,				0,				0,\
-								0,				cos_theta,		-sin_theta,		0,\
-								0,				sin_theta,		cos_theta,		0,\
-								0,				0,				0,				1);
-
-	transform[Ry] = cv::Matx44f(cos_theta,		0,				sin_theta,		0,\
-								0,				1,				0,				0,\
-								-sin_theta,		0,				cos_theta,		0,\
-								0,				0,				0,				1);
-
-	transform[Rz] = cv::Matx44f(cos_theta,		-sin_theta,		0,				0,\
-								sin_theta,		cos_theta,		0,				0,\
-								0,				0,				1,				0,\
-								0,				0,				0,				1);
-
-	transform[Tx] = cv::Matx44f(1,0,0,delta, 	0,1,0,0,		0,0,1,0,		0,0,0,1);
-	transform[Ty] = cv::Matx44f(1,0,0,0, 		0,1,0,delta,	0,0,1,0,		0,0,0,1);
-	transform[Tz] = cv::Matx44f(1,0,0,0, 		0,1,0,0,		0,0,1,delta,	0,0,0,1);
 
 	cv::Matx44f cam2cam[6];
 																																			if(verbosity>local_verbosity_threshold){
@@ -56,19 +38,66 @@ void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) {															
 																																				PRINT_MATX44F(frame_data.back().frame_data.inv_K,);
 																																				cout<<"\nuse_conf_camera_matx = "<<use_conf_camera_matx<<flush;
 																																			}
-	for (int i=0; i<6; i++) {  cam2cam[i] = frame_data.back().frame_data.K  *  transform[i]  *  frame_data.back().frame_data.inv_K;
+	for(int layer=0; layer<max_mipmap_layers; layer++){
+		float _cos_theta	= cos_theta[layer];
+		float _sin_theta	= sin_theta[layer];
+		float _delta		= delta[layer];
+																																			if(verbosity>local_verbosity_threshold){  cout<<"\nDynamic_slam::generate_SE3_k2k_vec(..)"
+																																				<<",  layer  =	"		<<layer
+																																				<<",  _cos_theta  = "	<<_cos_theta
+																																				<<",  _sin_theta  = "	<<_sin_theta
+																																				<<",  _delta  = "	 	<<_delta
+																																				<<",  ############"<<endl<<flush;
+																																			}
+		transform[Rx] = cv::Matx44f(1,				0,				0,				0,\
+									0,				_cos_theta,		-_sin_theta,	0,\
+									0,				_sin_theta,		_cos_theta,		0,\
+									0,				0,				0,				1);
+
+		transform[Ry] = cv::Matx44f(_cos_theta,		0,				_sin_theta,		0,\
+									0,				1,				0,				0,\
+									-_sin_theta,	0,				_cos_theta,		0,\
+									0,				0,				0,				1);
+
+		transform[Rz] = cv::Matx44f(_cos_theta,		-_sin_theta,	0,				0,\
+									_sin_theta,		_cos_theta,		0,				0,\
+									0,				0,				1,				0,\
+									0,				0,				0,				1);
+
+		transform[Tx] = cv::Matx44f(1,0,0,_delta, 	0,1,0,0,		0,0,1,0,		0,0,0,1);
+		transform[Ty] = cv::Matx44f(1,0,0,0, 		0,1,0,_delta,	0,0,1,0,		0,0,0,1);
+		transform[Tz] = cv::Matx44f(1,0,0,0, 		0,1,0,0,		0,0,1,_delta,	0,0,0,1);
+
+		for (int i=0; i<num_SE3_DoF; i++) {
+
+			cam2cam[i] 		= frame_data.back().frame_data.K  *  transform[i] *  frame_data.back().frame_data.inv_K;
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\ni=" << i << endl;
 																																				PRINT_MATX44F(transform[i],);
-																																				PRINT_MATX44F(cam2cam[i],);
+																																				PRINT_MATX44F(cam2cam[i], _SE3_k2k);
 																																			}
-		for (uint row=0; row<4; row++) {
-			for (uint col=0; col<4; col++){
-				_SE3_k2k[i*16 + row*4 + col] 	= cam2cam[i].operator()(row,col);
+			for (uint row=0; row<4; row++) {
+				for (uint col=0; col<4; col++){
+					_SE3_k2k[ ((layer * num_SE3_DoF) + i)*16 + row*4 + col]		= cam2cam[i].operator()(row,col);
+				}
 			}
 		}
 	}
 																																			if(verbosity>local_verbosity_threshold) {
+																																				cout<<"check SE3_k2k #############  "<<flush;
+																																				for(int layer=0; layer<max_mipmap_layers; layer++){
+																																					cout<<"\n\nlayer = "<< layer <<"  ###############"<<flush;
+																																					for (int i=0; i<num_SE3_DoF; i++) {
+																																						cout<<"\nSE3dof = "<<i<<"  SE3_k2k = "<<flush;
+																																						for (uint row=0; row<4; row++) {
+																																							cout<<"\n(";
+																																							for (uint col=0; col<4; col++){
+																																								cout<<", "<<SE3_k2k[((layer * num_SE3_DoF) + i)*16 + row*4 + col];
+																																							}
+																																							cout<<"),"<<flush;
+																																						}
+																																					}
+																																				}
 																																				/*
 																																				cout << endl << setprecision(9);
 																																				// for (int i=0; i<6; i++) {

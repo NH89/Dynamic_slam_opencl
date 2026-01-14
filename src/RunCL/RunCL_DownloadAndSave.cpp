@@ -75,15 +75,19 @@ void RunCL::createFolders(){
 		 "img_corr_buf"					5 * mm_size_bytes_C4,
 		 "warp_buf"						2 * mm_size_bytes_C1,
 	*/
-	std::vector<std::string> names = {"imgmem", "imgmem_blurred", "keyframe_imgmem", "keyframe_imgmem_HSV_grad", "gxmem", "gymem", "keyframe_g1mem", \
-										"SE3_grad_map_mem", "keyframe_SE3_grad_map_mem", \
+
+	//	"keyframe_imgmem", "keyframe_imgmem_HSV_grad", "keyframe_g1mem", "keyframe_SE3_grad_map_mem", "keyframe_basemem", "keyframe_depth_mem",
+	//	"dmem","amem","lomem","himem","qmem","qmem2","cdatabuf","cdatabuf_8chan","hdatabuf","dbg_databuf","img_sum_buf", "key_frame_depth_map_src",
+
+	std::vector<std::string> names = {"imgmem", "imgmem_blurred", "gxmem", "gymem", \
+										"SE3_grad_map_mem",  \
 										"SE3_map_mem", \
 										"SE3_weight_map_mem",\
 										"SE3_incr_map_mem", "SE3_rho_map_mem", \
 										\
-										"basemem", "keyframe_basemem", "depth_mem_temp", "keyframe_depth_mem", \
-										"key_frame_depth_map_src", "depth_GT", \
-										"dmem","amem","lomem","himem","qmem","qmem2","cdatabuf","cdatabuf_8chan","hdatabuf","dbg_databuf","img_sum_buf", \
+										"basemem", "depth_mem_temp",\
+										"depth_GT", \
+
 										"HSV_grad_mem", "dmem_disparity", \
 										\
 										"jacobian","hessian","depth_mem",\

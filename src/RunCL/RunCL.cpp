@@ -656,8 +656,13 @@ void RunCL::set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose, 
 void RunCL::mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_to_call, uint start, uint stop, bool layers_sequential, const size_t local_work_size){
 	int local_verbosity_threshold = V_RUNCL_MIPMAP_CALL_KERNEL;//verbosity_mp["RunCL::mipmap_call_kernel"];// -2;
 																																			if(verbosity>local_verbosity_threshold) {
-																																				cout<<"\nRunCL::mipmap_call_kernel( cl_kernel "<<kernel_to_call<<",  cl_command_queue "<<queue_to_call<<",   start="<<start<<",   stop="<<stop<<
-																																				", layers_sequential="<<layers_sequential<<",  local_work_size="<<local_work_size<<" )_chk0"<<flush;
+																																				cout<<"\nRunCL::mipmap_call_kernel( cl_kernel "	<<kernel_to_call
+																																				<<",  cl_command_queue "						<<queue_to_call
+																																				<<",  start="									<<start
+																																				<<",  stop="									<<stop
+																																				<<",  layers_sequential="						<<layers_sequential
+																																				<<",  local_work_size="							<<local_work_size
+																																				<<" )_chk0"<<flush;
 																																				//cout <<"\nmm_num_reductions+1="<<mm_num_reductions+1<< ",  start="<<start<<",  stop="<<stop <<flush;
 																																			}
 	cl_event						ev;
@@ -714,7 +719,7 @@ void RunCL::allocatemem(){
 	fp32_param_buf		= clCreateBuffer(m_context, CL_MEM_READ_ONLY  					, 16* sizeof(float),			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 25= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	k2kbuf				= clCreateBuffer(m_context, CL_MEM_READ_ONLY  ,tracking_num_samples*16*sizeof(float),			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 26= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
-	SE3_k2kbuf			= clCreateBuffer(m_context, CL_MEM_READ_ONLY  					,6*16*sizeof(float),			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 28= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	SE3_k2kbuf			= clCreateBuffer(m_context, CL_MEM_READ_ONLY  ,max_mipmap_layers*num_SE3_DoF*16*sizeof(float),	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 28= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	uint_param_buf		= clCreateBuffer(m_context, CL_MEM_READ_ONLY  					, 8 * sizeof(uint), 			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 29= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	mipmap_buf			= clCreateBuffer(m_context, CL_MEM_READ_ONLY  					, 8*8*sizeof(uint), 			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 30= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 

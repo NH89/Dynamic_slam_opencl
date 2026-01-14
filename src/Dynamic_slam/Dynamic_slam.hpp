@@ -49,13 +49,13 @@ class Dynamic_slam
 
     // camera & pose params
     cv::Matx44f initial_K;
-	float f;			//= fmaxf(	obj["cameraMatrix"][0].asFloat(),	obj["cameraMatrix"][4].asFloat()	);	// focal length in pixels.
-	float delta;		//= obj["min_depth"].asFloat() /f ;														// ST3_delta * (Translation to cause 1 pixel of parallax at min_depth)
-	float delta_theta;	//= 1/f																					// SO3_delta_theta * (Rotation to cause 1 pixel of rotation flow)
-	float cos_theta;	//= cos(delta_theta);
-	float sin_theta;	//= sin(delta_theta);
-	float delta_depth;	//= f*2.0f / ( min_depth * fmaxf(  obj["cameraMatrix"][2].asFloat(),	obj["cameraMatrix"][5].asFloat() )  );
-	Matx16f deltas_matx;// used to multiply SE3 update results.
+	float f;								//= fmaxf(	obj["cameraMatrix"][0].asFloat(),	obj["cameraMatrix"][4].asFloat()	);	// focal length in pixels.
+	float delta[max_mipmap_layers];			//= obj["min_depth"].asFloat() /f ;														// ST3_delta * (Translation to cause 1 pixel of parallax at min_depth)
+	float delta_theta[max_mipmap_layers];	//= 1/f																					// SO3_delta_theta * (Rotation to cause 1 pixel of rotation flow)
+	float cos_theta[max_mipmap_layers];		//= cos(delta_theta);
+	float sin_theta[max_mipmap_layers];		//= sin(delta_theta);
+	float delta_depth[max_mipmap_layers];	//= f*2.0f / ( min_depth * fmaxf(  obj["cameraMatrix"][2].asFloat(),	obj["cameraMatrix"][5].asFloat() )  );
+	Matx16f deltas_matx[max_mipmap_layers];	// used to multiply SE3 update results.
 
     struct pose_datum{      // default intitialization, if instatiated with " ... = {}; "
       cv::Matx16f           keyframe2pose_algebra   = {0} ;
@@ -84,15 +84,15 @@ class Dynamic_slam
       frame_datum           frame_data              = {};
     };
 
-    std::vector<frame_datum>     frame_data;		// (frame_data start, old, current, key_frame) are now indices of elements in the vector.
+    std::vector<frame_datum>     frame_data;			// (frame_data start, old, current, key_frame) are now indices of elements in the vector.
 //    std::vector<keyframe_datum>  keyframe_data;		// TODO remove keyframes ?
 
     // GT data loading ?
-    cv::Mat image, depth_GT, cameraMatrix;			// TODO should these be Matx ?   , projection   NB cameraMatrix => K_GT
+    cv::Mat image, depth_GT, cameraMatrix;				// TODO should these be Matx ?   , projection   NB cameraMatrix => K_GT
     cv::Mat R,     T;
     cv::Mat old_R, old_T;
 
-    float SE3_k2k[6*16];							// used for param_maps, minimal steps in SE3
+    float SE3_k2k[ max_mipmap_layers*num_SE3_DoF*16 ];	// used for param_maps, minimal steps in SE3
 
 
     // functions ////////////////////////////////////////
@@ -148,7 +148,7 @@ class Dynamic_slam
     /////////////////////////////////////// Dynamic_slam_tracking.cpp
     void report_GT_pose_error();
 //    void artificial_pose_error_vec();
-    void generate_SE3_k2k_vec( float _SE3_k2k[6*16] );		// TODO chk all maths vs Python version. Also ensure compatibility with new code.
+    void generate_SE3_k2k_vec( float _SE3_k2k[  max_mipmap_layers* num_SE3_DoF *16  ] );		// TODO chk all maths vs Python version. Also ensure compatibility with new code.
 //    void compute_optimum( float steps[3], float Rho_sq_results_[tracking_num_samples][8][tracking_num_colour_channels], int layer, int channel, float *prediction, float *optimum, float *stepsize );
 
     //////////////////////////////////// Dynamic_slam_patch_slam.cpp

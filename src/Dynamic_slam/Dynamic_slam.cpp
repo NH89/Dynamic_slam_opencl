@@ -49,8 +49,7 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 																																				<<"png[runcl.dataset_frame_num].string()="<< png[runcl.dataset_frame_num].string()  <<flush;
 																																			}
 	runcl.initialize_RunCL( imread( png[ runcl.dataset_frame_num ].string() ) );															// Set image params, ref for dimensions and data type. ########################################################################
-	initialize_camera_intrinsic_matrix();	// depends on runcl.baseImage
-	generate_deltas();						// depends on f &=> camera_intrinsic_matrix
+
 	initialize_camera_vec();				// Calls runcl.precomp_param_maps, depends on deltas.
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_ finished "
 																																				<< "#####################################################################################\f" << flush;
@@ -62,9 +61,9 @@ void Dynamic_slam::initialize_camera_intrinsic_matrix(){
 	cv::Matx44f k 					= Matx44f::eye();;												// NB In DTAM_opencl, "cameraMatrix" found by convertAhandPovRay, called by fileLoader
 
 		if(use_conf_camera_matx==true){
-			for (int i=0; i<9; i++){ k.operator()(i/3,i%3) = obj["cameraMatrix"][i].asFloat(); }												// Camera matrix from conf file.
+			for (int i=0; i<9; i++){ k.operator()(i/3,i%3) = obj["cameraMatrix"][i].asFloat(); }												// 3x3 Camera matrix from conf file.
 		}else{
-			for (int i=0; i<9; i++){ k.operator()(i/3,i%3) = 0.0f;}																				// Default naive camera matrix.
+			for (int i=0; i<9; i++){ k.operator()(i/3,i%3) = 0.0f;}																				// 3x3 Default naive camera matrix.
 			f	= 	2*min( runcl.baseImage_height, runcl.baseImage_width);
 			 k.operator()(0,0) = f;
 			 k.operator()(1,1) = f;
@@ -81,33 +80,40 @@ void Dynamic_slam::generate_deltas(){	// Principle : delta for each parameter ca
 										// NB images should be blurred to eliminate noise and bilinear interpolation artefacts.
 	int local_verbosity_threshold = V_DYNAMIC_GENERATE_DELTAS;
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::generate_deltas()_chk 0:"<<flush;}
-	f						= fmaxf(	initial_K.operator()(0,0),	initial_K.operator()(1,1)	);							// NB [0]&[4] are u,v focal length
-	float min_depth			= obj["min_depth"].asFloat();
-	delta					= min_depth/f;
-	delta_theta				= 1/f;
-	cos_theta				= cos(delta_theta);
-	sin_theta				= sin(delta_theta);
-	delta_depth				= f * 2.0f / ( min_depth * fmaxf(  obj["cameraMatrix"][2].asFloat(),	obj["cameraMatrix"][5].asFloat() )  );	// NB [2]&[5] are image sensor size
-	deltas_matx	= { delta_theta, delta_theta, delta_theta, delta, delta, delta };
-																																			if (verbosity>local_verbosity_threshold) { cout
+	f								= fmaxf(	frame_data.back().frame_data.K(0,0),	frame_data.back().frame_data.K(1,1)	);	//(initial_K.operator()(0,0),	initial_K.operator()(1,1)	);							// NB [0]&[4] are u,v focal length
+	float min_depth					= obj["min_depth"].asFloat();
+
+	for (int layer=0; layer<max_mipmap_layers; layer++){
+
+		delta[layer]				= pow(2,layer) * min_depth/f;
+		delta_theta[layer]			= pow(2,layer) * 1/f;
+		cos_theta[layer]			= cos(delta_theta[layer]);
+		sin_theta[layer]			= sin(delta_theta[layer]);
+		delta_depth[layer]			= pow(2,layer) * 	f * 2.0f 	/ ( min_depth * 	fmaxf( 	frame_data.back().frame_data.K(0,2),	frame_data.back().frame_data.K(1,2)		)	);//(obj["cameraMatrix"][2].asFloat(),	obj["cameraMatrix"][5].asFloat() )  );	// NB [2]&[5] are image sensor size
+
+		deltas_matx[layer]			= { delta_theta[layer], delta_theta[layer], delta_theta[layer], delta[layer], delta[layer], delta[layer] };
+
+																																			if (verbosity>local_verbosity_threshold) { cout<<endl
+																																				<<"\nlayer			= "<<layer
 																																				<<"\nf				= "<<f
 																																				<<"\nmin_depth		= "<<min_depth
-																																				<<"\ndelta			= "<<delta
-																																				<<"\ndelta_theta	= "<<delta_theta
-																																				<<"\ncos_theta		= "<<cos_theta
-																																				<<"\nsin_theta		= "<<sin_theta
-																																				<<"\ndelta_depth	= "<<delta_depth
-																																				<<"\ndeltas_matx	= "<<deltas_matx
+																																				<<"\ndelta			= "<<delta[layer]
+																																				<<"\ndelta_theta	= "<<delta_theta[layer]
+																																				<<"\ncos_theta		= "<<cos_theta[layer]
+																																				<<"\nsin_theta		= "<<sin_theta[layer]
+																																				<<"\ndelta_depth	= "<<delta_depth[layer]
+																																				<<"\ndeltas_matx	= "<<deltas_matx[layer]
 																																				<<"\nDynamic_slam::generate_deltas()_finished"<<flush;
 																																			}
+	}
 }
 
 void Dynamic_slam::initialize_camera_vec(){
-	int local_verbosity_threshold = V_DYNAMIC_SLAM_INITIALIZE_CAMERA;//verbosity_mp["Dynamic_slam::initialize_camera"];
+	const int local_verbosity_threshold = V_DYNAMIC_SLAM_INITIALIZE_CAMERA;
 																																			if (verbosity>local_verbosity_threshold) { cout << "\fDynamic_slam::initialize_camera_vec_chk 0:" <<flush;
 																																				cout<<"\n frame_data.size() = "<<frame_data.size()<<flush;
 																																			}
-	R 								= cv::Mat::eye(3,3 , CV_32FC1);																			// intialize ground truth extrinsic data, NB Mat (int rows, int cols, int type)
+	R 								= cv::Mat::eye(  3,3 , CV_32FC1);																			// intialize ground truth extrinsic data, NB Mat (int rows, int cols, int type)
 	T 								= cv::Mat::zeros(3,1 , CV_32FC1);
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 1:" <<flush;}
 	frame_datum 			datum 	= {};																									// default initialization, to values in header, or zero if not set in header.
@@ -122,13 +128,9 @@ void Dynamic_slam::initialize_camera_vec(){
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 2:" <<flush;
 																																				PRINT_MATX44F(frame_data.back().frame_data.prev_pose2pose,);  // gets corrupted by getFrameData_vec()
 																																			}
-	if(GT_available==true){
-		getFrameData_vec();																													// Sets frame_data.back().frame_data_GT
-	}/*else{																				not needed, default value
-		frame_data.back().frame_data.prev_pose2pose	=	Matx44f::eye();
-		frame_data.back().frame_data.K2K			=	Matx44f::eye();
-	}*/
-	//runcl.set_cam_bufs( initial_K , inv_k, Matx44f::eye(), Matx44f::eye() ); /*( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k )*/	// NB K uses camera matrix from conf.json.
+	initialize_camera_intrinsic_matrix();	// depends on runcl.baseImage
+
+	if(GT_available==true){									getFrameData_vec();		}														// Sets frame_data.back().frame_data_GT
 																																			// We use orthographic matrix, then convert to perspectiveby dividing by depth.
 																																			// See notes in convertTransforms.cpp
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 3:" <<flush;
@@ -138,9 +140,6 @@ void Dynamic_slam::initialize_camera_vec(){
 																																				}
 																																				PRINT_MATX44F(frame_data.back().frame_data.prev_pose2pose,);
 																																			}
-	// if(GT_available==true && initialize_keyframe_from_GT==true){
-	// 	frame_data.back().frame_data 	= frame_data.back().frame_data_GT;
-	// }
 	if(			 GT_available		 ==true){				getFrameData_vec();																// Sets frame_data.back().frame_data_GT
 		if(		 use_artif_pose_error==true){				set_artif_pose_error();	}
 		else if( use_GT_pose		 ==true){				use_GT_pose_vec();		}
@@ -172,6 +171,7 @@ void Dynamic_slam::initialize_camera_vec(){
 																																				PRINT_MATX44F( frame_minus_two->frame_data.inv_pose, );
 
 																																			}
+	generate_deltas();																														// depends on f &=> camera_intrinsic_matrix
 	generate_SE3_k2k_vec( SE3_k2k );																										// fills float[96] ie 6xfloat[16] from conf.json intrinsic camera matrix + SE3 increments.
 	runcl.precomp_param_maps ( SE3_k2k );																									// GPU computes J(u,v/SE3) Jacobian of optical flow wrt SE3.
 	getFrame();
