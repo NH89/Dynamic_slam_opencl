@@ -533,7 +533,7 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 																																		ss_path 		<< "SE3_grad_map_mem"<<flush;
 																																		cout 			<< "\n" << ss_path.str() <<flush;
 																																		cout 			<< "\n" << paths.at(ss_path.str()) <<flush;
-																																		DownloadAndSave_6Channel_volume(  SE3_grad_map_mem, ss.str(), paths.at(ss_path.str()), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, -1, 6 );
+																																		DownloadAndSave_6Channel_volume(  SE3_grad_map_mem, ss.str(), paths.at(ss_path.str()), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, 1, 6 );
 																																	}
 																																	//////////
 																																	tiff 			= old_tiff;

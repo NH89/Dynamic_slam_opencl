@@ -87,6 +87,7 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	uint	mm_rows										= uint_params[MM_ROWS];
 	uint	mm_pixels									= uint_params[MM_PIXELS];
 
+	uint	stop_offset									= layer_offset + (read_rows_ -1) * mm_cols + read_cols_	;	// bottom right corner of source image layer
 
 //	if(global_id_uint==0)printf("\n\n__kernel void  patch_img_grad():  mm_cols=%u,  mm_rows=%u,  mm_pixels=%u   ST3_offset3=%u, %u, %u \n", mm_cols,  mm_rows, mm_pixels,  ST3_offset3.x, ST3_offset3.y, ST3_offset3.z );
 // 	float4	blue		= {1,0,0,1};
@@ -112,7 +113,9 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	uint	write_index_2								= u/block_size				 + (v/block_size)*mm_cols		+ SE3_offset;
 	uint 	offset_1_1_max								= mm_cols * read_rows_ / out_block_size 		 			+ ST3_offset;
 
-	for (uint row_in_block=0; row_in_block<block_size; row_in_block++, v++,  read_index +=mm_cols){
+
+
+	for (uint row_in_block=0; (row_in_block<block_size)&&(read_index<=stop_offset); row_in_block++, v++,  read_index +=mm_cols){	// stop offset prevents bottom row patches from overrunning the bottom of the image layer.
 		int upoff										= -(v  >1 )*mm_cols;												//-(read_row  != 0)*mm_cols;	// up, down, left, right offsets, by boolean logic.
 		int dnoff										=  (v  < read_rows_-2) * mm_cols;									// (read_row  < read_rows_-1) * mm_cols;
 
@@ -138,7 +141,6 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 			if(i>2)Jacobian[i]							*= inv_depth;														// ST3 depends on inv_depth
 			Jacobian[i].w								= 1.0f;
 			SE3_grad_map[read_index + i* mm_pixels]		= Jacobian[i] ;														// float4
-
 																															if (lid==0 && row_in_block==0 && group_id==0 ){		// ### Debugging ###
 																																printf("\ndebug  i=%d SE3_px =(%f,%f),  gx,gy=(%f,%f),  read_index=%d  row=%d,  col=%d",\
 																																i,SE3_px.x,SE3_px.y, gx.x,gy.x,  read_index,  read_index/mm_cols,  read_index%mm_cols );

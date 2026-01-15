@@ -256,7 +256,7 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 																																		//cout <<"\nDynamic_slam::estimate_SLAM() chk_0.5  SE3_start_layer="<<SE3_start_layer<<",  SE3_stop_layer="<<SE3_stop_layer<<flush;
 																																			// "SE3_start_layer":4,
 																																			// "SE3_stop_layer":1,
-	for (int	layer = 5 /*runcl.mm_stop-2*//*SE3_start_layer*/; layer>=5 /*runcl.mm_stop-3*/ /*SE3_stop_layer*/;	layer--){														// NB when uint passes zero it becomes UINT_MAX
+	for (int	layer = 4 /*runcl.mm_stop-2*//*SE3_start_layer*/; layer>=4 /*runcl.mm_stop-3*/ /*SE3_stop_layer*/;	layer--){														// NB when uint passes zero it becomes UINT_MAX
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_0.6  layer="<<layer<<flush;
 		count[1]  = layer;
 		runcl._clEnqueueFillBuffer(  runcl.uload_queue,  runcl.pose_update_buf,  &zero,  sizeof( float),  0,  6*sizeof(float),  fname  );// pose_update_buf zeroed for new layer, because old Rho not valid for comparison.

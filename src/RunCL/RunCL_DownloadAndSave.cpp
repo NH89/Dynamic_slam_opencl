@@ -591,39 +591,37 @@ void RunCL::DownloadAndSave_6Channel(cl_mem buffer, std::string count, std::file
 			temp_mat = cv::Mat::zeros (size_mat.height, 2*size_mat.width, CV_32FC3);
 			temp_mat2.convertTo(temp_mat, CV_32FC3);																						// NB conversion to FP32 req for cv::sum(..).
 		} else {
-			temp_mat = cv::Mat::zeros (size_mat.height, 2*size_mat.width, type_mat);
-			ReadOutput(temp_mat.data, buffer,  2*image_size_bytes,   2*offset);
+			temp_mat = cv::Mat::zeros (size_mat.height, /*2**/size_mat.width, type_mat);
+			ReadOutput(temp_mat.data, buffer,  /*2**/image_size_bytes,   /*2**/offset);
 		}
 
-		cv::Mat mat_u, mat_v;
+		cv::Mat mat_u;//, mat_v;	no longer using CV_32FC8. d(value)/d(se3) fiven as single change in pixel value per se3 dof.
 		mat_u = cv::Mat::zeros (size_mat, type_mat);
-		mat_v = cv::Mat::zeros (size_mat, type_mat);
+		//mat_v = cv::Mat::zeros (size_mat, type_mat);
 		for (int i=0; i<mat_u.total(); i++){
-			float data[8];
-			for (int j=0; j<8; j++){ data[j] = temp_mat.at<float>(i*8  + j) ;}
+			float data[4/*8*/];
+			for (int j=0; j<4/*8*/; j++){ data[j] = temp_mat.at<float>(i*4/*8*/  + j) ;}
 
 			for (int j=0; j<4; j++){
 				float alpha = ( (data[j] != 0) || (data[j+4] != 0) );
 				mat_u.at<float>(i*4  + j) = data[j] ;																						// NB in buffer, alphachan carries
 				mat_u.at<float>(i*4  + 3) = alpha;																							// sets alpha=0 when , else alpha=1.
-				mat_v.at<float>(i*4  + j) = data[j+4] ;
-				mat_v.at<float>(i*4  + 3) = alpha;
+				//mat_v.at<float>(i*4  + j) = data[j+4] ;
+				//mat_v.at<float>(i*4  + 3) = alpha;
 			}
 		}
 																																			if(verbosity>local_verbosity_threshold){
 																																				//cv::imshow("mat_u", mat_u);
 																																				//cv::imshow("mat_v", mat_v);
 																																				//cv::waitKey(-1);
-																																				cout << "\nmat_v alpha = ";
-																																				for (int px=0; px< (mat_v.rows * mat_v.cols ) ; px += 1000){
-																																					cout <<", " << mat_v.at<float>(px*4  + 3);
+																																				cout << "\nmat_u alpha = ";
+																																				for (int px=0; px< (mat_u.rows * mat_u.cols ) ; px += 1000){
+																																					cout <<", " << mat_u.at<float>(px*4  + 3);
 																																				}cout << flush;
 																																			}
-		SaveMat(mat_u, type_mat,  folder_tiff,  show,  max_range, "mat_u", count);
-		SaveMat(mat_v, type_mat,  folder_tiff,  show,  max_range, "mat_v", count);
+		SaveMat(mat_u, type_mat,  folder_tiff,  show,  max_range, "mat_", count);//"mat_u"
+		//SaveMat(mat_v, type_mat,  folder_tiff,  show,  max_range, "mat_v", count);
 }
-
-
 
 void RunCL::DownloadAndSave_HSV_grad(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range /*=1*/, uint offset /*=0*/){
 	int local_verbosity_threshold = V_RUNCL_DOWNLOADANDSAVE_HSV_GRAD;//verbosity_mp["RunCL::DownloadAndSave_HSV_grad"];// 1;
@@ -792,7 +790,7 @@ void RunCL::SaveMat_1chan(cv::Mat temp_mat, int type_mat, std::filesystem::path 
 }
 
 void RunCL::DownloadAndSave_6Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers ){
-	int local_verbosity_threshold = V_RUNCL_DOWNLOADANDSAVE_6CHANNEL_VOLUME;//verbosity_mp["RunCL::DownloadAndSave_6Channel_volume"];// 1;
+	int local_verbosity_threshold = V_RUNCL_DOWNLOADANDSAVE_6CHANNEL_VOLUME;
 																																			if(verbosity> local_verbosity_threshold) {
 																																				cout<<"\nDownloadAndSave_6Channel_volume_chk_0   costVolLayers="<<costVolLayers<<", filename = ["<<folder.filename().string()<<"]"<<flush;
 																																				cout<<"\n folder="<<folder.string()<<",\t image_size_bytes="<<image_size_bytes<<",\t size_mat="<<size_mat<<",\t type_mat="<<size_mat<<"\t"<<flush;
