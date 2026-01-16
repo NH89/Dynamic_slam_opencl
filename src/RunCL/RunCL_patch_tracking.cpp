@@ -31,6 +31,12 @@ void RunCL::precomp_param_maps ( float SE3_k2k[  max_mipmap_layers*num_SE3_DoF*1
 																																			}
 }
 
+void RunCL::update_tracking_depthmap(cl_mem depthmap_){
+	string fname = "RunCL::update_tracking_depthmap(cl_mem depthmap_)";
+
+	_clEnqueueCopyBuffer( m_queue, depthmap_, depth_mem, 0, 0, mm_size_bytes_C1, fname);
+}
+
 
 void RunCL::update_k2k_buf( float k2k_array[16],		float pose_arry[16] ) {
 	string fname = "RunCL::update_k2k_buf( ..)";

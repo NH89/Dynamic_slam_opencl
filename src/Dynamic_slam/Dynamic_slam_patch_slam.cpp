@@ -256,8 +256,9 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 																																		//cout <<"\nDynamic_slam::estimate_SLAM() chk_0.5  SE3_start_layer="<<SE3_start_layer<<",  SE3_stop_layer="<<SE3_stop_layer<<flush;
 																																			// "SE3_start_layer":4,
 																																			// "SE3_stop_layer":1,
-	for (int	layer = 4 /*runcl.mm_stop-2*//*SE3_start_layer*/; layer>=4 /*runcl.mm_stop-3*/ /*SE3_stop_layer*/;	layer--){														// NB when uint passes zero it becomes UINT_MAX
-																																		cout << "\nDynamic_slam::estimate_SLAM() chk_0.6  layer="<<layer<<flush;
+	//for (int	layer = 4 /*runcl.mm_stop-2*//*SE3_start_layer*/; layer>=4 /*runcl.mm_stop-3*/ /*SE3_stop_layer*/;	layer--){														// NB when uint passes zero it becomes UINT_MAX
+		int	layer = 5;																													cout << "\nDynamic_slam::estimate_SLAM() chk_0.6  layer="<<layer<<flush;
+
 		count[1]  = layer;
 		runcl._clEnqueueFillBuffer(  runcl.uload_queue,  runcl.pose_update_buf,  &zero,  sizeof( float),  0,  6*sizeof(float),  fname  );// pose_update_buf zeroed for new layer, because old Rho not valid for comparison.
 
@@ -274,17 +275,18 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 				}
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_2: ,  ###########################"<<flush;
 				runcl.rho_sq( out_block_size, iter, (uint)layer	);
-				//runcl.ReadOutput( (uchar*)ptr, runcl.K_buf, sizeof(float)*16, 0 );
-				//PRINT_FLOAT_16(k_buf_arr, )
+
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_3: ,  ###########################"<<flush;
 				runcl.reduce_patch_Rho ( out_block_size, iter, (uint)layer );
-				//runcl.ReadOutput( (uchar*)ptr, runcl.K_buf, sizeof(float)*16, 0 );
-				//PRINT_FLOAT_16(k_buf_arr, )
-				runcl.update_k2k_cpu( 	(uint)layer,	deltas_matx[layer],	frame_data.back().frame_data_GT.prev_pose2pose );				// frame_data_GT.keyframe2pose for comparision only.
+
+
+				layer = runcl.update_k2k_cpu( 	(uint)layer,	deltas_matx[layer],	frame_data.back().frame_data_GT.prev_pose2pose );				// frame_data_GT.keyframe2pose for comparision only.
+				if(layer==-1)break;
+				count[1]  = layer;
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_4: ,  ###########################"<<flush;
 				//runcl.update_k2k(  		(uint)layer, delta_theta, delta, frame_data.back().frame_data_GT.keyframe2pose );
 																																		cout << "\nDynamic_slam::estimate_SLAM() chk_5: ,  ##############################################################"<<endl<<flush;
 			}
 		//}
-	}
+	//}
 }

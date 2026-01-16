@@ -140,7 +140,7 @@ class Dynamic_slam
     void ParsimonyCostFns();
     void ExhaustiveSearch();
 
-    /////////////////////////////////////// Dynamic_slam_grount_truth.cpp
+    /////////////////////////////////////// Dynamic_slam_ground_truth.cpp
     void getFrameData_vec();
     void set_artif_pose_error();
     void use_GT_pose_vec();

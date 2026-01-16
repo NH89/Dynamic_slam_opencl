@@ -252,7 +252,7 @@ public:
 	int 				mm_Image_type;					//	
 
 	int 				dataset_frame_num		= 0;	//	Frame number in dataset, set in constructor from json file. Incremented in Dynamic_slam::nextFrame.
-
+	float				old_sum_rho_sq			= FLT_MAX-1;
 	cv::Size 			baseImage_size, mm_Image_size;
 	std::map< std::string, std::filesystem::path > paths;
 
@@ -322,6 +322,7 @@ public:
 	////////////////////////////////////// RunCL_load_image.cpp
 
 	void precomp_param_maps (float SE3_k2k[max_mipmap_layers*num_SE3_DoF*16]);																						// Image loading & preparation
+	void update_tracking_depthmap(cl_mem depthmap_);
 	void loadFrame(cv::Mat image);
 	void cvt_color_space();
 	void sum_image_variance();
@@ -378,7 +379,7 @@ public:
 	// 1st gen,  Patch based kernels /////////////////////////////
 	void rho_sq( uint out_block_size, uint iter, uint layer);
 	void reduce_patch_Rho ( uint out_block_size, uint iter, uint layer );
-	void update_k2k_cpu( uint layer, Matx16f deltas_matx, /*float delta_theta, float delta,*/ Matx44f GT_pose );
+	int  update_k2k_cpu( uint layer, Matx16f deltas_matx, /*float delta_theta, float delta,*/ Matx44f GT_pose );
 	void update_k2k( uint layer, float delta_theta, float delta, Matx44f GT_pose );
 
 

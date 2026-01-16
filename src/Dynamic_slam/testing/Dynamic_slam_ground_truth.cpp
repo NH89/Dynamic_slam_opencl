@@ -46,6 +46,13 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 																																			for(int i=0; i<5; i++){	cout<<"\ni="<<i<<"  ";
 																																					PRINT_MATX44F(	runcl.current_frames[ runcl.current_frames_idx[i] ].pose_gt,   );
 																																			}
+
+	int r 									= runcl.baseImage.rows;
+	int c 									= runcl.baseImage.cols;
+	depth_GT 								= loadDepthAhanda(obj, depth[runcl.dataset_frame_num].string(), r,c,cameraMatrix);
+
+	runcl.load_GT_depth(depth_GT, invert_GT_depth);
+
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec Finished ######################################"<<flush;
 }
 

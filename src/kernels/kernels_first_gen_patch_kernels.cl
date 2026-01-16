@@ -102,6 +102,8 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	float4 old_px;
 	bool   intersection;
 
+	if (global_id_u < 1 /*num_past_frames*/){printf("\n__kernel void Rho_sq()  layer = %d,  read_index=%d,  read_index/mm_cols=%f ",
+																				layer,		read_index,  	(float)read_index/(float)mm_cols	);	}
 
 	local_rho[lid]									= zero_f2;
 	for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
