@@ -57,6 +57,8 @@ class Dynamic_slam
 	float delta_depth[max_mipmap_layers];	//= f*2.0f / ( min_depth * fmaxf(  obj["cameraMatrix"][2].asFloat(),	obj["cameraMatrix"][5].asFloat() )  );
 	Matx16f deltas_matx[max_mipmap_layers];	// used to multiply SE3 update results.
 
+
+
     struct pose_datum{      // default intitialization, if instatiated with " ... = {}; "
       cv::Matx16f           keyframe2pose_algebra   = {0} ;
 

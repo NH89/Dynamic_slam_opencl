@@ -767,8 +767,6 @@ void RunCL::allocatemem(){
 	status = clEnqueueWriteBuffer(uload_queue, basemem, 		CL_FALSE, 0, image_size_bytes, 	baseImage.data, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.6\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 																																		if(verbosity>local_verbosity_threshold) cout <<"\n\nRunCL::allocatemem_chk4.2\n\n" << flush;
 	float depth = 1/( obj["max_depth"].asFloat() - (obj["min_depth"].asFloat() / 2)  );
-	float zero  = 0;
-	float one   = 1;
 	float default_depth = fp32_params[MAX_INV_DEPTH] / 2.0f;
 
 	status = clEnqueueFillBuffer(uload_queue, depth_mem, 			&depth, 		sizeof(float),   0, mm_size_bytes_C1,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.6\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);

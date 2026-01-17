@@ -219,74 +219,96 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 																																			cout << "\fDynamic_slam::estimate_SLAM() chk_0"
 																																			<<"  ##############################################################"<< flush;
 																																		}
-	float zero		= 0;
-	float count[4];
-	count[2]		= obj["SE_factor"].asFloat();
-	count[3]		= 0;
+	constexpr float zero		= 0;
+	int		layer 				= SE3_start_layer;																							cout << "\nDynamic_slam::estimate_SLAM() chk_0.6  layer="<<layer<<flush;
+	float 	count[4]			= {0};
+	count[1]					= layer;
 
-	float k_buf_arr[16];
-	void * ptr		= k_buf_arr;
-	runcl.ReadOutput( (uchar*)ptr, runcl.K_buf, sizeof(float)*16, 0 );
-	PRINT_FLOAT_16(k_buf_arr, )
-////debug
-	/*
-		cout<<"\n\n##Dynamic_slam::estimateSLAM() debug#########################################################################################\n\n"<<flush;
-	for (int layer=0; layer<runcl.mm_stop; layer++){
-		cout<<"\n## debug ######  layer="<<layer<<",  inv_H =\n"<<runcl.current_frames[ runcl.current_frames_idx[0] ].invHessian[layer] <<flush;
-	}
+	float 	k_buf_arr[16];
+	runcl.ReadOutput( (uchar*)k_buf_arr, runcl.K_buf, sizeof(float)*16, 0 );																PRINT_FLOAT_16(k_buf_arr, )
+	runcl._clEnqueueFillBuffer(  runcl.uload_queue,  runcl.pose_update_buf,  &zero,  sizeof( float),  0,  6*sizeof(float),  fname  );		// pose_update_buf zeroed for new layer, because old Rho not valid for comparison.
 
-	for (int layer=0; layer<runcl.mm_stop; layer++){
-		uint iter=0;
+	uint out_block_size = 4;
+	float	old_sum_rho_sq			= FLT_MAX-1;
+																																			//for (uint out_block_size = 4/*32*/; out_block_size > 2; out_block_size /=2){
+	for (uint iter = 0; iter<SE_iter; iter++){
+		count[0]  = iter;
+																																		cout << "\nDynamic_slam::estimate_SLAM() chk_1: layer="<<layer<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
+		{
+			uint	out_block_size		= 2;
+			uint	layer				= 0;
+			runcl.rho_sq( out_block_size, iter, layer	);																		// For debugging, get a larger, finer Rho map
+		}
+																																		cout << "\nDynamic_slam::estimate_SLAM() chk_2: ,  ###########################"<<flush;
 		runcl.rho_sq( out_block_size, iter, (uint)layer	);
+																																		cout << "\nDynamic_slam::estimate_SLAM() chk_3: ,  ###########################"<<flush;
 		runcl.reduce_patch_Rho ( out_block_size, iter, (uint)layer );
 
-		cl_float2	Rho =	{{0}};	runcl.ReadOutput( 	(uchar*)&Rho,			runcl.SE3_rho_map_mem, 	sizeof(cl_float2),		32*sizeof(cl_float2)	);
-
-		float	SE3_incr_arry[6*2];	runcl.ReadOutput(	(uchar*)SE3_incr_arry,	runcl.SE3_incr_map_mem,	6*sizeof(cl_float2),	32*sizeof(cl_float2)	);
-
-		cout<<"\n## debug ######  layer="<<layer<<flush;
-		cout<<"\nRho = "<<Rho.x <<",  "<<Rho.y <<flush;
-		cout<<",   SE3_incr_arry[]= (";
-		for(int i=0; i<6*2; i++) cout << ", "<< SE3_incr_arry[i];
-		cout<<" ) "<<endl<<flush;
-	}
-	cout<<"\n\n##Dynamic_slam::estimateSLAM() end debug#########################################################################################\n\n"<<flush;
-	*/
-////end debug
-																																		//cout <<"\nDynamic_slam::estimate_SLAM() chk_0.5  SE3_start_layer="<<SE3_start_layer<<",  SE3_stop_layer="<<SE3_stop_layer<<flush;
-																																			// "SE3_start_layer":4,
-																																			// "SE3_stop_layer":1,
-	//for (int	layer = 4 /*runcl.mm_stop-2*//*SE3_start_layer*/; layer>=4 /*runcl.mm_stop-3*/ /*SE3_stop_layer*/;	layer--){														// NB when uint passes zero it becomes UINT_MAX
-		int	layer = 5;																													cout << "\nDynamic_slam::estimate_SLAM() chk_0.6  layer="<<layer<<flush;
-
-		count[1]  = layer;
-		runcl._clEnqueueFillBuffer(  runcl.uload_queue,  runcl.pose_update_buf,  &zero,  sizeof( float),  0,  6*sizeof(float),  fname  );// pose_update_buf zeroed for new layer, because old Rho not valid for comparison.
-
-		//for (uint out_block_size = 4/*32*/; out_block_size > 2; out_block_size /=2){
-		uint out_block_size = 4;
-																																		//cout << "\nDynamic_slam::estimate_SLAM() chk_0.7  out_block_size="<<out_block_size <<flush;
-			for (uint iter = 0; iter<SE_iter; iter++){
-				count[0]  = iter;
-																																		cout << "\nDynamic_slam::estimate_SLAM() chk_1: layer="<<layer<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
-				{
-					uint	out_block_size		= 2;
-					uint	layer				= 0;
-					runcl.rho_sq( out_block_size, iter, layer	);																		// For debugging, get a larger, finer Rho map
-				}
-																																		cout << "\nDynamic_slam::estimate_SLAM() chk_2: ,  ###########################"<<flush;
-				runcl.rho_sq( out_block_size, iter, (uint)layer	);
-
-																																		cout << "\nDynamic_slam::estimate_SLAM() chk_3: ,  ###########################"<<flush;
-				runcl.reduce_patch_Rho ( out_block_size, iter, (uint)layer );
-
-
-				layer = runcl.update_k2k_cpu( 	(uint)layer,	deltas_matx[layer],	frame_data.back().frame_data_GT.prev_pose2pose );				// frame_data_GT.keyframe2pose for comparision only.
-				if(layer==-1)break;
-				count[1]  = layer;
-																																		cout << "\nDynamic_slam::estimate_SLAM() chk_4: ,  ###########################"<<flush;
-				//runcl.update_k2k(  		(uint)layer, delta_theta, delta, frame_data.back().frame_data_GT.keyframe2pose );
-																																		cout << "\nDynamic_slam::estimate_SLAM() chk_5: ,  ##############################################################"<<endl<<flush;
+		runcl.update_k2k_cpu( 	(uint)layer );				// frame_data_GT.keyframe2pose for comparision only.
+																																		cout<<"\nSE3_incr_arry[]= (";
+																																		for(int i=0; i<6*2; i++) cout << ", "<< runcl.se3_rho_result.SE3_incr_arry[i];
+																																		cout<<" ) "<<endl<<flush;
+		float		sum_rho		=	runcl.se3_rho_result.Rho.x;		// currently .x colour channel only.
+		float		sum_rho_sq	=	runcl.se3_rho_result.Rho.y;
+		if(sum_rho_sq > old_sum_rho_sq || isnan(sum_rho_sq)    ){
+			/* python
+					// 	if (SSD > old_SSD or np.isnan(SSD) ):
+					// 		if (SSD > old_SSD ):
+					// 			print("\n SSD > old_SSD = {0:.4} #___________________ ".format( old_SSD) )
+					// 		else:
+					// 			print("\n isnan(SSD) ")
+					// 			break
+					// 		if (pyr_level <1) :
+					// 			break
+					//	#factor                  = factor * 0.9
+					//	pyr_level              = pyr_level -1
+					//	print(" factor = {0} ".format(factor) )
+					//	print(" pyr_level = {0} ".format(pyr_level) )
+					//	current_pose            = old_pose
+					//	SSD                     = np.finfo('float32').max -10
+			*/
+			if(sum_rho_sq > old_sum_rho_sq){
+				cout << "\nsum_rho_sq > old_sum_rho_sq = "<< old_sum_rho_sq <<flush;
+				layer --;
+			}else{
+				cout << "\nisnan(sum_rho_sq)" <<flush;
+				layer = -1;
 			}
-		//}
-	//}
+			cout << "\nlayer = "	<< layer <<flush;
+			Matx44f		pose		=			runcl.ReadOutput_44f( 					runcl.pose_buf );														PRINT_MATX44F( pose,	from pose_buf );	PRINT_MATX16F( PToLie(pose),);
+			old_sum_rho_sq			= FLT_MAX-1;
+
+		}else{
+			old_sum_rho_sq			=	sum_rho_sq;
+			float		num_pixels	=	runcl.se3_rho_result.SE3_incr_arry[1];																		// TODO move numpixels to SE3_incr.w   & reduce SE3_incr_map_mem from float8 tro float4
+			Matx16f		SE3_incr;	for (int i=0;	i<6; i++){	SE3_incr.operator()(i)	=	runcl.se3_rho_result.SE3_incr_arry[i*2];  };
+																																		if( verbosity>local_verbosity_threshold ){
+																																			cout << "\nDynamic_slam::estimate_SLAM() chk_4: ,  ###########################"<<
+																																			"\n sum_rho = "			<< sum_rho		<<
+																																			",	sum_rho_sq	= "		<< sum_rho_sq	<<
+																																			",	num_pixels = "		<< num_pixels	<< endl<<flush;
+																																			PRINT_MATX16F( SE3_incr, );
+																																		}
+			Matx44f		pose		=			runcl.ReadOutput_44f( 					runcl.pose_buf );									PRINT_MATX44F( pose,	from pose_buf );	PRINT_MATX16F( PToLie(pose),);
+			Matx44f		invK		=			runcl.ReadOutput_44f(					runcl.inv_K_buf);									PRINT_MATX44F( invK,	);
+			Matx44f		K			=			runcl.ReadOutput_44f(					runcl.K_buf	 );										PRINT_MATX44F( K,		);
+																																			PRINT_MATX44F( K * invK,		);
+																																			PRINT_MATX44F( invK * K,		);
+
+			Matx66f	invH				=	runcl.current_frames[ runcl.current_frames_idx[0] ].invHessian[layer];	PRINT_MATX66F( invH, );
+
+			Matx16f pose_update_cpu		= SE3_incr * invH;																					PRINT_MATX16F( pose_update_cpu, );
+			pose_update_cpu				= (-1.0f) *  pose_update_cpu.mul( deltas_matx[layer]);												PRINT_MATX16F( deltas_matx[layer], );				PRINT_MATX16F( pose_update_cpu, );
+																																			PRINT_MATX16F( PToLie( LieToP_Matx(pose_update_cpu).inv() ), );
+			Matx44f newPose				= LieToP_Matx( pose_update_cpu )  *  pose;															PRINT_MATX44F( newPose,	);							PRINT_MATX16F( PToLie( newPose ), );
+			Matx44f newK2K				= K  *  newPose  * invK ;																			PRINT_MATX44F( newK2K,			);
+																																			Matx44f	pose_old	= runcl.ReadOutput_44f( runcl.pose_buf );	PRINT_MATX44F( pose_old, );
+																																			Matx44f	k2k_old		= runcl.ReadOutput_44f( runcl.k2kbuf);		PRINT_MATX44F( k2k_old,	);
+			runcl.update_k2k_buf(				newK2K,		newPose);
+																																			Matx44f	pose_now	= runcl.ReadOutput_44f( runcl.pose_buf );	PRINT_MATX44F( pose_now, );
+																																			Matx44f	k2k_now		= runcl.ReadOutput_44f( runcl.k2kbuf);		PRINT_MATX44F( k2k_now,	);
+			if(layer==-1)break;
+			count[1]  = layer;
+		}																																cout << "\nDynamic_slam::estimate_SLAM() loop finished  ###########################"<<flush;
+	}																																	cout << "\nDynamic_slam::estimate_SLAM() finished  ###########################"<<flush;
 }

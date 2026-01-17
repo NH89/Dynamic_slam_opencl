@@ -277,7 +277,6 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 
 	runcl.current_frames[	runcl.current_frames_idx[0] ].frame_num		=	runcl.dataset_frame_num;
 
-	float zero  = 0;
 	cl_int 			status;
 	cl_event 		writeEvt;
 	status = clEnqueueFillBuffer(runcl.uload_queue, runcl.SE3_hessian_pinv_map_mem, &zero, 	sizeof(float), 	0, runcl.mm_size_bytes_C4, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << runcl.checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;runcl.exit_(status);}	clFlush(runcl.uload_queue); status = clFinish(runcl.uload_queue);
@@ -293,7 +292,14 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 																																			// # Get 1st & 2nd order image gradients of MipMap
 																																			// see CostVol::cacheGValues(), RunCL::cacheGValue2 & __kernel void CacheG3
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::getFrame_chk 2  Finished "
-																																				<<"###########################################################################\n" << flush;}
+																																				<<"###########################################################################\n" << flush;
+
+																																				for(int layer=0; layer<max_mipmap_layers; layer++){
+																																					Matx66f	invH	=	runcl.current_frames[ runcl.current_frames_idx[0] ].invHessian[layer];
+																																					cout<<"\nlayer = "<<layer<<"  ";
+																																					PRINT_MATX66F( invH, );
+																																				}
+																																			}
 }
 
 

@@ -56,6 +56,7 @@ constexpr uint num_past_frames				= NUM_PAST_FRAMES;						// 1,2,4,8,16,32,64 //
 static constexpr uint max_patches_per_layer = 2^max_mipmap_layers * 2^max_mipmap_layers; //
 
 #define FLOAT_16_EYE 	{1.0f, 0.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f, 0.0f,		0.0f, 0.0f, 1.0f, 0.0f,		0.0f, 0.0f, 0.0f, 1.0f}
+constexpr float zero						= 0;
 
 using namespace std;
 class RunCL
@@ -88,6 +89,8 @@ public:
 	static const uint 	num_current_frames	= 5;																												// static = same for all instances of class Dynamic_slam.
 	cl_mem 				imgmem[num_current_frames], 	velmap[num_current_frames], 	depth_mem, 	g1mem;
 	/////////////////////////////
+
+
 	struct frame{
 		int 			frame_num		= 0;
 		uint			frame_data_index= 0;				// Index of this frame in the recycled arrays of cl_mem buffers above: imgmem[], 	velmap[]
@@ -252,7 +255,7 @@ public:
 	int 				mm_Image_type;					//	
 
 	int 				dataset_frame_num		= 0;	//	Frame number in dataset, set in constructor from json file. Incremented in Dynamic_slam::nextFrame.
-	float				old_sum_rho_sq			= FLT_MAX-1;
+
 	cv::Size 			baseImage_size, mm_Image_size;
 	std::map< std::string, std::filesystem::path > paths;
 
@@ -379,7 +382,14 @@ public:
 	// 1st gen,  Patch based kernels /////////////////////////////
 	void rho_sq( uint out_block_size, uint iter, uint layer);
 	void reduce_patch_Rho ( uint out_block_size, uint iter, uint layer );
-	int  update_k2k_cpu( uint layer, Matx16f deltas_matx, /*float delta_theta, float delta,*/ Matx44f GT_pose );
+
+	struct rho_result{
+      cl_float2	Rho					= {{0}};
+      float		SE3_incr_arry[6*2]	= {0};
+      float		Hessian[6*6]		= {0};
+    } se3_rho_result;
+
+	void update_k2k_cpu( uint layer );
 	void update_k2k( uint layer, float delta_theta, float delta, Matx44f GT_pose );
 
 

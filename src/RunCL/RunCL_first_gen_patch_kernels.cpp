@@ -38,7 +38,6 @@ void RunCL::rho_sq( uint out_block_size, uint iter, uint layer  ){	// To be laun
 																																					PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].k2k_0to1_est,	);
 																																				}
 																																			}
-	const float zero  = 0;
 	//_clEnqueueWriteBuffer( uload_queue, k2kbuf, CL_FALSE, 0, /*local_num_samples**/16*sizeof( float), identity_flt16 /*k2k_3_16_[start_sample_idx]*/, fname); // TODO  temporary debug, sets k2k to identity.
 
 	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, 	&zero, sizeof( float), 0, 			  2*mm_size_bytes_C1, 	fname);				//_clEnqueueWriteBuffer( uload_queue, k2kbuf, CL_FALSE, 0, local_num_samples*16*sizeof( float), k2k_3_16_[start_sample_idx], fname);
@@ -299,91 +298,24 @@ void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer )					
 }
 
 
-int RunCL::update_k2k_cpu( uint layer, Matx16f deltas_matx,  Matx44f GT_pose ){ /* float delta_theta, float delta,*/
-	string		fname						= "RunCL::update_k2k_cpu(..)";
-	int			local_verbosity_threshold	= V_RUNCL_UPDATE_K2K;
-																																	if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k_cpu( ..)_chk_0 . ################################"<< flush;}
-																																					cout << "\nlayer = "	<< layer 	<<endl<<flush;
-	Matx44f	current_frame_pose_gt	=	current_frames[ current_frames_idx[0] ].pose_gt;												PRINT_MATX44F( current_frame_pose_gt, );
-	Matx44f	previous_frame_pose_gt	=	current_frames[ current_frames_idx[1] ].pose_gt;												PRINT_MATX44F( previous_frame_pose_gt, );
+void RunCL::update_k2k_cpu( uint layer ){
+	constexpr int		local_verbosity_threshold	= V_RUNCL_UPDATE_K2K;
+																																	if( verbosity>local_verbosity_threshold) { cout<<"\n\nRunCL::update_k2k_cpu( ..)_chk_0 . ################################"<< flush;
+																																		cout << "\nlayer = "	<< layer 	<<endl<<flush;
+																																		Matx44f	current_frame_pose_gt	=	current_frames[ current_frames_idx[0] ].pose_gt;			PRINT_MATX44F( current_frame_pose_gt, );
+																																		Matx44f	previous_frame_pose_gt	=	current_frames[ current_frames_idx[1] ].pose_gt;			PRINT_MATX44F( previous_frame_pose_gt, );
 
-	Matx44f pose_update_gt			=	previous_frame_pose_gt	*	current_frame_pose_gt.inv();										PRINT_MATX44F( pose_update_gt, );
-	Matx16f pose_update_gt_algebra	=	PToLie(pose_update_gt);																			PRINT_MATX16F( pose_update_gt_algebra, );
-	Matx66f	invH					=	current_frames[ current_frames_idx[0] ].invHessian[layer];										PRINT_MATX66F( invH, );
+																																		Matx44f pose_gt					=	previous_frame_pose_gt	*	current_frame_pose_gt.inv();	PRINT_MATX44F( pose_gt, );
+																																		Matx16f pose_gt_algebra			=	PToLie( pose_gt );											PRINT_MATX16F( pose_gt_algebra, );
 
-	cl_float2	Rho 		=	{{0}};	ReadOutput( 		(uchar*)&Rho,				SE3_rho_map_mem, 	sizeof(cl_float2),		32*sizeof(cl_float2)	);
-	float		SE3_incr_arry[6*2];		ReadOutput(			(uchar*)SE3_incr_arry,		SE3_incr_map_mem,	6*sizeof(cl_float2),	32*sizeof(cl_float2)	);
-																																						cout<<"\nSE3_incr_arry[]= (";
-																																						for(int i=0; i<6*2; i++) cout << ", "<< SE3_incr_arry[i];
-																																						cout<<" ) "<<endl<<flush;
-	float		sum_rho		=	Rho.x;		// currently .x colour channel only.
-	float		sum_rho_sq	=	Rho.y;
-	if(sum_rho_sq > old_sum_rho_sq || isnan(sum_rho_sq)    ){
-					/* python
-					// 	if (SSD > old_SSD or np.isnan(SSD) ):
-					// 		if (SSD > old_SSD ):
-					// 			print("\n SSD > old_SSD = {0:.4} #___________________ ".format( old_SSD) )
-					// 		else:
-					// 			print("\n isnan(SSD) ")
-					// 			break
-					// 		if (pyr_level <1) :
-					// 			break
-					//	#factor                  = factor * 0.9
-					//	pyr_level              = pyr_level -1
-					//	print(" factor = {0} ".format(factor) )
-					//	print(" pyr_level = {0} ".format(pyr_level) )
-					//	current_pose            = old_pose
-					//	SSD                     = np.finfo('float32').max -10
-					*/
-		if(sum_rho_sq > old_sum_rho_sq){
-			cout << "\nsum_rho_sq > old_sum_rho_sq = "<< old_sum_rho_sq <<flush;
-			layer --;
-		}else{
-			cout << "\nisnan(sum_rho_sq)" <<flush;
-			layer = -1;
-		}
-		cout << "\nlayer = "<< layer <<flush;
-		Matx44f		pose		=			ReadOutput_44f( 					pose_buf );														PRINT_MATX44F( pose,	from pose_buf );	PRINT_MATX16F( PToLie(pose),);
-		old_sum_rho_sq	= FLT_MAX-1;
+																																		Matx44f	pose					=	ReadOutput_44f( 					pose_buf );				PRINT_MATX44F( pose,	from pose_buf );	PRINT_MATX16F( PToLie(pose),);
+																																		Matx44f pose_update_gt			=	pose.inv() * pose_gt;										PRINT_MATX44F( pose_update_gt, );			PRINT_MATX16F( PToLie(pose_update_gt),);
 
-	}else{
-		old_sum_rho_sq			=	sum_rho_sq;
-		float		num_pixels	=	SE3_incr_arry[1];																		// TODO move numpixels to SE3_incr.w   & reduce SE3_incr_map_mem from float8 tro float4
-		Matx16f		SE3_incr;	for (int i=0;	i<6; i++){	SE3_incr.operator()(i)	=	SE3_incr_arry[i*2];  };
-																																			if( verbosity>local_verbosity_threshold ){cout<<"\n\nRunCL::update_k2k_cpu( ..)_chk_1"<<
-																																				"\n sum_rho = "			<< sum_rho		<<
-																																				",	sum_rho_sq	= "		<< sum_rho_sq	<<
-																																				",	num_pixels = "		<< num_pixels	<< endl<<flush;
-																																				PRINT_MATX16F( SE3_incr, );
-																																			}
-		Matx44f		pose		=			ReadOutput_44f( 					pose_buf );															PRINT_MATX44F( pose,	from pose_buf );	PRINT_MATX16F( PToLie(pose),);
-		Matx44f		invK		=			ReadOutput_44f(						inv_K_buf);															PRINT_MATX44F( invK,	);
-		Matx44f		K			=			ReadOutput_44f(						K_buf	 );															PRINT_MATX44F( K,		);
-																																					PRINT_MATX44F( K * invK,		);
-																																					PRINT_MATX44F( invK * K,		);
 
-		Matx16f pose_update_cpu		= SE3_incr * invH;																								PRINT_MATX16F( pose_update_cpu, );
-		pose_update_cpu				= (-10.0f) *  pose_update_cpu.mul( deltas_matx);																PRINT_MATX16F( deltas_matx, );			PRINT_MATX16F( pose_update_cpu, );
-																																					PRINT_MATX16F( PToLie( LieToP_Matx(pose_update_cpu).inv() ), );
-		Matx44f newPose				= LieToP_Matx( pose_update_cpu )  *  pose;																		PRINT_MATX44F( newPose,	);				PRINT_MATX16F( PToLie( newPose ), );
-		Matx44f newK2K				= K  *  newPose  * invK ;																						PRINT_MATX44F( newK2K,			);
-																																		Matx44f	pose_old	= ReadOutput_44f( pose_buf );	PRINT_MATX44F( pose_old, );
-																																		Matx44f	k2k_old		= ReadOutput_44f(	k2kbuf);	PRINT_MATX44F( k2k_old,	);
-		update_k2k_buf(				newK2K,		newPose);
-																																		Matx44f	pose_now	= ReadOutput_44f( pose_buf );	PRINT_MATX44F( pose_now, );
-																																		Matx44f	k2k_now		= ReadOutput_44f(	k2kbuf);	PRINT_MATX44F( k2k_now,	);
-	}
-																																	if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k_cpu( ..)_chk_2 . ################################"<< flush;
-																																			// Matx44f pose_error						= pose	*	GT_pose.inv();	// correct, i.e. reproduces the artif error:  pose = poseStep * pose
-																																			// Matx16f pose_error_algebra				= PToLie(pose_error);
-																																			// PRINT_MATX16F( pose_error_algebra, );
-																																			//
-																																			// PRINT_MATX44F( GT_pose, );
-																																			// PRINT_MATX44F( pose, );
-																																			// PRINT_MATX44F( pose_error, );
-																																			// PRINT_MATX44F( newPose, );
-																																											  cout<<"\n\nRunCL::update_k2k_cpu( ..)_finished ###############################"<< flush;}
-	return layer;
+																																	}
+	ReadOutput( (uchar*)&se3_rho_result.Rho,				SE3_rho_map_mem, 	sizeof(cl_float2),		32*sizeof(cl_float2)	);
+	ReadOutput(	(uchar*)se3_rho_result.SE3_incr_arry,		SE3_incr_map_mem,	6*sizeof(cl_float2),	32*sizeof(cl_float2)	);
+																																	if( verbosity>local_verbosity_threshold) { cout<<"\n\nRunCL::update_k2k_cpu( ..)_finished ###############################"<< flush; }
 }
 
 
