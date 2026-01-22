@@ -693,7 +693,7 @@ void RunCL::SaveMat(cv::Mat temp_mat, int type_mat, std::filesystem::path folder
 		stringstream png_ss;
 		std::string  date_time_str = date_time_string();
 
-		ss		<<"/"<<folder_tiff.filename().string()<<"_"<<mat_name<<"_"<<count<<"__sum"<<sum<<"type_"<<type_string<<"min("<<minVal[0]<<","<<minVal[1]<<","<<minVal[2]<<")_max("<<maxVal[0]<<","<<maxVal[1]<<","<<maxVal[2]<<")";
+		ss		<<"/"<<folder_tiff.filename().string()<<"_"<<mat_name<<"_"<<count<<date_time_str<<"__sum"<<sum<<"type_"<<type_string<<"min("<<minVal[0]<<","<<minVal[1]<<","<<minVal[2]<<")_max("<<maxVal[0]<<","<<maxVal[1]<<","<<maxVal[2]<<")";
 		png_ss	<<"/"<<folder_tiff.filename().string()<<"_"<<mat_name<<"_"<<count<<date_time_str;
 
 		if(show){

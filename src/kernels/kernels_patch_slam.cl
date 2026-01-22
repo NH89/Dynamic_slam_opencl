@@ -152,7 +152,7 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 																																printf("\npixel 0, Jacobian[i%d]=%2.10f,   ",i, Jacobian[i].x);
 																															}
 			for (uint j=0; j<6; j++) {
-				Hessian_pinv_pvt_arr[row_in_block][i][j]= Jacobian[i] * Jacobian[j];	// Gauss-Newton approx H = J.transpose * J
+				Hessian_pinv_pvt_arr[row_in_block][i][j]= Jacobian[i] * Jacobian[j];	// Gauss-Newton approx H = J.transpose * J  // TODO compute and sum lower triangle only.
 				Hessian_pinv_pvt_arr[row_in_block][i][j].w =1.0f;
 																															if (lid==0 && row_in_block==0 && group_id==0 ){		// ### Debugging ###
 																																printf("   Hessian[i%d][j%d]=%2.10f,   ",i, j, Hessian_pinv_pvt_arr[row_in_block][i][j].x );
@@ -185,7 +185,7 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 			// First reduce the Jacobian, using the Hessian local memory.
 			if( !(fmod((float)lid,(step*2))==0) &&  (fmod((float)lid,step)==0)    ){																											// selects 2nd column, sends data
 				for (uint i=0; i<6; i++) {
-																						local_Hessian[		lid-step + i*local_size]			= Jacobian_pvt_arr[		block_row][i];
+																						local_Hessian[		lid-step + i*local_size]				= Jacobian_pvt_arr[		block_row][i];
 				}
 			}
 			barrier(CLK_LOCAL_MEM_FENCE );																																						// Using barrier as a semaphore, for local mem messages between threads. This minimizes local_mem req, while allowing 2 patch sizes in output, full & ST3 map at out_block_size.
@@ -201,7 +201,7 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 			if( !(fmod((float)lid,(step*2))==0) &&  (fmod((float)lid,step)==0)    ){																											// selects 2nd column, sends data
 				for (uint i=0; i<6; i++) {
 					for (uint j=0; j<6; j++) {
-																						local_Hessian[		lid-step + (i*6 + j)*local_size]	= Hessian_pinv_pvt_arr[	block_row ][i][j];		//+ se3_dim*block_size ];  TODO correct size and indexing of local_Hessiasn
+																						local_Hessian[		lid-step + (i*6 + j)*local_size]		= Hessian_pinv_pvt_arr[	block_row ][i][j];	//+ se3_dim*block_size ];  TODO correct size and indexing of local_Hessiasn
 					}
 				}
 			}

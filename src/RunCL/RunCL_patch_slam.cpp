@@ -361,7 +361,7 @@ void* param_value,
 size_t* param_value_size_ret);
 */
 
-																																cout<<"  chk_5 "<<flush;
+																																cout<<"\nRunCL::patch_img_gradients()_chk_5 "<<flush;
 	cl_event	ev;
 	cl_int		res, status;
 
@@ -398,6 +398,40 @@ size_t* param_value_size_ret);
 																																// }
 																																*/
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_finished #############################################################"<<flush;
+
+// #define MiM_PIXELS			0	// for mipmap_buf, 				when launching one kernel per layer. 	Updated for each layer.
+// #define MiM_READ_OFFSET		1	// for ths layer, 				start of image data
+// #define MiM_WRITE_OFFSET	2
+// #define MiM_READ_COLS		3	// cols without margins
+// #define MiM_WRITE_COLS		4
+// // #define MiM_GAUSSIAN_SIZE	5	// filter box size
+// #define MiM_READ_ROWS		6	// rows without margins
+// #define MiM_WRITE_ROWS		7
+																																	int offset	=	MipMap[layer*8 +  MiM_READ_OFFSET   ];
+																																	int rows	=	MipMap[layer*8 +  MiM_READ_ROWS   ];
+																																	int size_bytes	= rows * mm_width * 4*sizeof(float) ;
+
+																																	cv::Mat temp_mat = cv::Mat::zeros (rows, mm_width, CV_32FC4);
+																																	cout<<"\n chk 1, offset = "<<offset<<",  rows ="<<rows<<flush;
+
+																																	ReadOutput(temp_mat.data, SE3_grad_map_mem, size_bytes, offset*4*sizeof(float)   );// , 0/*offset*/	// read 1st elem of Jacobian to verify kernel summation.
+
+																																	// cout<<"\n chk 2"<<flush;
+																																	// cv::imshow( "SE3_grad_map_mem", temp_mat);
+																																	// cv::waitKey(-1);
+
+																																	cout<<"\n chk 3"<<flush;
+																																	cl_float4 sum = {{0.0f}};
+
+																																	for(int row=0; row<temp_mat.rows; row++){
+																																		for(int col=0; col<temp_mat.cols; col++){
+																																			sum.w += temp_mat.at<cl_float4>(row,col).w;
+																																			sum.x += temp_mat.at<cl_float4>(row,col).x;
+																																			sum.y += temp_mat.at<cl_float4>(row,col).y;
+																																			sum.z += temp_mat.at<cl_float4>(row,col).z;
+																																		}
+																																	}
+																																	cout<<"\n\n##### layer = "<<layer<<", SE3_grad_map_mem sum = "<<sum.w<<", "<<sum.x<<", "<<sum.y<<", "<<sum.z<<endl<<endl<<flush;
 																																}
 }
 
@@ -452,7 +486,7 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 
 	for(int row=0; row<1; row++){																									// per_pixel division currently done in kernel, TODO which is better ?
 		for(int col=0; col<num_SE3_DoF; col++){
-			Jacobian.operator()(row,col)	= J.at<cl_float4>( row,col ).x / J.at<cl_float4>( row,col ).w;						// NB choose colour channel of Hessian
+			Jacobian.operator()(row,col)	= J.at<cl_float4>( row,col ).x; // / J.at<cl_float4>( row,col ).w;						// NB choose colour channel of Hessian
 		}
 	}
 /*
@@ -487,8 +521,7 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 		}
 	}
 	current_frames[ current_frames_idx[0] ].invHessian[layer]		= pinv_H;
-
-
+/*
 	//  Eigen matrix inverse ////////////////////////////////////////////////
 	typedef Eigen::Matrix<double,3,3> 		Matrix3x3;
 	Matrix3x3	m = Matrix3x3::Random();
@@ -497,7 +530,7 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 	A <<1,2,3,4,5,6,7,8,9;
 
 	Eigen::FullPivLU<Eigen::Matrix3f>		lu(  A  ) ;
-
+*/
 	////Prove inv = pinv when invertible. NB pinv is numerically safer.
 	typedef Eigen::Matrix<double,6,6> Matrix6x6d;
 	Matrix6x6d GN_H2;
@@ -527,6 +560,20 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 																																	// NB the tiff file holda the int32 values as float32. This is okay because they fit in the mantissa.
 																																	// BGRA format, B=u, G=v, R=read_index, A=alpha.
 																																	////////////////
+																																	// cv::Mat temp_mat = cv::Mat::zeros (mm_height, mm_width, CV_32FC4);
+																																	// ReadOutput(temp_mat.data, SE3_grad_map_mem, mm_size_bytes_C4);// , 0/*offset*/	// read 1st elem of Jacobian to verify kernel summation.
+																																	// cl_float4 sum = {{0.0f}};
+                                 //
+																																	// for(int row=0; row<temp_mat.rows; row++){
+																																	// 	for(int col=0; col<temp_mat.cols; col++){
+																																	// 		sum.w += temp_mat.at<cl_float4>(row,col).w;
+																																	// 		sum.x += temp_mat.at<cl_float4>(row,col).x;
+																																	// 		sum.y += temp_mat.at<cl_float4>(row,col).y;
+																																	// 		sum.z += temp_mat.at<cl_float4>(row,col).z;
+																																	// 	}
+																																	// }
+																																	// cout<<"\n\n##### SE3_grad_map_mem sum.x = "<<sum.w<<", "<<sum.x<<", "<<sum.y<<", "<<sum.z<<endl<<endl<<flush;
+
 																																	if( layer==0){
 																																		stringstream 	ss_path;
 																																		ss_path.str(std::string()); // reset ss_path

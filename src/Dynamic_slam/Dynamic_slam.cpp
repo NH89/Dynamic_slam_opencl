@@ -84,12 +84,12 @@ void Dynamic_slam::generate_deltas(){	// Principle : delta for each parameter ca
 	float min_depth					= obj["min_depth"].asFloat();
 
 	for (int layer=0; layer<max_mipmap_layers; layer++){
-
-		delta[layer]				= pow(2,layer) * min_depth/f;
-		delta_theta[layer]			= pow(2,layer) * 1/f;
+		float factor				= 1.0f; //pow(2,layer)
+		delta[layer]				= factor * min_depth/f;
+		delta_theta[layer]			= factor * 1/f;
 		cos_theta[layer]			= cos(delta_theta[layer]);
 		sin_theta[layer]			= sin(delta_theta[layer]);
-		delta_depth[layer]			= pow(2,layer) * 	f * 2.0f 	/ ( min_depth * 	fmaxf( 	frame_data.back().frame_data.K(0,2),	frame_data.back().frame_data.K(1,2)		)	);//(obj["cameraMatrix"][2].asFloat(),	obj["cameraMatrix"][5].asFloat() )  );	// NB [2]&[5] are image sensor size
+		delta_depth[layer]			= factor * 	f * 2.0f 	/ ( min_depth * 	fmaxf( 	frame_data.back().frame_data.K(0,2),	frame_data.back().frame_data.K(1,2)		)	);//(obj["cameraMatrix"][2].asFloat(),	obj["cameraMatrix"][5].asFloat() )  );	// NB [2]&[5] are image sensor size
 
 		deltas_matx[layer]			= { delta_theta[layer], delta_theta[layer], delta_theta[layer], delta[layer], delta[layer], delta[layer] };
 
@@ -279,7 +279,12 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 
 	cl_int 			status;
 	cl_event 		writeEvt;
-	status = clEnqueueFillBuffer(runcl.uload_queue, runcl.SE3_hessian_pinv_map_mem, &zero, 	sizeof(float), 	0, runcl.mm_size_bytes_C4, 	0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << runcl.checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;runcl.exit_(status);}	clFlush(runcl.uload_queue); status = clFinish(runcl.uload_queue);
+	status = clEnqueueFillBuffer(runcl.uload_queue, runcl.SE3_hessian_pinv_map_mem, &zero, 	sizeof(float), 	0, 2*runcl.mm_size_bytes_C4, 	0, NULL, &writeEvt);
+																												if (status != CL_SUCCESS)	{
+																													cout << "\nstatus = " << runcl.checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;
+																													runcl.exit_(status);
+																												}
+																												clFlush(runcl.uload_queue); status = clFinish(runcl.uload_queue);
 
 
 																																			cout<<"\nDynamic_slam::getFrame_chk 1:    runcl.mm_start = "<<runcl.mm_start

@@ -116,7 +116,7 @@ void RunCL::rho_sq( uint out_block_size, uint iter, uint layer  ){	// To be laun
 																																				cout<<"\ntracking_num_samples*2*mm_size_bytes_C4="	<<tracking_num_samples*2*mm_size_bytes_C4
 																																					<<"     24 * mm_size_bytes_C1="					<<24 * mm_size_bytes_C1
 																																					<< endl<<flush;
-																																			}
+																	 																		}
 	//input integers
 	_clSetKernelArg( kernel, 0, sizeof( uint),									&layer,	 												fname);		//__private		uint 		layer,					//0
 	_clSetKernelArg( kernel, 1, sizeof( uint),									&cols_per_row,											fname);		//__private		uint 		cols_per_row,			//1
