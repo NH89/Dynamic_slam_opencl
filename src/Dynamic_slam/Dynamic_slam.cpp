@@ -72,7 +72,7 @@ void Dynamic_slam::initialize_camera_intrinsic_matrix(){
 			 k.operator()(2,2) = 1.0;
 		}
 
-	initial_K = k;
+	initial_K = k;																																PRINT_MATX44F( initial_K ,  );
 }
 
 void Dynamic_slam::generate_deltas(){	// Principle : delta for each parameter causes maximum 1 pixel of warp in the full size image.
@@ -85,7 +85,7 @@ void Dynamic_slam::generate_deltas(){	// Principle : delta for each parameter ca
 
 	for (int layer=0; layer<max_mipmap_layers; layer++){
 		float factor				= 1.0f; //pow(2,layer)
-		delta[layer]				= factor * min_depth/f;
+		delta[layer]				= factor;// * min_depth/f;
 		delta_theta[layer]			= factor * 1/f;
 		cos_theta[layer]			= cos(delta_theta[layer]);
 		sin_theta[layer]			= sin(delta_theta[layer]);
@@ -113,6 +113,7 @@ void Dynamic_slam::initialize_camera_vec(){
 																																			if (verbosity>local_verbosity_threshold) { cout << "\fDynamic_slam::initialize_camera_vec_chk 0:" <<flush;
 																																				cout<<"\n frame_data.size() = "<<frame_data.size()<<flush;
 																																			}
+	initialize_camera_intrinsic_matrix();	// depends on runcl.baseImage
 	R 								= cv::Mat::eye(  3,3 , CV_32FC1);																			// intialize ground truth extrinsic data, NB Mat (int rows, int cols, int type)
 	T 								= cv::Mat::zeros(3,1 , CV_32FC1);
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 1:" <<flush;}
@@ -121,16 +122,16 @@ void Dynamic_slam::initialize_camera_vec(){
 																																			cout << "\n\n datum.keyframe_index = "<< datum.keyframe_index << flush;
 																																			PRINT_MATX44F( initial_K ,  );
 	datum.frame_data.K 				= initial_K;
-	cv::Matx44f inv_k				= generate_invK_( initial_K , verbosity);
+	cv::Matx44f inv_k				= generate_invK_( initial_K , verbosity);																PRINT_MATX44F( inv_k, initial_K ); PRINT_MATX44F( initial_K*inv_k, );
 	datum.frame_data.inv_K 			= inv_k;																								// Current frame must be set as the new keyframe.
 
 	frame_data.push_back( datum );																											// pushback a pose_datum, ready for getFrameData_vec() to write to.
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 2:" <<flush;
 																																				PRINT_MATX44F(frame_data.back().frame_data.prev_pose2pose,);  // gets corrupted by getFrameData_vec()
 																																			}
-	initialize_camera_intrinsic_matrix();	// depends on runcl.baseImage
 
-	if(GT_available==true){									getFrameData_vec();		}														// Sets frame_data.back().frame_data_GT
+
+	if(GT_available==true){									getFrameData_vec();		//}														// Sets frame_data.back().frame_data_GT
 																																			// We use orthographic matrix, then convert to perspectiveby dividing by depth.
 																																			// See notes in convertTransforms.cpp
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 3:" <<flush;
@@ -140,7 +141,7 @@ void Dynamic_slam::initialize_camera_vec(){
 																																				}
 																																				PRINT_MATX44F(frame_data.back().frame_data.prev_pose2pose,);
 																																			}
-	if(			 GT_available		 ==true){				getFrameData_vec();																// Sets frame_data.back().frame_data_GT
+	//if(			 GT_available		 ==true){				getFrameData_vec();																// Sets frame_data.back().frame_data_GT
 		if(		 use_artif_pose_error==true){				set_artif_pose_error();	}
 		else if( use_GT_pose		 ==true){				use_GT_pose_vec();		}
 	}

@@ -258,13 +258,13 @@ void RunCL::patch_img_gradients_set_params(){	// Uses patch lookup table		// cal
 																																if( verbosity>local_verbosity_threshold+1 ) {
 																																	cout<<"\nvoid RunCL::patch_img_gradients_set_params(  ):  mm_start="<<mm_start<<"   mm_stop="<<mm_stop<<flush;
 																																}
-	uint	hessian_layer_offset		=	5	+		mm_width;
+	uint	hessian_layer_offset		=	5	+		5*mm_width;
 	uint	st3_hessian_layer_offset	=	5	+		( 4+( MipMap[	 0*8 + MiM_READ_ROWS]		/block_size) )*mm_width   * (num_SE3_DoF + 1);
 
 	for (uint layer =0; layer<=mm_stop; layer++){																				// NB must match where the SE3 Hessian is written in SE3_hessian_map_mem.
 																																// i.e. 6x6 elems in img pyramid horizontally across the top of the buffer.
-		patch_hessian_cols[		layer]	= ceil( (float)		  MipMap[layer*8 + MiM_READ_COLS]		/block_size );
-		patch_hessian_rows[		layer]	= ceil( (float)		  MipMap[layer*8 + MiM_READ_ROWS]		/block_size );
+		patch_hessian_cols[		layer]	= ceil( ((float)		  MipMap[layer*8 + MiM_READ_COLS]	)	/block_size );
+		patch_hessian_rows[		layer]	= ceil( ((float)		  MipMap[layer*8 + MiM_READ_ROWS]	)	/block_size );
 
 		uint	hessian_elem_step		=				  4 + MipMap[layer*8 + MiM_READ_COLS]		/block_size;
 		uint	hessian_row_step		=				 (4 + MipMap[layer*8 + MiM_READ_ROWS]		/block_size )		*  mm_width;
@@ -293,6 +293,9 @@ void RunCL::patch_img_gradients_set_params(){	// Uses patch lookup table		// cal
 																																	<<",    st3_hessian_elem_step ="					<<st3_hessian_elem_step
 																																	<<",    st3_hessian_row_step ="						<<st3_hessian_row_step
 																																	<<",    out_block_size ="							<<out_block_size
+																																	// <<".\n    patch_hessian_cols[	"<<layer<<"]	= "		<<patch_hessian_cols[ layer]<<",    MipMap[layer*8 + MiM_READ_COLS] = "<<MipMap[layer*8 + MiM_READ_COLS]
+																																	// <<",\n    patch_hessian_rows[	"<<layer<<"]	= "		<<patch_hessian_rows[ layer]<<",    MipMap[layer*8 + MiM_READ_ROWS] = "<<MipMap[layer*8 + MiM_READ_ROWS]
+																																	// <<",\n    block_size = "								<<block_size
 																																	<<flush;
 
 
@@ -421,17 +424,25 @@ size_t* param_value_size_ret);
 																																	// cv::waitKey(-1);
 
 																																	cout<<"\n chk 3"<<flush;
-																																	cl_float4 sum = {{0.0f}};
+																																	cl_float4 sum_J1	= {{0.0f}};
+																																	cl_float4 sum_H11	= {{0.0f}};
 
 																																	for(int row=0; row<temp_mat.rows; row++){
 																																		for(int col=0; col<temp_mat.cols; col++){
-																																			sum.w += temp_mat.at<cl_float4>(row,col).w;
-																																			sum.x += temp_mat.at<cl_float4>(row,col).x;
-																																			sum.y += temp_mat.at<cl_float4>(row,col).y;
-																																			sum.z += temp_mat.at<cl_float4>(row,col).z;
+																																			sum_J1.w += temp_mat.at<cl_float4>(row,col).w;
+																																			sum_J1.x += temp_mat.at<cl_float4>(row,col).x;
+																																			sum_J1.y += temp_mat.at<cl_float4>(row,col).y;
+																																			sum_J1.z += temp_mat.at<cl_float4>(row,col).z;
+
+																																			sum_H11.w += pow(temp_mat.at<cl_float4>(row,col).w, 2);
+																																			sum_H11.x += pow(temp_mat.at<cl_float4>(row,col).x, 2);
+																																			sum_H11.y += pow(temp_mat.at<cl_float4>(row,col).y, 2);
+																																			sum_H11.z += pow(temp_mat.at<cl_float4>(row,col).z, 2);
 																																		}
 																																	}
-																																	cout<<"\n\n##### layer = "<<layer<<", SE3_grad_map_mem sum = "<<sum.w<<", "<<sum.x<<", "<<sum.y<<", "<<sum.z<<endl<<endl<<flush;
+																																	cout<<"\n\n##### layer = "<<layer<<", SE3_grad_map_mem sum_J1 = "<<sum_J1.w<<", "<<sum_J1.x<<", "<<sum_J1.y<<", "<<sum_J1.z
+																																													<<",    sum_H11 = "<< sum_H11.w<<", "<<sum_H11.x<<", "<<sum_H11.y<<", "<<sum_H11.z
+																																	<<endl<<endl<<flush;
 																																}
 }
 
@@ -593,7 +604,7 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 																																	cout <<"\nEigen pinv \n" 			<< pinv															<< endl << endl <<flush;
 
 																																	// cout <<"\nGN_Hessian \n"			<< GN_Hessian													<< endl << endl <<flush;
-																																	// cout <<"\nGN_Hessian.inv() \n"		<< GN_Hessian.inv()												<< endl << endl <<flush;
+																																	// cout <<"\nGN_Hessian.inv() \n"	<< GN_Hessian.inv()												<< endl << endl <<flush;
 																																	// cout <<"\nocv invHessian \n"		<< current_frames[ current_frames_idx[0] ].invHessian[layer]	<< endl << endl <<flush;
 
 																																	cout <<"\nEigen FullPivLU GN_H2 \n" << GN_H2															<< endl << endl <<flush;
@@ -603,6 +614,46 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 																																	cout << setprecision( old_precision );
 
 																																	cout <<"\n\nRunCL::patch_hessian_reduce()_finished #############################################################"<<flush;
+
+
+																																	//
+// 																													/*__private*/	uint		layer;							//,		//0
+// 																													/*__private*/	uint		lookup_table_offset;			//,		//1
+// 																													/*__private*/	cl_uint3	SE3_offset3;					//,		//3
+// 																													/*__global*/ 	cl_float4*	lookup_table;					//,		//8
+//
+// 																																	const uint	SE3_offset					= SE3_offset3.s0;
+// 																																	cl_float4	lookup_ref					= lookup_table[		 lookup_table_offset	];						// global_id_uint=0 +
+//
+// 																																	uint		u							= lookup_ref.x;														// read_column
+// 																																	uint		v							= lookup_ref.y;														// read_row
+//
+// 																																	uint		mm_pixels					= uint_params[MM_PIXELS];
+// 																																	uint		write_index_2				= u/block_size		+ (v/block_size)*mm_cols	+ SE3_offset;
+// 																																	int 		offset_2 					= write_index_2		+ mm_pixels;									// + i*SE3_v_step	i=0 for first se3 dof
+																																	if( layer ==0){
+																																		cv::Mat temp_mat = cv::Mat::zeros (mm_height, mm_width, CV_32FC4);
+																																		cout<<"\n chk 1, offset = "<<offset<<",  rows ="<<rows<<flush;
+
+																																		ReadOutput(temp_mat.data, SE3_hessian_pinv_map_mem, mm_size_bytes_C4,    mm_size_bytes_C4   );// read Jacobian buffer into Mat
+
+																																		// cout<<"\n chk 2"<<flush;
+																																		// cv::imshow( "SE3_grad_map_mem", temp_mat);
+																																		// cv::waitKey(-1);
+
+																																		cout<<"\n chk 3"<<flush;
+																																		cl_float4 sum = {{0.0f}};
+
+																																		for(int row=1; row<=15; row++){
+																																			for(int col=5; col<=24; col++){
+																																				sum.w += temp_mat.at<cl_float4>(row,col).w;
+																																				sum.x += temp_mat.at<cl_float4>(row,col).x;
+																																				sum.y += temp_mat.at<cl_float4>(row,col).y;
+																																				sum.z += temp_mat.at<cl_float4>(row,col).z;
+																																			}
+																																		}
+																																		cout<<"\n\n##### layer = "<<layer<<", layer 0, 1st Jacobian sum = "<<sum.w<<", "<<sum.x<<", "<<sum.y<<", "<<sum.z<<endl<<endl<<flush;
+																																	}
 																																}
 }
 

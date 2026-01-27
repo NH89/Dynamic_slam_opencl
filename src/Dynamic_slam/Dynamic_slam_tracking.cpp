@@ -68,9 +68,16 @@ void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[  max_mipmap_layers* num
 		transform[Ty] = cv::Matx44f(1,0,0,0, 		0,1,0,_delta,	0,0,1,0,		0,0,0,1);
 		transform[Tz] = cv::Matx44f(1,0,0,0, 		0,1,0,0,		0,0,1,_delta,	0,0,0,1);
 
-		for (int i=0; i<num_SE3_DoF; i++) {
 
-			cam2cam[i] 		= frame_data.back().frame_data.K  *  transform[i] *  frame_data.back().frame_data.inv_K;
+
+
+		for (int i=0; i<num_SE3_DoF; i++) {
+			Matx16f incr = Matx16f::zeros();
+			if (i<3){	incr(i) = 1/f;}
+			else{		incr(i) = 1.0f; }		// same as above.
+
+			Matx44f transform_	=  LieToP_Matx( incr /*deltas_matx[layer]*/ );																PRINT_MATX16F( incr /*deltas_matx[layer]*/, ); PRINT_MATX44F( transform_,  SE3_incr );
+			cam2cam[i] 			= frame_data.back().frame_data.K  * transform_ /*transform[i]*/ *  frame_data.back().frame_data.inv_K;
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\ni=" << i << endl;
 																																				PRINT_MATX44F(transform[i],);

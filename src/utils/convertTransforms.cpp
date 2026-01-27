@@ -238,9 +238,9 @@ cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){
                                                                                                                                             // https://learnwebgl.brown37.net/08_projections/projections_perspective.html
                                                                                                                                             // https://learnwebgl.brown37.net/08_projections/projections_ortho.html
 	inv_K_.operator()(0,1)  = -skew/(fx*fy);
-	inv_K_.operator()(0,2)  = (cy*skew - cx*fy)/(fx*fy);
-	inv_K_.operator()(1,2)  = -cy/fy;
-																																			if(V_CONVERT_TRANSFORMS<1) {
+	inv_K_.operator()(0,3/*2*/)  = (cy*skew - cx*fy)/(fx*fy);
+	inv_K_.operator()(1,3/*2*/)  = -cy/fy;
+																																			//if(V_CONVERT_TRANSFORMS<1) {
 																																				cv::Matx44f test_K_ = inv_K_ * K_;
 																																				PRINT_MATX44F(test_K_,test_camera_intrinsic_matrix inversion);
 																																				//PRINT_MATX44F(pose,);
@@ -250,7 +250,7 @@ cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){
 																																				PRINT_MATX44F( K_ * inv_K_,);
                                                                                                                                                 PRINT_MATX44F( inv_K_ * K_,);
 																																				cout << "\nDynamic_slam::generate_invK_ Finished ####################"<<endl<<flush;
-																																			}
+																																			//}
 	return inv_K_;
 }
 

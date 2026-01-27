@@ -31,8 +31,8 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 	}K_GT.operator()(3,3) = 1;																												// Orthographic camera, See notes in convertTransforms.cpp , cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){..}
 																																			// 4x4 perspective matrix is not invertable for points at infinity. We correct ortho->perspective in the kernel by dividing by Z.
 	pose_datum datum 						= {};																							// default initialization.
-	datum.K									= K_GT;
-	datum.inv_K								= generate_invK_(K_GT, verbosity);
+	datum.K									= K_GT;																							PRINT_MATX44F( K_GT, );
+	datum.inv_K								= generate_invK_(K_GT, verbosity);																PRINT_MATX44F( datum.inv_K	, );	PRINT_MATX44F( K_GT*datum.inv_K	, );
 	datum.pose								= getPose(R,T, verbosity);																		PRINT_MATX44F( datum.pose, );
 	datum.inv_pose							= getInvPose(datum.pose, verbosity);															PRINT_MATX44F( datum.inv_pose, );
 	if( frame_data.size() > 1 ){
