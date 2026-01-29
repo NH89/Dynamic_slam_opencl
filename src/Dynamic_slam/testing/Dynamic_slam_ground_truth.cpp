@@ -11,7 +11,7 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 	char		*ch 						= new char [str.length()+1];																	cout<<"chk2 "<<flush;
 	std::strcpy (ch, str.c_str());																											cout<<"chk3 "<<flush;
 	cv::Mat		T_alt;																														cout<<"chk4 "<<flush;
-	convertAhandaPovRayToStandard_2( obj,  ch, R, T, cameraMatrix );	cout<<"chk5 "<<flush;	// TODO  which of these 2 versions of convertAhandaPovRayToStandard() is correct ?
+	//convertAhandaPovRayToStandard_2( obj,  ch, R, T, cameraMatrix );	cout<<"chk5 "<<flush;	// TODO  which of these 2 versions of convertAhandaPovRayToStandard() is correct ?
 	convertAhandaPovRayToStandard(   obj,  ch, R, T, cameraMatrix );	cout<<"chk6 "<<flush;
 	delete [] ch; 														cout<<"chk7 "<<flush;	//free(ch);
 																																			if(verbosity>local_verbosity_threshold) {
@@ -23,12 +23,23 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 																																				cout << endl << flush;
 																																			}
 	cv::Matx44f K_GT						= cv::Matx44f::zeros();
-	for (int i=0; i<3; i++){
-		for (int j=0; j<3; j++){
-			K_GT.operator()(i,j)			= cameraMatrix.at<float>(i,j);
-																																			cout << ", " <<  cameraMatrix.at<float>(i,j);
-		}
-	}K_GT.operator()(3,3) = 1;																												// Orthographic camera, See notes in convertTransforms.cpp , cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){..}
+	/*
+	// for (int i=0; i<3; i++){
+	// 	for (int j=0; j<3; j++){
+	// 		K_GT.operator()(i,j)			= cameraMatrix.at<float>(i,j);
+	// 																																		cout << ", " <<  cameraMatrix.at<float>(i,j);
+	// 	}
+	// }
+	*/
+	K_GT(0,0) = cameraMatrix.at<float>(0,0);	//fx
+	K_GT(1,1) = cameraMatrix.at<float>(1,1);	//fy
+
+	K_GT(0,2) = cameraMatrix.at<float>(0,2);	//Cx
+	K_GT(1,2) = cameraMatrix.at<float>(1,2);	//Cy
+
+	K_GT(3,2) = 1;								//																							// Orthographic camera, See notes in convertTransforms.cpp , cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){..}
+	K_GT(2,3) = 1;								//
+
 																																			// 4x4 perspective matrix is not invertable for points at infinity. We correct ortho->perspective in the kernel by dividing by Z.
 	pose_datum datum 						= {};																							// default initialization.
 	datum.K									= K_GT;																							PRINT_MATX44F( K_GT, );

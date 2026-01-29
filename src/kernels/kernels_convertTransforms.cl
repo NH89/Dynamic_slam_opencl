@@ -160,6 +160,35 @@ void update_k2_kdev_fn(
 */
 }
 
+void matmul_44x41_single_thread(float16 k2k,  float4 px_in, float px_out[4]){ // NB could use float4 for each k2k row, then dot4(row,px_in)
+
+	px_out[0]	= k2k.s0*px_in.s0  + k2k.s1*px_in.s1 +  k2k.s2*px_in.s2  + k2k.s3*px_in.s3;
+	px_out[1]	= k2k.s4*px_in.s0  + k2k.s5*px_in.s1 +  k2k.s6*px_in.s2  + k2k.s7*px_in.s3;
+
+	px_out[2]	= k2k.s8*px_in.s0  + k2k.s9*px_in.s1 +  k2k.sa*px_in.s2  + k2k.sb*px_in.s3;
+	px_out[3]	= k2k.sc*px_in.s0  + k2k.sd*px_in.s1 +  k2k.se*px_in.s2  + k2k.sf*px_in.s3;
+
+	px_out[0]		/= px_out[3];
+	px_out[1]		/= px_out[3];
+}
+
+void px_k2k( float16 k2k_,  float reduction,  uint v,  uint u,  float inv_depth_1, float *u2_flt_1,  float *v2_flt_1, uint gid  ){
+
+	float u_flt		= (float)u * reduction;
+	float v_flt		= (float)v * reduction;
+
+	float4 px_in	= (float4)( u_flt, v_flt, inv_depth_1, 1 );
+	float px_out[4]	= { 0.0f, 0.0f, 0.0f, 0.0f };
+
+	matmul_44x41_single_thread( k2k_, px_in, px_out);
+
+	*u2_flt_1		= px_out[0]/reduction;
+	*v2_flt_1		= px_out[1]/reduction;
+
+	if(gid==0){
+			printf("\n\n__device_fn matmul_44x41_single_thread()    u_flt=%f,  u2=%f,  v_flt=%f,   v2=%f,  k2k_.s0=%f", u_flt,  *u2_flt_1,  v_flt, *v2_flt_1,  k2k_.s0 );
+	}
+}
 
 void mat_mul44( uint lid,	__local float local_A[16],		__local float local_B[16],		__local float local_C[16] ){
 

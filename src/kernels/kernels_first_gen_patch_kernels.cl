@@ -124,6 +124,8 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 			uint index 					= read_index_row - read_offset_;
 			uint v 						= index / mm_cols;
 			uint u 						= fmod((float)index, mm_cols);
+			px_k2k( inv_k2k[past_frame_idx],  reduction,  v,  u,  inv_depth_1, &u2_flt_1,  &v2_flt_1,  global_id_u );
+			/*
 			float u_flt					= (float)u * reduction;														// NB this causes sparse sampling of the original space, to use the same k2k at every scale.
 			float v_flt_1				= (float)v * reduction;
 																													// TODO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
@@ -134,7 +136,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 
 			u2_flt_1					= (uh2_1 + inv_k2k[past_frame_idx][1]*v_flt_1 ) / ((wh2_1  )*reduction);
 			v2_flt_1					= (vh2_1 + inv_k2k[past_frame_idx][5]*v_flt_1 ) / ((wh2_1  )*reduction);
-
+			*/
 			uint margin					= 4;// * reduction;
 			intersection 				= 	(u>margin)			&& (u<=read_cols_-margin)			&& (v>margin)			&& (v<=read_rows_-margin)			&& \
 											(u2_flt_1>margin)	&& (u2_flt_1<=read_cols_-margin)	&& (v2_flt_1>margin)	&& (v2_flt_1<=read_rows_-margin)	&& \

@@ -74,6 +74,11 @@ void update_k2_kdev_fn(
 	__local float local_k2k[		   SE3_elems]
 	);
 
+
+void matmul_44x41_single_thread(float16 k2k,  float4 px_in, float px_out[4]);
+
+void px_k2k( float16 k2k_,  float reduction,  uint v,  uint u,  float inv_depth_1, float *u2_flt_1,  float *v2_flt_1, uint gid  );
+
 void mat_mul44( uint lid,	__local float local_A[16],		__local float local_B[16],		__local float local_C[16] );
 
 #endif /*KERNELS_H*/

@@ -1,4 +1,5 @@
 #include "kernels__macros.h"
+#include "kernels.h"
 
 /* NB GPU limits
  * For Intel iRIS Xe
@@ -33,9 +34,12 @@ __kernel void compute_param_maps(
 	uint u				= fmod(global_id_flt, read_cols_);											// read_column
 	float u_flt			= u * reduction;															// NB this causes sparse sampling of the original space, to use the same k2k at every scale.
 	float v_flt			= v * reduction;
+	float u2, v2;
 	uint read_index 	= read_offset_  +  v  * mm_cols  + u ;
 
 	int idx = layer * 6 * 16;
+
+	float inv_depth = 1.0f;																			// mid point max-min inv depth
 
 	for (uint i=0; i<6; i++, idx+=16) {																// for each SE3 DoF
 																									// Find new pixel position, h=homogeneous coords.
@@ -47,7 +51,7 @@ __kernel void compute_param_maps(
 			SE3_k2k[idx+ 8],SE3_k2k[idx+ 9],SE3_k2k[idx+10],SE3_k2k[idx+11],\
 			SE3_k2k[idx+12],SE3_k2k[idx+13],SE3_k2k[idx+14],SE3_k2k[idx+15] );
 		}
-		float inv_depth = 1.0f;																		// mid point max-min inv depth
+		/*
 		float uh2 = SE3_k2k[idx+0]*u_flt + SE3_k2k[idx+1]*v_flt + SE3_k2k[idx+2]*1 + SE3_k2k[idx+3]*inv_depth;
 		float vh2 = SE3_k2k[idx+4]*u_flt + SE3_k2k[idx+5]*v_flt + SE3_k2k[idx+6]*1 + SE3_k2k[idx+7]*inv_depth;
 		float wh2 = SE3_k2k[idx+8]*u_flt + SE3_k2k[idx+9]*v_flt + SE3_k2k[idx+10]*1+ SE3_k2k[idx+11]*inv_depth;
@@ -55,6 +59,15 @@ __kernel void compute_param_maps(
 
 		float u2   = uh2/wh2;
 		float v2   = vh2/wh2;
+		*/
+		float16 k2k_ = (float16)(SE3_k2k[idx+0], SE3_k2k[idx+1], SE3_k2k[idx+2], SE3_k2k[idx+3], SE3_k2k[idx+4], SE3_k2k[idx+5], SE3_k2k[idx+6], SE3_k2k[idx+7], SE3_k2k[idx+8], SE3_k2k[idx+9], SE3_k2k[idx+10], SE3_k2k[idx+11], SE3_k2k[12], SE3_k2k[13], SE3_k2k[14], SE3_k2k[15]);
+
+		px_k2k( k2k_,  reduction,  v,  u,  inv_depth, &u2,  &v2, global_id_flt  );
+
+		if(global_id_u==0){
+			printf("\n\n__kernel void compute_param_maps()    u_flt=%f,  u2=%f,  v_flt=%f,   v2=%f  ", u_flt, u2 , v_flt, v2);
+		}
+
 		float2 partial_gradient={u_flt-u2 , v_flt-v2}; 												// Find movement of pixel
 
 		SE3_map[read_index + i* uint_params[MM_PIXELS]  ] = partial_gradient;
