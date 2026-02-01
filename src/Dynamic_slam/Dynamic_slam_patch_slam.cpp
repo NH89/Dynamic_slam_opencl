@@ -228,7 +228,7 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 	runcl.ReadOutput( (uchar*)k_buf_arr, runcl.K_buf, sizeof(float)*16, 0 );																PRINT_FLOAT_16(k_buf_arr, )
 	runcl._clEnqueueFillBuffer(  runcl.uload_queue,  runcl.pose_update_buf,  &zero,  sizeof( float),  0,  6*sizeof(float),  fname  );		// pose_update_buf zeroed for new layer, because old Rho not valid for comparison.
 
-	uint out_block_size = 4;
+	uint 	out_block_size 		= 4;
 	float	old_sum_rho_sq		= FLT_MAX-1;
 	Matx44f	old_pose			= runcl.ReadOutput_44f( runcl.pose_buf );
 	Matx44f	old_k2k				= runcl.ReadOutput_44f( runcl.k2kbuf );
@@ -308,12 +308,13 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 
 			float lim				= 1.0f + layer/2.0f;
 			for(int i=0; i<num_SE3_DoF; i++){
-				pose_update_cpu(i) = clamp(	pose_update_cpu(i),	-lim,	lim );																// clamp update wrt elta & blur for level, to avoid excessive steps. ? should it scale the whole vector instead ?
+				pose_update_cpu(i)	= clamp(	pose_update_cpu(i),	-lim,	lim );															// clamp update wrt elta & blur for level, to avoid excessive steps. ? should it scale the whole vector instead ?
 			}
-			pose_update_cpu			=	(-1.0f) *  pose_update_cpu.mul( deltas_matx[layer]);/*  * 0.5f; */											PRINT_MATX16F( deltas_matx[layer], );				PRINT_MATX16F( pose_update_cpu, );
+																																			PRINT_MATX16F( pose_update_cpu, clamped);
+			pose_update_cpu			=	(-1.0f) *  pose_update_cpu.mul( deltas_matx[layer] );/*  * 0.5f; */									PRINT_MATX16F( deltas_matx[layer], );				PRINT_MATX16F( pose_update_cpu, );
 																																			PRINT_MATX16F( PToLie( LieToP_Matx(pose_update_cpu).inv() ), );
 			newPose					=	LieToP_Matx( pose_update_cpu )  *  pose;															PRINT_MATX44F( newPose,	);							PRINT_MATX16F( PToLie( newPose ), );
-			newK2K					=	K  *  newPose  * invK ;																			PRINT_MATX44F( newK2K,			);
+			newK2K					=	K  *  newPose  * invK ;																				PRINT_MATX44F( newK2K,			);
 																																			Matx44f	pose_old	= runcl.ReadOutput_44f( runcl.pose_buf );	PRINT_MATX44F( pose_old, );
 																																			Matx44f	k2k_old		= runcl.ReadOutput_44f( runcl.k2kbuf);		PRINT_MATX44F( k2k_old,	);
 			runcl.update_k2k_buf(		newK2K,		newPose);

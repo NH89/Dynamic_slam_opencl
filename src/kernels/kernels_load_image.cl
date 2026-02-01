@@ -11,10 +11,11 @@ TODO Declare constants at top of the device prgram file.
 
 __kernel void compute_param_maps(
 	__private	uint	layer,			//0
-	__constant 	uint8*	mipmap_params,	//1
-	__constant 	uint*	uint_params,	//2
-	__constant 	float* 	SE3_k2k,		//3
-	__global 	float2*	SE3_map			//4
+	__private	float	inv_depth,		//1
+	__constant 	uint8*	mipmap_params,	//2
+	__constant 	uint*	uint_params,	//3
+	__constant 	float* 	SE3_k2k,		//4
+	__global 	float2*	SE3_map			//5
 		 )
 {
 	uint global_id_u 	= get_global_id(0);
@@ -22,6 +23,7 @@ __kernel void compute_param_maps(
 	uint8 mipmap_params_= mipmap_params[layer];
 	uint read_offset_ 	= mipmap_params_[MiM_READ_OFFSET];
 	uint read_cols_ 	= mipmap_params_[MiM_READ_COLS];
+	uint read_rows_ 	= mipmap_params_[MiM_READ_ROWS];
 	if (global_id_u >= mipmap_params_[MiM_PIXELS]) return;
 
 	uint lid 			= get_local_id(0);
@@ -29,22 +31,24 @@ __kernel void compute_param_maps(
 
 	uint margin			= uint_params[MARGIN];
 	uint mm_cols		= uint_params[MM_COLS];
-	uint reduction		= mm_cols/read_cols_;
+	uint base_cols		= uint_params[COLS];
+	float reduction		= base_cols/read_cols_;
 	uint v				= global_id_u / read_cols_;													// read_row
 	uint u				= fmod(global_id_flt, read_cols_);											// read_column
-	float u_flt			= u * reduction;															// NB this causes sparse sampling of the original space, to use the same k2k at every scale.
-	float v_flt			= v * reduction;
+	float u_flt			= (float)u * reduction;															// NB this causes sparse sampling of the original space, to use the same k2k at every scale.
+	float v_flt			= (float)v * reduction;
 	float u2, v2;
 	uint read_index 	= read_offset_  +  v  * mm_cols  + u ;
 
-	int idx = layer * 6 * 16;
+	int idx 			= layer * 6 * 16;
 
-	float inv_depth = 1.0f;																			// mid point max-min inv depth
+	bool print=false;
+	if( (u_flt==10)&&(v==10) ){ print=true; }  // global_id_u==0) || (u==read_cols_/2.0f && v==read_rows_/2.0f) || (u==read_cols_ && v==read_rows_
 
 	for (uint i=0; i<6; i++, idx+=16) {																// for each SE3 DoF
 																									// Find new pixel position, h=homogeneous coords.
 		if(global_id_u==0){
-			printf("\n\n__kernel void compute_param_maps()          layer=%d,  SE3 i=%d,  idx=%d,  SE3_k2k=(\n(%f, %f, %f, %f),\n(%f, %f, %f, %f),\n(%f, %f, %f, %f),\n(%f, %f, %f, %f))  ",\
+			printf("\n\n\n__kernel void compute_param_maps()          layer=%d,  SE3 i=%d,  idx=%d,  SE3_k2k=(\n(%f, %f, %f, %f),\n(%f, %f, %f, %f),\n(%f, %f, %f, %f),\n(%f, %f, %f, %f))  ",\
 			layer, i, idx,\
 			SE3_k2k[idx+ 0],SE3_k2k[idx+ 1],SE3_k2k[idx+ 2],SE3_k2k[idx+ 3],\
 			SE3_k2k[idx+ 4],SE3_k2k[idx+ 5],SE3_k2k[idx+ 6],SE3_k2k[idx+ 7],\
@@ -60,18 +64,27 @@ __kernel void compute_param_maps(
 		float u2   = uh2/wh2;
 		float v2   = vh2/wh2;
 		*/
-		float16 k2k_ = (float16)(SE3_k2k[idx+0], SE3_k2k[idx+1], SE3_k2k[idx+2], SE3_k2k[idx+3], SE3_k2k[idx+4], SE3_k2k[idx+5], SE3_k2k[idx+6], SE3_k2k[idx+7], SE3_k2k[idx+8], SE3_k2k[idx+9], SE3_k2k[idx+10], SE3_k2k[idx+11], SE3_k2k[12], SE3_k2k[13], SE3_k2k[14], SE3_k2k[15]);
+		float16 k2k_ = (float16)(SE3_k2k[idx+0], 	SE3_k2k[idx+1], 	SE3_k2k[idx+2], 	SE3_k2k[idx+3],\
+								 SE3_k2k[idx+4], 	SE3_k2k[idx+5], 	SE3_k2k[idx+6], 	SE3_k2k[idx+7],\
+								 SE3_k2k[idx+8], 	SE3_k2k[idx+9], 	SE3_k2k[idx+10], 	SE3_k2k[idx+11],\
+								 SE3_k2k[idx+12], 	SE3_k2k[idx+13], 	SE3_k2k[idx+14], 	SE3_k2k[idx+15]);
 
-		px_k2k( k2k_,  reduction,  v,  u,  inv_depth, &u2,  &v2, global_id_flt  );
 
-		if(global_id_u==0){
-			printf("\n\n__kernel void compute_param_maps()    u_flt=%f,  u2=%f,  v_flt=%f,   v2=%f  ", u_flt, u2 , v_flt, v2);
+		px_k2k( k2k_,  reduction,  v,  u,  inv_depth, &u2,  &v2,  print  );
+
+		if(print==true){
+			printf("\n__kernel void compute_param_maps()    u_flt=%f,  u2=%f,  v_flt=%f,   v2=%f  ", u_flt, u2 , v_flt, v2);
 		}
 
-		float2 partial_gradient={u_flt-u2 , v_flt-v2}; 												// Find movement of pixel
+		float2 partial_gradient={ ((float)u)-u2 ,  ((float)v)-v2 }; 												// Find movement of pixel
 
 		SE3_map[read_index + i* uint_params[MM_PIXELS]  ] = partial_gradient;
+
+		barrier(CLK_GLOBAL_MEM_FENCE );
 	}
+
+	if(print==true){ printf("\n");}
+
 	// TODO // Create a 'reproject' & 'img_grad_sum' kernels
 }
 
