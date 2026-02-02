@@ -367,8 +367,11 @@ void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, st
 
 		uint 	offset 		= layer * image_size_bytes; // 0;	//
 		cv::Mat temp_mat 	= cv::Mat::zeros (size_mat, type_mat);																			// (int rows, int cols, int type)
+
 		ReadOutput(temp_mat.data, buffer,  image_size_bytes, offset); 																		// NB contains elements of type_mat, (CV_32FC1 for most buffers)
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_2Channel_volume()_Chk_1  layer="<<layer<<flush;
+		cv::Mat temp_mat2 	= temp_mat.clone();																			// (int rows, int cols, int type)
+
 		vector<cv::Mat> channels;
 		split(temp_mat, channels);
 		channels.push_back( cv::Mat::zeros( size_mat, CV_32FC1 ) );
@@ -384,7 +387,10 @@ void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, st
 		cv::minMaxLoc(	channels[0], 	&minVal_u, 		&maxVal_u, 		&minLoc_u, 		&maxLoc_u);
 		cv::minMaxLoc(	channels[1], 	&minVal_v, 		&maxVal_v, 		&minLoc_v, 		&maxLoc_v);
 
-		float maxVal = std::max(	{ 	minVal_u*-1, 	maxVal_u,  		minVal_v*-1, 	maxVal_v } );
+
+		cv::merge(channels, temp_mat2);
+
+		float maxVal = std::max(	{ 	(minVal_u*-1), 	maxVal_u,  		(minVal_v*-1), 	maxVal_v } );
 		if (max_range !=0){
 			channels[0] /= abs(max_range);
 			channels[1] /= abs(max_range);
@@ -394,15 +400,17 @@ void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, st
 				channels[2] = mat_half ;
 			}
 		}else{
-			channels[0] = (channels[0]/ 2.0f*maxVal) + mat_half;
-			channels[1] = (channels[1]/ 2.0f*maxVal) + mat_half;
+			channels[0] = (channels[0]/ (2.0f*maxVal) ) + mat_half;
+			channels[1] = (channels[1]/ (2.0f*maxVal) ) + mat_half;
 			channels[2] = mat_half ;
 		}
 		cv::merge(channels, temp_mat);
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\nDownloadAndSave_2Channel_volume()_Chk_3"<<flush;
-																																				cout << "\t minVal_u="<<minVal_u<<", 	maxVal_u="<<maxVal_u<<",  	minVal_v="<<minVal_v<<", 	maxVal_v="<<maxVal_v<<flush;
+																																				cout<<"\t minVal_u="<<minVal_u<<", 	maxVal_u="<<maxVal_u
+																																				<<",	minVal_v="<<minVal_v<<",	maxVal_v="<<maxVal_v<<flush;
+																																				cout<<"\t _maxRange"<<max_range<<",  maxVal="<<maxVal<< flush;
 																																			}
-																																			cout<<"\nDownloadAndSave_2Channel_volume()   min="<<minVal_u<<"_max"<<maxVal_u<<"_maxRange"<<max_range<< flush;
+
 		stringstream 	ss;
 		stringstream 	png_ss;
 		string 			type_string 	= checkCVtype(type_mat);
@@ -411,17 +419,25 @@ void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, st
 		ss 		<< "/" << folder_tiff.filename().string() << date_time_str << "_vol_layer_"<<layer<<"_UV_" << count <<"_sum_u_"<<sum_u<<"_sum_v_"<<sum_v<<"_type_"<<type_string<<"min"<<minVal_u<<"_max"<<maxVal_u<<"_maxRange"<<max_range;
 		png_ss 	<< "/" << folder_tiff.filename().string() << date_time_str << "_vol_layer_"<<layer<<"_UV_" << count;
 
-		std::filesystem::path folder_tiff_= folder_tiff;
-		std::filesystem::path folder_png  = folder_tiff;
+		std::filesystem::path folder_tiff_	= folder_tiff;
+		std::filesystem::path folder_tiff2	= folder_tiff;
+		std::filesystem::path folder_png  	= folder_tiff;
 		folder_tiff_ += "/tiff";
 		folder_tiff_ += ss.str();
 		folder_tiff_ += ".tiff";
+
+		folder_tiff2 += "/tiff";
+		folder_tiff2 += ss.str();
+		folder_tiff2 += "_";
+		folder_tiff2 += ".tiff";
 
 		folder_png  += png_ss.str();
 		folder_png  += ".png";
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_2Channel_volume()_Chk_4, max_range="<<max_range\
 																																				<<",   filepath = ["<<folder_png.string()<<" ,\t "<<folder_tiff_.string()<<"],  tiff="<<tiff<<",  true="<<true<<flush;
-		if(tiff==true)	cv::imwrite( folder_tiff_.string(), temp_mat );
+		if(tiff==true){	cv::imwrite( folder_tiff_.string(), temp_mat );
+						cv::imwrite( folder_tiff2.string(), temp_mat2 );																	// save unaltered original as a tiff.
+		}
 		if(png==true)	cv::imwrite( folder_png.string(), (	temp_mat*256) );
 		if(show)		cv::imshow(  ss.str(), 				temp_mat );
 	}

@@ -306,10 +306,6 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 
 			Matx16f pose_update_cpu	=	SE3_incr * invH;																					PRINT_MATX16F( pose_update_cpu, );
 
-			float lim				= 1.0f + layer/2.0f;
-			for(int i=0; i<num_SE3_DoF; i++){
-				pose_update_cpu(i)	= clamp(	pose_update_cpu(i),	-lim,	lim );															// clamp update wrt elta & blur for level, to avoid excessive steps. ? should it scale the whole vector instead ?
-			}
 																																			PRINT_MATX16F( pose_update_cpu, clamped);
 			pose_update_cpu			=	(-1.0f) *  pose_update_cpu.mul( deltas_matx[layer] );/*  * 0.5f; */									PRINT_MATX16F( deltas_matx[layer], );				PRINT_MATX16F( pose_update_cpu, );
 																																			PRINT_MATX16F( PToLie( LieToP_Matx(pose_update_cpu).inv() ), );

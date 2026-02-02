@@ -85,7 +85,7 @@ void Dynamic_slam::generate_deltas(){	// Principle : delta for each parameter ca
 
 	for (int layer=0; layer<max_mipmap_layers; layer++){
 		float factor				= 1.0f; //pow(2,layer)
-		delta[layer]				= factor;// * min_depth/f;
+		delta[layer]				= factor ;
 		delta_theta[layer]			= factor * 1/f;
 		cos_theta[layer]			= cos(delta_theta[layer]);
 		sin_theta[layer]			= sin(delta_theta[layer]);

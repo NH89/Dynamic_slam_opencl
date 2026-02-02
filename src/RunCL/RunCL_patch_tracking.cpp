@@ -28,12 +28,12 @@ void RunCL::precomp_param_maps ( float SE3_k2k[  max_mipmap_layers*num_SE3_DoF*1
 	// SE3_map_mem, k_map_mem, dist_map_mem;
 	mipmap_call_kernel( comp_param_maps_kernel, m_queue );
 																																			if( verbosity>local_verbosity_threshold) {
-																																													cout<<"\n\nRunCL::precom_param_maps( float SO3_k2k[6*16])_output "<<flush;
-																																													for ( int i=0; i<1; i++) { // TODO x & y for all 6 SE3 DoF
-																																														stringstream ss;	ss << dataset_frame_num << "_SE3_map";
-																																														DownloadAndSave_2Channel_volume( SE3_map_mem, ss.str( ), paths.at( "SE3_map_mem"), mm_size_bytes_C1*2, mm_Image_size, CV_32FC2, false, /*-*/1.0, 6 /*SE3, 6DoF */);
-																																													}
-																																													cout<<"\nRunCL::precom_param_maps( float SE3_k2k[6*16])_chk.. Finished "<<flush;
+																																				cout<<"\n\nRunCL::precom_param_maps( float SO3_k2k[6*16])_output "<<flush;
+																																				stringstream ss;	ss << dataset_frame_num << "_SE3_map";
+																																				float max_range = 0.0f;		// i.e. find max value, and map 0.0->0.5.
+																																				DownloadAndSave_2Channel_volume( SE3_map_mem, ss.str( ), paths.at( "SE3_map_mem"), mm_size_bytes_C1*2, mm_Image_size, CV_32FC2, false, max_range, num_SE3_DoF );
+
+																																				cout<<"\nRunCL::precom_param_maps( float SE3_k2k[6*16])_chk.. Finished "<<flush;
 																																			}
 }
 

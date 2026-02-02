@@ -247,7 +247,6 @@ void RunCL::patch_img_gradients_set_params(){	// Uses patch lookup table		// cal
 	_clSetKernelArg( kernel,	7, sizeof( cl_mem), 	&SE3_map_mem,					fname);									// __constant 	float2*		SE3_map,				//4
 	//__global
 	_clSetKernelArg( kernel,	8, sizeof( cl_mem), 	&patch_lookup_table_buf,		fname);									// __global 	float4*		lookup_table,			//5
-	//_clSetKernelArg( kernel,	9, sizeof( cl_mem), 	&imgmem_,						fname);									// __global 	float4*		img,					//6
 	//Outputs:
 	//__global
 	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&SE3_grad_map_mem,				fname);									// __global 	float8*		SE3_grad_map,			//7		// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
