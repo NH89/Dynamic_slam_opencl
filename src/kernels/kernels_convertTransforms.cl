@@ -87,13 +87,14 @@ void LieToP( uint lid,	__local float SE3[9],	__local float Pose[32/*16*/] ){
 			const uint * L2P	= LtoP[lid];	// Rodrigues formula for 3x3 rotation, + ST3 for 4x4 SE3 matrix
 									/* Identity	+	A * sin_theta / theta			+	A^2  *  																					( 1 - cos_theta ) / theta^2   */
 			Pose[lid +16]		= 	vars[L2P[0]] * SE3[L2P[1]] * vars[L2P[2]] 		+	vars[L2P[3]] * ( SE3[L2P[4]] * SE3[L2P[5]]  +  SE3[L2P[6]] * SE3[L2P[7]] * SE3[L2P[8]] ) 	* vars[L2P[9]]  ;
-
+			/*
 			if (lid == 0) printf( "\nLieToP(..) lid=%u,  theta=%f,  cos_theta=%f,  ( 1 - cos_theta ) / theta^2 =%f,   sin_theta / theta =%f,    ", \
 				lid,  theta,  cos_theta,  one_cos_theta,  sin_theta );
 
 			printf( "\nLieToP(..) lid=%u,     vars[( %u )L2P[0]]( %f ) * SE3[( %u )L2P[1]]( %f ) * vars[( %u )L2P[2]]( %f )		+	vars[( %u )L2P[3]]( %f ) * ( SE3[( %u )L2P[4]]( %f ) * SE3[( %u )L2P[5]]( %f )  +  SE3[( %u )L2P[6]]( %f ) * SE3[( %u )L2P[7]]( %f ) * SE3[( %u )L2P[8]]( %f ) ) 	* vars[( %u )L2P[9]]( %f )            =  Pose[lid +16](%f)",\
 									lid,	L2P[0],	vars[L2P[0]],	L2P[1],	SE3[L2P[1]],	L2P[2],	vars[L2P[2]],				L2P[3],	vars[L2P[3]],			L2P[4],	SE3[L2P[4]],		L2P[5], SE3[L2P[5]],		L2P[6],	SE3[L2P[6]],	L2P[7],	SE3[L2P[7]],		L2P[8],	SE3[L2P[8]],			L2P[9],	vars[L2P[9]],			 		Pose[lid +16]\
 			);
+			*/
 		}
 	}
 }
@@ -167,11 +168,12 @@ void matmul_44x41_single_thread(float16 k2k,  float4 px_in, float px_out[4], boo
 
 	px_out[2]	= k2k.s8*px_in.s0  + k2k.s9*px_in.s1 +  k2k.sa*px_in.s2  + k2k.sb*px_in.s3;
 	px_out[3]	= k2k.sc*px_in.s0  + k2k.sd*px_in.s1 +  k2k.se*px_in.s2  + k2k.sf*px_in.s3;
-
+/*
 	if(print_==true){
 			printf("\n\n__device_fn matmul_44x41   px_in=(%f, %f, %f, %f),  px_out[0-3]=(%f, %f, %f, %f)",\
 									px_in.s0, px_in.s1, px_in.s2, px_in.s3,   px_out[0], px_out[1], px_out[2], px_out[3] );
 	}
+*/
 	px_out[0]		/= px_out[3];
 	px_out[1]		/= px_out[3];
 }
@@ -188,11 +190,12 @@ void px_k2k( float16 k2k_,  float reduction,  uint v,  uint u,  float inv_depth,
 
 	*u2_flt_1		= px_out[0]/reduction;
 	*v2_flt_1		= px_out[1]/reduction;
-
+/*
 	if(print_==true){
 			printf("\n\n__device_fn px_k2k()    u_flt=%f,  u2=%f,  v_flt=%f,   v2=%f,  k2k_.s0=%f,   inv_depth_1=%f", \
 			u_flt,  *u2_flt_1,  v_flt, *v2_flt_1,  k2k_.s0,  inv_depth );
 	}
+*/
 }
 
 void mat_mul44( uint lid,	__local float local_A[16],		__local float local_B[16],		__local float local_C[16] ){

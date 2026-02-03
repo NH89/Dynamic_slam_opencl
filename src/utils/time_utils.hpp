@@ -9,7 +9,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
-#include <filesystem>							// C++17 TODO <replace boost/filesystem>
+#include <filesystem>
 #include <chrono>								// For measuring time of execution.
 using namespace std::chrono;
 

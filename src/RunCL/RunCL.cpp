@@ -203,37 +203,41 @@ void RunCL::createAndBulidProgramFromSource(cl_device_id *devices){
 																																			if(verbosity>local_verbosity_threshold)  cout << "\nRunCL::createAndBulidProgramFromSource(..) chk 0\n" << flush;
 	cl_int 	status;
 	cl_uint	num_files;
-    char** 	strings;
-    size_t*	lengths;
+	char** 	strings;
+	size_t*	lengths;
 
-	const char *basepath = obj["source_filepath"].asCString();
-    const char *foldername = obj["kernel_folder"].asCString();
-    num_files = obj["kernel_files"].size();
-    lengths = (size_t*)malloc( (num_files+1)*sizeof(size_t) );                                                                              // allocate array for file lengths
-	strings = (char**)malloc( (num_files+1)*sizeof(size_t) );																				// allocate outer array for kernel files
-    FILE *program_handle;
+	const char	*basepath = obj["source_filepath"].asCString();
+	const char	*foldername = obj["kernel_folder"].asCString();
+	num_files	= obj["kernel_files"].size();
+	lengths		= (size_t*)malloc( (num_files+1)*sizeof(size_t) );																				// allocate array for file lengths
+	strings		= (char**)malloc( (num_files+1)*sizeof(size_t) );																				// allocate outer array for kernel files
+	FILE		*program_handle;
 
-    for (int i=0; i<num_files; i++){                                                                                                        // for kernel source files in obj array
-        const char *filename = obj["kernel_files"][i].asCString();
-        stringstream filepath; filepath << basepath << foldername << filename;
+	for (int i=0; i<num_files; i++){																										// for kernel source files in obj array
+	const char *filename = obj["kernel_files"][i].asCString();
+		stringstream filepath; filepath << basepath << foldername << filename;
 		const std::string tmp =  filepath.str();
 		const char* char_filepath = tmp.c_str();
-		program_handle = fopen(char_filepath, "r");                                          if(program_handle == NULL) { perror("Couldn't find the program file");
+		program_handle = fopen(char_filepath, "r");
+																								if(program_handle == NULL) { perror("Couldn't find the program file");
 																															cout << "\tchar_filepath = "<< char_filepath << flush;
-																															exit_(1); }
-        fseek(program_handle, 0, SEEK_END);
-        lengths[i] = ftell(program_handle);
-        rewind(program_handle);
+																															exit_(1);
+																								}
+		fseek(program_handle, 0, SEEK_END);
+		lengths[i] = ftell(program_handle);
+		rewind(program_handle);
 
-        strings[i] = (char*)malloc(lengths[i]+1);																							// allocate inner array for this kernel file
-        strings[i][lengths[i]] = '\0';
-        const size_t ret_code = fread( strings[i], sizeof(char), lengths[i], program_handle );if (ret_code != lengths[i]){ perror("Couldn't read the program file");
+		strings[i] = (char*)malloc(lengths[i]+1);																							// allocate inner array for this kernel file
+		strings[i][lengths[i]] = '\0';
+		const size_t ret_code = fread( strings[i], sizeof(char), lengths[i], program_handle );
+																								if (ret_code != lengths[i]){ perror("Couldn't read the program file");
 																															cout << "\tchar_filepath = "<< char_filepath << flush;
-																															exit_(1); }
-        fclose(program_handle);
-    }
-    m_program 	= clCreateProgramWithSource( m_context, num_files, (const char**)strings, lengths, &status );								// Create program object /////////////
-																							if(status!=CL_SUCCESS)	{cout<<"\n11 status="<<checkerror(status)<<"\n"<<flush;exit_(status);}
+																															exit_(1);
+																								}
+		fclose(program_handle);
+	}
+	m_program 	= clCreateProgramWithSource( m_context, num_files, (const char**)strings, lengths, &status );								// Create program object /////////////
+																								if(status!=CL_SUCCESS)	{cout<<"\n11 status="<<checkerror(status)<<"\n"<<flush;exit_(status);}
 	const char * include_dir = obj["kernel_build_options"].asCString();																		if(verbosity>local_verbosity_threshold) cout << "\n" << include_dir << "\n" << flush;
 
 	status = clBuildProgram(m_program, 1, devices, include_dir , NULL, NULL);																// Build program. /////////////////////
@@ -247,13 +251,13 @@ void RunCL::createAndBulidProgramFromSource(cl_device_id *devices){
 								void* 					user_data
 								);
 	*/
-																							if (status != CL_SUCCESS){
-																								printf("\nclBuildProgram failed: %d\n", status);
-																								char buf[0x10000];
-																								clGetProgramBuildInfo(m_program, deviceId, CL_PROGRAM_BUILD_LOG, 0x10000, buf, NULL);
-																								printf("\n%s\n", buf);
-																								exit_(status);
-																							}
+																								if (status != CL_SUCCESS){
+																									printf("\nclBuildProgram failed: %d\n", status);
+																									char buf[0x10000];
+																									clGetProgramBuildInfo(m_program, deviceId, CL_PROGRAM_BUILD_LOG, 0x10000, buf, NULL);
+																									printf("\n%s\n", buf);
+																									exit_(status);
+																								}
 	for(int i=0; i<num_files; i++) { free(strings[i]); }
 	free(strings);
 	free(lengths);
@@ -261,7 +265,7 @@ void RunCL::createAndBulidProgramFromSource(cl_device_id *devices){
 }
 
 void RunCL::createKernels(){
-	int local_verbosity_threshold = V_RUNCL_CREATEKERNELS;//verbosity_mp["RunCL::createKernels"];
+	//int local_verbosity_threshold = V_RUNCL_CREATEKERNELS;
 
 	cl_int err_code;
 	convert_depth_kernel			= clCreateKernel(m_program, "convert_depth", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'convert_depth'  kernel not built.\n"			<<flush; exit_(0);   }
@@ -292,6 +296,7 @@ void RunCL::createKernels(){
 
 }
 
+/*	Not currently used
 int RunCL::convertToString(const char *filename, std::string& s){
 	int local_verbosity_threshold = V_RUNCL_CONVERTTOSTRING;//verbosity_mp["RunCL::convertToString"];
 
@@ -318,6 +323,7 @@ int RunCL::convertToString(const char *filename, std::string& s){
 										cout << "Error: failed to open file\n:" << filename << endl;
 	return 1;
 }
+*/
 
 void RunCL::initialize_fp32_params(){	// TODO remove most, ie DTAM pararms
 	int local_verbosity_threshold = V_RUNCL_INITIALIZE_FP32_PARAMS;
@@ -327,26 +333,28 @@ void RunCL::initialize_fp32_params(){	// TODO remove most, ie DTAM pararms
 
 	fp32_params[MAX_INV_DEPTH]	=  1/obj["min_depth"].asFloat()		;																		// This works: Initialize 'params[]' from conf.json .
 	fp32_params[INV_DEPTH_STEP]	=	 ( fp32_params[MAX_INV_DEPTH] - fp32_params[MIN_INV_DEPTH] ) /  uint_params[COSTVOL_LAYERS]	;
-																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_fp32_params_finished,  fp32_params[MIN_INV_DEPTH] = "<<fp32_params[MIN_INV_DEPTH]<<"\n\n" << flush;
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nRunCL::initialize_fp32_params_finished,  "
+																																				<<"fp32_params[MIN_INV_DEPTH] = "<<fp32_params[MIN_INV_DEPTH]<<"\n\n" << flush;
+																																			}
 }
 
 void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	int local_verbosity_threshold = V_RUNCL_INITIALIZE_RUNCL;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_RunCL_chk_0\n\n" << flush;
 	baseImage =  baseImage_;
-																																			if( baseImage.empty() ){cout <<"\nError RunCL::initialize() : runcl.baseImage.empty()"<<flush; exit_(0); }
+																																	if( baseImage.empty() ){cerr <<"\nError RunCL::initialize() : runcl.baseImage.empty()"<<flush; exit_(0); }
 																																			if (verbosity>local_verbosity_threshold) {
 																																				cout << "\n"
 																																				<< "RunCL::initialize_RunCL_chk_1: runcl.baseImage.size() = "<< baseImage.size() \
 																																				<<" runcl.baseImage.type() = \"" << baseImage.type() << "\" = "<< checkCVtype(baseImage.type()) <<flush;
 																																			}
-																																			if( baseImage.type() != CV_8UC3 ) {  //
-																																				cerr << "RunCL::initialize_RunCL(cv::Mat baseImage_) "
-																																				<<"Error: ( baseImage.type() != CV_8UC3 ),  NB current image loading kernels depend on CV_8UC3 input."
-																																				<<"runcl.baseImage.type() = \"" << baseImage.type() << "\" = "<< checkCVtype(baseImage.type()) <<flush;
-																																				exit_(EXIT_FAILURE);
-																																			}
-																																			if(verbosity>1) { imshow("runcl.baseImage",baseImage); cv::waitKey(-1); }
+																																	if( baseImage.type() != CV_8UC3 ) {  //
+																																		cerr << "RunCL::initialize_RunCL(cv::Mat baseImage_) "
+																																		<<"Error: ( baseImage.type() != CV_8UC3 ),  NB current image loading kernels depend on CV_8UC3 input."
+																																		<<"runcl.baseImage.type() = \"" << baseImage.type() << "\" = "<< checkCVtype(baseImage.type()) <<flush;
+																																		exit_(EXIT_FAILURE);
+																																	}
+																																			//if(verbosity>1) { imshow("runcl.baseImage",baseImage); cv::waitKey(-1); }
 	image_size_bytes	= baseImage.total() * baseImage.elemSize();																			// Constant parameters of the base image
 	image_size_bytes_C1	= baseImage.total() * sizeof(float);
 	costVolLayers 		=( 1 + obj["layers"].asUInt() ); // TODO  2;
@@ -358,33 +366,37 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 
 	uint num_reductions_width		= log2(baseImage_width/5);
 	uint num_reductions_height		= log2(baseImage_height/5);
-	mm_num_reductions				= min(num_reductions_width, num_reductions_height);		cout << "\nnum_reductions_width="<<num_reductions_width<<",  num_reductions_height="<<num_reductions_height<<", mm_num_reductions="<<mm_num_reductions	<<flush;
-
-	//mm_num_reductions	= obj["num_reductions"].asUInt();									cout << "\nmm_num_reductions="<<mm_num_reductions	<<flush;
-																							// Constant parameters of the mipmap, (as opposed to per-layer mipmap_buf)
+	mm_num_reductions				= min(num_reductions_width, num_reductions_height);														if(verbosity>local_verbosity_threshold){ cout << "\nRunCL::initialize_RunCL_chk0.4"
+																																				<< "\nnum_reductions_width="<<num_reductions_width
+																																				<<",  num_reductions_height="<<num_reductions_height
+																																				<<", mm_num_reductions="<<mm_num_reductions	<<flush;
+																																			}
+																																			// Constant parameters of the mipmap, (as opposed to per-layer mipmap_buf)
 	if (mm_num_reductions >= max_mipmap_layers) {
 		cout << "\n\n BEWARE (mm_num_reductions="<<mm_num_reductions<<" >= max_mipmap_layers="<<max_mipmap_layers<<")  #############\n\n"<<flush;
+		cerr << "\n\n BEWARE (mm_num_reductions="<<mm_num_reductions<<" >= max_mipmap_layers="<<max_mipmap_layers<<")  #############\n\n"<<flush;
 		mm_num_reductions = max_mipmap_layers-1;
 	}
 	uint apexImage_width	= baseImage_width	/ pow(2, mm_num_reductions);
 	uint apexImage_height	= baseImage_height	/ pow(2, mm_num_reductions);
-	cout << "\nmm_num_reductions = "<<mm_num_reductions<<",  apexImage_width = "<<apexImage_width<<",  apexImage_height = "<<apexImage_height<<flush;
-
-
-	//mm_num_blur_layers	= obj["num_blur_layers"].asUInt();
+																																			if(verbosity>local_verbosity_threshold){ cout << "\nRunCL::initialize_RunCL_chk0.4"
+																																				<< "\nmm_num_reductions = "<<mm_num_reductions
+																																				<<",  apexImage_width = "<<apexImage_width
+																																				<<",  apexImage_height = "<<apexImage_height<<flush;
+																																			}
 	mm_start			= 0;
 	float short_side	= fmin(baseImage_width, baseImage_height);
 	uint num_reductions	= floor(log2(short_side)) -2;																						// i.e. at least 4 pixels remain on short side of img at apex of img pyramid.
 //	if( (short_side/pow(2,num_reductions)) < 6) num_reductions--;																			// i.e. at least 6 pixels remain on short side of img at apex of img pyramid.
 //	mm_stop				= num_reductions; /*mm_num_reductions;// + mm_num_blur_layers;*/
 	mm_stop				= min(num_reductions, max_mipmap_layers-2);
-																																			if(verbosity>local_verbosity_threshold) cout << "\nRunCL::initialize_RunCL_chk0.5"
+																																			if(verbosity>local_verbosity_threshold){ cout << "\nRunCL::initialize_RunCL_chk0.5"
 																																						<<",  mm_start="<<mm_start
 																																						<<",  mm_stop="<<mm_stop
 																																						<<",  short_side="<<short_side
 																																						<<",  log2(short_side)="<<log2(short_side)
-
 																																						<<" \n" << flush;
+																																			}
 	mm_gaussian_size	= obj["gaussian_size"].asUInt();
 	mm_margin			= obj["MipMap_margin"].asUInt() * mm_num_reductions;
 	mm_width 			= baseImage_width  + 2 * mm_margin;
@@ -532,12 +544,12 @@ void RunCL::set_mimpmap_offsets(){
 	mipmap[MiM_WRITE_COLS]			= mipmap[MiM_READ_COLS]/2;
 	mipmap[MiM_PIXELS]				= mipmap[MiM_READ_COLS] * mipmap[MiM_READ_ROWS];
 																																			// TODO compute required reduction and blur depending on img size
-	//int stop1 						= min(mm_num_reductions, max_mipmap_layers-1);								// #### Img pyr layers ##########
+																													// #### Img pyr layers ##########
 	int reduction = 0;
-	num_threads[reduction]		= ceil( (float)(mipmap[MiM_PIXELS])/(float)local_work_size ) * local_work_size ;						// global_work_size formula for num_treads req for this layer.
-	for (int i=0; i<8; i++)		{																										// Initialize the global MipMap[8*8] array.
-		MipMap[reduction*8 +i]	= mipmap[i];																							if(verbosity>local_verbosity_threshold) { cout << "\nMipMap["<<reduction<<"*8 +"<<i<<"]="<<MipMap[reduction*8 +i] ;}
-	}																																	if(verbosity>local_verbosity_threshold) { cout << endl << flush; }
+	num_threads[reduction]		= ceil( (float)(mipmap[MiM_PIXELS])/(float)local_work_size ) * local_work_size ;							// global_work_size formula for num_treads req for this layer.
+	for (int i=0; i<8; i++)		{																											// Initialize the global MipMap[8*8] array.
+		MipMap[reduction*8 +i]	= mipmap[i];																								if(verbosity>local_verbosity_threshold) { cout << "\nMipMap["<<reduction<<"*8 +"<<i<<"]="<<MipMap[reduction*8 +i] ;}
+	}																																		if(verbosity>local_verbosity_threshold) { cout << endl << flush; }
 
 	for(; reduction <= mm_stop/*stop1*/; reduction++) {
 		mipmap[MiM_READ_OFFSET]		= mipmap[MiM_WRITE_OFFSET];
@@ -551,7 +563,7 @@ void RunCL::set_mimpmap_offsets(){
 
 		num_threads[reduction+1]	= ceil( (float)(mipmap[MiM_PIXELS])/(float)local_work_size ) * local_work_size ;						// global_work_size formula for num_treads req for this layer.
 		for (int i=0; i<8; i++)		{																										// Initialize the global MipMap[8*8] array.
-			MipMap[(reduction+1)*8 +i]	= mipmap[i];																							if(verbosity>local_verbosity_threshold) { cout << "\nMipMap["<<reduction<<"*8 +"<<i<<"]="<<MipMap[reduction*8 +i] ;}
+			MipMap[(reduction+1)*8 +i]	= mipmap[i];																						if(verbosity>local_verbosity_threshold) { cout << "\nMipMap["<<reduction<<"*8 +"<<i<<"]="<<MipMap[reduction*8 +i] ;}
 		}																																	if(verbosity>local_verbosity_threshold) { cout << endl << flush; }
 
 	}
@@ -631,25 +643,29 @@ void RunCL::set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose, 
 																																			// NB Orthographic camera, See notes in convertTransforms.cpp , cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){..}
 																																			// 4x4 perspective matrix is not invertable for points at infinity. We correct ortho->perspective in the kernel by dividing by Z.
 	float k_arry[16], inv_k_arry[16], pose_arry[16], k2k_arry[16];
-	Matx44f_To_float16arry( k,		k_arry		);		PRINT_FLOAT_16(k_arry, )
+	Matx44f_To_float16arry( k,		k_arry		);																							if(verbosity>local_verbosity_threshold) { cout<<"\n"<<fname<< endl; PRINT_FLOAT_16(k_arry, ) }
 	Matx44f_To_float16arry( inv_k,	inv_k_arry	);
 	Matx44f_To_float16arry( pose,	pose_arry	);
 	Matx44f_To_float16arry( k2k,	k2k_arry	);
 
-	float k_buf_arr[16];
-	void * ptr = k_buf_arr;
-
 	current_frames[ current_frames_idx[0] ].K		= k;
 	current_frames[ current_frames_idx[0] ].inv_K	= inv_k;
-																																			PRINT_MATX44F(k,);
-	_clEnqueueWriteBuffer( uload_queue, 	K_buf,		CL_FALSE, 0, 16 * sizeof( float), k_arry, 			fname);							cout<<"\nRunCL::"<<fname<<"(  )_chk1"<<flush;
-																																			PRINT_MATX44F(inv_k,);
-	_clEnqueueWriteBuffer( uload_queue, 	inv_K_buf,	CL_FALSE, 0, 16 * sizeof( float), inv_k_arry, 		fname);							cout<<"\nRunCL::"<<fname<<"(  )_chk2"<<flush;
-																																			PRINT_MATX44F(pose,);
+
+	_clEnqueueWriteBuffer( uload_queue, 	K_buf,		CL_FALSE, 0, 16 * sizeof( float), k_arry, 			fname);
+	_clEnqueueWriteBuffer( uload_queue, 	inv_K_buf,	CL_FALSE, 0, 16 * sizeof( float), inv_k_arry, 		fname);
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\nRunCL::"<<fname<<"(  )_chk1"<<flush;
+																																				PRINT_MATX44F(k,);
+																																				PRINT_MATX44F(inv_k,);
+																																				PRINT_MATX44F(pose,);
+																																			}
 	update_k2k_buf( k2k_arry, pose_arry );
-																																			ReadOutput( (uchar*)ptr, K_buf, sizeof(float)*16, 0 );
-																																			PRINT_FLOAT_16(k_buf_arr, )
-																																			if(verbosity>local_verbosity_threshold) { cout<<"\n"<<fname<<"_finished"<<flush; }
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\nRunCL::"<<fname<<"(  )_chk2"<<flush;
+																																				float k_buf_arr[16];
+																																				void * ptr = k_buf_arr;
+																																				ReadOutput( (uchar*)ptr, K_buf, sizeof(float)*16, 0 );
+																																				PRINT_FLOAT_16(k_buf_arr, )
+																																				cout<<"\n"<<fname<<"_finished"<<flush;
+																																			}
 }
 
 
@@ -683,7 +699,7 @@ void RunCL::mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_
 
 void RunCL::allocatemem(){
 	int local_verbosity_threshold = V_RUNCL_ALLOCATEMEM;//verbosity_mp["RunCL::allocatemem"];// 0;
-																																		if(verbosity>local_verbosity_threshold) cout <<"\n\nRunCL::allocatemem()_chk0\n"<<flush;
+																																			if(verbosity>local_verbosity_threshold) cout <<"\n\nRunCL::allocatemem()_chk0\n"<<flush;
 	stringstream 	ss;
 	ss 				<< "allocatemem";
 	cl_int 			status;
@@ -694,21 +710,21 @@ void RunCL::allocatemem(){
 		imgmem[i]		= clCreateBuffer(m_context, CL_MEM_READ_WRITE  						, mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 		velmap[i]		= clCreateBuffer(m_context, CL_MEM_READ_WRITE  						, mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	}
-	cout <<"\nmm_size_bytes_C4 = "<<mm_size_bytes_C4<<flush;
-	for (uint i=0; i<num_current_frames; i++ ) {
-		cout<<"\nimgmem["<<i<<"] = "<<imgmem[i]<<flush;
-	}
+																																			if(verbosity>local_verbosity_threshold){ cout <<"\nRunCL::allocatemem()_chk1"<<flush;
+																																				cout <<"\nmm_size_bytes_C4 = "<<mm_size_bytes_C4<<flush;
+																																				for (uint i=0; i<num_current_frames; i++ ) {
+																																					cout<<"\nimgmem["<<i<<"] = "<<imgmem[i]<<flush;
+																																				}
+																																			}
 	initialize_current_frames();
 	// test_update_current_frames_idx(64);	// NB Only for debugging.
 
 	imgmem_blurred		= clCreateBuffer(m_context, CL_MEM_READ_WRITE  						, mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	SE3_grad_map_mem 	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		,num_SE3_DoF *	  mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 7= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // SE3_map * img grad, 6DoF*8channels=48     // 6DoF*3channels=18,but 4*6=24 because hsv img gradient is held in float4
+	SE3_weight_map_mem	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 9= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
-	SE3_grad_map_mem 	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 					,6*2* mm_size_bytes_C4,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 7= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // SE3_map * img grad, 6DoF*8channels=48     // 6DoF*3channels=18,but 4*6=24 because hsv img gradient is held in float4
-
-	SE3_weight_map_mem	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 					,24 * mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 9= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-
-	SE3_incr_map_mem	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 					,24 * mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 9= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // For debugging before summation.
-	SE3_map_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 					,12 * mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 10= "<<checkerror(res)<<"\n"<<flush;exit_(res);}	// (row, col) increment fo each parameter.
+	SE3_incr_map_mem	= clCreateBuffer(m_context, CL_MEM_READ_WRITE 					, 2 * mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 9= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // For debugging before summation.
+	SE3_map_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 		,num_SE3_DoF *2	* mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 10= "<<checkerror(res)<<"\n"<<flush;exit_(res);}	// (row, col) increment fo each parameter.
 	basemem				= clCreateBuffer(m_context, CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR, image_size_bytes,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 11= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // Original image CV_8UC3
 	depth_mem_temp		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 12= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // Used to be : Copy used by tracing & auto-calib. Now spare buffer for upload & computations
 	depth_mem_GT		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 13= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // Where depthmap GT mimpap is constructed.

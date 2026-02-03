@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 		//dynamic_slam.optimize_depth();
 																														//if(verbosity_>1) dynamic_slam.runcl.saveCostVols(imagesPerCV);
 		//dynamic_slam.initialize_keyframe_vec();																			// next keyframe
-																														// TODO write new depthmap transformation based on bin sort from fluids_v3 & Morphogenesis.
+																														// TO DO write new depthmap transformation based on bin sort from fluids_v3 & Morphogenesis.
 		
 	}while(!ds_error && ((frame_count<max_frame_count) || (max_frame_count==-1)) );										// #########################################################################################################
 																														if(verbosity_>0) cout << "\n main_chk 3\n" << flush;

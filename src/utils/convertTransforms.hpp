@@ -57,10 +57,10 @@ void Matx44f_To_float16arry(Matx44f matx, float arry[16]);
 
 void float16arry_To_Matx44f(float arry[16], Matx44f matx);
 
-cv::Matx44f getPose(Mat R, Mat T, int verbosity);
+cv::Matx44f getPose(Mat R, Mat T/*, int verbosity*/);
 
-cv::Matx44f getInvPose(cv::Matx44f pose, int verbosity);
+cv::Matx44f getInvPose(cv::Matx44f pose/*, int verbosity*/);
 
-cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity);
+cv::Matx44f generate_invK_(cv::Matx44f K_/*, int verbosity*/);
 
 #endif 

@@ -138,13 +138,18 @@ void RunCL::_clCreateBuffer(
     cl_mem_flags        flags,
     size_t              size,
     void*               host_ptr,
-    cl_int*             errcode_ret,
 	cl_mem 				memobj,
 	string 				fname
 ){
 	cl_int		res;
-	memobj		= clCreateBuffer( m_context, CL_MEM_READ_ONLY, mm_size_bytes_C4,	0, &res );
-											if(res!=CL_SUCCESS){ cout<<"\n"<<fname << "_clCreateBuffer  buffer="<<memobj<<",   error="<<checkerror(res)<<"\n"<<flush; exit_(res); }
+	memobj		= clCreateBuffer( context, flags, size,	host_ptr, &res );
+
+	if(res!=CL_SUCCESS){
+		cout<<"\n"			<<fname << "_clCreateBuffer(..)"
+		<<"    buffer="		<<memobj
+		<<",   error="		<<checkerror(res)<<"\n"<<flush;
+		exit_(res);
+	}
 }
 
 

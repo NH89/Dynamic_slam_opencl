@@ -54,9 +54,9 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	uint  group_id									= get_group_id(0);
 	const uint local_size 							= get_local_size(0);
 
-	if (global_id_u < 1 /*num_past_frames*/){printf("\n__kernel void Rho_sq()  past_frame_num= %u,  invk2k buf = \n(%f,	%f,	%f,	%f),	\n(%f,	%f,	%f,	%f),	\n(%f,	%f,	%f,	%f),	\n(%f,	%f,	%f,	%f),	   ",\
-		lid, inv_k2k[lid][0], inv_k2k[lid][1], inv_k2k[lid][2], inv_k2k[lid][3], 	inv_k2k[lid][4], inv_k2k[lid][5], inv_k2k[lid][6], inv_k2k[lid][7], 	inv_k2k[lid][8], inv_k2k[lid][9], inv_k2k[lid][10], inv_k2k[lid][11], 	inv_k2k[lid][12], inv_k2k[lid][13], inv_k2k[lid][14], inv_k2k[lid][15] );
-	}
+// 	if (global_id_u < 1 /*num_past_frames*/){printf("\n__kernel void Rho_sq()  past_frame_num= %u,  invk2k buf = \n(%f,	%f,	%f,	%f),	\n(%f,	%f,	%f,	%f),	\n(%f,	%f,	%f,	%f),	\n(%f,	%f,	%f,	%f),	   ",\
+// 		lid, inv_k2k[lid][0], inv_k2k[lid][1], inv_k2k[lid][2], inv_k2k[lid][3], 	inv_k2k[lid][4], inv_k2k[lid][5], inv_k2k[lid][6], inv_k2k[lid][7], 	inv_k2k[lid][8], inv_k2k[lid][9], inv_k2k[lid][10], inv_k2k[lid][11], 	inv_k2k[lid][12], inv_k2k[lid][13], inv_k2k[lid][14], inv_k2k[lid][15] );
+// 	}
 
 	const uint8 mipmap_params_						= mipmap_params[layer];
 	uint read_offset_ 								= mipmap_params_[MiM_READ_OFFSET];
@@ -103,8 +103,8 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	bool   intersection								= false;
 	bool   print_ 									= false;
 
-	if (global_id_u < 1 /*num_past_frames*/){printf("\n__kernel void Rho_sq()  layer = %d,  read_index=%d,  read_index/mm_cols=%f ",
-																				layer,		read_index,  	(float)read_index/(float)mm_cols	);	}
+// 	if (global_id_u < 1 /*num_past_frames*/){printf("\n__kernel void Rho_sq()  layer = %d,  read_index=%d,  read_index/mm_cols=%f ",
+// 																				layer,		read_index,  	(float)read_index/(float)mm_cols	);	}
 
 	local_rho[lid]									= zero_f2;
 	for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
@@ -378,9 +378,9 @@ __kernel void update_k2k(	// TODO need new kernel, for global synchronization be
 		pose_update_J[lid]			=	pose_update;
 		local_update_vec[lid]		=	-pose_update;
 	}																					barrier(CLK_LOCAL_MEM_FENCE);/////##########
-
+/*
 	if(lid==0)printf("\n__kernel void update_k2k(..) Layer=%u,  IC-LK Pose update = %f, %f, %f		%f, %f, %f", layer, pose_update_J[0], pose_update_J[1], pose_update_J[2], pose_update_J[3], pose_update_J[4], pose_update_J[5] );
-	// End IC-LK //////////////////////////////////////////
+*/	// End IC-LK //////////////////////////////////////////
 
 /*
 	if (lid<6) {
@@ -434,9 +434,9 @@ __kernel void update_k2k(	// TODO need new kernel, for global synchronization be
 	__local float local_pose_inv_K[ 2* SE3_elems];																										// Enable two matrix multiplications simultaneously in one work group of 32 trheads.
 	__local float local_A_B[		2* SE3_elems];
 	__local float local_k2k[		   SE3_elems];
-																																						if (lid==0){
-																																							printf("\n\n __global Pose[] = \n"); for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",Pose[	j*4 +k]);	} printf("\n"); } printf("\n\n");
-																																						}
+// 																																						if (lid==0){
+// 																																							printf("\n\n __global Pose[] = \n"); for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",Pose[	j*4 +k]);	} printf("\n"); } printf("\n\n");
+// 																																						}
 																						barrier(CLK_GLOBAL_MEM_FENCE);/////##########
 
 	if (lid < 3) {	local_update_vec[	lid + 6]		= -1.0f + lid;	}																				// sets local_update_vec[6,7,8] to -1, 0, 1
@@ -454,20 +454,20 @@ __kernel void update_k2k(	// TODO need new kernel, for global synchronization be
 					local_pose_inv_K[ 	lid + 16]		= inv_K[lid];
 					local_k2k[			lid]			= 0.0f;
 	}																					barrier(CLK_LOCAL_MEM_FENCE);/////##########
-																																						if(lid==0){
-																																							printf("\n\n__kernel void update_k2k(..), \nlocal_update_vec[]={"); for (int i=0; i<9; i++){ printf("	%f,",local_update_vec[i]); }
-																																							printf( "}\nlocal_K_update[]={"); for (int i=0; i<2* SE3_elems; i++){ printf("	%f,",local_K_update[i]); }		printf("}\n");
-																																						}
+// 																																						if(lid==0){
+// 																																							printf("\n\n__kernel void update_k2k(..), \nlocal_update_vec[]={"); for (int i=0; i<9; i++){ printf("	%f,",local_update_vec[i]); }
+// 																																							printf( "}\nlocal_K_update[]={"); for (int i=0; i<2* SE3_elems; i++){ printf("	%f,",local_K_update[i]); }		printf("}\n");
+// 																																						}
 	// pose_update_J
 	LieToP( 	lid,  local_update_vec,	local_K_update );								barrier(CLK_LOCAL_MEM_FENCE);/////##########
-																																						if(lid==0){
-																																							printf("\n\n local_K_update = \n"); for (uint i=0; i< 2 ; i++){ for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ printf(",	%f",local_K_update[		i*16 +j*4 +k]); } printf("\n"); } printf("\n\n"); }
-																																						}
+// 																																						if(lid==0){
+// 																																							printf("\n\n local_K_update = \n"); for (uint i=0; i< 2 ; i++){ for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ printf(",	%f",local_K_update[		i*16 +j*4 +k]); } printf("\n"); } printf("\n\n"); }
+// 																																						}
 	update_k2_kdev_fn( lid, local_K_update,	local_pose_inv_K, local_A_B, local_k2k ); 	barrier(CLK_LOCAL_MEM_FENCE);/////##########					// (local_update, local_Pose, local_K, local_inv_K, A, B, local_k2k );
 	if(lid<16){ k2k[lid]								= local_k2k[lid]; }				barrier(CLK_LOCAL_MEM_FENCE);/////##########
-																																						if(lid==0){
-																																							printf("\nk2k = {\n"); for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_k2k[	j*4 +k]);	} printf("\n"); } printf("\n\n");
-																																						}
+// 																																						if(lid==0){
+// 																																							printf("\nk2k = {\n"); for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_k2k[	j*4 +k]);	} printf("\n"); } printf("\n\n");
+// 																																						}
 	__local float local_pose[SE3_elems];																												// update the stored pose. TODO tuck this into 2nd stage of void update_k2_kdev_fn(..)
 	__local float local_update[SE3_elems];
 	__local float local_new_pose[SE3_elems];
@@ -479,11 +479,11 @@ __kernel void update_k2k(	// TODO need new kernel, for global synchronization be
 	}																					barrier(CLK_LOCAL_MEM_FENCE);/////##########
 	mat_mul44( 		lid,	local_pose,	local_update,	  local_new_pose );				barrier(CLK_LOCAL_MEM_FENCE);/////##########
 	if(lid<16){		Pose[				lid]			= local_new_pose [lid]; }
-																																						if (lid==0){
-																																							printf("\n\n local_pose[] = \n");		for (uint j=0; j< 4 ; j++){ 	for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_pose[		j*4 +k]);	} printf("\n"); 	} printf("\n\n");
-																																							printf("\n\n local_update[] = \n");		for (uint j=0; j< 4 ; j++){ 	for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_update[	j*4 +k]);	} printf("\n"); 	} printf("\n\n");
-																																							printf("\n\n local_new_pose[] = \n");	for (uint j=0; j< 4 ; j++){ 	for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_new_pose[	j*4 +k]);	} printf("\n"); 	} printf("\n\n");
-																																						}
+// 																																						if (lid==0){
+// 																																							printf("\n\n local_pose[] = \n");		for (uint j=0; j< 4 ; j++){ 	for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_pose[		j*4 +k]);	} printf("\n"); 	} printf("\n\n");
+// 																																							printf("\n\n local_update[] = \n");		for (uint j=0; j< 4 ; j++){ 	for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_update[	j*4 +k]);	} printf("\n"); 	} printf("\n\n");
+// 																																							printf("\n\n local_new_pose[] = \n");	for (uint j=0; j< 4 ; j++){ 	for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_new_pose[	j*4 +k]);	} printf("\n"); 	} printf("\n\n");
+// 																																						}
 }
 
 

@@ -4,7 +4,7 @@
 
 void RunCL::initialize_patch_params(){																// called by Dynamic_slam::Dynamic_slam
 	string fname					= "RunCL::initialize_patch_params()";
-	int local_verbosity_threshold	= V_RUNCL_INITIALIZE_PATCH_PARAMS;
+	//int local_verbosity_threshold	= V_RUNCL_INITIALIZE_PATCH_PARAMS;
 
 	//size_t  device_max_workitem_sizes[3];															i.e. max num threads per "symmetric multi-processor"
 	cl_int device_info_1 = clGetDeviceInfo(
@@ -13,7 +13,7 @@ void RunCL::initialize_patch_params(){																// called by Dynamic_slam:
 							sizeof(device_max_workitem_sizes),	//size_t param_value_size,
 							device_max_workitem_sizes,			//void* param_value,
 							NULL								//size_t* param_value_size_ret
-	);
+	);																												if( device_info_1!=CL_SUCCESS){ cerr<<"\nRunCL::initialize_patch_params() ( device_info_1!=CL_SUCCESS)"	<<device_info_1<<" = "<<checkerror(device_info_1)	<<endl<<flush;	exit_(1); }
 	//cl_uint  device_max_compute_units;  															i.e. the number of "symmetric multi-processors"
 	cl_int device_info_2 = clGetDeviceInfo(
 							deviceId,							//cl_device_id device,
@@ -21,7 +21,7 @@ void RunCL::initialize_patch_params(){																// called by Dynamic_slam:
 							sizeof(device_max_compute_units),	//size_t param_value_size,
 							&device_max_compute_units,			//void* param_value,
 							NULL								//size_t* param_value_size_ret
-	);
+	);																												if( device_info_2!=CL_SUCCESS){ cerr<<"\nRunCL::initialize_patch_params() ( device_info_2!=CL_SUCCESS)"	<<device_info_2<<" = "<<checkerror(device_info_2)	<<endl<<flush;	exit_(1); }
 	//cl_ulong  device_local_mem_size																i.e. max local memory per work_group
 	cl_int device_info_3 = clGetDeviceInfo(
 							deviceId,							//cl_device_id device,
@@ -29,7 +29,7 @@ void RunCL::initialize_patch_params(){																// called by Dynamic_slam:
 							sizeof(device_local_mem_size),		//size_t param_value_size,
 							&device_local_mem_size,				//void* param_value,
 							NULL								//size_t* param_value_size_ret
-	);
+	);																												if( device_info_3!=CL_SUCCESS){ cerr<<"\nRunCL::initialize_patch_params() ( device_info_3!=CL_SUCCESS)"	<<device_info_3<<" = "<<checkerror(device_info_3)	<<endl<<flush;	exit_(1); }
 }
 
 
@@ -50,7 +50,7 @@ void RunCL::compute_patch_lookup_table(){										// called by Dynamic_slam::Dy
 							sizeof(kernel_workgroup_size),		//size_t param_value_size,
 							&kernel_workgroup_size,				//void* param_value,
 							NULL								//size_t* param_value_size_ret
-						);
+						);																							if( k_wg_info!=CL_SUCCESS){ cerr<<"\nRunCL::compute_patch_lookup_table() ( k_wg_info!=CL_SUCCESS)"	<<k_wg_info<<" = "<<checkerror(k_wg_info)	<<endl<<flush;	exit_(1); }
 	patch_kernel_workgroup_size	= kernel_workgroup_size;
 	size_t	max_workgroup_size	= min(kernel_workgroup_size, device_max_workitem_sizes[0] );
 																																if( verbosity>local_verbosity_threshold+1) {cout<<"\n\nRunCL::compute_patch_lookup_table( ..)_chk_2 "<<flush;
@@ -205,18 +205,17 @@ void RunCL::patch_img_gradients_set_params(){	// Uses patch lookup table		// cal
 							sizeof(kernel_workgroup_size),		//size_t param_value_size,
 							&kernel_workgroup_size,				//void* param_value,
 							NULL								//size_t* param_value_size_ret
-						);
+						);																					if( k_wg_info!=CL_SUCCESS){ cerr<<"\nRunCL::patch_img_gradients_set_params() ( k_wg_info!=CL_SUCCESS)"	<<k_wg_info<<" = "<<checkerror(k_wg_info)	<<endl<<flush;	exit_(1); }
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients_set_params()_chk2 #############################################################"<<flush;
 																																	cout <<"\n kernel_workgroup_size = "<<kernel_workgroup_size<<endl<<flush;
 																																}
-																															if( patch_kernel_workgroup_size > kernel_workgroup_size ) {	// #####  Error !
-																																cout<<"\n\nRunCL::patch_img_gradients_set_params()  ( patch_kernel_workgroup_size="<<patch_kernel_workgroup_size<<" > kernel_workgroup_size="<<kernel_workgroup_size<<" )."
-																																	<<"Need code to handle workgroup size for this kernel."<<endl<<flush;
-
-																																cerr<<"\n\nRunCL::patch_img_gradients_set_params()  ( patch_kernel_workgroup_size="<<patch_kernel_workgroup_size<<" > kernel_workgroup_size="<<kernel_workgroup_size<<" )."
-																																	<<"Need code to handle workgroup size for this kernel."<<endl<<flush;
-																																exit_(1);
-																															}
+																											if( patch_kernel_workgroup_size > kernel_workgroup_size ) {	// #####  Error !
+																												cout<<"\n\nRunCL::patch_img_gradients_set_params()  ( patch_kernel_workgroup_size="<<patch_kernel_workgroup_size<<" > kernel_workgroup_size="<<kernel_workgroup_size<<" )."
+																													<<"Need code to handle workgroup size for this kernel."<<endl<<flush;
+																												cerr<<"\n\nRunCL::patch_img_gradients_set_params()  ( patch_kernel_workgroup_size="<<patch_kernel_workgroup_size<<" > kernel_workgroup_size="<<kernel_workgroup_size<<" )."
+																													<<"Need code to handle workgroup size for this kernel."<<endl<<flush;
+																												exit_(1);
+																											}
 	size_t		one_patch_local_Hessian_size		= sizeof(cl_float4)				*num_SE3_DoF *num_SE3_DoF		*patch_size;
 																																if( verbosity>local_verbosity_threshold+1 ) {
 																																	cout <<"\none_patch_local_Hessian_size		= "<<one_patch_local_Hessian_size<<flush;
@@ -315,10 +314,8 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 	string fname = "RunCL::patch_img_gradients()";
 	int local_verbosity_threshold = V_RUNCL_PATCH_IMG_GRADIENTS;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_chk1 #############################################################"<<flush;}
 	cl_kernel		kernel						= patch_img_grad_kernel;
-																																cout<<"  chk_1 , layer = "<<layer<<flush;
 	const cl_mem 	imgmem_						= current_frames[ 						current_frames_idx[0] ].img_buf;
 
-																																cout<<"  chk_2 "<<flush;
 	size_t			local_work_size_			= patch_img_gradients_workgroup_size[	layer];											// patch_local_work_size[	layer];						//patch_img_gradients_workgroup_size; // patch_img_gradients_local_work_size_;
 	size_t			threads_to_launch			= patch_num_threads[					layer];
 	size_t			local_Hessian_size			= sizeof(cl_float4)						*num_SE3_DoF *num_SE3_DoF	*local_work_size_;	//*patch_img_gradients_workgroup_size;
@@ -328,19 +325,19 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 																																		cout<<"\npatch_ST3_hessian_start_idx[	layer="<<layer_<<"][row][col] = "<<patch_hessian_start_idx[layer_][0][0]<<flush;
 																																	}
 																																}
-																																cout<<"  chk_3 "<<flush;
 	uint			SE3_h_offset				= patch_hessian_start_idx[layer][0][0];
 	uint			ST3_h_offset				= patch_ST3_hessian_start_idx[layer][0][0];
 	cl_uint3		SE3_hessian_offset			= {{ SE3_h_offset,	(patch_hessian_start_idx[layer][0][1]     - SE3_h_offset) ,	(patch_hessian_start_idx[layer][1][0]     - SE3_h_offset)  }};
 	cl_uint3		ST3_out_offset				= {{ ST3_h_offset,	(patch_ST3_hessian_start_idx[layer][0][1] - ST3_h_offset) ,	(patch_ST3_hessian_start_idx[layer][1][0] - ST3_h_offset)  }};
-																																cout<<"  chk_4, local_Hessian_size = "<<local_Hessian_size<<"  "<<flush;
-
-																																cout<<" out_block_size = "<<out_block_size
-																																<<"\n SE3_h_offset = "<<SE3_h_offset
-																																<<"\n ST3_h_offset = "<<ST3_h_offset
-																																<<"\n SE3_hessian_offset = ("<<SE3_hessian_offset.x <<", "<<SE3_hessian_offset.y <<", "<<SE3_hessian_offset.z <<")"
-																																<<"\n ST3_out_offset = ("<<ST3_out_offset.x <<", "<<ST3_out_offset.y <<", "<<ST3_out_offset.z <<")"
-																																<<flush;
+																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_chk2 "
+																																	<<"  chk_4, local_Hessian_size = "<<local_Hessian_size<<"  "<<flush;
+																																	cout<<" out_block_size = "<<out_block_size
+																																	<<"\n SE3_h_offset = "<<SE3_h_offset
+																																	<<"\n ST3_h_offset = "<<ST3_h_offset
+																																	<<"\n SE3_hessian_offset = ("<<SE3_hessian_offset.x <<", "<<SE3_hessian_offset.y <<", "<<SE3_hessian_offset.z <<")"
+																																	<<"\n ST3_out_offset = ("<<ST3_out_offset.x <<", "<<ST3_out_offset.y <<", "<<ST3_out_offset.z <<")"
+																																	<<flush;
+																																}
 
 	_clSetKernelArg( kernel,	0, sizeof(int),			&layer,							fname);									// __private	uint		layer,						//0
 	_clSetKernelArg( kernel,	1, sizeof(int),			&lookup_table_offset_uint,		fname);									// __private	uint		lookup_table_offset_uint,	//1
@@ -363,7 +360,6 @@ void* param_value,
 size_t* param_value_size_ret);
 */
 
-																																cout<<"\nRunCL::patch_img_gradients()_chk_5 "<<flush;
 	cl_event	ev;
 	cl_int		res, status;
 
@@ -400,29 +396,17 @@ size_t* param_value_size_ret);
 																																// }
 																																*/
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_finished #############################################################"<<flush;
-
-// #define MiM_PIXELS			0	// for mipmap_buf, 				when launching one kernel per layer. 	Updated for each layer.
-// #define MiM_READ_OFFSET		1	// for ths layer, 				start of image data
-// #define MiM_WRITE_OFFSET	2
-// #define MiM_READ_COLS		3	// cols without margins
-// #define MiM_WRITE_COLS		4
-// // #define MiM_GAUSSIAN_SIZE	5	// filter box size
-// #define MiM_READ_ROWS		6	// rows without margins
-// #define MiM_WRITE_ROWS		7
 																																	int offset	=	MipMap[layer*8 +  MiM_READ_OFFSET   ];
 																																	int rows	=	MipMap[layer*8 +  MiM_READ_ROWS   ];
 																																	int size_bytes	= rows * mm_width * 4*sizeof(float) ;
 
 																																	cv::Mat temp_mat = cv::Mat::zeros (rows, mm_width, CV_32FC4);
-																																	cout<<"\n chk 1, offset = "<<offset<<",  rows ="<<rows<<flush;
+																																	cout<<"\n offset = "<<offset<<",  rows ="<<rows<<flush;
 
 																																	ReadOutput(temp_mat.data, SE3_grad_map_mem, size_bytes, offset*4*sizeof(float)   );// , 0/*offset*/	// read 1st elem of Jacobian to verify kernel summation.
-
-																																	// cout<<"\n chk 2"<<flush;
 																																	// cv::imshow( "SE3_grad_map_mem", temp_mat);
 																																	// cv::waitKey(-1);
 
-																																	cout<<"\n chk 3"<<flush;
 																																	cl_float4 sum_J1	= {{0.0f}};
 																																	cl_float4 sum_H11	= {{0.0f}};
 
@@ -488,15 +472,18 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 	Matx66f		Hessian;
 	Mat			hessian_Mat(	(num_SE3_DoF+1),	num_SE3_DoF,	CV_32FC4);
 	size_t		data_size	=	(num_SE3_DoF+1) *	num_SE3_DoF *	sizeof(cl_float4);
-	size_t		offset		=	layer*8*6 ;																						cout<<"\noffset="<<offset<<flush;
+	size_t		offset		=	layer*8*6 ;
 
 	ReadOutput( hessian_Mat.data, SE3_hessian_pinv_map_mem, data_size, offset*sizeof(cl_float4) );
-																																cout<<"\nhessian_Mat = \n"<<hessian_Mat<<flush;
+																																if( verbosity>local_verbosity_threshold) {cout<<"\nRunCL::patch_hessian_reduce()_chk2.1";
+																																	cout<<"\noffset="<<offset<<flush;
+																																	cout<<"\nhessian_Mat = \n"<<hessian_Mat<<flush;
+																																}
 	Mat J									= Mat( hessian_Mat, Rect(0,0,6,1)	);
 
 	for(int row=0; row<1; row++){																									// per_pixel division currently done in kernel, TODO which is better ?
 		for(int col=0; col<num_SE3_DoF; col++){
-			Jacobian.operator()(row,col)	= J.at<cl_float4>( row,col ).x; // / J.at<cl_float4>( row,col ).w;						// NB choose colour channel of Hessian
+			Jacobian.operator()(row,col)	= J.at<cl_float4>( row,col ).x;															// NB choose colour channel of Jacobian
 		}
 	}
 /*
@@ -506,15 +493,10 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 */
 	for(int row=0; row<num_SE3_DoF; row++){																							// per_pixel division currently done in kernel, TODO which is better ?
 		for(int col=0; col<num_SE3_DoF; col++){
-			Hessian.operator()(row,col)		= hessian_Mat.at<cl_float4>( row+1,col ).x; // / hessian_Mat.at<cl_float4>( row+1,col ).w;	// NB choose colour channel of Hessian
+			Hessian.operator()(row,col)		= hessian_Mat.at<cl_float4>( row+1,col ).x; 											// NB choose colour channel of Hessian
 		}
 	}
 	current_frames[ current_frames_idx[0] ].Jacobian[layer]			= Jacobian;
-/*
-	//current_frames[ current_frames_idx[0] ].invHessian[layer]		= Hessian.inv();							//inv_Hessian.inv();
-*/
-	//Matx66f GN_Hessian 						=  Jacobian.t()  * Jacobian ; /// #### TODO wrong !  need GN_H  = sum( elementwise J.t * J )
-	//invert(GN_Hessian,	current_frames[ current_frames_idx[0] ].invHessian[layer]	);
 
 	//  Eigen pseudo-inverse
 	Eigen::MatrixXd GN_H(6,6);																					// TODO replace Eigen with a kernel for 6x6 matrix pseudo-inverse or inverse.
@@ -573,7 +555,7 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 																																	// cv::Mat temp_mat = cv::Mat::zeros (mm_height, mm_width, CV_32FC4);
 																																	// ReadOutput(temp_mat.data, SE3_grad_map_mem, mm_size_bytes_C4);// , 0/*offset*/	// read 1st elem of Jacobian to verify kernel summation.
 																																	// cl_float4 sum = {{0.0f}};
-                                 //
+																																	//
 																																	// for(int row=0; row<temp_mat.rows; row++){
 																																	// 	for(int col=0; col<temp_mat.cols; col++){
 																																	// 		sum.w += temp_mat.at<cl_float4>(row,col).w;

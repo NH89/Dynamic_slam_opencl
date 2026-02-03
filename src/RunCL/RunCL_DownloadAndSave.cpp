@@ -751,7 +751,7 @@ void RunCL::SaveMat(cv::Mat temp_mat, int type_mat, std::filesystem::path folder
 		}																																	else {cout << "\nError RunCL::SaveMat(..)  needs new code for "<<checkCVtype(type_mat)<<endl<<flush; exit_(0);}
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nSaveMat_Chk_9, finished\n"<<flush;
 }
-
+/* not currently used
 void RunCL::SaveMat_1chan(cv::Mat temp_mat, int type_mat, std::filesystem::path folder_tiff, bool show, float max_range, std::string mat_name, std::string count){
 	int local_verbosity_threshold = V_RUNCL_SAVEMAT_1CHAN;//verbosity_mp["RunCL::SaveMat_1chan"];// 1;
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nSaveMat_1chan_Chk_1, "<<flush;
@@ -804,7 +804,7 @@ void RunCL::SaveMat_1chan(cv::Mat temp_mat, int type_mat, std::filesystem::path 
 
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nSaveMat_1chan_Chk_7, finished\n"<<flush;
 }
-
+*/
 void RunCL::DownloadAndSave_6Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers ){
 	int local_verbosity_threshold = V_RUNCL_DOWNLOADANDSAVE_6CHANNEL_VOLUME;
 																																			if(verbosity> local_verbosity_threshold) {

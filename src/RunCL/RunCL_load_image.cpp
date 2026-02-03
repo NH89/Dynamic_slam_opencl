@@ -3,12 +3,12 @@
 void RunCL::loadFrame(cv::Mat image){ //getFrame();																							// WriteBuffer basemem #########
 	string fname = "RunCL::loadFrame(..)";
 	int local_verbosity_threshold = V_RUNCL_LOADFRAME;
-                                                                                                                                            if(verbosity>local_verbosity_threshold) {cout << "\n RunCL::loadFrame_chk 0\n" << flush;}
+																																			if(verbosity>local_verbosity_threshold) {cout << "\n RunCL::loadFrame_chk 0\n" << flush;}
 	_clEnqueueWriteBuffer(uload_queue, basemem, CL_FALSE, 0, image_size_bytes, image.data, fname);
-                                                                                                                                            if (verbosity>local_verbosity_threshold){
-                                                                                                                                                stringstream ss;	ss << dataset_frame_num << "loadFrame";
-                                                                                                                                                DownloadAndSave_3Channel(basemem, ss.str(), paths.at("basemem"), image_size_bytes, baseImage_size,  baseImage_type, 	false );
-                                                                                                                                            }
+																																			if (verbosity>local_verbosity_threshold){
+																																				stringstream ss;	ss << dataset_frame_num << "loadFrame";
+																																				DownloadAndSave_3Channel(basemem, ss.str(), paths.at("basemem"), image_size_bytes, baseImage_size,  baseImage_type, 	false );
+																																			}
 }
 
 void RunCL::cvt_color_space(){ //getFrame(); basemem(CV_8UC3, RGB)->imgmem(CV16FC3, HSV), NB we will use basemem for image upload, and imgmem for the MipMap. RGB is default for .png standard.
@@ -16,21 +16,21 @@ void RunCL::cvt_color_space(){ //getFrame(); basemem(CV_8UC3, RGB)->imgmem(CV16F
 	int local_verbosity_threshold = V_RUNCL_CVT_COLOR_SPACE;
 	//const cl_mem imgmem_   = current_frames[ current_frames_idx[0] ].img_buf;
 	const cl_mem imgmem_   = current_frames[ current_frames_idx[0] ].img_buf;
-                                                                                                                                            if(verbosity>local_verbosity_threshold) {
-                                                                                                                                                cout<<"\n\nRunCL::cvt_color_space()_chk0"<<flush;
-                                                                                                                                                cout << "\n";
-                                                                                                                                                cout << ",mm_Image_size = " 	<< mm_Image_size << endl;
-                                                                                                                                                cout << ",mm_Image_type = "		<< mm_Image_type << endl;
-                                                                                                                                                cout << ",mm_size_bytes_C3 = " 	<< mm_size_bytes_C3 << endl;
-                                                                                                                                                cout << ",mm_size_bytes_C4 = " 	<< mm_size_bytes_C4 << endl;
-                                                                                                                                                cout << ",mm_size_bytes_C1 = " 	<< mm_size_bytes_C1 << endl;
-                                                                                                                                                cout << "\n";
-                                                                                                                                                cout << ",baseImage_size, = " 	<< baseImage_size << endl;
-                                                                                                                                                cout << ",baseImage_type = " 	<< baseImage_type << endl;
-                                                                                                                                                cout << ",image_size_bytes = " 	<< image_size_bytes	<< endl;
-                                                                                                                                                cout << ",mm_vol_size_bytes = " << mm_vol_size_bytes << endl;
-                                                                                                                                                cout << "\n" 					<< flush;
-                                                                                                                                            }
+																																			if(verbosity>local_verbosity_threshold) {
+																																				cout<<"\n\nRunCL::cvt_color_space()_chk0"<<flush;
+																																				cout << "\n";
+																																				cout << ",mm_Image_size = " 	<< mm_Image_size << endl;
+																																				cout << ",mm_Image_type = "		<< mm_Image_type << endl;
+																																				cout << ",mm_size_bytes_C3 = " 	<< mm_size_bytes_C3 << endl;
+																																				cout << ",mm_size_bytes_C4 = " 	<< mm_size_bytes_C4 << endl;
+																																				cout << ",mm_size_bytes_C1 = " 	<< mm_size_bytes_C1 << endl;
+																																				cout << "\n";
+																																				cout << ",baseImage_size, = " 	<< baseImage_size << endl;
+																																				cout << ",baseImage_type = " 	<< baseImage_type << endl;
+																																				cout << ",image_size_bytes = " 	<< image_size_bytes	<< endl;
+																																				cout << ",mm_vol_size_bytes = " << mm_vol_size_bytes << endl;
+																																				cout << "\n" 					<< flush;
+																																			}
 	_clSetKernelArg(cvt_color_space_linear_kernel, 0, sizeof(cl_mem), &basemem, fname);														//__global uchar3*		base,			//0
 	_clSetKernelArg(cvt_color_space_linear_kernel, 1, sizeof(cl_mem), &imgmem_, fname);	   												//__global float4*		img,			//1
 	_clSetKernelArg(cvt_color_space_linear_kernel, 2, sizeof(cl_mem), &uint_param_buf, fname);												//__global uint*		uint_params		//2
@@ -39,8 +39,7 @@ void RunCL::cvt_color_space(){ //getFrame(); basemem(CV_8UC3, RGB)->imgmem(CV16F
 	_clSetKernelArg(cvt_color_space_linear_kernel, 5, sizeof(cl_mem), &pix_sum_mem, fname);													//__local  float4*		global_sum_pix	//5
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::cvt_color_space()_chk1,  global_work_size="<< global_work_size <<flush;
 	_clEnqueueNDRangeKernel(m_queue, cvt_color_space_linear_kernel, 1, 0, &global_work_size, &local_work_size, fname);
-                                                                                                                                            if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::cvt_color_space()_chk2"<<flush;
-                                                                                                                                            if (verbosity>local_verbosity_threshold){
+																																			if(verbosity>local_verbosity_threshold){ cout<<"\nRunCL::cvt_color_space()_chk2"<<flush;
                                                                                                                                                 stringstream ss;		ss << dataset_frame_num << "_cvt_color_space";
                                                                                                                                                 stringstream ss_path;	ss_path << "imgmem";
 
@@ -107,11 +106,11 @@ void RunCL::cvt_color_space(){ //getFrame(); basemem(CV_8UC3, RGB)->imgmem(CV16F
 																																				for (int k=0; k<4; k++){
 																																					cout << ", " << pix_sum_reults[k]/pix_sum_reults[3] ;
 																																				}cout << ")";
-																																			}
-																																			uint start = mm_start, stop = mm_stop;
-																																			float img_stats__[img_stats_size];
-																																			ReadOutput(  (uchar*)img_stats__, img_stats_buf, img_stats_size_bytes );
-																																			if (verbosity>local_verbosity_threshold){
+
+																																				uint start = mm_start, stop = mm_stop;
+																																				float img_stats__[img_stats_size];
+																																				ReadOutput(  (uchar*)img_stats__, img_stats_buf, img_stats_size_bytes );
+
 																																				cout << "\n" << fname;
 																																				for (uint layer=start; layer<=stop; layer++){
 																																					cout << "\nlayer="<<layer<<" mean={ ";
@@ -147,24 +146,21 @@ void RunCL::sum_image_variance(){
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_chk1,  global_work_size="<< global_work_size <<flush;
 	_clEnqueueNDRangeKernel(m_queue,  kernel, 1, 0, &global_work_size, &local_work_size, fname); 											// run img_variance _kernel  aka img_variance(..) ##### TODO which CommandQueue to use ? What events to check ?
 
-	//mipmap_call_kernel( kernel, m_queue, true );
-
-	//mipmap_call_kernel(  kernel, m_queue );  To run on all layers would req kernel edits.
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_chk2"<<flush;
 	cv::Mat var_sum_mat = cv::Mat::zeros (pix_sum_size, 1, CV_32FC4); // cv::Mat::zeros (int rows, int cols, int type)						// NB the data returned is one float4 per group, for the base image, holding hsv channels plus entry[3]=pixel count.
-	ReadOutput( var_sum_mat.data, var_sum_mem, pix_sum_size_bytes );                                                                        // se3_sum_size_bytes
-                                                                                                                                            if(verbosity>local_verbosity_threshold+2) {cout<<"\n\nRunCL::img_variance(..)_chk2 ."<<flush;
+	ReadOutput( var_sum_mat.data, var_sum_mem, pix_sum_size_bytes );																		// se3_sum_size_bytes
+																																			if(verbosity>local_verbosity_threshold+2) {cout<<"\n\nRunCL::img_variance(..)_chk2 ."<<flush;
 																																				cout << "\nvar_sum_mat.size()="<<var_sum_mat.size()<<flush;
 																																				cout << "\npix_sum_size="<<pix_sum_size<<flush;
-                                                                                                                                                cout << "\n var_sum_mat.data = (\n";
-                                                                                                                                                for (int i=0; i<pix_sum_size; i++){
-                                                                                                                                                    cout << "\n group="<<i<<" : ( " << flush;
-                                                                                                                                                    for (int j=0; j<4; j++){
-                                                                                                                                                        cout << var_sum_mat.at<float>(i,j) << " , " << flush;
-                                                                                                                                                    }
-                                                                                                                                                    cout << ")" << flush;
-                                                                                                                                                }cout << "\n)\n" << flush;
-                                                                                                                                            }
+																																				cout << "\n var_sum_mat.data = (\n";
+																																				for (int i=0; i<pix_sum_size; i++){
+																																					cout << "\n group="<<i<<" : ( " << flush;
+																																					for (int j=0; j<4; j++){
+																																					cout << var_sum_mat.at<float>(i,j) << " , " << flush;
+																																					}
+																																					cout << ")" << flush;
+																																				}cout << "\n)\n" << flush;
+																																			}
 	float var_sum_results[4] = {0};
 	uint groups_to_sum = var_sum_mat.at<float>(0, 0);
 	uint start_group   = 1;
@@ -214,12 +210,10 @@ void RunCL::sample_image_variance(){
 
 	_clEnqueueNDRangeKernel(m_queue,  kernel, 1, 0, &global_work_size__, &local_work_size, fname);
 
-	//cv::Mat var_sum_mat = cv::Mat::zeros (img_stats_size, 1, CV_32FC4); 																	// cv::Mat::zeros (int rows, int cols, int type)
-
 	float img_stats__[img_stats_size];
 
 	ReadOutput(  (uchar*)img_stats__, img_stats_buf, img_stats_size_bytes );
-	for (uint idx=0; idx<img_stats_size; idx++  ){ img_stats[idx] = img_stats__[idx];}
+	for (uint idx=0; idx<img_stats_size; idx++  ){ 					img_stats[idx] 	= img_stats__[idx];}
 																																			if (verbosity>local_verbosity_threshold){
 																																				cout << "\n" << fname;
 																																				for (uint layer=start; layer<=stop; layer++){

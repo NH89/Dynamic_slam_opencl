@@ -31,7 +31,7 @@ void Dynamic_slam::print_frame_data_vector(       uint start,     uint stop,  ve
 
 void Dynamic_slam::report_GT_pose_error(){																																		// An expensive function, use only for debugging.
 	string fname="Dynamic_slam::report_GT_pose_error()";
-	int local_verbosity_threshold = V_DYNAMIC_SLAM_REPORT_GT_POSE_ERROR;
+	//int local_verbosity_threshold = V_DYNAMIC_SLAM_REPORT_GT_POSE_ERROR;
 
 	cout << "\n\f void Dynamic_slam::report_GT_pose_error() ###################################################################### " << flush;
 	frame_data.back().error_data.K							= frame_data.back().frame_data.K						*	frame_data.back().frame_data_GT.K.inv();						// NB we use the more expensive general matrix inverse from opencv,

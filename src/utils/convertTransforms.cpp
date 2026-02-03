@@ -154,13 +154,12 @@ void Matx44f_To_float16arry(Matx44f matx, float arry[16]){
 }
 
 
-void float16arry_To_Matx44f(float arry[16], Matx44f matx){
+void float16arry_To_Matx44f( float arry[16], Matx44f matx ){
     for (int i=0; i<16; i++){ matx.operator()(i/4, i%4) = arry[i] ;}
 }
 
 
-cv::Matx44f getPose(Mat R, Mat T, int verbosity){																							// Mat R, Mat T, Matx44f& pose  // NB Matx::operator()() does not copy, but creates a submatrix. => would be updated when R & T are updated.
-	int local_verbosity_threshold = V_DYNAMIC_SLAM_GETPOSE;
+cv::Matx44f getPose( Mat R, Mat T ){																							// Mat R, Mat T, Matx44f& pose  // NB Matx::operator()() does not copy, but creates a submatrix. => would be updated when R & T are updated.
 																																			if(V_CONVERT_TRANSFORMS<1) { cout << "\n getPose chk_0"<<flush;}
 	cv::Matx44f pose;
 	for (int i=0; i<9; i++) pose.operator()(i/3,i%3) = 1 * R.at<float>(i/3,i%3);															if(V_CONVERT_TRANSFORMS<1) { PRINT_MAT33F(R,);  PRINT_MATX44F(pose,); }
@@ -171,9 +170,7 @@ cv::Matx44f getPose(Mat R, Mat T, int verbosity){																							// Mat R
 }
 
 
-cv::Matx44f getInvPose(cv::Matx44f pose, int verbosity) {	                                                                               // Matx44f pose, Matx44f& inv_pose
-	int local_verbosity_threshold = V_DYNAMIC_SLAM_GETINVPOSE;                                                                             //verbosity_mp["Dynamic_slam::getInvPose"];
-
+cv::Matx44f getInvPose(cv::Matx44f pose ) {	                                                                               // Matx44f pose, Matx44f& inv_pose
 	cv::Matx44f local_inv_pose;
 	cv::Matx33f local_rotation;
 	cv::Matx31f local_translation;
@@ -211,10 +208,8 @@ cv::Matx44f getInvPose(cv::Matx44f pose, int verbosity) {	                      
 }
 
 
-cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){
-	int local_verbosity_threshold = V_DYNAMIC_SLAM_GENERATE_INVK_; //verbosity_mp["Dynamic_slam::generate_invK_"];// 0;
-	cv::Matx44f inv_K_;
-
+cv::Matx44f generate_invK_( cv::Matx44f K_ ){
+	cv::Matx44f 	inv_K_;
 	float fx   =  K_.operator()(0,0);
 	float fy   =  K_.operator()(1,1);
 	float skew =  K_.operator()(0,1);

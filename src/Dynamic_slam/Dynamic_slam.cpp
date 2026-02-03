@@ -51,8 +51,9 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 	runcl.initialize_RunCL( imread( png[ runcl.dataset_frame_num ].string() ) );															// Set image params, ref for dimensions and data type. ########################################################################
 
 	initialize_camera_vec();				// Calls runcl.precomp_param_maps, depends on deltas.
-																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_ finished "
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::Dynamic_slam_ finished "
 																																				<< "#####################################################################################\f" << flush;
+																																			}
 }
 
 void Dynamic_slam::initialize_camera_intrinsic_matrix(){
@@ -71,8 +72,7 @@ void Dynamic_slam::initialize_camera_intrinsic_matrix(){
 			 k.operator()(1,2) = runcl.baseImage_height / 2.0;
 			 k.operator()(2,2) = 1.0;
 		}
-
-	initial_K = k;																																PRINT_MATX44F( initial_K ,  );
+	initial_K = k;																															if (verbosity>local_verbosity_threshold){ PRINT_MATX44F( initial_K , ); }
 }
 
 void Dynamic_slam::generate_deltas(){	// Principle : delta for each parameter causes maximum 1 pixel of warp in the full size image.
@@ -116,21 +116,20 @@ void Dynamic_slam::initialize_camera_vec(){
 	initialize_camera_intrinsic_matrix();	// depends on runcl.baseImage
 	R 								= cv::Mat::eye(  3,3 , CV_32FC1);																			// intialize ground truth extrinsic data, NB Mat (int rows, int cols, int type)
 	T 								= cv::Mat::zeros(3,1 , CV_32FC1);
-																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 1:" <<flush;}
 	frame_datum 			datum 	= {};																									// default initialization, to values in header, or zero if not set in header.
 	datum.keyframe_index			= 0 ;								// Expects that this frame will be used for new vector of keyframes.
-																																			cout << "\n\n datum.keyframe_index = "<< datum.keyframe_index << flush;
-																																			PRINT_MATX44F( initial_K ,  );
+																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 1:" <<flush;
+																																				cout << "\n\n datum.keyframe_index = "<< datum.keyframe_index << flush;
+																																				PRINT_MATX44F( initial_K ,  );
+																																			}
 	datum.frame_data.K 				= initial_K;
-	cv::Matx44f inv_k				= generate_invK_( initial_K , verbosity);																PRINT_MATX44F( inv_k, initial_K ); PRINT_MATX44F( initial_K*inv_k, );
+	cv::Matx44f inv_k				= generate_invK_( initial_K );
 	datum.frame_data.inv_K 			= inv_k;																								// Current frame must be set as the new keyframe.
-
-	frame_data.push_back( datum );																											// pushback a pose_datum, ready for getFrameData_vec() to write to.
+	frame_data.push_back( 	datum );																											// pushback a pose_datum, ready for getFrameData_vec() to write to.
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 2:" <<flush;
+																																				PRINT_MATX44F( inv_k, initial_K ); PRINT_MATX44F( initial_K*inv_k, );
 																																				PRINT_MATX44F(frame_data.back().frame_data.prev_pose2pose,);  // gets corrupted by getFrameData_vec()
 																																			}
-
-
 	if(GT_available==true){									getFrameData_vec();		//}														// Sets frame_data.back().frame_data_GT
 																																			// We use orthographic matrix, then convert to perspectiveby dividing by depth.
 																																			// See notes in convertTransforms.cpp
@@ -145,9 +144,15 @@ void Dynamic_slam::initialize_camera_vec(){
 		if(		 use_artif_pose_error==true){				set_artif_pose_error();	}
 		else if( use_GT_pose		 ==true){				use_GT_pose_vec();		}
 	}
-																									cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
+																																			if(verbosity>local_verbosity_threshold){
+																																				cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"
+																																					<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
+																																			}
 	runcl.set_cam_bufs(  frame_data.back().frame_data.K ,  frame_data.back().frame_data.inv_K,  frame_data.back(). frame_data.pose,  frame_data.back().frame_data.K2K  );
-																									cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
+																																			if(verbosity>local_verbosity_threshold){
+																																				cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"
+																																					<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
+																																			}
 	frame_data.push_back( frame_data.back() );																								// Propagate the initialization over the first three entries in the "frame_data" vector.
 	frame_data.push_back( frame_data.back() );																								// Required because predictFrame_vec() samples previous pose and inverse pose.
 																																			if(verbosity>local_verbosity_threshold) {
@@ -185,13 +190,20 @@ void Dynamic_slam::initialize_camera_vec(){
 int Dynamic_slam::nextFrame() {
 	string fname ="Dynamic_slam::nextFrame()";
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_NEXTFRAME;
-																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::nextFrame_chk 0,  runcl.dataset_frame_num="<<runcl.dataset_frame_num
+																																			if(verbosity>local_verbosity_threshold-3){ cout << "\n Dynamic_slam::nextFrame_chk 0,  runcl.dataset_frame_num="<<runcl.dataset_frame_num
 																																				<<",\t depth = runcl.amem  \n" << flush; //  runcl.frame_bool_idx="<<runcl.frame_bool_idx<<"
+																																			}
 																						auto step_0 = high_resolution_clock::now();
 	frame_data.push_back( frame_data.back() ); //////////////////////////////////////////   new_frame										// duplicate last frame, as basis for new frame.
-																											cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
+																																			if(verbosity>local_verbosity_threshold){
+																																				cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"
+																																					<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
+																																			}
 	runcl.update_current_frames_idx();																										// move to next img buffer and RunCL "frame" struct in the current_frames[] array. NB current_frames_idx[..] pointer swap.
-																											cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
+																																			if(verbosity>local_verbosity_threshold){
+																																				cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"
+																																					<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
+																																			}
 	if(			 GT_available		 ==true){				getFrameData_vec();																// Sets frame_data.back().frame_data_GT
 		if(		 use_artif_pose_error==true){				set_artif_pose_error();	}
 		else if( use_GT_pose		 ==true){				use_GT_pose_vec();		}
@@ -229,17 +241,20 @@ int Dynamic_slam::nextFrame() {
 																																				report_GT_pose_error();
 																																				//display_frame_resluts();
 																																			}
-
 	////////////////////////////////// Parallax depth mapping
 																						auto step_7 = high_resolution_clock::now();
 // TODO replace with patch_slam and multi-frame depth+motion+accel maps,  together with vel, accel, jolt of camera,   and later reflectance & illum etc...
 
 																						auto step_8 = high_resolution_clock::now();			// Update cost vol with the new frame, and repeat optimization of the depth map.
 																																			// NB Cost vol needs to be initialized on a particular keyframe.
-	getNextFrameProfile(step_0, step_1, step_2, step_3, step_4, step_5, step_6, step_7, step_8);											// A previous depth map can be transfered, and the updated depth map after each frame, can be used to track the next frame.
+																																			// A previous depth map can be transfered, and the updated depth map after each frame, can be used to track the next frame.
+																						if(verbosity>local_verbosity_threshold-1) {
+																							getNextFrameProfile(step_0, step_1, step_2, step_3, step_4, step_5, step_6, step_7, step_8);
+																						}
 	runcl.dataset_frame_num++;
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame Finished "
-																																				<<"##################################################################################\f" << flush; }
+																																				<<"##################################################################################\f" << flush;
+																																			}
 	return(0);																																// NB option to return an error that stops the main loop.
 };
 
@@ -264,11 +279,11 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 	image = imread( png[runcl.dataset_frame_num].string() );																				if(verbosity>local_verbosity_threshold){
 																																				cout << "\n Dynamic_slam::getFrame_chk 0.5, Image file = " << png[runcl.dataset_frame_num].string() << "\t" << flush;
 																																			}
-																																			if (image.type()!= runcl.baseImage.type() || image.size()!=runcl.baseImage.size() ) {
-																																				cout<< "\n\nError: Dynamic_slam::getFrame(), runcl.dataset_frame_num = " << runcl.dataset_frame_num << " : missmatched. runcl.baseImage.size()="<<runcl.baseImage.size()<<\
-																																				", image.size()="<<image.size()<<", runcl.baseImage.type()="<<runcl.baseImage.type()<<", image.type()="<<image.type()<<"\n\n"<<flush;
-																																				runcl.exit_(0);
-																																			}
+																												if (image.type()!= runcl.baseImage.type() || image.size()!=runcl.baseImage.size() ) {
+																													cerr<< "\n\nError: Dynamic_slam::getFrame(), runcl.dataset_frame_num = " << runcl.dataset_frame_num << " : missmatched. runcl.baseImage.size()="<<runcl.baseImage.size()<<\
+																															", image.size()="<<image.size()<<", runcl.baseImage.type()="<<runcl.baseImage.type()<<", image.type()="<<image.type()<<"\n\n"<<flush;
+																													runcl.exit_(0);
+																												}
 																																			//image.convertTo(image, CV_16FC3, 1.0/256, 0.0); // NB cv_16FC3 is preferable, for faster half precision processing on AMD, Intel & ARM GPUs.
 	runcl.loadFrame( image );																												// NB Nvidia GeForce have 'Tensor Compute" FP16, accessible by PTX. AMD have RDNA and CDNA. These need PTX/assembly code and may use BF16 instead of FP16.
 																																			// load a basic image in CV_8UC3, then convert on GPU to 'half'
@@ -281,16 +296,17 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 	cl_int 			status;
 	cl_event 		writeEvt;
 	status = clEnqueueFillBuffer(runcl.uload_queue, runcl.SE3_hessian_pinv_map_mem, &zero, 	sizeof(float), 	0, 2*runcl.mm_size_bytes_C4, 	0, NULL, &writeEvt);
+	clFlush(runcl.uload_queue); status = clFinish(runcl.uload_queue);
 																												if (status != CL_SUCCESS)	{
 																													cout << "\nstatus = " << runcl.checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;
 																													runcl.exit_(status);
 																												}
-																												clFlush(runcl.uload_queue); status = clFinish(runcl.uload_queue);
-
-
-																																			cout<<"\nDynamic_slam::getFrame_chk 1:    runcl.mm_start = "<<runcl.mm_start
-																																				<<								"      runcl.mm_stop = "<<runcl.mm_stop<<flush;
-	for(int layer=runcl.mm_stop-1; layer>=0; layer-- ){ cout<<"\nlayer = "<<layer<<flush;
+																																			if(verbosity>local_verbosity_threshold){
+																																				cout<<"\nDynamic_slam::getFrame_chk 1:    runcl.mm_start = "<<runcl.mm_start
+																																					<<								"      runcl.mm_stop = "<<runcl.mm_stop<<flush;
+																																			}
+	for(int layer=runcl.mm_stop-1; layer>=0; layer-- ){
+																																			if(verbosity>local_verbosity_threshold){ cout<<"\nlayer = "<<layer<<flush; }
 		runcl.patch_img_gradients(	layer);
 		runcl.patch_hessian_reduce(	layer);
 	}
@@ -312,7 +328,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 //////
 
 void Dynamic_slam::estimateCalibration(){
-	int local_verbosity_threshold = V_DYNAMIC_SLAM_ESTIMATECALIBRATION;//verbosity_mp["Dynamic_slam::estimateCalibration"];
+	//int local_verbosity_threshold = V_DYNAMIC_SLAM_ESTIMATECALIBRATION;//verbosity_mp["Dynamic_slam::estimateCalibration"];
 // # Get 1st & 2nd order gradients wrt calibration parameters.
 //
 
@@ -327,21 +343,21 @@ void Dynamic_slam::estimateCalibration(){
 
 // ## Regularize Maps : AbsDepth, GradDepth, SurfNormal, RelVel,
 void Dynamic_slam::SpatialCostFns(){
-	int local_verbosity_threshold = V_DYNAMIC_SLAM_SPATIALCOSTFNS;//verbosity_mp["Dynamic_slam::SpatialCostFns"];
+	//int local_verbosity_threshold = V_DYNAMIC_SLAM_SPATIALCOSTFNS;//verbosity_mp["Dynamic_slam::SpatialCostFns"];
 // # Spatial cost functions
 // see CostVol::updateQD(..), RunCL::updateQD(..) & __kernel void UpdateQD(..)
 
 }
 
 void Dynamic_slam::ParsimonyCostFns(){
-	int local_verbosity_threshold = V_DYNAMIC_SLAM_PARSIMONYCOSTFNS;//verbosity_mp["Dynamic_slam::ParsimonyCostFns"];
+	//int local_verbosity_threshold = V_DYNAMIC_SLAM_PARSIMONYCOSTFNS;//verbosity_mp["Dynamic_slam::ParsimonyCostFns"];
 // # Parsimony cost functions : NB Bin sort pixels to find non-spatial neighbours
 // see SIFS for priors & Morphogenesis for BinSort
 
 }
 
 void Dynamic_slam::ExhaustiveSearch(){
-	int local_verbosity_threshold = V_DYNAMIC_SLAM_EXHAUSTIVESEARCH;//verbosity_mp["Dynamic_slam::ExhaustiveSearch"];
+	//int local_verbosity_threshold = V_DYNAMIC_SLAM_EXHAUSTIVESEARCH;//verbosity_mp["Dynamic_slam::ExhaustiveSearch"];
 // # Update A : exhaustive search on cost vol with cost fns -> update maps.
 // see CostVol::updateA(..), RunCL::updateA(..) & __kernel void UpdateA2(..)
 

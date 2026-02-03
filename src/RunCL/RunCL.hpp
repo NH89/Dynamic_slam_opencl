@@ -29,8 +29,6 @@
 #include <eigen3/Eigen/QR>						// For (pseudo)inverse of hessian
 #include <eigen3/Eigen/Dense>
 
-#include <boost/format.hpp>
-
 #include <CL/opencl.hpp>
 
 #include <cstdio>
@@ -40,7 +38,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
-#include <filesystem>							// C++17 TODO <replace boost/filesystem>
+#include <filesystem>
 #include <chrono>								// For measuring time of execution.
 
 using namespace std::chrono;
@@ -57,6 +55,7 @@ static constexpr uint max_patches_per_layer = 2^max_mipmap_layers * 2^max_mipmap
 
 #define FLOAT_16_EYE 	{1.0f, 0.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f, 0.0f,		0.0f, 0.0f, 1.0f, 0.0f,		0.0f, 0.0f, 0.0f, 1.0f}
 constexpr float zero						= 0;
+constexpr uint	patch_size					= 32;	// Set global patch size from device parameters // generally: device_work_size_multiple = patch_size * integer, eg 32, 64, 128
 
 using namespace std;
 class RunCL
@@ -318,7 +317,7 @@ public:
 	void DownloadAndSave_HSV_grad(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint offset=0 );
 	
 	void SaveMat(cv::Mat temp_mat, int type_mat, std::filesystem::path folder_tiff, bool show, float max_range, std::string mat_name, std::string count);
-	void SaveMat_1chan(cv::Mat temp_mat, int type_mat, std::filesystem::path folder_tiff, bool show, float max_range, std::string mat_name, std::string count);
+	//void SaveMat_1chan(cv::Mat temp_mat, int type_mat, std::filesystem::path folder_tiff, bool show, float max_range, std::string mat_name/*, std::string count*/);
 	void DownloadAndSaveVolume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, bool exception_tiff=false );
 
 
@@ -455,7 +454,6 @@ public:
 		cl_mem_flags        flags,
 		size_t              size,
 		void*               host_ptr,
-		cl_int*             errcode_ret,
 		cl_mem 				memobj,
 		string 				fname
 	);

@@ -3,17 +3,18 @@
 
 void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec(),  Dynmaic_slam::nextFrame()
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_GETFRAMEDATA;//verbosity_mp["Dynamic_slam::getFrameData"];
-																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec_chk 0.  runcl.dataset_frame_num = "<< runcl.dataset_frame_num
-																																				<< "\t###################################" << flush;
-																																			cout<<"\nruncl.dataset_frame_num="<<runcl.dataset_frame_num<<flush;
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::getFrameData_vec_chk 0.  runcl.dataset_frame_num = "
+																																				<< runcl.dataset_frame_num << "\t###################################" << flush;
+																																				cout<<"\nruncl.dataset_frame_num="<<runcl.dataset_frame_num<<flush;
+																																			}
 
-	std::string str 						= txt[runcl.dataset_frame_num].c_str();															cout<<"chk1 "<<flush;						// grab .txt file from array of files (e.g. "scene_00_0000.txt")
-	char		*ch 						= new char [str.length()+1];																	cout<<"chk2 "<<flush;
-	std::strcpy (ch, str.c_str());																											cout<<"chk3 "<<flush;
-	cv::Mat		T_alt;																														cout<<"chk4 "<<flush;
+	std::string str 						= txt[runcl.dataset_frame_num].c_str();															//cout<<"chk1 "<<flush;						// grab .txt file from array of files (e.g. "scene_00_0000.txt")
+	char		*ch 						= new char [str.length()+1];																	//cout<<"chk2 "<<flush;
+	std::strcpy (ch, str.c_str());																											//cout<<"chk3 "<<flush;
+	cv::Mat		T_alt;																														//cout<<"chk4 "<<flush;
 	//convertAhandaPovRayToStandard_2( obj,  ch, R, T, cameraMatrix );	cout<<"chk5 "<<flush;	// TODO  which of these 2 versions of convertAhandaPovRayToStandard() is correct ?
-	convertAhandaPovRayToStandard(   obj,  ch, R, T, cameraMatrix );	cout<<"chk6 "<<flush;
-	delete [] ch; 														cout<<"chk7 "<<flush;	//free(ch);
+	convertAhandaPovRayToStandard(   obj,  ch, R, T, cameraMatrix );
+	delete [] ch;
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\n Dynamic_slam::getFrameData_vec_chk 1";
 																																				cout << "\n\n R = \n" << R;
@@ -42,55 +43,66 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 
 																																			// 4x4 perspective matrix is not invertable for points at infinity. We correct ortho->perspective in the kernel by dividing by Z.
 	pose_datum datum 						= {};																							// default initialization.
-	datum.K									= K_GT;																							PRINT_MATX44F( K_GT, );
-	datum.inv_K								= generate_invK_(K_GT, verbosity);																PRINT_MATX44F( datum.inv_K	, );	PRINT_MATX44F( K_GT*datum.inv_K	, );
-	datum.pose								= getPose(R,T, verbosity);																		PRINT_MATX44F( datum.pose, );
-	datum.inv_pose							= getInvPose(datum.pose, verbosity);															PRINT_MATX44F( datum.inv_pose, );
+	datum.K									= K_GT;
+	datum.inv_K								= generate_invK_( K_GT );
+	datum.pose								= getPose( R, T );
+	datum.inv_pose							= getInvPose( datum.pose );
 	if( frame_data.size() > 1 ){
 		datum.prev_pose2pose				= frame_data[ frame_data.size() -2].frame_data_GT.inv_pose	*	datum.pose;
 	}
 
 	frame_data.back().frame_data_GT			= datum; // TODO entirely remove Dynamic_slam::frame_data.
 
-	runcl.current_frames[ runcl.current_frames_idx[0] ].pose_gt		= datum.pose;															cout << "\n\n runcl.current_frames_idx[0-5] = ";
-																																			for(int i=0; i<5; i++){ cout<< runcl.current_frames_idx[i] << ",  "; }	cout << flush;
-																																			for(int i=0; i<5; i++){	cout<<"\ni="<<i<<"  ";
-																																					PRINT_MATX44F(	runcl.current_frames[ runcl.current_frames_idx[i] ].pose_gt,   );
-																																			}
+	runcl.current_frames[ runcl.current_frames_idx[0] ].pose_gt		= datum.pose;
+																																			if(verbosity>local_verbosity_threshold) {
+																																				PRINT_MATX44F( K_GT, );
+																																				PRINT_MATX44F( datum.inv_K	, );	PRINT_MATX44F( K_GT*datum.inv_K	, );
+																																				PRINT_MATX44F( datum.pose, );
+																																				PRINT_MATX44F( datum.inv_pose, );
 
+																																				cout << "\n\n runcl.current_frames_idx[0-5] = ";
+																																				for(int i=0; i<5; i++){ cout<< runcl.current_frames_idx[i] << ",  "; }	cout << flush;
+																																				for(int i=0; i<5; i++){	cout<<"\ni="<<i<<"  ";
+																																					PRINT_MATX44F(	runcl.current_frames[ runcl.current_frames_idx[i] ].pose_gt,   );
+																																				}
+																																			}
 	int r 									= runcl.baseImage.rows;
 	int c 									= runcl.baseImage.cols;
-	depth_GT 								= loadDepthAhanda(obj, depth[runcl.dataset_frame_num].string(), r,c,cameraMatrix);
+	depth_GT 								= loadDepthAhanda(/*obj,*/ depth[runcl.dataset_frame_num].string(), r,c,cameraMatrix);
 
 	runcl.load_GT_depth(depth_GT, invert_GT_depth);
-
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::getFrameData_vec Finished ######################################"<<flush;
 }
 
 void Dynamic_slam::set_artif_pose_error(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_GETFRAMEDATA;
-																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::set_artif_pose_error_chk 0.  runcl.dataset_frame_num = "<< runcl.dataset_frame_num
-																																				<< "\t###################################" << flush;
+																																			if(verbosity>local_verbosity_threshold) {cout << "\n Dynamic_slam::set_artif_pose_error_chk 0.  runcl.dataset_frame_num = "
+																																				<< runcl.dataset_frame_num << "\t###################################" << flush;
+																																			}
 	pose_datum datum 			= frame_data.back().frame_data_GT;
 
-	Matx44f pose_frame0to1_gt	= runcl.current_frames[ runcl.current_frames_idx[1] ].pose_gt	*	datum.inv_pose;							PRINT_MATX44F( pose_frame0to1_gt, );
+	Matx44f pose_frame0to1_gt	= runcl.current_frames[ runcl.current_frames_idx[1] ].pose_gt	*	datum.inv_pose;
 
 	Matx16f	artif_error;
 	for (int SE3=0; SE3<6; SE3++)  artif_error.operator()(0,SE3) = obj["Artif_pose_err_algebra"][SE3].asFloat();
 
-	Matx44f artif_error_matx	= LieToP_Matx( artif_error );																				PRINT_MATX44F( artif_error_matx,);
-	Matx44f pose_frame0to1		= pose_frame0to1_gt * artif_error_matx;																		PRINT_MATX44F( pose_frame0to1,);
-	Matx44f k2k_0to1			= datum.K			* pose_frame0to1	* datum.K.inv();													PRINT_MATX44F( k2k_0to1,);
-																																			PRINT_MATX44F( datum.K, );		PRINT_MATX44F( datum.K.inv(), );
-
-																																					PRINT_MATX44F(  datum.K * datum.K.inv(),		);
-																																					PRINT_MATX44F( datum.K.inv() *  datum.K,		);
+	Matx44f artif_error_matx	= LieToP_Matx( artif_error );
+	Matx44f pose_frame0to1		= pose_frame0to1_gt * artif_error_matx;
+	Matx44f k2k_0to1			= datum.K			* pose_frame0to1	* datum.K.inv();
+																																			if(verbosity>local_verbosity_threshold) {
+																																				PRINT_MATX44F( pose_frame0to1_gt, );
+																																				PRINT_MATX44F( artif_error_matx,);
+																																				PRINT_MATX44F( pose_frame0to1,);
+																																				PRINT_MATX44F( k2k_0to1,);
+																																				PRINT_MATX44F( datum.K, );	PRINT_MATX44F( datum.K.inv(), );
+																																				PRINT_MATX44F( datum.K 		* datum.K.inv(),);
+																																				PRINT_MATX44F( datum.K.inv()* datum.K,		);
+																																			}
 	frame_data.back().frame_data 		= frame_data.back().frame_data_GT;
 	frame_data.back().frame_data.pose	= pose_frame0to1;
 	frame_data.back().frame_data.K2K	= k2k_0to1;
 
 	//runcl.update_k2k_buf(		k2k_0to1, pose_frame0to1);																					// NB Rotation is in Radians. Translation is in world units. Translation is depth range dependent.
-
 /*
 	Matx44f pose_error_1		= pose_frame0to1_gt				* pose_frame0to1.inv();														PRINT_MATX44F( pose_error_1, pose_frame0to1_gt		* pose_frame0to1.inv()	);
 	Matx44f pose_error_2		= pose_frame0to1.inv()			* pose_frame0to1_gt;														PRINT_MATX44F( pose_error_2, pose_frame0to1.inv()	* pose_frame0to1_gt		);
@@ -98,7 +110,7 @@ void Dynamic_slam::set_artif_pose_error(){
 	Matx44f pose_error_4		= pose_frame0to1_gt				* pose_frame0to1.inv();														PRINT_MATX44F( pose_error_4, pose_frame0to1_gt		* pose_frame0to1.inv()	);
 */
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/*Below is code for older Dynamic_slam::frame_data.    Above is for RunCL::current_frames[..] and direct write to k2kbuf & pose_buf.	if(verbosity>local_verbosity_threshold) {cout << "\n Dynamic_slam::getFrameData_vec_chk 2, "
+/*	Below is code for older Dynamic_slam::frame_data.    Above is for RunCL::current_frames[..] and direct write to k2kbuf & pose_buf.	if(verbosity>local_verbosity_threshold) {cout << "\n Dynamic_slam::getFrameData_vec_chk 2, "
 																																				<<"\truncl.dataset_frame_num="<<runcl.dataset_frame_num
 																																				<<"\tframe_data.size()="<<frame_data.size()
 																																				<<endl<<flush;}

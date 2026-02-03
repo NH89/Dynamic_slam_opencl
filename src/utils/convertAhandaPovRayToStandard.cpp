@@ -13,7 +13,7 @@ using namespace cv;
 using namespace std;
 Vec3f direction;
 Vec3f upvector;
-
+/*
 void convertAhandaPovRayToStandard_2(Json::Value obj_ , const char *filepath,  Mat& R,  Mat& T, Mat& cameraMatrix){
     int verbosity = obj_["verbosity"].asInt();//0;//  link to gobal verbosity
     int local_verbosity_threshold = V_CONVERTAHANDAPOVRAYTOSTANDARD;//verbosity_mp["convertAhandaPovRayToStandard"];//2;
@@ -93,16 +93,10 @@ void convertAhandaPovRayToStandard_2(Json::Value obj_ , const char *filepath,  M
                                                                                                                             cout << "\n y	= " << y << flush;
                                                                                                                             cout << "\n z	= " << z << flush;
                                                                                                                         }
-
 	//R = [ x, y, z ];
-
 	//T = cam_pos;
-
-
 }
-
-
-
+*/
 void convertAhandaPovRayToStandard(Json::Value obj_ , const char *filepath,  Mat& R,  Mat& T, Mat& cameraMatrix){
     int verbosity = obj_["verbosity"].asInt();//0;//  link to gobal verbosity
     int local_verbosity_threshold = V_CONVERTAHANDAPOVRAYTOSTANDARD;//verbosity_mp["convertAhandaPovRayToStandard"];//2;
@@ -187,14 +181,14 @@ void convertAhandaPovRayToStandard(Json::Value obj_ , const char *filepath,  Mat
                                                                                                                         }
 	
     float focal_length  = norm(direction);                                      // compute intrinsic cameraMatrix
-    float aspect_ratio  = norm(rightvector)/norm(upvector);
-    float angle         = norm(rightvector)/norm(direction);
+    // float aspect_ratio  = norm(rightvector)/norm(upvector);
+    // float angle         = norm(rightvector)/norm(direction);
     int   height        = 480;
     int   width         = 640;
     float Ox            = (width +1)*0.5;
     float Oy            = (height+1)*0.5;
-    float fx            = width  * norm(direction) / norm(rightvector);         // pixel size
-    float fy            = height * norm(direction) / norm(upvector);
+    float fx            = width  * focal_length / norm(rightvector);         // pixel size
+    float fy            = height * focal_length  / norm(upvector);
     																													if(verbosity>local_verbosity_threshold) cout << "\n convertAhandaPovRayToStandard_chk 4"<<flush;
     float K[9]  = {fx,    0,   Ox, \
                     0,   fy,   Oy, \
@@ -208,10 +202,10 @@ void convertAhandaPovRayToStandard(Json::Value obj_ , const char *filepath,  Mat
 	
 }
 
-cv::Mat loadDepthAhanda(Json::Value obj_, std::string filename, int r, int c, cv::Mat cameraMatrix)
+cv::Mat loadDepthAhanda(/*Json::Value obj_,*/ std::string filename, int r, int c, cv::Mat cameraMatrix)
 {
-    int verbosity = obj_["verbosity"].asInt();
-    int local_verbosity_threshold = V_LOADDEPTHAHANDA;//verbosity_mp["loadDepthAhanda"];
+    // int verbosity = obj_["verbosity"].asInt();
+    // int local_verbosity_threshold = V_LOADDEPTHAHANDA;//verbosity_mp["loadDepthAhanda"];
 
     ifstream in(filename.c_str());
     int sz=r*c;

@@ -11,9 +11,9 @@ void RunCL::precomp_param_maps ( float SE3_k2k[  max_mipmap_layers*num_SE3_DoF*1
 	// depth 				*= mid_depth;
 	//_clEnqueueWriteBuffer( uload_queue, depth_mem_temp,	CL_FALSE, 0, mm_size_bytes_C1,	 								depth.data,		fname);
 
-	float fx			= current_frames[ current_frames_idx[0] ].K(0,0);
-	float fy			= current_frames[ current_frames_idx[0] ].K(1,1);
-	float inv_depth		= 1; //(fx + fy)/2.0f;																										// sets inverse relative depth = focal_length
+	// float fx			= current_frames[ current_frames_idx[0] ].K(0,0);
+	// float fy			= current_frames[ current_frames_idx[0] ].K(1,1);
+	float inv_depth		= 1; //(fx + fy)/2.0f;																									// sets inverse relative depth = focal_length
 																																				// Makes 1 pixel ST3 and SE3 easy to set.
 																																				// NB must convert GT depth <=> relative depth.
 	_clEnqueueWriteBuffer( uload_queue, SE3_k2kbuf,		CL_FALSE, 0, max_mipmap_layers*num_SE3_DoF*16*sizeof( float), 	SE3_k2k,		fname);

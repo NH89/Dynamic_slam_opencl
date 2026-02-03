@@ -348,48 +348,41 @@ __kernel void  patch_hessian_reduce(						// one workgroup per element.
 	if ( !(elem==0 || elem==6 || elem==12 || elem==18 || elem==24 || elem==30 ) ) return;					// Only these elements remain.
 	local_msg[lid]	= zero_f4;
 	// load pvt array
-	for( int i=0; i<=rows; i++ ){	J_pvt_arr[i]		+= SE3_Hessian_map[index + i*mm_cols + mm_pixels];
-		if(i<4 && lid<4){printf("\nB        __kernel void  patch_hessian_reduce()  layer=%u	   SE3_Jacobian  elem/6 = %u 	[i=%d] =	%f, %f, %f, %f	",
-																					layer,  					elem/6,		i,		J_pvt_arr[i].s0,  J_pvt_arr[i].s1,  J_pvt_arr[i].s2,  J_pvt_arr[i].s3 );
-		}
+	for( int i=0; i<=rows; i++ ){
+		J_pvt_arr[i]		+= SE3_Hessian_map[index + i*mm_cols + mm_pixels];
+																																													// if(i<4 && lid<4){printf("\nB        __kernel void  patch_hessian_reduce()  layer=%u	   SE3_Jacobian  elem/6 = %u 	[i=%d] =	%f, %f, %f, %f	",
+																																													//		layer,  					elem/6,		i,		J_pvt_arr[i].s0,  J_pvt_arr[i].s1,  J_pvt_arr[i].s2,  J_pvt_arr[i].s3 );
+																																													//	}
 	}																										// NB (i<=rows) and  in case there are partial patches. Will produce a row extra, which will be 0.000 otherwise.
 
 	// Reduction
 	step 		= 2;
 	old_step 	= 1;
-	if( lid==0){	printf("\nC ");}//step = %d,   ", step); }
-
-	for ( step=1; step<cols; step *=2){																																				// for each step size, (multiples of 2)
-		//if(lid==0){	printf("D ");}//step = %d,   ", step); }
-
-		for (uint block_row=0; block_row<block_size ; block_row += step){																											// step through rows in column
-
+																																													//if( lid==0){	printf("\nC ");}//step = %d,   ", step); }
+	for ( step=1; step<cols; step *=2){																														// for each step size, (multiples of 2)
+																																													//if(lid==0){	printf("D ");}//step = %d,   ", step); }
+		for (uint block_row=0; block_row<block_size ; block_row += step){																					// step through rows in column
 																						J_pvt_arr[	block_row]		+=J_pvt_arr[	block_row + step ];
+			if( !(fmod((float)lid,(step*2))==0) &&  (fmod((float)lid,step)==0)	){		local_msg[		lid-step ]	= J_pvt_arr[	block_row ];	}		// selects 2nd column, sends data
+			barrier(CLK_LOCAL_MEM_FENCE );																													// Using barrier as a semaphore, for local mem messages between threads. This minimizes local_mem req, while allowing 2 patch sizes in output, full & ST3 map at out_block_size.
 
-			if( !(fmod((float)lid,(step*2))==0) &&  (fmod((float)lid,step)==0)	){		local_msg[		lid-step ]	= J_pvt_arr[	block_row ];	}									// selects 2nd column, sends data
-			barrier(CLK_LOCAL_MEM_FENCE );																																			// Using barrier as a semaphore, for local mem messages between threads. This minimizes local_mem req, while allowing 2 patch sizes in output, full & ST3 map at out_block_size.
-
-			if( (fmod((float)lid,(step*2))==0)  ){										J_pvt_arr[	block_row]		+= local_msg[	lid ];	}										// selects 1st column, adds data. Sum of patch now held in top left element of patch.
+			if( (fmod((float)lid,(step*2))==0)  ){										J_pvt_arr[	block_row]		+= local_msg[	lid ];	}				// selects 1st column, adds data. Sum of patch now held in top left element of patch.
 			barrier(CLK_LOCAL_MEM_FENCE );
-
-
-
-			if(block_row==0 && lid==0){	printf("\nD        __kernel void  patch_hessian_reduce() step = %d,  block_row=%d,   layer=%u	SE3_Jacobian  elem/6 = %u [block_row=%d]	=	%f, %f, %f, %f	",
-																	step,  block_row, 			layer,  				elem/6,		block_row,  	J_pvt_arr[block_row].s0,  J_pvt_arr[block_row].s1,  J_pvt_arr[block_row].s2,  J_pvt_arr[block_row].s3 );
-			}
+																																													// if(block_row==0 && lid==0){	printf("\nD        __kernel void  patch_hessian_reduce() step = %d,  block_row=%d,   layer=%u	SE3_Jacobian  elem/6 = %u [block_row=%d]	=	%f, %f, %f, %f	",
+																																													//	step,  block_row, 			layer,  				elem/6,		block_row,  	J_pvt_arr[block_row].s0,  J_pvt_arr[block_row].s1,  J_pvt_arr[block_row].s2,  J_pvt_arr[block_row].s3 );
+																																													// }
 		}
 	}
 	// Write result
-	if( /*fmod((float)lid, step)*/				lid	==0 ) {														//	Each layer's results spaced by 8*6=48 pixels.
+	if( /*fmod((float)lid, step)*/				lid	==0 ) {													//	Each layer's results spaced by 8*6=48 pixels.
 		int idx = (elem/6) + (layer*8*6);
 		SE3_Hessian_map[idx]					=	J_pvt_arr[0] ;											//TODO will need atomic fn for larger images.							//	Write result to the first 36 pixels of SE3_Hessian_map, directly above this layer of hessian pyramid,  because this will be fastest to read to CPU.
-																				printf("\nE        __kernel void  patch_hessian_reduce()  layer=%u	SE3_Jacobian  elem/6 = %u [idx = %i]	=	%f, %f, %f, %f		lid=%d	gid=%lu",
-																																		layer,  				elem/6,		idx,  				J_pvt_arr[0].s0,  J_pvt_arr[0].s1,  J_pvt_arr[0].s2,  J_pvt_arr[0].s3,	lid,  get_global_id(0) );
+																																													// printf("\nE        __kernel void  patch_hessian_reduce()  layer=%u	SE3_Jacobian  elem/6 = %u [idx = %i]	=	%f, %f, %f, %f		lid=%d	gid=%lu",
+																																													//		layer,  				elem/6,		idx,  				J_pvt_arr[0].s0,  J_pvt_arr[0].s1,  J_pvt_arr[0].s2,  J_pvt_arr[0].s3,	lid,  get_global_id(0) );
 	}
 }
 
-/*
-__kernel void  compute_SO3_Hessian_lookup_table(
+/*__kernel void  compute_SO3_Hessian_lookup_table(
 
 ){
 

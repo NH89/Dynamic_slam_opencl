@@ -25,7 +25,7 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 	Matx44f gt_keyframe2pose;
 	Matx16f gt_Pose;
 	if(GT_available==true){
-		gt_keyframe2pose		 				= frame_data.back().frame_data_GT.prev_pose2pose;	// TODO if(GT_available==true){}else{}
+		gt_keyframe2pose		 				= frame_data.back().frame_data_GT.prev_pose2pose;
 		gt_Pose									= PToLie( gt_keyframe2pose);
 	}else{
 		gt_keyframe2pose		 				= Matx44f::eye();
@@ -82,11 +82,9 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 																																		}
 		/////////////////////////////////////////////////// testing kernel baased tracking
 		uint out_block_size = 32;
-		runcl.rho_sq( out_block_size, iter, layer/*, delta_theta, delta*/   );
-		//runcl.update_SE3( layer, delta_theta, delta );
+		runcl.rho_sq( out_block_size, iter, layer   );
 		///////////////////////////////////////////////////
-
-																																		//TODO NB currently runcl.img_stats[..] only for layer"0"
+																																		//TO DO NB currently runcl.img_stats[..] only for layer"0"
 		for (int SE3=0; SE3<num_SE3_DoF; SE3++) {	result_[iter][SE3] = SE3_results[layer][SE3][channel]  / (SE3_weights[layer][SE3][channel] * runcl.img_stats[/*layer*8 +*/ IMG_VAR*4 + channel] ) ;  }  // NB divide by total edge weighting, and image variance.
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nDynamic_slam::patch_slam() :chk_3"<<flush;
@@ -99,7 +97,7 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 		for (int SE3=0; SE3<6; SE3++) {																									// Exit if tracking fails #####################################################
 			if ( isfinite( update[iter].operator()(SE3) ) ) continue;
 			else {
-																																		cout << "\n\n\nDynamic_slam::patch_slam() : Tracking failed,  isfinite( update.operator()("<<SE3<<") ) = "
+																																		cerr << "\n\n\nDynamic_slam::patch_slam() : Tracking failed,  isfinite( update.operator()("<<SE3<<") ) = "
 																																		<<  isfinite( update[0].operator()(SE3) ) << endl<<endl<<flush;
 				runcl.exit_(1);
 			}
@@ -110,32 +108,37 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 		float mag_ST3 = 	sqrt( result_[iter][3]*result_[iter][3] 	+ result_[iter][4]*result_[iter][4] 	+ result_[iter][5]*result_[iter][5] );		// magnitude of the ST3 (translation) update
 		if (iter==0){
 			for (uint i=0; i<3; i++){
-				update_[iter][i]						= result_[iter][i]		* delta_theta[layer]	/ mag_SO3;									// delta_theta is the minimal step used to compute the partial gradient wrt SO3.
-				update_[iter][i+3]						= result_[iter][i+3]	* delta[layer] 		/ mag_ST3;									// delta is the minimal step used to compute the partial gradient wrt ST3. NB this depend on the the scale and range of the depthmap.
+				update_[iter][i]						= result_[iter][i]		* delta_theta[layer]	/ mag_SO3;						// delta_theta is the minimal step used to compute the partial gradient wrt SO3.
+				update_[iter][i+3]						= result_[iter][i+3]	* delta[layer] 		/ mag_ST3;							// delta is the minimal step used to compute the partial gradient wrt ST3. NB this depend on the the scale and range of the depthmap.
 			}
-			for (int SE3=0; SE3<6; SE3++) { update[iter].operator()(SE3) = update_[iter][SE3]; }											// For 1st iter take a 1 pixel step, in the direction of the gradient of Rho.
+			for (int SE3=0; SE3<6; SE3++) { update[iter].operator()(SE3) = update_[iter][SE3]; }										// For 1st iter take a 1 pixel step, in the direction of the gradient of Rho.
 		}else if(iter>=1){
 			float delta_SO3								= result_[iter][0]-result_[iter-1][0] 	+ result_[iter][1]-result_[iter-1][1] 	+ result_[iter][2]-result_[iter-1][2];
 			float delta_ST3								= result_[iter][3]-result_[iter-1][3] 	+ result_[iter][4]-result_[iter-1][4] 	+ result_[iter][5]-result_[iter-1][5];
 			for (uint i=0; i<3; i++){
-				update_[iter][i]						= result_[iter][i]		* delta_SO3/mag_SO3; 						//( mag_SO3	/ delta_SO3 * 2 );
-				update_[iter][i+3]						= result_[iter][i+3]	* delta_ST3/mag_ST3; 						//( mag_ST3	/ delta_ST3 * 2 );
-				if ( update_[iter][i] 	< -delta_theta[layer]	|| update_[iter][i] 	<	delta_theta[layer]	){		cout << "\n update_["<<i<<"]="		<<update_[i]	<<",  delta_theta[layer]="<<delta_theta[layer]<<flush; }
-				if ( update_[iter][i+3] < -delta[layer]		|| update_[iter][i+3] 	<	delta[layer]		){		cout << "\n update_["<<i+3<<"]="	<<update_[i+3]	<<",  delta[layer]="<<delta[layer]<<flush; }
-
-				// TODO break out of layer loop if gradient nears zero....  OR change technique.  e.g. use optimim from 3rd iter.
+				update_[iter][i]						= result_[iter][i]		* delta_SO3/mag_SO3; 									//( mag_SO3	/ delta_SO3 * 2 );
+				update_[iter][i+3]						= result_[iter][i+3]	* delta_ST3/mag_ST3; 									//( mag_ST3	/ delta_ST3 * 2 );
+																																		if(verbosity>local_verbosity_threshold) {
+																																			if ( update_[iter][i] 	< -delta_theta[layer]	|| update_[iter][i] 	<	delta_theta[layer]	){
+																																				cout << "\n update_["<<i<<"]="		<<update_[i]	<<",  delta_theta[layer]="<<delta_theta[layer]<<flush;
+																																			}
+																																			if ( update_[iter][i+3] < -delta[layer]		|| update_[iter][i+3] 	<	delta[layer]		){
+																																				cout << "\n update_["<<i+3<<"]="	<<update_[i+3]	<<",  delta[layer]="<<delta[layer]<<flush;
+																																			}
+																																		}
+				// TO DO break out of layer loop if gradient nears zero....  OR change technique.  e.g. use optimim from 3rd iter.
 			}
 		}
 
 		for (uint i=0; i<3; i++){
 			update[iter].operator()(i)					= std::clamp(update_[iter][i],		-delta_theta[layer],	delta_theta[layer]	);
-			update[iter].operator()(i+3)				= std::clamp(update_[iter][i+3],	-delta[layer],			delta[layer]		);					// For iter>=1, scale update to reach zero gradient, i.e. optimum. Clamp to prevent giant steps at low gradient.
+			update[iter].operator()(i+3)				= std::clamp(update_[iter][i+3],	-delta[layer],			delta[layer]		);	// For iter>=1, scale update to reach zero gradient, i.e. optimum. Clamp to prevent giant steps at low gradient.
 		}
 
 		keyframe2pose[ iter + 1 ]						=  keyframe2pose[iter]  *  LieToP_Matx( update[iter] );
 		keyframe_k2k									=  K * 	keyframe2pose[ iter+1 ]	* inv_K	;
 		Matx44f_To_float16arry( keyframe_k2k, k2k_4_16[ iter+1 ] );
-		//update_k2k( iter_1, k2k_4_16);
+																																		//update_k2k( iter_1, k2k_4_16);
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nDynamic_slam::patch_slam() iter="<<iter<<" :  ";
 																																			cout << "mag_SO3="<< mag_SO3 << ",  mag_ST3=" << mag_ST3 << \
@@ -165,10 +168,10 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 																																			PRINT_MATX44F(  keyframe_k2k, );
 																																			PRINT_FLOAT_16( k2k_4_16[ iter+1 ], );
 																																		}
-		if(iter%3 == 2){	layer--; }	// TODO 1) change layers 2) use patch kernel
+		if(iter%3 == 2){	layer--; }	// TO DO 1) change layers 2) use patch kernel
 
-		// TODO Problem, need to undo previous update.									// Generate two sample steps
-		// TODO also need to update relative to the other reference frames.
+		// TO DO Problem, need to undo previous update.									// Generate two sample steps
+		// TO DO also need to update relative to the other reference frames.
 	}
 																																		if (verbosity>local_verbosity_threshold){
 																																			cout << "\nDynamic_slam::patch_slam() End of loop :"<<flush;
@@ -220,13 +223,13 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 																																			<<"  ##############################################################"<< flush;
 																																		}
 	constexpr float zero		= 0;
-	int		layer 				= SE3_start_layer;																							cout << "\nDynamic_slam::estimate_SLAM() chk_0.6  layer="<<layer<<flush;
+	int		layer 				= SE3_start_layer;																						//	cout << "\nDynamic_slam::estimate_SLAM() chk_0.6  layer="<<layer<<flush;
 	float 	count[4]			= {0};
 	count[1]					= layer;
 
 	float 	k_buf_arr[16];
-	runcl.ReadOutput( (uchar*)k_buf_arr, runcl.K_buf, sizeof(float)*16, 0 );																PRINT_FLOAT_16(k_buf_arr, )
-	runcl._clEnqueueFillBuffer(  runcl.uload_queue,  runcl.pose_update_buf,  &zero,  sizeof( float),  0,  6*sizeof(float),  fname  );		// pose_update_buf zeroed for new layer, because old Rho not valid for comparison.
+	runcl.ReadOutput( (uchar*)k_buf_arr, runcl.K_buf, sizeof(float)*16, 0 );															//	PRINT_FLOAT_16(k_buf_arr, )
+	runcl._clEnqueueFillBuffer(  runcl.uload_queue,  runcl.pose_update_buf,  &zero,  sizeof( float),  0,  6*sizeof(float),  fname  );	// pose_update_buf zeroed for new layer, because old Rho not valid for comparison.
 
 	uint 	out_block_size 		= 4;
 	float	old_sum_rho_sq		= FLT_MAX-1;
@@ -234,24 +237,25 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 	Matx44f	old_k2k				= runcl.ReadOutput_44f( runcl.k2kbuf );
 	Matx44f newPose;
 	Matx44f newK2K;
-																																			//for (uint out_block_size = 4/*32*/; out_block_size > 2; out_block_size /=2){
+																																		//for (uint out_block_size = 4/*32*/; out_block_size > 2; out_block_size /=2){
 	for (uint iter = 0; iter<SE_iter; iter++){
 		count[0]  = iter;
-																																		cout << "\nDynamic_slam::estimate_SLAM() chk_1: layer="<<layer<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
-		{
-			uint	out_block_size		= 2;
-			uint	layer				= 0;
-			runcl.rho_sq( out_block_size, iter, layer	);																		// For debugging, get a larger, finer Rho map
-		}
-																																		cout << "\nDynamic_slam::estimate_SLAM() chk_2: ,  ###########################"<<flush;
+																																		if(verbosity>local_verbosity_threshold) {
+																																			cout << "\nDynamic_slam::estimate_SLAM() chk_1: layer="<<layer
+																																			<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
+																																			uint	out_block_size		= 2;
+																																			uint	layer				= 0;
+																																			runcl.rho_sq( out_block_size, iter, layer	);	// For debugging, get a larger, finer Rho map
+																																		}
+																																		//cout << "\nDynamic_slam::estimate_SLAM() chk_2: ,  ###########################"<<flush;
 		runcl.rho_sq( out_block_size, iter, (uint)layer	);
-																																		cout << "\nDynamic_slam::estimate_SLAM() chk_3: ,  ###########################"<<flush;
+																																		//cout << "\nDynamic_slam::estimate_SLAM() chk_3: ,  ###########################"<<flush;
 		runcl.reduce_patch_Rho ( out_block_size, iter, (uint)layer );
 
-		runcl.update_k2k_cpu( 	(uint)layer );				// frame_data_GT.keyframe2pose for comparision only.
-																																		cout<<"\nSE3_incr_arry[]= (";
-																																		for(int i=0; i<6*2; i++) cout << ", "<< runcl.se3_rho_result.SE3_incr_arry[i];
-																																		cout<<" ) "<<endl<<flush;
+		runcl.update_k2k_cpu( 	(uint)layer );						// frame_data_GT.keyframe2pose for comparision only.
+																																		// cout<<"\nSE3_incr_arry[]= (";
+																																		// for(int i=0; i<6*2; i++) cout << ", "<< runcl.se3_rho_result.SE3_incr_arry[i];
+																																		// cout<<" ) "<<endl<<flush;
 		float		sum_rho		=	runcl.se3_rho_result.Rho.x;		// currently .x colour channel only.
 		float		sum_rho_sq	=	runcl.se3_rho_result.Rho.y;
 		if(sum_rho_sq > old_sum_rho_sq || isnan(sum_rho_sq)    ){
@@ -296,27 +300,43 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 																																			",	num_pixels = "		<< num_pixels	<< endl<<flush;
 																																			PRINT_MATX16F( SE3_incr, );
 																																		}
-			Matx44f		pose		=	runcl.ReadOutput_44f( 	runcl.pose_buf );															PRINT_MATX44F( pose,	from pose_buf );	PRINT_MATX16F( PToLie(pose),);
-			Matx44f		invK		=	runcl.ReadOutput_44f(	runcl.inv_K_buf);															PRINT_MATX44F( invK,	);
-			Matx44f		K			=	runcl.ReadOutput_44f(	runcl.K_buf	 );																PRINT_MATX44F( K,		);
+			Matx44f		pose		=	runcl.ReadOutput_44f( 	runcl.pose_buf );
+			Matx44f		invK		=	runcl.ReadOutput_44f(	runcl.inv_K_buf);
+			Matx44f		K			=	runcl.ReadOutput_44f(	runcl.K_buf	 );
+																																		if( verbosity>local_verbosity_threshold ){
+																																			PRINT_MATX44F( pose,	from pose_buf );	PRINT_MATX16F( PToLie(pose),);
+																																			PRINT_MATX44F( invK,	);
+																																			PRINT_MATX44F( K,		);
 																																			PRINT_MATX44F( K * invK,		);
 																																			PRINT_MATX44F( invK * K,		);
-
-			Matx66f	invH			=	runcl.current_frames[ runcl.current_frames_idx[0] ].invHessian[layer];								PRINT_MATX66F( invH, );
-
-			Matx16f pose_update_cpu	=	SE3_incr * invH;																					PRINT_MATX16F( pose_update_cpu, );
-
-																																			PRINT_MATX16F( pose_update_cpu, clamped);
-			pose_update_cpu			=	(-1.0f) *  pose_update_cpu.mul( deltas_matx[layer] );/*  * 0.5f; */									PRINT_MATX16F( deltas_matx[layer], );				PRINT_MATX16F( pose_update_cpu, );
-																																			PRINT_MATX16F( PToLie( LieToP_Matx(pose_update_cpu).inv() ), );
-			newPose					=	LieToP_Matx( pose_update_cpu )  *  pose;															PRINT_MATX44F( newPose,	);							PRINT_MATX16F( PToLie( newPose ), );
-			newK2K					=	K  *  newPose  * invK ;																				PRINT_MATX44F( newK2K,			);
+																																		}
+			Matx66f	invH			=	runcl.current_frames[ runcl.current_frames_idx[0] ].invHessian[layer];
+			Matx16f pose_update_cpu	=	SE3_incr * invH;
+																																		if( verbosity>local_verbosity_threshold ){
+																																			PRINT_MATX66F( invH, );
+																																			PRINT_MATX16F( pose_update_cpu, );
 																																			Matx44f	pose_old	= runcl.ReadOutput_44f( runcl.pose_buf );	PRINT_MATX44F( pose_old, );
 																																			Matx44f	k2k_old		= runcl.ReadOutput_44f( runcl.k2kbuf);		PRINT_MATX44F( k2k_old,	);
+																																		}
+			pose_update_cpu			=	(-1.0f) *  pose_update_cpu.mul( deltas_matx[layer] );/*  * 0.5f; */
+
+			newPose					=	LieToP_Matx( pose_update_cpu )  *  pose;
+			newK2K					=	K  *  newPose  * invK ;
+
 			runcl.update_k2k_buf(		newK2K,		newPose);
+																																		if( verbosity>local_verbosity_threshold ){
+																																			PRINT_MATX16F( deltas_matx[layer], );							PRINT_MATX16F( pose_update_cpu, );
+																																			PRINT_MATX16F( PToLie( LieToP_Matx(pose_update_cpu).inv() ), );
+																																			PRINT_MATX44F( newPose,	);										PRINT_MATX16F( PToLie( newPose ), );
+																																			PRINT_MATX44F( newK2K,			);
 																																			Matx44f	pose_now	= runcl.ReadOutput_44f( runcl.pose_buf );	PRINT_MATX44F( pose_now, );
 																																			Matx44f	k2k_now		= runcl.ReadOutput_44f( runcl.k2kbuf);		PRINT_MATX44F( k2k_now,	);
+																																		}
 			count[1]  = layer;
-		}																																cout << "\nDynamic_slam::estimate_SLAM() loop finished  ###########################"<<flush;
-	}																																	cout << "\nDynamic_slam::estimate_SLAM() finished  ###########################"<<flush;
+		}																																if( verbosity>local_verbosity_threshold ){
+																																			cout << "\nDynamic_slam::estimate_SLAM() loop finished  ###########################"<<flush;
+																																		}
+	}																																	if( verbosity>local_verbosity_threshold ){
+																																			cout << "\nDynamic_slam::estimate_SLAM() finished  ###########################"<<flush;
+																																		}
 }
