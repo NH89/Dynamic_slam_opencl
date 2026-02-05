@@ -291,7 +291,7 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 			old_pose				=	newPose;
 			old_k2k					=	newK2K;
 
-			float		num_pixels	=	runcl.se3_rho_result.SE3_incr_arry[1];																		// TODO move numpixels to SE3_incr.w   & reduce SE3_incr_map_mem from float8 tro float4
+			float		num_pixels	=	runcl.se3_rho_result.SE3_incr_arry[1];																		// TO DO move numpixels to SE3_incr.w   & reduce SE3_incr_map_mem from float8 tro float4
 			Matx16f		SE3_incr;	for (int i=0;	i<6; i++){	SE3_incr.operator()(i)	=	runcl.se3_rho_result.SE3_incr_arry[i*2];  };
 																																		if( verbosity>local_verbosity_threshold ){
 																																			cout << "\nDynamic_slam::estimate_SLAM() chk_4: ,  ###########################"<<

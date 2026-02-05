@@ -107,7 +107,8 @@ void RunCL::compute_patch_lookup_table(){										// called by Dynamic_slam::Dy
 
 																																	cout<<"\nblocks_required= 			"<<blocks_required			<<"		= ceil( (float)patches_required / patches_per_compute_uint )";
 																																	cout<<"\nlocal_work_size_= 			"<<local_work_size_[0]		<<"		= { patches_per_compute_uint	* patch_size }";
-																																	cout<<"\nthreads_to_launch= 		"<<threads_to_launch		<<"		= blocks_required 				* local_work_size_[0]";		// TODO precompute an array for this function. ? where to store
+																																	cout<<"\nthreads_to_launch= 		"<<threads_to_launch		<<"		= blocks_required 				* local_work_size_[0]";
+																																	// TO DO precompute an array for this function. ? where to store
 																																}
 		patch_local_work_size[layer]					= local_work_size_[0];
 		patch_num_threads[layer]						= threads_to_launch;
@@ -481,7 +482,7 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 																																}
 	Mat J									= Mat( hessian_Mat, Rect(0,0,6,1)	);
 
-	for(int row=0; row<1; row++){																									// per_pixel division currently done in kernel, TODO which is better ?
+	for(int row=0; row<1; row++){																									// per_pixel division currently done in kernel, TO DO which is better ?
 		for(int col=0; col<num_SE3_DoF; col++){
 			Jacobian.operator()(row,col)	= J.at<cl_float4>( row,col ).x;															// NB choose colour channel of Jacobian
 		}
@@ -491,7 +492,7 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 
 	//Mat H					= Mat( hessian_Mat, Rect(0,1,6,6)	); 																	//hessian.inv()  NB computed in kernel: sum of pixelwise pseudo-inverse of the Hessian.
 */
-	for(int row=0; row<num_SE3_DoF; row++){																							// per_pixel division currently done in kernel, TODO which is better ?
+	for(int row=0; row<num_SE3_DoF; row++){																							// per_pixel division currently done in kernel, TO DO which is better ?
 		for(int col=0; col<num_SE3_DoF; col++){
 			Hessian.operator()(row,col)		= hessian_Mat.at<cl_float4>( row+1,col ).x; 											// NB choose colour channel of Hessian
 		}
@@ -499,7 +500,7 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 	current_frames[ current_frames_idx[0] ].Jacobian[layer]			= Jacobian;
 
 	//  Eigen pseudo-inverse
-	Eigen::MatrixXd GN_H(6,6);																					// TODO replace Eigen with a kernel for 6x6 matrix pseudo-inverse or inverse.
+	Eigen::MatrixXd GN_H(6,6);																					// TO DO replace Eigen with a kernel for 6x6 matrix pseudo-inverse or inverse.
 	for (int i=0;i<6;i++){																						// Hard code efficient computation of 6x6 inversion, & Det.
 		for (int j=0;j<6;j++){
 			GN_H(i,j) 						= Hessian.operator()(i,j);	// GN_Hessian.operator()(i,j);

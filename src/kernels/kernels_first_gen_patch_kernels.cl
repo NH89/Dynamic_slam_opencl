@@ -27,7 +27,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	__global 	float4*		SE3_grad_map_cur_frame,	//14
 
 	__global	float4*		vel_cur,				//15	// multiple past frames.
-	__global	float4*		vel_past_0,				//16	// TODO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
+	__global	float4*		vel_past_0,				//16	// TO DO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
 	__global	float4*		vel_past_1,				//17
 	__global	float4*		vel_past_2,				//18
 	__global	float4*		vel_past_3,				//19
@@ -110,7 +110,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
 		local_SE3_incr[lid + se3_dim*local_size]	= zero_f2;
 	}
-																								// PATCH KERNEL //  TODO need to transfer computation of Huber Norm weighting, Jacobian and Hessian here,
+																								// PATCH KERNEL //  TO DO need to transfer computation of Huber Norm weighting, Jacobian and Hessian here,
 																								// because Hessian must include weights and therefore be updated if weights change.
 	////////////////////////////////////////////////////////////////////////////				// transfer data from global memory.
 	for (uint past_frame_idx=0; past_frame_idx</*num_past_frames*/1; past_frame_idx++){			// step though past frames ///////////////////////////////////////////////////////////////////////////////
@@ -129,7 +129,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 			/*
 			float u_flt					= (float)u * reduction;														// NB this causes sparse sampling of the original space, to use the same k2k at every scale.
 			float v_flt_1				= (float)v * reduction;
-																													// TODO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
+																													// TO DO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
 			float uh2_1 				= inv_k2k[past_frame_idx][0]*u_flt 												+ inv_k2k[past_frame_idx][ 2]*1		+ inv_k2k[past_frame_idx][ 3]*inv_depth_1;		// + inv_k2k[past_frame_idx][1]*v_flt
 			float vh2_1 				= inv_k2k[past_frame_idx][4]*u_flt 												+ inv_k2k[past_frame_idx][ 6]*1		+ inv_k2k[past_frame_idx][ 7]*inv_depth_1;		// + inv_k2k[past_frame_idx][5]*v_flt
 			float wh2_1					= inv_k2k[past_frame_idx][8]*u_flt 	+ inv_k2k[past_frame_idx][9]*v_flt_1 		+ inv_k2k[past_frame_idx][10]*1		+ inv_k2k[past_frame_idx][11]*inv_depth_1;		//
@@ -167,7 +167,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 		}
 	}
 	// Sum-reduce image, /////////////  Save intermediate size ST3 patches for depth map updates, and maximally reduced SE3 patches for pose updates. Second reduce_patch_Rho(..) kernel required for SE3 from lareger image pyramid layers, before update_k2k(..) kernel.
-	uint past_frame_idx =0; // TODO remove and restore long outer loop.
+	uint past_frame_idx =0; // TO DO remove and restore long outer loop.
 	uint step;
 	for ( step=1; step<block_size; step *=2){																																					// for each step size, (multiples of 2)
 		for (uint block_row=0; block_row<block_size ; block_row += step){																														// step through rows in column
@@ -266,7 +266,7 @@ __kernel void reduce_patch_Rho(									// call just one workgroup to sum the wh
 		local_Rho_[lid]				= zero_f2;
 		local_SE3_incr_map_[lid]	= zero_f2;
 	}
-																								// Sum pixels in the row. // TODO summing weights seems wrong.
+																								// Sum pixels in the row. // TO DO summing weights seems wrong.
 	if (in_range){																				// NB initially row_offset = num rows between SE3 output patches.
 		uint old_row_offset			= row_offset;
 		row_offset					*=(SE3 * mm_cols);											// Adjusts "row_offset" to be buffer index, given width of buffer and which SE3 DoF this thread is for.
@@ -318,7 +318,7 @@ __kernel void reduce_patch_Rho(									// call just one workgroup to sum the wh
 } // Need to end the kernel here, because cannot synchronize across workgroups.
 
 
-__kernel void update_k2k(	// TODO need new kernel, for global synchronization between workgroups.  // Only one workgroup needed
+__kernel void update_k2k(	// TO DO need new kernel, for global synchronization between workgroups.  // Only one workgroup needed
 	//inputs
 	__private	float2		delta_SE3,				//0
 	__private	uint		layer,					//1
@@ -409,7 +409,7 @@ __kernel void update_k2k(	// TODO need new kernel, for global synchronization be
 			if (old_update==0.0f){
 				if ( mag_S3 != 0.0f ) {	update_pre_clamp					= SE3_incr_map_[SE3].x  *  delta_SE3[ SE3/3 ] *0.1  / mag_S3;	option	=2;			// NB  (0.25^2)^(1/6) = 0.102062074... for SE3 6DoF vector length 1/4.
 				}else {					update_pre_clamp					= delta_SE3[ SE3/3 ] *0.1;										option	=3;
-				}																																		// TODO step size needs to decrease with layer.
+				}																																		// TO DO step size needs to decrease with layer.
 			}else{
 				if ( rho_S3_delta > 0.01 ){
 										update_pre_clamp					= result * old_mag_update  / (old_mag_S3 - mag_S3);				option	=4;
@@ -468,7 +468,7 @@ __kernel void update_k2k(	// TODO need new kernel, for global synchronization be
 // 																																						if(lid==0){
 // 																																							printf("\nk2k = {\n"); for (uint j=0; j< 4 ; j++){ for (uint k=0; k< 4 ; k++){ 	printf(",	%f",local_k2k[	j*4 +k]);	} printf("\n"); } printf("\n\n");
 // 																																						}
-	__local float local_pose[SE3_elems];																												// update the stored pose. TODO tuck this into 2nd stage of void update_k2_kdev_fn(..)
+	__local float local_pose[SE3_elems];																												// update the stored pose. TO DO tuck this into 2nd stage of void update_k2_kdev_fn(..)
 	__local float local_update[SE3_elems];
 	__local float local_new_pose[SE3_elems];
 

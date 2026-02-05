@@ -9,7 +9,7 @@ void RunCL::createFolders(){
 																																			if(verbosity>local_verbosity_threshold) cout << "\n createFolders_chk 1\n" << flush;
 	std::filesystem::path temp_path = out_path;																								// Vector of device buffer names
 																																			// imgmem[2],  gxmem[2], gymem[2], g1mem[2],  k_map_mem[2], SE3_map_mem[2], dist_map_mem[2];
-	/* TODO update list of buffers
+	/* TO DO update list of buffers
 		 "imgmem",						mm_size_bytes_C4,  		.HSV 3chan image. Also receives HSV_grad (2chan per image, 4 images per map) from buildDepthCostVol
 		 "imgmem_blurred",				mm_size_bytes_C4,  		.HSV 3chan, before mipmap
 		 "keyframe_imgmem",				2*mm_size_bytes_C4,		.HSV_grad (2chan per image, 4 images per map)
@@ -587,7 +587,7 @@ void RunCL::DownloadAndSave_3Channel_volume(cl_mem buffer, std::string count, st
 			cv::waitKey(-1);
 			destroyWindow( "RunCL::DownloadAndSave_3Channel_volume: bufImg" );
 		}																																	if(verbosity> local_verbosity_threshold) { cout << "\nDownloadAndSave_3Channel_volume_chk_2"<<flush;}
-		// writeToResultsMat(&bufImg , iter , row_of_images+i );																				// Add patch from bufImg to resultsMat  TODO this is a bad idea, tangled code.
+		// writeToResultsMat(&bufImg , iter , row_of_images+i );																				// Add patch from bufImg to resultsMat  TO DO this is a bad idea, tangled code.
 																																			// DownloadAndSave_3Channel_volume(..) is called for several differnt buffers. !
 																																			// Onlly valid when called by RunCL::tracking_result
 	}
@@ -885,7 +885,7 @@ void RunCL::DownloadAndSaveVolume(cl_mem buffer, std::string count, std::filesys
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////// # TODO New way: generic RunCL::DownloadAndSave_buffer(...) , and specialized calling functions.
+/////////////////////////////////////////////////////// # TO DO New way: generic RunCL::DownloadAndSave_buffer(...) , and specialized calling functions.
 
 /*
  Need to store 2D array of linear mipmap params

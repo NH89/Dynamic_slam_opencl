@@ -7,7 +7,7 @@ void RunCL::precomp_param_maps ( float SE3_k2k[  max_mipmap_layers*num_SE3_DoF*1
 	int local_verbosity_threshold = V_RUNCL_PRECOM_PARAM_MAPS;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::precom_param_maps( float SE3_k2k[6*16])_chk_0 "<<flush;}
 	// cv::Mat depth		= cv::Mat::ones ( mm_height, mm_width, CV_32FC1);																	// NB must recompute translation maps at run time. NB parallax motion is proportional to inv depth.
-	// float mid_depth 	= ( fp32_params[MAX_INV_DEPTH] + fp32_params[MIN_INV_DEPTH])/2.0;                                                   // TODO fix : depthmap not used as a kernel arg. NB want to match scale of depth range, but ? parallax may vary.
+	// float mid_depth 	= ( fp32_params[MAX_INV_DEPTH] + fp32_params[MIN_INV_DEPTH])/2.0;                                                   // TO DO fix : depthmap not used as a kernel arg. NB want to match scale of depth range, but ? parallax may vary.
 	// depth 				*= mid_depth;
 	//_clEnqueueWriteBuffer( uload_queue, depth_mem_temp,	CL_FALSE, 0, mm_size_bytes_C1,	 								depth.data,		fname);
 

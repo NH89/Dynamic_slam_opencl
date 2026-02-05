@@ -12,7 +12,6 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 	char		*ch 						= new char [str.length()+1];																	//cout<<"chk2 "<<flush;
 	std::strcpy (ch, str.c_str());																											//cout<<"chk3 "<<flush;
 	cv::Mat		T_alt;																														//cout<<"chk4 "<<flush;
-	//convertAhandaPovRayToStandard_2( obj,  ch, R, T, cameraMatrix );	cout<<"chk5 "<<flush;	// TODO  which of these 2 versions of convertAhandaPovRayToStandard() is correct ?
 	convertAhandaPovRayToStandard(   obj,  ch, R, T, cameraMatrix );
 	delete [] ch;
 																																			if(verbosity>local_verbosity_threshold) {
@@ -51,7 +50,7 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 		datum.prev_pose2pose				= frame_data[ frame_data.size() -2].frame_data_GT.inv_pose	*	datum.pose;
 	}
 
-	frame_data.back().frame_data_GT			= datum; // TODO entirely remove Dynamic_slam::frame_data.
+	frame_data.back().frame_data_GT			= datum; // TO DO entirely remove Dynamic_slam::frame_data.
 
 	runcl.current_frames[ runcl.current_frames_idx[0] ].pose_gt		= datum.pose;
 																																			if(verbosity>local_verbosity_threshold) {
@@ -129,7 +128,7 @@ void Dynamic_slam::set_artif_pose_error(){
 		datum.K2K							= MATX44F_EYE;
 		datum.keyframe2pose_algebra			= {0,0,0,  0,0,0} ;
 	}
-	frame_data.back().frame_data_GT			= datum;						// TODO if(use GT),  but move it out to Dynamic_slam::next_frame()
+	frame_data.back().frame_data_GT			= datum;						// TO DO if(use GT),  but move it out to Dynamic_slam::next_frame()
 																																			if ( runcl.baseImage.empty() ) {cerr << "\nDynamic_slam::getFrameData_vec():   Error runcl.baseImage.empty() "<<flush;  runcl.exit_(1); }
 	int r 									= runcl.baseImage.rows;
 	int c 									= runcl.baseImage.cols;
@@ -159,7 +158,7 @@ void Dynamic_slam::use_GT_pose_vec(){
 }
 
 /* old artificial_pose_error_vec()
-void Dynamic_slam::artificial_pose_error_vec(){	// TODO if(GT_available==true){}else{}
+void Dynamic_slam::artificial_pose_error_vec(){	// TO DO if(GT_available==true){}else{}
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_ARTIFICIAL_POSE_ERROR;//verbosity_mp["Dynamic_slam::artificial_pose_error"];
 																																			if(verbosity>local_verbosity_threshold){
 																																				cout << "\n\n##Dynamic_slam::artificial_pose_error()_chk_0 ##########################################" << endl << flush;
@@ -184,7 +183,7 @@ void Dynamic_slam::artificial_pose_error_vec(){	// TODO if(GT_available==true){}
 																																				PRINT_MATX44F(frame_data.back().frame_data.pose , );
 	Matx44f	old							= frame_data.back().frame_data.pose;
 
-	frame_data.back().frame_data.pose	= poseStep	*	frame_data.back().frame_data.pose;	// TODO which side to multiply from ?
+	frame_data.back().frame_data.pose	= poseStep	*	frame_data.back().frame_data.pose;	// TO DO which side to multiply from ?
 																																				PRINT_MATX44F(frame_data.back().frame_data.pose , );
 	Matx44f test1						= old.inv() * 	frame_data.back().frame_data.pose;
 	Matx44f test2						= old 		* 	frame_data.back().frame_data.pose.inv();			// Correct, negative.

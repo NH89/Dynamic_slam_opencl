@@ -1,14 +1,6 @@
 #include "kernels__macros.h"
 #include "kernels.h"
 
-/* NB GPU limits
- * For Intel iRIS Xe
-// Max number of constant args                     8
-// Max constant buffer size                        4294959104 (4GiB)
-NB shoud use these for things that never change during runtime, not for variables constant in a particular kernel but not another.
-TODO Declare constants at top of the device prgram file.
-*/
-
 __kernel void compute_param_maps(
 	__private	uint	layer,			//0
 	__private	float	inv_depth,		//1
@@ -76,7 +68,7 @@ __kernel void compute_param_maps(
 
 //	if(print==true){ printf("\n");}
 
-	// TODO // Create a 'reproject' & 'img_grad_sum' kernels
+	// TO DO // Create a 'reproject' & 'img_grad_sum' kernels
 }
 
 
@@ -156,7 +148,7 @@ __kernel void cvt_color_space_linear(																// Writes the first entry i
 	float H = (   (V==R_float && V!=0)* 	Pi_3* ((G_float-B_float) / divisor )  \
 			+     (V==G_float && V!=0)*		Pi_3*(((B_float-R_float) / divisor ) +2) \
 			+     (V==B_float && V!=0)*		Pi_3*(((R_float-G_float) / divisor ) +4) \
-			);																				// TODO shift "/M_PI_F" to CPU data saving ?
+			);																				// TO DO shift "/M_PI_F" to CPU data saving ?
 
 	if (!(H<=2*M_PI_F && H>=0.0f) || !(S<=1.0f && S>=0.0f) || !(V<=1.0f && V>=0.0f) ) {H=S=V=0.0f;}		// to replace any NaNs
 
@@ -237,7 +229,7 @@ __kernel void sum_image_variance(
 
 	uint read_index = read_offset_  +  base_row  * mm_cols  + base_col  ;							// NB 4 channels.  + margin
 
-	float4 variance = powr( (img[read_index]-img_stats[layer*2 + IMG_MEAN]), 2);					// TODO why does this cause NaNs ?  // img_stats[8*4*2]	= {0};	// 8 layers, 4 channels, 2 variables.
+	float4 variance = powr( (img[read_index]-img_stats[layer*2 + IMG_MEAN]), 2);					// TO DO why does this cause NaNs ?  // img_stats[8*4*2]	= {0};	// 8 layers, 4 channels, 2 variables.
 
 	int4 var_isnan = isnan(variance);
 	if (global_id <= pixels && !var_isnan.x && !var_isnan.y && !var_isnan.z) {

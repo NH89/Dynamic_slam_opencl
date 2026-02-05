@@ -325,7 +325,7 @@ int RunCL::convertToString(const char *filename, std::string& s){
 }
 */
 
-void RunCL::initialize_fp32_params(){	// TODO remove most, ie DTAM pararms
+void RunCL::initialize_fp32_params(){
 	int local_verbosity_threshold = V_RUNCL_INITIALIZE_FP32_PARAMS;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_fp32_params_chk_0,  \n" << flush;
 	if ( obj["max_depth_infinity"].asBool()  ) { fp32_params[MIN_INV_DEPTH]	= 0;
@@ -357,7 +357,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																			//if(verbosity>1) { imshow("runcl.baseImage",baseImage); cv::waitKey(-1); }
 	image_size_bytes	= baseImage.total() * baseImage.elemSize();																			// Constant parameters of the base image
 	image_size_bytes_C1	= baseImage.total() * sizeof(float);
-	costVolLayers 		=( 1 + obj["layers"].asUInt() ); // TODO  2;
+	costVolLayers 		=( 1 + obj["layers"].asUInt() ); // TO DO  2;
 	baseImage_size 		= baseImage.size();
 	baseImage_type 		= baseImage.type();
 	baseImage_width		= baseImage.cols;
@@ -511,7 +511,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																					cout <<"\npatch_local_work_size["<<layer<<"] = "<<patch_local_work_size[layer]<< flush;
 																																				}
 																																			}
-	patch_img_gradients_set_params();		//TODO set in .conf file,  uint out_block_sizefor ST3_hessian		// will need a runcl.set_patch_kernels_params() function
+	patch_img_gradients_set_params();		//TO DO set in .conf file,  uint out_block_sizefor ST3_hessian		// will need a runcl.set_patch_kernels_params() function
 																																			if(verbosity>local_verbosity_threshold) cout <<"\nRunCL::initialize_RunCL_chk finished ############################################################\n"<<flush;
 }
 
@@ -543,7 +543,7 @@ void RunCL::set_mimpmap_offsets(){
 	mipmap[MiM_READ_COLS]			= baseImage_width;
 	mipmap[MiM_WRITE_COLS]			= mipmap[MiM_READ_COLS]/2;
 	mipmap[MiM_PIXELS]				= mipmap[MiM_READ_COLS] * mipmap[MiM_READ_ROWS];
-																																			// TODO compute required reduction and blur depending on img size
+																																			// TO DO compute required reduction and blur depending on img size
 																													// #### Img pyr layers ##########
 	int reduction = 0;
 	num_threads[reduction]		= ceil( (float)(mipmap[MiM_PIXELS])/(float)local_work_size ) * local_work_size ;							// global_work_size formula for num_treads req for this layer.
@@ -601,7 +601,7 @@ void RunCL::set_mimpmap_offsets(){
 																																					if(reduction == mm_stop ) { cout << "\n\nunused layers"<<flush;}
 																																				}
 																																			}
-	// ## set array of arrays for workgoup offsets, for patch kernels on mipmaps ########################################################### TODO Replace with fixed arrays capable of 10K images
+	// ## set array of arrays for workgoup offsets, for patch kernels on mipmaps ########################################################### TO DO Replace with fixed arrays capable of 10K images
 	// Allocate array of arrays, and set counter array.
 	uint num_levels		= mm_num_reductions;// + mm_num_blur_layers;
 	//wg_counter			= (uint*)calloc(  num_levels, sizeof(uint)  );
@@ -692,7 +692,7 @@ void RunCL::mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_
 			status 	= clFlush(queue_to_call);	status 	= clFinish(queue_to_call);															if (status != CL_SUCCESS)	{ cout << "\nRunCL::mipmap_call_kernel( cl_kernel "<<kernel_to_call<<",  clFlush(queue_to_call) status  = "		<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
 			if (layers_sequential==true) status 	= clWaitForEvents (1, &ev);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::mipmap_call_kernel( cl_kernel "<<kernel_to_call<<") for loop,  clWaitForEventsh(1, &ev) ="	<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 
-		//} 																																	// TODO execute layers in asynchronous parallel. i.e. relax clWaitForEvents.
+		//} 																							// TO DO execute layers in asynchronous parallel. i.e. relax clWaitForEvents.
 	}if (layers_sequential==false) status 	= clWaitForEvents (1, &ev);										if (status != CL_SUCCESS)	{ cout << "\nRunCL::mipmap_call_kernel( cl_kernel "<<kernel_to_call<<") final,  clWaitForEventsh(1, &ev) ="		<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 }
 
@@ -816,7 +816,7 @@ void RunCL::allocatemem(){
 																																		if(verbosity>local_verbosity_threshold) cout << "RunCL::allocatemem_finished #############################################################################\n\n" << flush;
 }
 
-RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large array method from Morphogenesis &  fluids_v3 ? OR a C++ vector ?
+RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large array method from Morphogenesis &  fluids_v3 ? OR a C++ vector ?
 	int local_verbosity_threshold = V__RUNCL;//verbosity_mp["RunCL::allocatemem"];																	cout<<"\nRunCL::~RunCL_chk0_called"<<flush;
 	cl_int status;																														// release memory
 
@@ -910,7 +910,7 @@ RunCL::~RunCL(){  // TODO  ? Replace individual buffer clearance with the large 
 	cout<<"\nRunCL::~RunCL_chk1_finished"<<flush;
 }
 
-void RunCL::exit_(int res)   // TODO convert all uses to exit_(res); Will call RunCL::~RunCL() automatically.
+void RunCL::exit_(int res)   // TO DO convert all uses to exit_(res); Will call RunCL::~RunCL() automatically.
 {
 	cout <<endl<< flush;
 	cerr <<endl<< flush;

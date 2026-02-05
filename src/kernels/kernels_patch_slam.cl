@@ -1,7 +1,7 @@
 #include "kernels__macros.h"
 #include "kernels.h"
 
- __kernel void compute_patch_lookup_table(					// computed once at start of program	// TODO when is it possible to roll the layers together ?  i.e. when local mem is not used.
+ __kernel void compute_patch_lookup_table(					// computed once at start of program	// TO DO when is it possible to roll the layers together ?  i.e. when local mem is not used.
 	// inputs
 	__private	uint		layer,					//0
 	__private	uint		lookup_table_offset,	//1
@@ -154,7 +154,7 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 // 																																printf("\npixel 0, Jacobian[i%d]=%2.10f,   %f,   ",i, Jacobian[i].x, Jacobian[i].w);
 // 																															}
 			for (uint j=0; j<6; j++) {
-				Hessian_pinv_pvt_arr[row_in_block][i][j]= Jacobian[i] * Jacobian[j];	// Gauss-Newton approx H = J.transpose * J  // TODO compute and sum lower triangle only.
+				Hessian_pinv_pvt_arr[row_in_block][i][j]= Jacobian[i] * Jacobian[j];	// Gauss-Newton approx H = J.transpose * J  // TO DO compute and sum lower triangle only.
 				Hessian_pinv_pvt_arr[row_in_block][i][j].w =1.0f;
 // 																															if (lid==0 && row_in_block==0 && group_id==0 ){		// ### Debugging ###
 // 																																printf("   Hessian[i%d][j%d]=%2.10f,   ",i, j, Hessian_pinv_pvt_arr[row_in_block][i][j].x );
@@ -173,7 +173,7 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	// Sum-reduce image, /////////////  Save intermediate size ST3 patches for depth map updates, and maximally reduced SE3 patches for pose updates. Second reduce_patch_Rho(..) kernel required for SE3 from lareger image pyramid layers, before update_k2k(..) kernel.
 	// make this a device function ?
 
-	uint past_frame_idx =0; // TODO remove and restore long outer loop.
+	uint past_frame_idx =0; // TO DO remove and restore long outer loop.
 	uint step;
 
 	for ( step=1; step<block_size; step *=2){																																					// for each step size, (multiples of 2)
@@ -204,7 +204,7 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 			if( !(fmod((float)lid,(step*2))==0) &&  (fmod((float)lid,step)==0)    ){																											// selects 2nd column, sends data
 				for (uint i=0; i<6; i++) {
 					for (uint j=0; j<6; j++) {
-																						local_Hessian[		lid-step + (i*6 + j)*local_size]		= Hessian_pinv_pvt_arr[	block_row ][i][j];	//+ se3_dim*block_size ];  TODO correct size and indexing of local_Hessiasn
+																						local_Hessian[		lid-step + (i*6 + j)*local_size]		= Hessian_pinv_pvt_arr[	block_row ][i][j];	//+ se3_dim*block_size ];  TO DO correct size and indexing of local_Hessiasn
 					}
 				}
 			}
@@ -238,7 +238,7 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 																							//if ( layer >4) printf("\n__kernel void  patch_img_grad(..) layer=%u,  i=%u,  global_id_uint=%u,  block_row=%u,  offset_1_1=%u", layer, i, global_id_uint, block_row, offset_1_1 );
 																						}
 					}
-					barrier(CLK_GLOBAL_MEM_FENCE );			// TODO is this needed?
+					barrier(CLK_GLOBAL_MEM_FENCE );			// TO DO is this needed?
 					for (uint j=0; j<3; j++) {																																					//float4	debug						= {(float)(i)/3, (float)(j)/3, global_id_uint, 1 };
 						if( /*inbounds == true*/ fmod((float)lid,out_block_size) == 0 ){																															// write Hessian to 1st page of SE3_Hessian_pinv_map buffer.		// selects columns i.e. threads within the workgroup
 																						offset_1_1									= write_index		+ i*ST3_v_step	+ j*ST3_u_step + write_block_row*mm_cols;
@@ -247,7 +247,7 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 																							SE3_Hessian_map[	offset_1_1 ]	= pvt_Hessian;													// Hessian_pinv_pvt_arr[	block_row ][i][j] / Hessian_pinv_pvt_arr[	block_row ][i][j].w;
 																						}
 						}
-						barrier(CLK_GLOBAL_MEM_FENCE );		// TODO is this needed?
+						barrier(CLK_GLOBAL_MEM_FENCE );		// TO DO is this needed?
 					}
 				}
 			}
@@ -338,7 +338,7 @@ __kernel void  patch_hessian_reduce(						// one workgroup per element.
 	// Write result
 	if( /*fmod((float)lid, step)*/				lid	==0 ) {
 		int idx = elem + 6 +(layer*8*6);																	//	Each layer's results spaced by 8*6=48 pixels.
-		SE3_Hessian_map[idx]					=	H_pvt_arr[0] ;											//TODO will need atomic fn for larger images.
+		SE3_Hessian_map[idx]					=	H_pvt_arr[0] ;											//TO DO will need atomic fn for larger images.
 																											//printf("\n__kernel void  patch_hessian_reduce()  layer=%u		SE3_Hessian  %u [%i]		=%f, %f, %f, %f",  layer,  elem,	idx,	pvt_Hessian.s0,  pvt_Hessian.s1,  pvt_Hessian.s2,  pvt_Hessian.s3 );
 	}
 
@@ -376,7 +376,7 @@ __kernel void  patch_hessian_reduce(						// one workgroup per element.
 	// Write result
 	if( /*fmod((float)lid, step)*/				lid	==0 ) {													//	Each layer's results spaced by 8*6=48 pixels.
 		int idx = (elem/6) + (layer*8*6);
-		SE3_Hessian_map[idx]					=	J_pvt_arr[0] ;											//TODO will need atomic fn for larger images.							//	Write result to the first 36 pixels of SE3_Hessian_map, directly above this layer of hessian pyramid,  because this will be fastest to read to CPU.
+		SE3_Hessian_map[idx]					=	J_pvt_arr[0] ;											//TO DO will need atomic fn for larger images.							//	Write result to the first 36 pixels of SE3_Hessian_map, directly above this layer of hessian pyramid,  because this will be fastest to read to CPU.
 																																													// printf("\nE        __kernel void  patch_hessian_reduce()  layer=%u	SE3_Jacobian  elem/6 = %u [idx = %i]	=	%f, %f, %f, %f		lid=%d	gid=%lu",
 																																													//		layer,  				elem/6,		idx,  				J_pvt_arr[0].s0,  J_pvt_arr[0].s1,  J_pvt_arr[0].s2,  J_pvt_arr[0].s3,	lid,  get_global_id(0) );
 	}
@@ -529,7 +529,7 @@ void Hessian_inv_Cayley_Hamilton_3x3( float Hessian[9], float Hinv[9] ){
 
 void GN_Hessian_pseudo_inv_3x3( float J[3], float H_pinv[9]			// NB only valid for Real valued H = J^T * J,  NB Not for a sum of multiple Hessians.
 ){
-	float denom = J[0]*J[0] + J[1]*J[1] + J[2]*J[2];  				//TODO check is it sum of sqares of J or sum of squares of diagonal of H ?
+	float denom = J[0]*J[0] + J[1]*J[1] + J[2]*J[2];  				//TO DO check is it sum of sqares of J or sum of squares of diagonal of H ?
 	denom		*= denom;
 
 	if ( isnormal(denom) ){ denom = 1/denom; } else { denom = 0; }	// prevent div by zero error

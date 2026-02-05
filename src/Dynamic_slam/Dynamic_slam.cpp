@@ -243,7 +243,7 @@ int Dynamic_slam::nextFrame() {
 																																			}
 	////////////////////////////////// Parallax depth mapping
 																						auto step_7 = high_resolution_clock::now();
-// TODO replace with patch_slam and multi-frame depth+motion+accel maps,  together with vel, accel, jolt of camera,   and later reflectance & illum etc...
+// TO DO replace with patch_slam and multi-frame depth+motion+accel maps,  together with vel, accel, jolt of camera,   and later reflectance & illum etc...
 
 																						auto step_8 = high_resolution_clock::now();			// Update cost vol with the new frame, and repeat optimization of the depth map.
 																																			// NB Cost vol needs to be initialized on a particular keyframe.

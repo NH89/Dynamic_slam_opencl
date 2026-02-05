@@ -1,6 +1,13 @@
 #ifndef KERNELS_H
 #define KERNELS_H
 
+/* NB GPU limits
+ * For Intel iRIS Xe
+// Max number of constant args                     8
+// Max constant buffer size                        4294959104 (4GiB)
+NB shoud use these for things that never change during runtime, not for variables constant in a particular kernel but not another.
+*/
+
 #include "kernels__macros.h"
 
 __constant float2 zero_f2				= {0.0f,0.0f};

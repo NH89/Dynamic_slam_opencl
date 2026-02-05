@@ -125,14 +125,14 @@ void RunCL::cvt_color_space(){ //getFrame(); basemem(CV_8UC3, RGB)->imgmem(CV16F
 																																				}
 																																			}
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::cvt_color_space()_chk3_Finished"<<flush;
-	// TODO NB it would be faster to find the mean from the smallest layer, BUT only if there are no bugs e.g. the black bottom edge.
+	// TO DO NB it would be faster to find the mean from the smallest layer, BUT only if there are no bugs e.g. the black bottom edge.
 	// Variance however must be computed for each layer, because blurring may reduce contrast &=> variance.
 }
 
 void RunCL::sum_image_variance(){
 	string fname = "RunCL::img_variance()";
 	int local_verbosity_threshold = V_RUNCL_SUM_IMAGE_VARIANCE;//verbosity_mp["RunCL::img_variance"];//-1;
-	// TODO ? create a class for data, holding buffer, CPU data, stats about the data object, functions for write, read, save, display, & set_kernel_arg ?
+	// TO DO ? create a class for data, holding buffer, CPU data, stats about the data object, functions for write, read, save, display, & set_kernel_arg ?
 
 	const cl_kernel kernel		= sum_image_variance_kernel;
 	const cl_mem imgmem_		= current_frames[ current_frames_idx[0] ].img_buf;
@@ -144,7 +144,7 @@ void RunCL::sum_image_variance(){
 	_clSetKernelArg( kernel, 4, local_work_size*4*sizeof(float), 	NULL, 					fname);											//__local  float4*		local_sum_pix	//4
 	_clSetKernelArg( kernel, 5, sizeof(cl_mem), 					&var_sum_mem, 			fname);											//__local  float4*		global_sum_pix	//5
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_chk1,  global_work_size="<< global_work_size <<flush;
-	_clEnqueueNDRangeKernel(m_queue,  kernel, 1, 0, &global_work_size, &local_work_size, fname); 											// run img_variance _kernel  aka img_variance(..) ##### TODO which CommandQueue to use ? What events to check ?
+	_clEnqueueNDRangeKernel(m_queue,  kernel, 1, 0, &global_work_size, &local_work_size, fname); 											// run img_variance _kernel  aka img_variance(..) ##### TO DO which CommandQueue to use ? What events to check ?
 
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::img_variance()_chk2"<<flush;
 	cv::Mat var_sum_mat = cv::Mat::zeros (pix_sum_size, 1, CV_32FC4); // cv::Mat::zeros (int rows, int cols, int type)						// NB the data returned is one float4 per group, for the base image, holding hsv channels plus entry[3]=pixel count.
@@ -171,7 +171,7 @@ void RunCL::sum_image_variance(){
 			var_sum_results[k] += var_sum_mat.at<float>(j, k);
 		}
 	}
-	uint layer = 0; // TODO convert to mimpap version.
+	uint layer = 0; // TO DO convert to mimpap version.
 	for (int i=0; i<3; i++){
 		img_stats[layer*8 + IMG_VAR*4 + i ]	=	var_sum_results[i] / var_sum_results[3];
 	}
@@ -254,7 +254,7 @@ void RunCL::mipmap_linear(cl_mem image_buf, std::string folder){
 	_clSetKernelArg(mipmap_float4_kernel, 3, sizeof(cl_mem), 						&image_buf, fname);										//__global   float4*	img,			//4
 	_clSetKernelArg(mipmap_float4_kernel, 4, (local_size+4) *5*4* sizeof(float), 	NULL, fname);											//__local    float4*	local_img_patch //5
 
-	mipmap_call_kernel( mipmap_float4_kernel, m_queue, true );   // TODO Start at first reduction, rehash __kernel void mipmap_linear_flt(..) and call only the num threads required. NB currently uses 4x as many threads as needed.
+	mipmap_call_kernel( mipmap_float4_kernel, m_queue, true );   // TO DO Start at first reduction, rehash __kernel void mipmap_linear_flt(..) and call only the num threads required. NB currently uses 4x as many threads as needed.
 
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout<<"\n\nRunCL::mipmap(..)_chk3 Finished all loops."<<flush;
@@ -281,7 +281,7 @@ void RunCL::load_GT_depth(cv::Mat GT_depth, bool invert){ //getFrameData();,  cv
 	_clEnqueueFillBuffer(  uload_queue, depth_mem_temp, &default_depth, sizeof(float), 0, mm_size_bytes_C1,  fname );
 	_clEnqueueFillBuffer(  uload_queue, depth_mem_GT, 	&default_depth, sizeof(float), 0, mm_size_bytes_C1,  fname );
 
-	float max_range_ = 0.0f;																											// 0.0f => (temp_mat / maxVal) * 256*256 for .png; TODO move this to conf.json
+	float max_range_ = 0.0f;																											// 0.0f => (temp_mat / maxVal) * 256*256 for .png; TO DO move this to conf.json
 																																		if(verbosity>local_verbosity_threshold+1){
 																																			DownloadAndSave( depth_mem_GT,  ss.str(),   paths.at("depth_GT"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
 																																			DownloadAndSave( depth_mem_temp,   	ss.str(),   paths.at("depth_mem_temp"),   	image_size_bytes_C1,   baseImage_size,   CV_32FC1, 	false , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;						// NB depth_mem_temp is just the raw image, with no margins nor mipmapping.
@@ -346,7 +346,7 @@ void RunCL::mipmap_depthmap(cl_mem depthmap_){
 	_clSetKernelArg(mipmap_float_kernel, 3, sizeof(cl_mem), 					&depthmap_,			fname);								//__global   float*		img,			//4
 	_clSetKernelArg(mipmap_float_kernel, 4, (local_size+4) *5*sizeof(float), 	NULL,				fname);								//__local    float*		local_img_patch //5
 
-	mipmap_call_kernel( mipmap_float_kernel, m_queue, true);// TODO Start at first reduction, rehash __kernel void mipmap_linear_flt(..) and call only the num threads required. NB currently uses 4x as many threads as needed.
+	mipmap_call_kernel( mipmap_float_kernel, m_queue, true);// TO DO Start at first reduction, rehash __kernel void mipmap_linear_flt(..) and call only the num threads required. NB currently uses 4x as many threads as needed.
 
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout<<"\n\nRunCL::mipmap_depthmap(..)_chk3 Finished all loops."<<flush;
