@@ -75,8 +75,8 @@ public:
 	// Kernels
 	// old kernels
 	cl_kernel			convert_depth_kernel;
-	cl_kernel			cvt_color_space_kernel, cvt_color_space_linear_kernel, sum_image_variance_kernel, sample_image_variance_kernel, blur_image_kernel;
-	cl_kernel 			mipmap_float4_kernel, mipmap_float_kernel,  comp_param_maps_kernel;
+	cl_kernel			cvt_color_space_kernel, cvt_color_space_linear_kernel;
+	cl_kernel 			mipmap_float_kernel,  comp_param_maps_kernel;
 	// 1st gen patch kernels ?
 	cl_kernel			rho_sq_kernel, reduce_patch_Rho_kernel, update_k2k_kernel;	// TO DO declare, create, release kernel in Run_cl.h etc.
 	// RunCL_patchslam.cpp

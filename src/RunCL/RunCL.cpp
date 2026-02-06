@@ -268,13 +268,10 @@ void RunCL::createKernels(){
 	//int local_verbosity_threshold = V_RUNCL_CREATEKERNELS;
 
 	cl_int err_code;
+	// RunCL_load_image.cpp
 	convert_depth_kernel			= clCreateKernel(m_program, "convert_depth", 				&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'convert_depth'  kernel not built.\n"			<<flush; exit_(0);   }
 	mipmap_float_kernel				= clCreateKernel(m_program, "mipmap_linear_flt", 			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'mipmap_linear_flt'  kernel not built.\n"		<<flush; exit_(0);   }
-
 	cvt_color_space_linear_kernel 	= clCreateKernel(m_program, "cvt_color_space_linear", 		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'cvt_color_space_linear'  kernel not built.\n"	<<flush; exit_(0);   }
-	sum_image_variance_kernel		= clCreateKernel(m_program, "sum_image_variance",			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'sum_image_variance'  kernel not built.\n"		<<flush; exit_(0);   }
-	sample_image_variance_kernel	= clCreateKernel(m_program, "sample_image_variance",		&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'sample_image_variance'  kernel not built.\n"	<<flush; exit_(0);   }
-
 	comp_param_maps_kernel			= clCreateKernel(m_program, "compute_param_maps", 			&err_code);			if (err_code != CL_SUCCESS)  {cout << "\nError 'compute_param_maps'  kernel not built.\n"		<<flush; exit_(0);   }
 
 	//  1st gen patch kernels ?
@@ -295,35 +292,6 @@ void RunCL::createKernels(){
 	reduce_img_kernel					= clCreateKernel(m_program, "reduce_img",					&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'reduce_img'  kernel not built.\n"					<<flush; exit_(0);   }
 
 }
-
-/*	Not currently used
-int RunCL::convertToString(const char *filename, std::string& s){
-	int local_verbosity_threshold = V_RUNCL_CONVERTTOSTRING;//verbosity_mp["RunCL::convertToString"];
-
-	size_t size;
-	char*  str;
-	std::fstream f(filename, (std::fstream::in | std::fstream::binary));
-	if (f.is_open() ) {
-		size_t fileSize;
-		f.seekg(0, std::fstream::end);
-		size = fileSize = (size_t)f.tellg();
-		f.seekg(0, std::fstream::beg);
-		str = new char[size + 1];
-		if (!str) {
-			f.close();
-			return 0;
-		}
-		f.read(str, fileSize);
-		f.close();
-		str[size] = '\0';
-		s = str;
-		delete[] str;
-		return 0;
-	}
-										cout << "Error: failed to open file\n:" << filename << endl;
-	return 1;
-}
-*/
 
 void RunCL::initialize_fp32_params(){
 	int local_verbosity_threshold = V_RUNCL_INITIALIZE_FP32_PARAMS;
@@ -567,21 +535,6 @@ void RunCL::set_mimpmap_offsets(){
 		}																																	if(verbosity>local_verbosity_threshold) { cout << endl << flush; }
 
 	}
-/*
-	mipmap[MiM_WRITE_ROWS]			= mipmap[MiM_READ_ROWS];
-	mipmap[MiM_WRITE_COLS]			= mipmap[MiM_READ_COLS];
-	mipmap[MiM_WRITE_OFFSET]		= mipmap[MiM_READ_OFFSET] + mipmap[MiM_READ_COLS] + 2*margin;
-
-	int stop2 							= min( (mm_num_reductions + mm_num_blur_layers),  max_mipmap_layers-1);		// #### Blur layers #############
-	int layer 						= reduction;																							if(verbosity>local_verbosity_threshold) { cout << "\nblur layers"<<flush;}
-	for(; layer <= stop2; layer++) {
-		for (int i=0; i<8; i++) 	{																										// Initialize the global MipMap[8*8] array.
-			MipMap[layer*8 +i] = mipmap[i];																									if(verbosity>local_verbosity_threshold) { cout << "\nMipMap["<<layer<<"*8 +"<<i<<"]="<<MipMap[layer*8 +i] ;}
-		}																																	if(verbosity>local_verbosity_threshold) { cout << endl << flush; }
-		mipmap[MiM_READ_OFFSET]		= mipmap[MiM_WRITE_OFFSET];
-		mipmap[MiM_WRITE_OFFSET] 	= mipmap[MiM_READ_OFFSET] + mipmap[MiM_READ_COLS] + 2*margin;
-	}
-*/
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout <<"	\nRunCL::set_mimpmap_offsets()"<<endl;
 																																				cout << "\n\nImg pyr layers"<<flush;
@@ -603,9 +556,7 @@ void RunCL::set_mimpmap_offsets(){
 																																			}
 	// ## set array of arrays for workgoup offsets, for patch kernels on mipmaps ########################################################### TO DO Replace with fixed arrays capable of 10K images
 	// Allocate array of arrays, and set counter array.
-	uint num_levels		= mm_num_reductions;// + mm_num_blur_layers;
-	//wg_counter			= (uint*)calloc(  num_levels, sizeof(uint)  );
-	//wg_offsets 			= (uint**)calloc( num_levels, sizeof(uint*) );
+	uint num_levels		= mm_num_reductions;
 
 	for (int iter = 0; iter<num_levels; iter ++){									// #### Image pyramid ###############
 		int wg_cols			= ceil((float)MipMap[ iter*8 +  MiM_READ_COLS] / (float)local_work_size);
@@ -625,16 +576,6 @@ void RunCL::set_mimpmap_offsets(){
 	}
 
 }
-/*
-void RunCL::free_wg_offsets(){	// NB must call on exit.
-	uint num_levels	= mm_num_reductions + mm_num_blur_layers;
-		for (int iter=0; iter<num_levels; iter ++){
-			free( wg_offsets[iter] );
-		}
-		free( wg_offsets );
-		free( wg_counter );
-	}
-*/
 
 void RunCL::set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k ){
 	int local_verbosity_threshold = V_RUNCL_SET_CAM_BUFS;
@@ -868,14 +809,12 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 	status = clReleaseKernel(mipmap_float_kernel);					if (status != CL_SUCCESS)	{ cout << "\nmipmap_float_kernel				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_59"<<flush;
 
 	status = clReleaseKernel(cvt_color_space_linear_kernel);		if (status != CL_SUCCESS)	{ cout << "\ncvt_color_space_linear_kernel 		status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_49"<<flush;
-	status = clReleaseKernel(sum_image_variance_kernel);			if (status != CL_SUCCESS)	{ cout << "\nsum_image_variance_kernel 			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_50"<<flush;
-	status = clReleaseKernel(sample_image_variance_kernel);			if (status != CL_SUCCESS)	{ cout << "\nsample_image_variance_kernel		status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_50"<<flush;
-//	status = clReleaseKernel(reduce_kernel);						if (status != CL_SUCCESS)	{ cout << "\nreduce_kernel 						status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_51"<<flush;
-	status = clReleaseKernel(mipmap_float4_kernel);					if (status != CL_SUCCESS)	{ cout << "\nmipmap_float4_kernel 				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_52"<<flush;
+//	status = clReleaseKernel(sum_image_variance_kernel);			if (status != CL_SUCCESS)	{ cout << "\nsum_image_variance_kernel 			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_50"<<flush;
+//	status = clReleaseKernel(sample_image_variance_kernel);			if (status != CL_SUCCESS)	{ cout << "\nsample_image_variance_kernel		status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_50"<<flush;
 
-//	status = clReleaseKernel(img_grad_kernel);						if (status != CL_SUCCESS)	{ cout << "\nimg_grad_kernel 					status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_53"<<flush;
+//	status = clReleaseKernel(mipmap_float4_kernel);					if (status != CL_SUCCESS)	{ cout << "\nmipmap_float4_kernel 				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_52"<<flush;
+
 	status = clReleaseKernel(comp_param_maps_kernel);				if (status != CL_SUCCESS)	{ cout << "\ncomp_param_maps_kernel 			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_54"<<flush;
-//	status = clReleaseKernel(se3_rho_sq_kernel);					if (status != CL_SUCCESS)	{ cout << "\nse3_rho_sq_kernel 					status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_55"<<flush;
 
 	//
 	status = clReleaseKernel(rho_sq_kernel);						if (status != CL_SUCCESS)	{ cout << "\nrho_sq_kernel						status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
