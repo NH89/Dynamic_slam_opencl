@@ -233,12 +233,14 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 
 	uint 	out_block_size 		= 4;
 	float	old_sum_rho_sq		= FLT_MAX-1;
+	float	factor				= -2.0f;
 	Matx44f	old_pose			= runcl.ReadOutput_44f( runcl.pose_buf );
 	Matx44f	old_k2k				= runcl.ReadOutput_44f( runcl.k2kbuf );
 	Matx44f newPose;
 	Matx44f newK2K;
 																																		//for (uint out_block_size = 4/*32*/; out_block_size > 2; out_block_size /=2){
 	for (uint iter = 0; iter<SE_iter; iter++){
+		auto step_0 = high_resolution_clock::now();
 		count[0]  = iter;
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\nDynamic_slam::estimate_SLAM() chk_1: layer="<<layer
@@ -258,34 +260,53 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 																																		// cout<<" ) "<<endl<<flush;
 		float		sum_rho		=	runcl.se3_rho_result.Rho.x;		// currently .x colour channel only.
 		float		sum_rho_sq	=	runcl.se3_rho_result.Rho.y;
-		if(sum_rho_sq > old_sum_rho_sq || isnan(sum_rho_sq)    ){
-			/* python
-					// 	if (SSD > old_SSD or np.isnan(SSD) ):
-					// 		if (SSD > old_SSD ):
-					// 			print("\n SSD > old_SSD = {0:.4} #___________________ ".format( old_SSD) )
-					// 		else:
-					// 			print("\n isnan(SSD) ")
-					// 			break
-					// 		if (pyr_level <1) :
-					// 			break
-					//	#factor                  = factor * 0.9
-					//	pyr_level              = pyr_level -1
-					//	print(" factor = {0} ".format(factor) )
-					//	print(" pyr_level = {0} ".format(pyr_level) )
-					//	current_pose            = old_pose
-					//	SSD                     = np.finfo('float32').max -10
-			*/
-			if(sum_rho_sq > old_sum_rho_sq){
-				cout << "\nsum_rho_sq > old_sum_rho_sq = "<< old_sum_rho_sq <<flush;
-				if (layer<=0) break;
-				layer --;
-			}else{
-				cout << "\nisnan(sum_rho_sq)" <<flush;
-				break;
+		/* python
+		// 	if (SSD > old_SSD or np.isnan(SSD) ):
+		// 		if (SSD > old_SSD ):
+		// 			print("\n SSD > old_SSD = {0:.4} #___________________ ".format( old_SSD) )
+		// 		else:
+		// 			print("\n isnan(SSD) ")
+		// 			break
+		// 		if (pyr_level <1) :
+		// 			break
+		//	#factor                  = factor * 0.9
+		//	pyr_level              = pyr_level -1
+		//	print(" factor = {0} ".format(factor) )
+		//	print(" pyr_level = {0} ".format(pyr_level) )
+		//	current_pose            = old_pose
+		//	SSD                     = np.finfo('float32').max -10
+		*/
+		if( isnan(sum_rho_sq) ){
+			cout << "\nisnan(sum_rho_sq)" <<flush;
+			break;
+		}else if(sum_rho_sq > old_sum_rho_sq     ){																						// Rho, photometric error, got worse not better
+			if(layer<=0) {break;}																										// Reached bottom of image pyramid.
+			else {
+				cout << "\nsum_rho_sq > old_sum_rho_sq = "<< old_sum_rho_sq;
+				if(factor<-1.0f){																										// End amplified steps
+					factor = -1.0f;
+					cout << ",  factor -2.0f -> -1.0f";
+				}else {
+					layer --;																											// Step down to lower layer of image pyramid
+					cout << "\nlayer = "	<<	layer;
+					old_sum_rho_sq			=	FLT_MAX-1;																				// Re-set old_sum_rho_sq for new layer
+				}
+				runcl.update_k2k_buf(		old_k2k,		old_pose);																	// Re-set to previous pose.
+				cout<<endl<<flush;
 			}
-			cout << "\nlayer = "	<<	layer <<flush;
-			runcl.update_k2k_buf(		old_k2k,		old_pose);
-			old_sum_rho_sq			=	FLT_MAX-1;
+/*
+// 			if(sum_rho_sq > old_sum_rho_sq){
+// 				cout << "\nsum_rho_sq > old_sum_rho_sq = "<< old_sum_rho_sq <<flush;
+// 				if(factor<-1.0f){ factor = -1.0f; }
+// 				else{
+//
+// 					layer --;
+// 				}
+//
+// 			cout << "\nlayer = "	<<	layer <<flush;
+// 			runcl.update_k2k_buf(		old_k2k,		old_pose);
+// 			old_sum_rho_sq			=	FLT_MAX-1;
+*/
 		}else{
 			old_sum_rho_sq			=	sum_rho_sq;
 			old_pose				=	newPose;
@@ -318,8 +339,8 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 																																			Matx44f	pose_old	= runcl.ReadOutput_44f( runcl.pose_buf );	PRINT_MATX44F( pose_old, );
 																																			Matx44f	k2k_old		= runcl.ReadOutput_44f( runcl.k2kbuf);		PRINT_MATX44F( k2k_old,	);
 																																		}
-			pose_update_cpu			=	(-1.0f) *  pose_update_cpu.mul( deltas_matx[layer] );/*  * 0.5f; */
-
+			pose_update_cpu			=	factor *  pose_update_cpu.mul( deltas_matx[layer] );/*(-2.0f)*/ /*  * 0.5f; */
+																																		if( verbosity>local_verbosity_threshold-3 ){PRINT_MATX16F( pose_update_cpu, ); }
 			newPose					=	LieToP_Matx( pose_update_cpu )  *  pose;
 			newK2K					=	K  *  newPose  * invK ;
 
@@ -333,8 +354,15 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 																																			Matx44f	k2k_now		= runcl.ReadOutput_44f( runcl.k2kbuf);		PRINT_MATX44F( k2k_now,	);
 																																		}
 			count[1]  = layer;
-		}																																if( verbosity>local_verbosity_threshold ){
-																																			cout << "\nDynamic_slam::estimate_SLAM() loop finished  ###########################"<<flush;
+			if( SE_iter-(iter/10) < layer) {
+				layer --;																											// Step down to lower layer of image pyramid
+				cout << "\n( SE_iter-(iter/10) < layer),  layer = "	<<	layer <<endl<<flush;
+				old_sum_rho_sq			=	FLT_MAX-1;
+			}
+		}auto step_1 = high_resolution_clock::now();																					if( verbosity>local_verbosity_threshold-3){
+																																			cout << "\nDynamic_slam::estimate_SLAM() loop finished  ###########################"\
+																																			<<"Tracking loop time = "<<  duration_cast<microseconds>(step_1 - step_0).count()
+																																			<<" microseconds,  layer="<<layer<<endl<<flush;
 																																		}
 	}																																	if( verbosity>local_verbosity_threshold ){
 																																			cout << "\nDynamic_slam::estimate_SLAM() finished  ###########################"<<flush;

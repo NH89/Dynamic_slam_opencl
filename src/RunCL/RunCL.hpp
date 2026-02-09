@@ -206,7 +206,7 @@ public:
 
 	// buffers for patch kernel based Dynamic_slam
 	cl_mem				patch_lookup_table_buf;
-	cl_mem				SE3_hessian_pinv_map_mem,		SE3_jacobian_map_mem;
+	cl_mem				SE3_hessian_map_mem,		SE3_jacobian_map_mem;
 	cl_mem				pose_buf, pose_update_buf,	distorsion_update_buf,		old_results_buf,				K_buf, inv_K_buf;
 
 	//
@@ -317,7 +317,6 @@ public:
 	void DownloadAndSave_HSV_grad(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint offset=0 );
 	
 	void SaveMat(cv::Mat temp_mat, int type_mat, std::filesystem::path folder_tiff, bool show, float max_range, std::string mat_name, std::string count);
-	//void SaveMat_1chan(cv::Mat temp_mat, int type_mat, std::filesystem::path folder_tiff, bool show, float max_range, std::string mat_name/*, std::string count*/);
 	void DownloadAndSaveVolume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, bool exception_tiff=false );
 
 
@@ -327,9 +326,6 @@ public:
 	void update_tracking_depthmap(cl_mem depthmap_);
 	void loadFrame(cv::Mat image);
 	void cvt_color_space();
-	void sum_image_variance();
-	void sample_image_variance();
-	void mipmap_linear(cl_mem image_buf, std::string folder);
 	void patch_img_gradients();
 	
 	void load_GT_depth(cv::Mat GT_depth, bool invert);																					// Depthmap loading & preparation

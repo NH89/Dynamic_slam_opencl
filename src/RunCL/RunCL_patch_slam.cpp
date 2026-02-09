@@ -33,7 +33,7 @@ void RunCL::initialize_patch_params(){																// called by Dynamic_slam:
 }
 
 
-void RunCL::compute_patch_lookup_table(){										// called by Dynamic_slam::Dynamic_slam
+void RunCL::compute_patch_lookup_table()  {										// called by Dynamic_slam::Dynamic_slam
 	string fname = "RunCL::compute_patch_lookup_table( )";
 	int local_verbosity_threshold = V_RUNCL_COMPUTE_PATCH_LOOKUP_TABLE;
 	cl_kernel kernel = compute_patch_lookup_table_kernel;
@@ -250,7 +250,7 @@ void RunCL::patch_img_gradients_set_params(){	// Uses patch lookup table		// cal
 	//Outputs:
 	//__global
 	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&SE3_grad_map_mem,				fname);									// __global 	float8*		SE3_grad_map,			//7		// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
-	_clSetKernelArg( kernel,	12, sizeof( cl_mem), 	&SE3_hessian_pinv_map_mem,		fname);									// __global 	float4*		SE3_Hessian_pinv_map,	//8		// HSV (6x6) matrix so 36*float8
+	_clSetKernelArg( kernel,	12, sizeof( cl_mem), 	&SE3_hessian_map_mem,			fname);									// __global 	float4*		SE3_Hessian_pinv_map,	//8		// HSV (6x6) matrix so 36*float8
 	_clSetKernelArg( kernel,	14, sizeof( cl_mem), 	&HSV_grad_mem,					fname);									// __global 	float8*		HSV_grad				//10
 
 	// For the SE3 Hessian patches, and their reduction.	/////////////
@@ -262,8 +262,8 @@ void RunCL::patch_img_gradients_set_params(){	// Uses patch lookup table		// cal
 
 	for (uint layer =0; layer<=mm_stop; layer++){																				// NB must match where the SE3 Hessian is written in SE3_hessian_map_mem.
 																																// i.e. 6x6 elems in img pyramid horizontally across the top of the buffer.
-		patch_hessian_cols[		layer]	= ceil( ((float)		  MipMap[layer*8 + MiM_READ_COLS]	)	/block_size );
-		patch_hessian_rows[		layer]	= ceil( ((float)		  MipMap[layer*8 + MiM_READ_ROWS]	)	/block_size );
+		patch_hessian_cols[		layer]	= ceil( ((float)	  MipMap[layer*8 + MiM_READ_COLS]	)	/block_size );
+		patch_hessian_rows[		layer]	= ceil( ((float)	  MipMap[layer*8 + MiM_READ_ROWS]	)	/block_size );
 
 		uint	hessian_elem_step		=				  4 + MipMap[layer*8 + MiM_READ_COLS]		/block_size;
 		uint	hessian_row_step		=				 (4 + MipMap[layer*8 + MiM_READ_ROWS]		/block_size )		*  mm_width;
@@ -296,8 +296,6 @@ void RunCL::patch_img_gradients_set_params(){	// Uses patch lookup table		// cal
 																																	// <<",\n    patch_hessian_rows[	"<<layer<<"]	= "		<<patch_hessian_rows[ layer]<<",    MipMap[layer*8 + MiM_READ_ROWS] = "<<MipMap[layer*8 + MiM_READ_ROWS]
 																																	// <<",\n    block_size = "								<<block_size
 																																	<<flush;
-
-
 																																}
 		hessian_layer_offset			+=		6* hessian_elem_step;					//MipMap[layer*8 + MiM_READ_OFFSET]	/mm_width;
 		st3_hessian_layer_offset		+=		3* st3_hessian_row_step;
@@ -446,7 +444,7 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 	_clSetKernelArg( kernel,	4, sizeof(int),			&mm_cols,					fname);									// __private	uint	mm_cols		//4
 
 	_clSetKernelArg( kernel,	6, sizeof(int),			&mm_layerstep,				fname);									// __private	uint	mm_pixels	//6
-	_clSetKernelArg( kernel,	7, sizeof(cl_mem),		&SE3_hessian_pinv_map_mem,	fname);									// __private	uint				//7
+	_clSetKernelArg( kernel,	7, sizeof(cl_mem),		&SE3_hessian_map_mem,	fname);									// __private	uint				//7
 
 	cl_int		status	= CL_SUCCESS;
 	cl_event	ev		= 0;
@@ -475,7 +473,7 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 	size_t		data_size	=	(num_SE3_DoF+1) *	num_SE3_DoF *	sizeof(cl_float4);
 	size_t		offset		=	layer*8*6 ;
 
-	ReadOutput( hessian_Mat.data, SE3_hessian_pinv_map_mem, data_size, offset*sizeof(cl_float4) );
+	ReadOutput( hessian_Mat.data, SE3_hessian_map_mem, data_size, offset*sizeof(cl_float4) );
 																																if( verbosity>local_verbosity_threshold) {cout<<"\nRunCL::patch_hessian_reduce()_chk2.1";
 																																	cout<<"\noffset="<<offset<<flush;
 																																	cout<<"\nhessian_Mat = \n"<<hessian_Mat<<flush;
@@ -548,8 +546,8 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 																																	cv::Mat bufImg;
 																																	_cl_flush_finish(m_queue, fname);
 																																	//DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show);
-																																	DownloadAndSave_3Channel( 	SE3_hessian_pinv_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  0,			false);
-																																	DownloadAndSave_3Channel( 	SE3_hessian_pinv_map_mem,	ss.str( ), paths.at( "jacobian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  mm_size_bytes_C4/*mm_layerstep*/, false);
+																																	DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  0,			false);
+																																	DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "jacobian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  mm_size_bytes_C4/*mm_layerstep*/, false);
 																																	// NB the tiff file holda the int32 values as float32. This is okay because they fit in the mantissa.
 																																	// BGRA format, B=u, G=v, R=read_index, A=alpha.
 																																	////////////////
@@ -617,7 +615,7 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 																																		cv::Mat temp_mat = cv::Mat::zeros (mm_height, mm_width, CV_32FC4);
 																																		cout<<"\n chk 1, offset = "<<offset<<",  rows ="<<rows<<flush;
 
-																																		ReadOutput(temp_mat.data, SE3_hessian_pinv_map_mem, mm_size_bytes_C4,    mm_size_bytes_C4   );// read Jacobian buffer into Mat
+																																		ReadOutput(temp_mat.data, SE3_hessian_map_mem, mm_size_bytes_C4,    mm_size_bytes_C4   );// read Jacobian buffer into Mat
 
 																																		// cout<<"\n chk 2"<<flush;
 																																		// cv::imshow( "SE3_grad_map_mem", temp_mat);

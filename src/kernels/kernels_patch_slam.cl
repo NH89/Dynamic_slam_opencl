@@ -88,18 +88,18 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	uint	mm_pixels									= uint_params[MM_PIXELS];
 
 	uint	stop_offset									= layer_offset + (read_rows_ -1) * mm_cols + read_cols_	;	// bottom right corner of source image layer
-
-// 	if(/*global_id_uint*/lid==30)printf("\n\n__kernel void  patch_img_grad():  mm_cols=%u,  mm_rows=%u,  mm_pixels=%u   ST3_offset3=%u, %u, %u    stop_offset=%d,    read_index=%d \n", \
+/*
+// 	if(/ *global_id_uint* /lid==30)printf("\n\n__kernel void  patch_img_grad():  mm_cols=%u,  mm_rows=%u,  mm_pixels=%u   ST3_offset3=%u, %u, %u    stop_offset=%d,    read_index=%d \n", \
 // 																				mm_cols,  	mm_rows, 		mm_pixels,  ST3_offset3.x, ST3_offset3.y, ST3_offset3.z, stop_offset, read_index );
 // 	float4	blue		= {1,0,0,1};
 // 	float4 	green		= {0,1,0,1};
 // 	float4	red			= {0,0,1,1};
-
+*/
 	int		lfoff										= -(u >1);															//-(read_column != 0);
 	int		rtoff										=  (u < read_cols_-2);												// (read_column < mm_cols-1);
 
 	float4	Jacobian_pvt_arr[block_size][6]				= {{zero_f4}};
-	float4	Hessian_pvt_arr[block_size][6][6]		= {{{zero_f4}}};													// pvt variable for values in this column.
+	float4	Hessian_pvt_arr[block_size][6][6]			= {{{zero_f4}}};													// pvt variable for values in this column.
 	local_Hessian[lid]									= zero_f4;
 
 	const uint SE3_offset		= SE3_offset3.s0;		//layer_offset/mm_cols;
@@ -114,8 +114,6 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	uint	write_index									= u/out_block_size			 + (v/out_block_size)*mm_cols	+ ST3_offset;
 	uint	write_index_2								= u/block_size				 + (v/block_size)*mm_cols		+ SE3_offset;
 	uint 	offset_1_1_max								= mm_cols * read_rows_ / out_block_size 		 			+ ST3_offset;
-
-
 
 	for (uint row_in_block=0; (row_in_block<block_size)&&(read_index<=stop_offset&&read_index>0); row_in_block++, v++,  read_index +=mm_cols){	// stop offset prevents bottom row patches from overrunning the bottom of the image layer. // NB readindex may be 0 if not in range according to lookup table.
 		int upoff										= -(v  >1 )*mm_cols;												//-(read_row  != 0)*mm_cols;	// up, down, left, right offsets, by boolean logic.
@@ -132,33 +130,37 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 
 		float	inv_depth								=  depth_map[read_index];
 		float4	Jacobian[6]								=  {0};
-
+/*
 		// float4 edge_weight				= (1.0f - g1p_pvt[row_in_block].s3);  // NB any weighting needs to be folded into the Jacobian and Hessian.  // edge weighting may be better done by havig an edge list of pixels.to reduce computation.
-
+*/
 		for (uint i=0; i<6; i++) {
-			float2 SE3_px								= SE3_map[read_index + i* mm_pixels];								// SE3_map[read_index + i* uint_params[MM_PIXELS]  ] = partial_gradient;
-																															// float2 partial_gradient={u_flt-u2 , v_flt-v2}; // Find movement of pixel
-
+			float2 SE3_px								= SE3_map[read_index + i* mm_pixels];								// SE3_map[read_index + i* uint_params[MM_PIXELS]  ] = partial_gradient;  // float2 partial_gradient={u_flt-u2 , v_flt-v2}; // Find movement of pixel
 			Jacobian[i]									= gx*SE3_px[0]  + gy*SE3_px[1];										// J_SE3 * img gradient i.e. edges
 			if(i>2)Jacobian[i]							*= inv_depth;														// ST3 depends on inv_depth
 			Jacobian[i].w								= 1.0f;
 			SE3_grad_map[read_index + i* mm_pixels]		= Jacobian[i] ;														// float4
+/*
 // 																															if (lid==0 && row_in_block==0 && group_id==0 ){		// ### Debugging ###
 // 																																printf("\ndebug  i=%d SE3_px =(%f,%f),  gx,gy=(%f,%f),  read_index=%d  row=%d,  col=%d",\
 // 																																i,SE3_px.x,SE3_px.y, gx.x,gy.x,  read_index,  read_index/mm_cols,  read_index%mm_cols );
 // 																															}
+*/
 		}
 		for (uint i=0; i<6; i++) {
 			Jacobian_pvt_arr[row_in_block][i]			= Jacobian[i];
+/*
 // 																															if (lid==0 && row_in_block==0 && group_id==0 ){		// ### Debugging ###
 // 																																printf("\npixel 0, Jacobian[i%d]=%2.10f,   %f,   ",i, Jacobian[i].x, Jacobian[i].w);
 // 																															}
+*/
 			for (uint j=0; j<6; j++) {
 				Hessian_pvt_arr[row_in_block][i][j]= Jacobian[i] * Jacobian[j];	// Gauss-Newton approx H = J.transpose * J  // TO DO compute and sum lower triangle only.
 				Hessian_pvt_arr[row_in_block][i][j].w =1.0f;
+/*
 // 																															if (lid==0 && row_in_block==0 && group_id==0 ){		// ### Debugging ###
 // 																																printf("   Hessian[i%d][j%d]=%2.10f,   ",i, j, Hessian_pinv_pvt_arr[row_in_block][i][j].x );
 // 																															}
+*/
 			}
 		}
 		/*	HSV_grad[] not currently in use. Would provide 8chan colourspace.
@@ -173,7 +175,7 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	// Sum-reduce image, /////////////  Save intermediate size ST3 patches for depth map updates, and maximally reduced SE3 patches for pose updates. Second reduce_patch_Rho(..) kernel required for SE3 from lareger image pyramid layers, before update_k2k(..) kernel.
 	// make this a device function ?
 
-	uint past_frame_idx =0; // TO DO remove and restore long outer loop.
+	uint past_frame_idx = 0; // TO DO remove and restore long outer loop.
 	uint step;
 
 	for ( step=1; step<block_size; step *=2){																																					// for each step size, (multiples of 2)
@@ -253,25 +255,25 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 			}
 		}
 	}
-
 	/// Save maximally reduced SE3 Hessian 32x32 patches for pose updates ////////////////////																									// Writes dense blocks. Reduces required transfer to host.
+
 	uint frame_offset_1 			=  0;
 	uint offset_2					=  0;
 	uint block_row					=  0;
 
 	if( fmod((float)lid,block_size) == 0 ){																																						// selects columns i.e. threads within the workgroup
 		for (uint i=0; i<num_SE3_DoF; i++) {																																					// write Jacobian to 2nd page of SE3_Hessian_pinv_map buffer.		// All 6 DoF of SE3
-																						offset_2 								= write_index_2		+ i*SE3_v_step	+ mm_pixels;	//if(global_id_uint==0){printf("\n J offset_2=%d, SE3_DoF = %d  row=%d, col=%d,   .x=%f    .w=%f",\
-																																													//						offset_2, i, offset_2/mm_cols,  offset_2-mm_cols*(offset_2/mm_cols),   Jacobian_pvt_arr[	block_row][i].x, Jacobian_pvt_arr[	block_row][i].w  );}
+																						offset_2 								= write_index_2		+ i*SE3_v_step	+ mm_pixels;				// if(global_id_uint==0){printf("\n J offset_2=%d, SE3_DoF = %d  row=%d, col=%d,   .x=%f    .w=%f",\
+																																																// offset_2, i, offset_2/mm_cols,  offset_2-mm_cols*(offset_2/mm_cols),   Jacobian_pvt_arr[	block_row][i].x, Jacobian_pvt_arr[	block_row][i].w  );}
 																						float4	pvt_Jacobian 					= Jacobian_pvt_arr[		block_row][i];
-																						SE3_Hessian_map[	offset_2 ]		= pvt_Jacobian;
+																						SE3_Hessian_map[	offset_2 ]			= pvt_Jacobian;
 			for (uint j=0; j<num_SE3_DoF; j++) {																																				// write Hessian to 1st page of SE3_Hessian_pinv_map buffer.
-																						offset_2 								= write_index_2		+ i*SE3_v_step	+ j*SE3_u_step;	//if(global_id_uint==0){printf("\n H offset_2=%d, SE3_DoF = %d,%d  row=%d, col=%d ",offset_2, i,j, offset_2/mm_cols,  offset_2-mm_cols*(offset_2/mm_cols)    );}
+																						offset_2 								= write_index_2		+ i*SE3_v_step	+ j*SE3_u_step;				// if(global_id_uint==0){printf("\n H offset_2=%d, SE3_DoF = %d,%d  row=%d, col=%d ",offset_2, i,j, offset_2/mm_cols,  offset_2-mm_cols*(offset_2/mm_cols)    );}
 																						float4	pvt_Hessian 					= Hessian_pvt_arr[	block_row ][i][j];
-																						SE3_Hessian_map[	offset_2 ]		= pvt_Hessian;														// Hessian_pinv_pvt_arr[	block_row ][i][j] / Hessian_pinv_pvt_arr[	block_row ][i][j].w;
+																						SE3_Hessian_map[	offset_2 ]			= pvt_Hessian;													// Hessian_pinv_pvt_arr[	block_row ][i][j] / Hessian_pinv_pvt_arr[	block_row ][i][j].w;
 
 																						float4		debug 						= {(float)lid, global_id_uint, group_id, 1.0f};
-																						SE3_Hessian_map[read_index]		= debug;
+																						SE3_Hessian_map[read_index]				= debug;
 			}
 		}
 	}

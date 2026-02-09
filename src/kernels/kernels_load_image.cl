@@ -77,8 +77,10 @@ __kernel void compute_param_maps(
 __kernel void convert_depth(
 	__private	uint 	invert,					//0
 	__private	float 	factor,					//1
+
 	__constant 	uint*	mipmap_params,			//2		// NB uses ony mipmap_params[layer=0]
 	__constant	uint*	uint_params,			//3
+
 	__global	float* 	depth_mem_temp,			//4
 	__global	float* 	depth_mem_GT			//5
 		)
@@ -117,8 +119,10 @@ __kernel void convert_depth(
 __kernel void cvt_color_space_linear(																// Writes the first entry in a linear mipmap, and computes img_mean
 	__global	uchar*	base,			//0															// NB for debugging the mimpam is arranged as a series below eachother with margins.
 	__global	float4*	img,			//1															// This can be changed to dense packing in a linear array, to reduce memeory and data transfer requirements.
+
 	__constant	uint*	uint_params,	//2
 	__constant 	uint8*	mipmap_params,	//3
+
 	__local		float4*	local_sum_pix,	//4
 	__global	float4*	global_sum_pix	//5
 		 )
@@ -222,6 +226,7 @@ __kernel void mipmap_linear_flt(	// Mipmap layers must be executed sesequentiall
 
 	uint margin 		= uint_params[MARGIN];
 	uint mm_cols		= uint_params[MM_COLS];   													// whole mipmap
+
 
 	uint write_row   	= global_id_u / write_cols_ ;
 	uint write_column 	= fmod(global_id_flt, write_cols_);

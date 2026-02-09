@@ -293,18 +293,16 @@ void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer )					
 
 void RunCL::update_k2k_cpu( uint layer ){
 	constexpr int		local_verbosity_threshold	= V_RUNCL_UPDATE_K2K;
-																																	if( verbosity>local_verbosity_threshold) { cout<<"\n\nRunCL::update_k2k_cpu( ..)_chk_0 . ################################"<< flush;
+																																	if( verbosity>local_verbosity_threshold-3) { cout<<"\n\nRunCL::update_k2k_cpu( ..)_chk_0 . ################################"<< flush;
 																																		cout << "\nlayer = "	<< layer 	<<endl<<flush;
-																																		Matx44f	current_frame_pose_gt	=	current_frames[ current_frames_idx[0] ].pose_gt;			PRINT_MATX44F( current_frame_pose_gt, );
-																																		Matx44f	previous_frame_pose_gt	=	current_frames[ current_frames_idx[1] ].pose_gt;			PRINT_MATX44F( previous_frame_pose_gt, );
+																																		Matx44f	current_frame_pose_gt	=	current_frames[ current_frames_idx[0] ].pose_gt;			//PRINT_MATX44F( current_frame_pose_gt, );
+																																		Matx44f	previous_frame_pose_gt	=	current_frames[ current_frames_idx[1] ].pose_gt;			//PRINT_MATX44F( previous_frame_pose_gt, );
 
-																																		Matx44f pose_gt					=	previous_frame_pose_gt	*	current_frame_pose_gt.inv();	PRINT_MATX44F( pose_gt, );
-																																		Matx16f pose_gt_algebra			=	PToLie( pose_gt );											PRINT_MATX16F( pose_gt_algebra, );
+																																		Matx44f pose_gt					=	previous_frame_pose_gt	*	current_frame_pose_gt.inv();	//PRINT_MATX44F( pose_gt, );
+																																		//Matx16f pose_gt_algebra			=	PToLie( pose_gt );											//PRINT_MATX16F( pose_gt_algebra, );
 
-																																		Matx44f	pose					=	ReadOutput_44f( 					pose_buf );				PRINT_MATX44F( pose,	from pose_buf );	PRINT_MATX16F( PToLie(pose),);
-																																		Matx44f pose_update_gt			=	pose.inv() * pose_gt;										PRINT_MATX44F( pose_update_gt, );			PRINT_MATX16F( PToLie(pose_update_gt),);
-
-
+																																		Matx44f	pose					=	ReadOutput_44f( 					pose_buf );				//PRINT_MATX44F( pose,	from pose_buf );	PRINT_MATX16F( PToLie(pose),);
+																																		Matx44f pose_update_gt			=	pose.inv() * pose_gt;										/* PRINT_MATX44F( pose_update_gt, );*/		PRINT_MATX16F( PToLie(pose_update_gt),);
 																																	}
 	ReadOutput( (uchar*)&se3_rho_result.Rho,				SE3_rho_map_mem, 	sizeof(cl_float2),		32*sizeof(cl_float2)	);
 	ReadOutput(	(uchar*)se3_rho_result.SE3_incr_arry,		SE3_incr_map_mem,	6*sizeof(cl_float2),	32*sizeof(cl_float2)	);
@@ -326,7 +324,7 @@ void RunCL::update_k2k( uint layer, float delta_theta, float delta, Matx44f GT_p
 	_clSetKernelArg( kernel,  0, sizeof( cl_float2),					&delta_SE3,					fname);							//__private	float2		delta_SE3,				//0
 	_clSetKernelArg( kernel,  1, sizeof( uint),							&layer,						fname);							//__private	float2		delta_SE3,				//0
 	// global inputs
-	_clSetKernelArg( kernel,  2, sizeof( cl_mem),						&SE3_hessian_pinv_map_mem,	fname);							// __private	uint	Hessian_map,			//1
+	_clSetKernelArg( kernel,  2, sizeof( cl_mem),						&SE3_hessian_map_mem,	fname);							// __private	uint	Hessian_map,			//1
 	_clSetKernelArg( kernel,  3, sizeof( cl_mem),						&SE3_rho_map_mem,			fname);							//__global	float2*		Rho_,					//2		// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
 	_clSetKernelArg( kernel,  4, sizeof( cl_mem),						&SE3_incr_map_mem,			fname);							//__global	float2*		SE3_incr_map_,			//4
 
