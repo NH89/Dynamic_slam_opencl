@@ -86,14 +86,14 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	float2 rho_pvt_arr[block_size]					= {zero_f2};								// pvt variable for values in this column.
 	float4 rho_pvt_flt4								= zero_f4;
 	float2 rho_pvt_flt2								= zero_f2;
-
-	float8 grad_v8									= {zero_f4, zero_f4};
-	float2 grad_pvt_arr[block_size*num_SE3_DoF]		= {zero_f2};								// pvt variable for values in this column.
-	float4 grad_pvt_flt4_SE3[6]						= {zero_f4};
+/*
+ 	float8 grad_v8									= {zero_f4, zero_f4};
+ 	float2 grad_pvt_arr[block_size*num_SE3_DoF]		= {zero_f2};								// pvt variable for values in this column.
+ 	float4 grad_pvt_flt4_SE3[6]						= {zero_f4};
 
 	float4 grad_pvt_flt4							= zero_f4;
 	float2 grad_pvt_flt2							= zero_f2;
-
+*/
 	float2 SE3_incr_pvt_arr[block_size*num_SE3_DoF]	= {zero_f2};								// pvt variable for values in this column.
 	float4 SE3_incr_pvt_flt4						= zero_f4;
 	float2 SE3_incr_pvt_flt2						= zero_f2;

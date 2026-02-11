@@ -42,7 +42,7 @@
     "SE3_start_layer":4,//4 NB seems to track faster starting at layer 4 on Office dataset.
     "SE3_stop_layer":1,
     //"SE_iter_per_layer":1,//10 //5
-    "SE_iter":60,//30,//12, //25,//10//50//25,               //1 //10
+    "SE_iter":30,//12, //25,//10//50//25,               //1 //10
 
     "SO3_delta_theta":1.0,                                              // radians 0.01 = 0.57 degrees
     "ST3_delta":1.0,                                                    // NB depends on depth scale, see max & min depth in mapping params.

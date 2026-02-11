@@ -20,6 +20,8 @@ __constant float  const_sqrt_flt_min	= 0x1.0p-63f;										// 2^(-63) is sqrt o
 
 __constant uint block_size				= BLOCK_SIZE;										// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
 __constant uint num_SE3_DoF				= NUM_SE3_DOF;
+__constant uint num_ST3_DoF				= NUM_ST3_DOF;
+
 __constant uint num_past_frames			= NUM_PAST_FRAMES;									// 1,2,4,8,16,32,64 // variable select window of 4 frames.
 
 
