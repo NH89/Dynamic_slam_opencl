@@ -83,6 +83,8 @@ public:
 	cl_kernel			compute_patch_lookup_table_kernel, patch_img_grad_kernel, patch_hessian_reduce_kernel;
 	// RunCL_patch_tracking.cpp
 	cl_kernel			pad_image_top_bottom2_kernel, vertcal_blur5_kernel, pad_image_left_right2_kernel, horiz_blur5_kernel, reduce_img_kernel;
+	// RunCL_depth.cpp
+	cl_kernel			update_depth_kernel;
 
 	// GPU Buffers
 	static const uint 	num_current_frames	= 5;																												// static = same for all instances of class Dynamic_slam.
@@ -395,6 +397,9 @@ public:
 	void SpatialCostFns();																												// SIRFS cost functions
 	void ParsimonyCostFns();
 	void ExhaustiveSearch();
+
+	////////////////////////////////////// RunCL_depth.cpp
+	void update_depth( uint layer);
 
 	//////////////////////////////////////
 	void _clEnqueueNDRangeKernel(

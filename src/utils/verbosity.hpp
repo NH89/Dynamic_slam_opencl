@@ -81,6 +81,10 @@
 	#define	V__RUNCL									0
 	#define	V_EXIT_										0
 
+	/////////////////////////////////////// RUNCL_DEPTH.CPP
+	#define V_RUNCL_UPDATE_DEPTH						-2
+
+
 	/////////////////////////////////////// RUNCL_DOWNLOADANDSAVE.CPP
 	#define	V_RUNCL_CREATEFOLDERS						2
 	#define	V_RUNCL_READOUTPUT							2

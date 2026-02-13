@@ -291,6 +291,9 @@ void RunCL::createKernels(){
 	horiz_blur5_kernel					= clCreateKernel(m_program, "horiz_blur5",					&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'patch_hessian_reduce'  kernel not built.\n"			<<flush; exit_(0);   }
 	reduce_img_kernel					= clCreateKernel(m_program, "reduce_img",					&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'reduce_img'  kernel not built.\n"					<<flush; exit_(0);   }
 
+	// RunCL_depth.cpp
+	update_depth_kernel					= clCreateKernel(m_program, "update_depth",					&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'update_depth'  kernel not built.\n"					<<flush; exit_(0);   }
+
 }
 
 void RunCL::initialize_fp32_params(){
@@ -797,7 +800,7 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 	status = clReleaseMemObject(inv_K_buf);						if (status != CL_SUCCESS)	{ cout << "\ninv_K_buf                      status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 
 	status = clReleaseMemObject(patch_lookup_table_buf);		if (status != CL_SUCCESS)	{ cout << "\npatch_lookup_table_buf         status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
-	status = clReleaseMemObject(SE3_hessian_map_mem);		if (status != CL_SUCCESS)	{ cout << "\nSE3_hessian_map_mem            status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+	status = clReleaseMemObject(SE3_hessian_map_mem);			if (status != CL_SUCCESS)	{ cout << "\nSE3_hessian_map_mem            status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 
 
 	// release kernels
@@ -819,6 +822,8 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 	status = clReleaseKernel(pad_image_left_right2_kernel);			if (status != CL_SUCCESS)	{ cout << "\npad_image_left_right2_kernel		status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(horiz_blur5_kernel);					if (status != CL_SUCCESS)	{ cout << "\nhoriz_blur5_kernel					status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(reduce_img_kernel);					if (status != CL_SUCCESS)	{ cout << "\nreduce_img_kernel					status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	// RunCL_depth.cpp
+	status = clReleaseKernel(update_depth_kernel);					if (status != CL_SUCCESS)	{ cout << "\nupdate_depth_kernel				status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 
 	// release command queues
