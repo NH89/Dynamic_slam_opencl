@@ -89,6 +89,21 @@ public:
 	// GPU Buffers
 	static const uint 	num_current_frames	= 5;																												// static = same for all instances of class Dynamic_slam.
 	cl_mem 				imgmem[num_current_frames], 	velmap[num_current_frames], 	depth_mem, 	g1mem;
+
+	cl_mem				basemem, imgmem_blurred, SE3_grad_map_mem, SE3_incr_map_mem;
+	cl_mem				depth_mem_temp, depth_mem_GT;																					// 'depth_mem_temp' is use to load & prepare data for depth_mem_GT and transform_depthmap
+
+	cl_mem				fp32_param_buf, uint_param_buf, mipmap_buf, img_stats_buf;
+	cl_mem				SE3_map_mem, SE3_rho_map_mem, SE3_weight_map_mem;
+	cl_mem				pix_sum_mem, var_sum_mem;
+	cl_mem				HSV_grad_mem;
+
+	cl_mem				patch_lookup_table_buf;
+	cl_mem				SE3_hessian_map_mem,		SE3_jacobian_map_mem;
+	cl_mem				k2kbuf, SE3_k2kbuf, cur_frames_k2kbuf, cur_frames_st3buf;
+	cl_mem				pose_buf, pose_update_buf,	distorsion_update_buf,		old_results_buf,				K_buf, inv_K_buf;
+
+
 	/////////////////////////////
 
 
@@ -119,6 +134,51 @@ public:
 	uint new_current_frames_idx[num_current_frames]			= {4,3,2,1,0};			// Must be set correctly, because it will be swaped to current_frames_idx[.idx.]
 
 	const float identity_flt16[16]	=	FLOAT_16_EYE;
+
+	void update_pose_bufs_cur_frames( Matx44f pose ){
+		string fname = "RunCL::update_pose_bufs_cur_frames(..)";
+		float cur_frames_k2k[num_current_frames*16];
+		float cur_frames_st3[num_current_frames* 4];
+
+		for( int frame=0;	frame<num_current_frames;	frame++){
+
+
+
+			current_frames[ current_frames_idx[frame] ].
+
+
+
+			cur_frames_k2k[frame*16].pose_0to1;
+
+
+
+
+
+		}
+
+		_clEnqueueWriteBuffer(
+			uload_queue,							//cl_command_queue 	command_queue,
+			cur_frames_k2kbuf,						//cl_mem 			buffer,
+			CL_FALSE,								//cl_bool 			blocking_write,
+			0,										//size_t 			offset,
+			num_current_frames*16*sizeof(float),	//size_t 			size,
+			cur_frames_k2k,							//const void* 		ptr,
+			fname									//string 			fname
+		);
+
+		_clEnqueueWriteBuffer(
+			uload_queue,							//cl_command_queue 	command_queue,
+			cur_frames_st3buf,						//cl_mem 			buffer,
+			CL_FALSE,								//cl_bool 			blocking_write,
+			0,										//size_t 			offset,
+			num_current_frames*4*sizeof(float),		//size_t 			size,
+			cur_frames_st3,							//const void* 		ptr,
+			fname									//string 			fname
+		);
+
+	}
+
+
 
 	void initialize_current_frames(){
 		for (uint idx = 0; idx < num_current_frames; idx++){
@@ -183,6 +243,8 @@ public:
 		return;
 	};
 
+
+
 	void test_update_current_frames_idx(uint num_iter){
 		cout << "\n\n RunCL::test_update_current_frames_idx(uint "<<num_iter<<")";
 		for (uint iter=0; iter<=num_iter; iter++){
@@ -198,18 +260,6 @@ public:
 		}
 	}
 
-	cl_mem				basemem, imgmem_blurred, SE3_grad_map_mem, SE3_incr_map_mem;
-	cl_mem				depth_mem_temp, depth_mem_GT;																					// 'depth_mem_temp' is use to load & prepare data for depth_mem_GT and transform_depthmap
-
-	cl_mem				k2kbuf, SE3_k2kbuf, fp32_param_buf, uint_param_buf, mipmap_buf, img_stats_buf;
-	cl_mem				SE3_map_mem, SE3_rho_map_mem, SE3_weight_map_mem;
-	cl_mem				pix_sum_mem, var_sum_mem;
-	cl_mem				HSV_grad_mem;
-
-	// buffers for patch kernel based Dynamic_slam
-	cl_mem				patch_lookup_table_buf;
-	cl_mem				SE3_hessian_map_mem,		SE3_jacobian_map_mem;
-	cl_mem				pose_buf, pose_update_buf,	distorsion_update_buf,		old_results_buf,				K_buf, inv_K_buf;
 
 	//
 	cv::Mat				baseImage, key_frame;
@@ -399,7 +449,7 @@ public:
 	void ExhaustiveSearch();
 
 	////////////////////////////////////// RunCL_depth.cpp
-	void update_depth( uint layer);
+	void update_depth( uint out_block_size, uint layer);
 
 	//////////////////////////////////////
 	void _clEnqueueNDRangeKernel(

@@ -411,15 +411,16 @@ size_t* param_value_size_ret);
 
 																																	for(int row=0; row<temp_mat.rows; row++){
 																																		for(int col=0; col<temp_mat.cols; col++){
-																																			sum_J1.w += temp_mat.at<cl_float4>(row,col).w;
-																																			sum_J1.x += temp_mat.at<cl_float4>(row,col).x;
-																																			sum_J1.y += temp_mat.at<cl_float4>(row,col).y;
-																																			sum_J1.z += temp_mat.at<cl_float4>(row,col).z;
 
-																																			sum_H11.w += pow(temp_mat.at<cl_float4>(row,col).w, 2);
-																																			sum_H11.x += pow(temp_mat.at<cl_float4>(row,col).x, 2);
-																																			sum_H11.y += pow(temp_mat.at<cl_float4>(row,col).y, 2);
-																																			sum_H11.z += pow(temp_mat.at<cl_float4>(row,col).z, 2);
+																																			sum_J1.w 	+= temp_mat.at<cl_float4>(row,col).w;
+																																			sum_J1.x 	+= temp_mat.at<cl_float4>(row,col).x;
+																																			sum_J1.y 	+= temp_mat.at<cl_float4>(row,col).y;
+																																			sum_J1.z 	+= temp_mat.at<cl_float4>(row,col).z;
+
+																																			sum_H11.w 	+= pow(temp_mat.at<cl_float4>(row,col).w, 2);
+																																			sum_H11.x 	+= pow(temp_mat.at<cl_float4>(row,col).x, 2);
+																																			sum_H11.y 	+= pow(temp_mat.at<cl_float4>(row,col).y, 2);
+																																			sum_H11.z 	+= pow(temp_mat.at<cl_float4>(row,col).z, 2);
 																																		}
 																																	}
 																																	cout<<"\n\n##### layer = "<<layer<<", SE3_grad_map_mem sum_J1 = "<<sum_J1.w<<", "<<sum_J1.x<<", "<<sum_J1.y<<", "<<sum_J1.z
