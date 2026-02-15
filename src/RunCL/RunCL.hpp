@@ -135,25 +135,26 @@ public:
 
 	const float identity_flt16[16]	=	FLOAT_16_EYE;
 
-	void update_pose_bufs_cur_frames( Matx44f pose ){
+	void update_pose_bufs_cur_frames(  ){								// To be called after tracking and before depth and other optimisations.
 		string fname = "RunCL::update_pose_bufs_cur_frames(..)";
-		float cur_frames_k2k[num_current_frames*16];
-		float cur_frames_st3[num_current_frames* 4];
+		int local_verbosity_threshold = V_RUNCL_UPDATE_POSE_BUFS_CUR_FRAMES;
+		float		cur_frames_k2k[num_current_frames*16];
+		cl_float4	cur_frames_st3[num_current_frames];
 
+		Matx44f pose;
+		float16arry_To_Matx44f( &current_frames[	current_frames_idx[0]	].pose[0],  pose );
+																																			if(verbosity>local_verbosity_threshold) {
+																																				cout<<"\n\nRunCL::update_pose_bufs_cur_frames(..) chk_1\n"<<flush;
+																																				PRINT_MATX44F( pose , "pose" );
+																																				for( int frame=0;	frame<num_current_frames;	frame++){
+																																					PRINT_MATX44F( current_frames[ current_frames_idx[frame] ].pose_0to1, "frame " frame );
+																																				}
+																																			}
 		for( int frame=0;	frame<num_current_frames;	frame++){
-
-
-
-			current_frames[ current_frames_idx[frame] ].
-
-
-
-			cur_frames_k2k[frame*16].pose_0to1;
-
-
-
-
-
+			Matx44f new_frame_pose									= current_frames[ current_frames_idx[frame] ].pose_0to1  *  pose;
+			current_frames[ current_frames_idx[frame] ].pose_0to1 	= new_frame_pose;
+			Matx44f_To_float16arry(		new_frame_pose,				&cur_frames_k2k[frame*16] );
+			cur_frames_st3[frame]									= {{new_frame_pose(0,3), new_frame_pose(1,3), new_frame_pose(2,3), 0.0f   }};
 		}
 
 		_clEnqueueWriteBuffer(
@@ -175,10 +176,15 @@ public:
 			cur_frames_st3,							//const void* 		ptr,
 			fname									//string 			fname
 		);
+																																			if(verbosity>local_verbosity_threshold) {
+																																				cout<<"\n\nRunCL::update_pose_bufs_cur_frames(..) chk_2\n"<<flush;
+																																				for( int frame=0;	frame<num_current_frames;	frame++){
+																																					PRINT_FLOAT_16( &cur_frames_k2k[num_current_frames*16] , "frame " frame );
+																																				}
+																																				cout<<"\n\n///RunCL::update_pose_bufs_cur_frames(..) finished //////////////////\n"<<flush;
+																																			}
 
 	}
-
-
 
 	void initialize_current_frames(){
 		for (uint idx = 0; idx < num_current_frames; idx++){
@@ -242,8 +248,6 @@ public:
 
 		return;
 	};
-
-
 
 	void test_update_current_frames_idx(uint num_iter){
 		cout << "\n\n RunCL::test_update_current_frames_idx(uint "<<num_iter<<")";
@@ -450,6 +454,8 @@ public:
 
 	////////////////////////////////////// RunCL_depth.cpp
 	void update_depth( uint out_block_size, uint layer);
+	void propagate_depth_next_layer(uint layer);
+
 
 	//////////////////////////////////////
 	void _clEnqueueNDRangeKernel(

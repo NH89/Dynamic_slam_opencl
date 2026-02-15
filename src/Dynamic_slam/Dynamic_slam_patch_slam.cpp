@@ -217,9 +217,24 @@ void Dynamic_slam::patch_slam(){																										// Adaptive step size 
 
 void Dynamic_slam::estimateSLAM(){																										// Adaptive step size LM tracking and halting
 	string fname = "Dynamic_slam::estimateSLAM()";
-	int 	local_verbosity_threshold 		= V_DYNAMIC_SLAM_ESTIMATESE3;//verbosity_mp["Dynamic_slam::estimateSE3"];
+	int 	local_verbosity_threshold 		= V_DYNAMIC_SLAM_ESTIMATE_SLAM;//verbosity_mp["Dynamic_slam::estimateSE3"];
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\fDynamic_slam::estimate_SLAM() chk_0"
+																																			<<"  ##############################################################"<< flush;
+																																		}
+	estimate_tracking();
+	runcl.update_pose_bufs_cur_frames();
+	estimate_depth();
+																																		if( verbosity>local_verbosity_threshold ){
+																																			cout << "\nDynamic_slam::estimate_SLAM() finished  ###########################"<<flush;
+																																		}
+}
+
+void Dynamic_slam::estimate_tracking(){
+	string fname = "Dynamic_slam::estimate_tracking()";
+	int 	local_verbosity_threshold 		= V_DYNAMIC_SLAM_ESTIMATE_TRACKING;//verbosity_mp["Dynamic_slam::estimateSE3"];
+																																		if(verbosity>local_verbosity_threshold) {
+																																			cout << "\fDynamic_slam::estimate_tracking() chk_0"
 																																			<<"  ##############################################################"<< flush;
 																																		}
 	constexpr float zero		= 0;
@@ -243,39 +258,17 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 		auto step_0 = high_resolution_clock::now();
 		count[0]  = iter;
 																																		if(verbosity>local_verbosity_threshold) {
-																																			cout << "\nDynamic_slam::estimate_SLAM() chk_1: layer="<<layer
+																																			cout << "\nDynamic_slam::estimate_tracking() chk_1: layer="<<layer
 																																			<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
 																																			uint	out_block_size		= 2;
 																																			uint	layer				= 0;
 																																			runcl.rho_sq( out_block_size, iter, layer	);	// For debugging, get a larger, finer Rho map
 																																		}
-																																		//cout << "\nDynamic_slam::estimate_SLAM() chk_2: ,  ###########################"<<flush;
-		runcl.rho_sq( out_block_size, iter, (uint)layer	);
-																																		//cout << "\nDynamic_slam::estimate_SLAM() chk_3: ,  ###########################"<<flush;
-		runcl.reduce_patch_Rho ( out_block_size, iter, (uint)layer );
-
-		runcl.update_k2k_cpu( 	(uint)layer );						// frame_data_GT.keyframe2pose for comparision only.
-																																		// cout<<"\nSE3_incr_arry[]= (";
-																																		// for(int i=0; i<6*2; i++) cout << ", "<< runcl.se3_rho_result.SE3_incr_arry[i];
-																																		// cout<<" ) "<<endl<<flush;
-		float		sum_rho		=	runcl.se3_rho_result.Rho.x;		// currently .x colour channel only.
+		runcl.rho_sq( 			out_block_size, iter, 	(uint)layer );
+		runcl.reduce_patch_Rho( out_block_size, iter, 	(uint)layer );
+		runcl.update_k2k_cpu( 							(uint)layer );																	// frame_data_GT.keyframe2pose for comparision only.
+		float		sum_rho		=	runcl.se3_rho_result.Rho.x;																			// currently .x colour channel only.
 		float		sum_rho_sq	=	runcl.se3_rho_result.Rho.y;
-		/* python
-		// 	if (SSD > old_SSD or np.isnan(SSD) ):
-		// 		if (SSD > old_SSD ):
-		// 			print("\n SSD > old_SSD = {0:.4} #___________________ ".format( old_SSD) )
-		// 		else:
-		// 			print("\n isnan(SSD) ")
-		// 			break
-		// 		if (pyr_level <1) :
-		// 			break
-		//	#factor                  = factor * 0.9
-		//	pyr_level              = pyr_level -1
-		//	print(" factor = {0} ".format(factor) )
-		//	print(" pyr_level = {0} ".format(pyr_level) )
-		//	current_pose            = old_pose
-		//	SSD                     = np.finfo('float32').max -10
-		*/
 		if( isnan(sum_rho_sq) ){
 			cout << "\nisnan(sum_rho_sq)" <<flush;
 			break;
@@ -294,19 +287,6 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 				runcl.update_k2k_buf(		old_k2k,		old_pose);																	// Re-set to previous pose.
 				cout<<endl<<flush;
 			}
-/*
-// 			if(sum_rho_sq > old_sum_rho_sq){
-// 				cout << "\nsum_rho_sq > old_sum_rho_sq = "<< old_sum_rho_sq <<flush;
-// 				if(factor<-1.0f){ factor = -1.0f; }
-// 				else{
-//
-// 					layer --;
-// 				}
-//
-// 			cout << "\nlayer = "	<<	layer <<flush;
-// 			runcl.update_k2k_buf(		old_k2k,		old_pose);
-// 			old_sum_rho_sq			=	FLT_MAX-1;
-*/
 		}else{
 			old_sum_rho_sq			=	sum_rho_sq;
 			old_pose				=	newPose;
@@ -315,7 +295,7 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 			float		num_pixels	=	runcl.se3_rho_result.SE3_incr_arry[1];																		// TO DO move numpixels to SE3_incr.w   & reduce SE3_incr_map_mem from float8 tro float4
 			Matx16f		SE3_incr;	for (int i=0;	i<6; i++){	SE3_incr.operator()(i)	=	runcl.se3_rho_result.SE3_incr_arry[i*2];  };
 																																		if( verbosity>local_verbosity_threshold ){
-																																			cout << "\nDynamic_slam::estimate_SLAM() chk_4: ,  ###########################"<<
+																																			cout << "\nDynamic_slam::estimate_tracking() chk_4: ,  ###########################"<<
 																																			"\n sum_rho = "			<< sum_rho		<<
 																																			",	sum_rho_sq	= "		<< sum_rho_sq	<<
 																																			",	num_pixels = "		<< num_pixels	<< endl<<flush;
@@ -360,11 +340,32 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 				old_sum_rho_sq			=	FLT_MAX-1;
 			}
 		}auto step_1 = high_resolution_clock::now();																					if( verbosity>local_verbosity_threshold-3){
-																																			cout << "\nDynamic_slam::estimate_SLAM() loop finished  ###########################"\
+																																			cout << "\nDynamic_slam::estimate_tracking() loop finished  ###########################"\
 																																			<<"Tracking loop time = "<<  duration_cast<microseconds>(step_1 - step_0).count()
 																																			<<" microseconds,  layer="<<layer<<endl<<flush;
 																																		}
-	}																																	if( verbosity>local_verbosity_threshold ){
-																																			cout << "\nDynamic_slam::estimate_SLAM() finished  ###########################"<<flush;
+	}
+}
+
+
+void Dynamic_slam::estimate_depth(){
+	string fname = "Dynamic_slam::estimate_depth()";
+	int 	local_verbosity_threshold 		= V_DYNAMIC_SLAM_ESTIMATE_DEPTH;//verbosity_mp["Dynamic_slam::estimateSE3"];
+																																		if(verbosity>local_verbosity_threshold) {
+																																			cout << "\fDynamic_slam::estimate_depth() chk_0"
+																																			<<"  ##############################################################"<< flush;
 																																		}
+	for (int layer=4; layer<=0; layer++){
+		uint out_block_size = 4;
+		runcl.update_depth( out_block_size, layer);
+
+		// anisotropic smoothing
+
+		// parsimony of orientation, plane, curvature ?
+
+		runcl.propagate_depth_next_layer(layer);
+
+	}
+
+
 }

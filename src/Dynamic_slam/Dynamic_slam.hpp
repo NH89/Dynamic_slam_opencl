@@ -156,6 +156,9 @@ class Dynamic_slam
     //////////////////////////////////// Dynamic_slam_patch_slam.cpp
     void patch_slam();
     void estimateSLAM();
+    void estimate_tracking();
+	void estimate_depth();
+
 
     ///////////////////////////////////// Dynamic_slam_pose_vec_print_fns.cpp
     void print_pose_datum(      Dynamic_slam::pose_datum datum );

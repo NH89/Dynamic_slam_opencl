@@ -118,3 +118,35 @@ if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_depth()_finis
 																																	<<endl<<endl<<flush;
 																																}
 }
+
+
+void RunCL::propagate_depth_next_layer(uint layer){
+	string fname = "RunCL::mipmap_depthmap(..)";
+	int local_verbosity_threshold = V_RUNCL_MIPMAP_DEPTHMAP;																			if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_depthmap(..)_chk0"<<flush;}
+	cl_kernel		kernel		= enlarge_layer_float_kernel;
+
+	size_t local_size = local_work_size;																								// set kernel args
+	//      __private	 uint layer, set in mipmap_call_kernel(..) below																__private	 uint	    layer,		    //0
+	_clSetKernelArg( kernel, 0, sizeof(int), 						&reduction);
+    _clSetKernelArg( kernel, 1, sizeof(cl_mem), 					&mipmap_buf,		fname);								//__constant uint8*		mipmap_params,	//1
+	_clSetKernelArg( kernel, 2, sizeof(cl_mem), 					&uint_param_buf,	fname);								//__constant uint*		uint_params,	//3
+	_clSetKernelArg( kernel, 3, sizeof(cl_mem), 					&depth_mem,			fname);								//__global   float*		img,			//4
+	_clSetKernelArg( kernel, 4, (local_size+4) *5*sizeof(float), 	NULL,				fname);								//__local    float*		local_img_patch //5
+
+
+	 kernel, m_queue, true
+
+																																		if(verbosity>local_verbosity_threshold) {
+																																			cout<<"\n\nRunCL::mipmap_depthmap(..)_chk3 Finished all loops."<<flush;
+																																			stringstream ss;	ss << dataset_frame_num << "_mipmap_depthmap";
+																																			cv::Size new_Image_size = cv::Size(mm_width, mm_height);
+																																			//size_t   new_size_bytes = mm_width * mm_height * 4*4;
+																																			ss << "_raw_";
+																																			stringstream ss_path;	ss_path << "depth_GT";
+																																			DownloadAndSave( depthmap_,   	ss.str(),   paths.at(ss_path.str()),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , fp32_params[MAX_INV_DEPTH]);
+
+																																			cout << "\n  (local_size+4) *5*4* sizeof(float) = "<<  (local_size+4) *5*4* sizeof(float) << " ,   (local_size+4) = " <<  (local_size+4) << endl << flush;
+																																		}
+																																		if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_depthmap(..)_chk4 Finished:#######################################################"<<flush;}
+
+}

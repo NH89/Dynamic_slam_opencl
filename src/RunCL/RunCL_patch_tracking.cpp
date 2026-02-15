@@ -55,6 +55,7 @@ void RunCL::update_k2k_buf( float k2k_array[16],		float pose_arry[16] ) {
 	_clEnqueueWriteBuffer( uload_queue, 	pose_buf,	CL_FALSE, 0, 16*sizeof( float), pose_arry, 		fname);
 
 	for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].k2k_0to1_est[i]	=	k2k_array[i];	}
+	for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].pose[i]			=	pose_arry[i];	}
 }
 
 void RunCL::update_k2k_buf( 	Matx44f k2k, 	Matx44f pose ){
