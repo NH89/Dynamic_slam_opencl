@@ -32,7 +32,7 @@ void RunCL::rho_sq( uint out_block_size, uint iter, uint layer  ){	// To be laun
 																														}
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\nRunCL::rho_sq( ..)_chk0.5"<<flush;
 																																				for (uint i=0; i<5 ;i++){
-																																					cout<<"\n\n## current_frames[ current_frames_idx["<<i<<"] ].frame_num = "<< current_frames[ current_frames_idx[i] ].frame_num << flush;
+																																					cout<<"\n\n## current_frames[ current_frames_idx["<<i<<"] ].frame_num = "<< current_frames[ current_frames_idx[i] ].dataset_frame_num << flush;
 																																					PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].pose,		);
 																																					PRINT_MATX44F(	current_frames[ current_frames_idx[i] ].pose_gt,	);
 																																					PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].k2k_0to1_est,	);

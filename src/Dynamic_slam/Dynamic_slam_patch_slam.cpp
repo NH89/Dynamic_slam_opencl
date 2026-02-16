@@ -6,7 +6,7 @@ using namespace cv;
 using namespace std;
 
 void Dynamic_slam::patch_slam(){																										// Adaptive step size LM tracking and halting
-	int 	local_verbosity_threshold 			= V_DYNAMIC_SLAM_ESTIMATESE3;//verbosity_mp["Dynamic_slam::estimateSE3"];
+	int 	local_verbosity_threshold 			= V_DYNAMIC_SLAM_ESTIMATE_SLAM;//verbosity_mp["Dynamic_slam::estimateSE3"];
 																																		if(verbosity>local_verbosity_threshold) {	cout << "\nDynamic_slam::patch_slam() chk_0"
 																																			<<"  ##############################################################"<< flush;
 																																		}
@@ -363,7 +363,7 @@ void Dynamic_slam::estimate_depth(){
 
 		// parsimony of orientation, plane, curvature ?
 
-		runcl.propagate_depth_next_layer(layer);
+		runcl.propagate_depth_next_layer(layer-1);
 
 	}
 

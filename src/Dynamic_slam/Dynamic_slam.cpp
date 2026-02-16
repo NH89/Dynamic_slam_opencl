@@ -14,6 +14,7 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 	int local_verbosity_threshold 		= V_DYNAMIC_SLAM_DYNAMIC_SLAM;																		if(verbosity>local_verbosity_threshold) cout << "\f Dynamic_slam::Dynamic_slam_chk 0\n" << flush;
 
 	runcl.dataset_frame_num 			= obj["data_file_offset"].asUInt();
+	runcl.frame_count		 			= 0;
 
 	use_conf_camera_matx				= obj["use_conf_camera_matx"].asBool();
 	GT_available						= obj["GT_available"].asBool();
@@ -181,7 +182,8 @@ void Dynamic_slam::initialize_camera_vec(){
 	generate_SE3_k2k_vec( SE3_k2k );																										// fills float[96] ie 6xfloat[16] from conf.json intrinsic camera matrix + SE3 increments.
 	runcl.precomp_param_maps ( SE3_k2k );																									// GPU computes J(u,v/SE3) Jacobian of optical flow wrt SE3.
 	getFrame();
-	runcl.dataset_frame_num++;
+	// runcl.dataset_frame_num++;
+	// runcl.frame_count++;
 																																			if (verbosity>local_verbosity_threshold){ cout << "\nDynamic_slam::initialize_camera_vec Finished:"
 																																				<<"##############################################################################\f" <<flush;
 																																			}
@@ -251,7 +253,8 @@ int Dynamic_slam::nextFrame() {
 																						if(verbosity>local_verbosity_threshold-1) {
 																							getNextFrameProfile(step_0, step_1, step_2, step_3, step_4, step_5, step_6, step_7, step_8);
 																						}
-	runcl.dataset_frame_num++;
+	// runcl.dataset_frame_num++;
+	// runcl.frame_count++;
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame Finished "
 																																				<<"##################################################################################\f" << flush;
 																																			}
@@ -291,7 +294,8 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 
 	runcl.build_img_pyramid( "imgmem" );		// RunCL_patch_image_tracking.cpp  way to build pyramid, with additional blur layers at apex
 
-	runcl.current_frames[	runcl.current_frames_idx[0] ].frame_num		=	runcl.dataset_frame_num;
+	// runcl.current_frames[	runcl.current_frames_idx[0] ].dataset_frame_num		=	runcl.dataset_frame_num;
+	// runcl.current_frames[	runcl.current_frames_idx[0] ].frame_count			=	runcl.frame_count;
 
 	cl_int 			status;
 	cl_event 		writeEvt;
@@ -313,6 +317,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 	// Will need to decide which layers and ST3 patch sizes to compute Hessians for, then store them in a buffer on the GPU.
 																																			// # Get 1st & 2nd order image gradients of MipMap
 																																			// see CostVol::cacheGValues(), RunCL::cacheGValue2 & __kernel void CacheG3
+
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::getFrame_chk 2  Finished "
 																																				<<"###########################################################################\n" << flush;
 

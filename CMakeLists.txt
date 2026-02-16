@@ -78,9 +78,10 @@ add_executable(Dynamic_slam
          src/Dynamic_slam/testing/Dynamic_slam_ground_truth.cpp
          src/Dynamic_slam/testing/Dynamic_slam_results.cpp
 
-         src/kernels/kernels_macros.h
+         src/kernels/kernels__macros.h
          src/RunCL/RunCL.hpp
          src/RunCL/RunCL.cpp
+         src/RunCL/RunCL_depth.cpp
          src/RunCL/RunCL_DownloadAndSave.cpp
          src/RunCL/RunCL_first_gen_patch_kernels.cpp
          src/RunCL/RunCL_load_image.cpp

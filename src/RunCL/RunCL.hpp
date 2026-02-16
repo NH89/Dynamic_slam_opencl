@@ -84,7 +84,7 @@ public:
 	// RunCL_patch_tracking.cpp
 	cl_kernel			pad_image_top_bottom2_kernel, vertcal_blur5_kernel, pad_image_left_right2_kernel, horiz_blur5_kernel, reduce_img_kernel;
 	// RunCL_depth.cpp
-	cl_kernel			update_depth_kernel;
+	cl_kernel			update_depth_kernel, enlarge_layer_float_kernel;
 
 	// GPU Buffers
 	static const uint 	num_current_frames	= 5;																												// static = same for all instances of class Dynamic_slam.
@@ -104,29 +104,27 @@ public:
 	cl_mem				pose_buf, pose_update_buf,	distorsion_update_buf,		old_results_buf,				K_buf, inv_K_buf;
 
 
-	/////////////////////////////
-
-
 	struct frame{
-		int 			frame_num		= 0;
-		uint			frame_data_index= 0;				// Index of this frame in the recycled arrays of cl_mem buffers above: imgmem[], 	velmap[]
+		int 			dataset_frame_num					= 0;
+		uint			frame_count							= 0;
+		uint			frame_data_index					= 0;					// Index of this frame in the recycled arrays of cl_mem buffers above: imgmem[], 	velmap[]
 
-		cl_mem			img_buf			= nullptr;
-		cl_mem			depth_buf		= nullptr;
-		cl_mem			r_vel_buf		= nullptr;
+		cl_mem			img_buf								= nullptr;
+		cl_mem			depth_buf							= nullptr;
+		cl_mem			r_vel_buf							= nullptr;
 
-		Matx44f			pose_gt			= Matx44f::eye() ;
-		float			pose[16]		= FLOAT_16_EYE;		// Absolute pose of the frame. i.e. relative to initial frame. Computed from the local sample frames. Will req adjustment at loop closure.
-		Matx44f			pose_0to1		= Matx44f::eye() ;
+		Matx44f			pose_gt								= Matx44f::eye() ;
+		float			pose[16]							= FLOAT_16_EYE;			// Absolute pose of the frame. i.e. relative to initial frame. Computed from the local sample frames. Will req adjustment at loop closure.
+		Matx44f			pose_0to1							= Matx44f::eye() ;
 
-		Matx44f			K				= Matx44f::eye() ;	// camera intrinsic matrix
-		Matx44f			inv_K			= Matx44f::eye() ;
+		Matx44f			K									= Matx44f::eye() ;		// camera intrinsic matrix
+		Matx44f			inv_K								= Matx44f::eye() ;
 
-		float			k2k_0to1_est[16]				= FLOAT_16_EYE;				// Reprojection matrix to the current img. Estimated, then fitted for each new frame, also with updates of camera inrinsic mattix.
-		float			k2k[num_past_frames][16]		= {FLOAT_16_EYE};
+		float			k2k_0to1_est[16]					=  FLOAT_16_EYE;		// Reprojection matrix to the current img. Estimated, then fitted for each new frame, also with updates of camera inrinsic mattix.
+		float			k2k[num_past_frames][16]			= {FLOAT_16_EYE};
 
-		Matx16f			Jacobian[max_mipmap_layers]		= { Matx16f::zeros() };
-		Matx66f			invHessian[max_mipmap_layers]	= { Matx66f::eye() };
+		Matx16f			Jacobian[max_mipmap_layers]			= { Matx16f::zeros() };
+		Matx66f			invHessian[max_mipmap_layers]		= { Matx66f::eye() };
 	};
 
 	std::array<frame, num_current_frames> 					current_frames;			// Needs to be initialized after the buffers are created.
@@ -188,7 +186,8 @@ public:
 
 	void initialize_current_frames(){
 		for (uint idx = 0; idx < num_current_frames; idx++){
-			current_frames[idx].frame_num			= -1;
+			current_frames[idx].dataset_frame_num	= -1;
+			current_frames[idx].frame_count			= 0;
 			current_frames[idx].frame_data_index	= idx;							// Initialized with cl_mem buffers in order. This will change with update_current_frames_idx().
 
 			current_frames[idx].img_buf				= imgmem[idx];
@@ -207,13 +206,13 @@ public:
 	}
 
 	void update_current_frames_idx(){												// Call immediately _before_ loading new frame.
-		int frame_count = dataset_frame_num;
+		//int frame_count = dataset_frame_num;	// now uses runcl.frame_count
 		uint mod_16		= fmod(frame_count,16); // NB fastest way would be a nested if sequence, using bit shift to test the last bit.
 		uint mod_8  	= fmod(mod_16,8);
 		uint mod_4		= fmod(mod_8,4);
 		uint mod_2		= fmod(mod_4,2);
 
-		if (mod_8==0){																//cout<<"\n(mod_16==0) ";
+		if ( (mod_8==0) || (frame_count<num_current_frames) ){						//cout<<"\n(mod_16==0) "; NB in first 4 frames keeps every frame until the array is full.
 			new_current_frames_idx[0] = current_frames_idx[4];
 			new_current_frames_idx[1] = current_frames_idx[0];
 			new_current_frames_idx[2] = current_frames_idx[1];
@@ -248,22 +247,23 @@ public:
 
 		return;
 	};
-
-	void test_update_current_frames_idx(uint num_iter){
-		cout << "\n\n RunCL::test_update_current_frames_idx(uint "<<num_iter<<")";
-		for (uint iter=0; iter<=num_iter; iter++){
-			dataset_frame_num++;
-			update_current_frames_idx();
-			current_frames[current_frames_idx[0]].frame_data_index = dataset_frame_num;			//iter;
-																																		cout<<"\niter="<<iter;
-																																		for (uint idx=0; idx<5; idx++){
-																																			cout<<"\t\t current_frames_idx["<<idx<<"]="<<current_frames_idx[idx]
-																																			<<", frame="<< current_frames[current_frames_idx[idx]].frame_data_index<<",";
-																																		}
-																																		cout << flush;
-		}
-	}
-
+/*
+	// void test_update_current_frames_idx(uint num_iter){
+	// 	cout << "\n\n RunCL::test_update_current_frames_idx(uint "<<num_iter<<")";
+	// 	for (uint iter=0; iter<=num_iter; iter++){
+	// 		dataset_frame_num++;
+	// 		frame_count++;
+	// 		update_current_frames_idx();
+	// 		current_frames[current_frames_idx[0]].frame_data_index = dataset_frame_num;			//iter;
+	// 																																	cout<<"\niter="<<iter;
+	// 																																	for (uint idx=0; idx<5; idx++){
+	// 																																		cout<<"\t\t current_frames_idx["<<idx<<"]="<<current_frames_idx[idx]
+	// 																																		<<", frame="<< current_frames[current_frames_idx[idx]].frame_data_index<<",";
+	// 																																	}
+	// 																																	cout << flush;
+	// 	}
+	// }
+*/
 
 	//
 	cv::Mat				baseImage, key_frame;
@@ -310,6 +310,7 @@ public:
 	int 				mm_Image_type;					//	
 
 	int 				dataset_frame_num		= 0;	//	Frame number in dataset, set in constructor from json file. Incremented in Dynamic_slam::nextFrame.
+	uint				frame_count				= 0;
 
 	cv::Size 			baseImage_size, mm_Image_size;
 	std::map< std::string, std::filesystem::path > paths;

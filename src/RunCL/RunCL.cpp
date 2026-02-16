@@ -293,7 +293,7 @@ void RunCL::createKernels(){
 
 	// RunCL_depth.cpp
 	update_depth_kernel					= clCreateKernel(m_program, "update_depth",					&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'update_depth'  kernel not built.\n"					<<flush; exit_(0);   }
-
+	enlarge_layer_float_kernel			= clCreateKernel(m_program, "enlarge_layer_float",			&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'enlarge_layer_float'  kernel not built.\n"			<<flush; exit_(0);   }
 }
 
 void RunCL::initialize_fp32_params(){
@@ -827,6 +827,7 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 	status = clReleaseKernel(reduce_img_kernel);					if (status != CL_SUCCESS)	{ cout << "\nreduce_img_kernel					status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	// RunCL_depth.cpp
 	status = clReleaseKernel(update_depth_kernel);					if (status != CL_SUCCESS)	{ cout << "\nupdate_depth_kernel				status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(enlarge_layer_float_kernel);			if (status != CL_SUCCESS)	{ cout << "\nenlarge_layer_float_kernel			status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 
 	// release command queues

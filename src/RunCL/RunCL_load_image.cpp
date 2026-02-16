@@ -5,6 +5,12 @@ void RunCL::loadFrame(cv::Mat image){ //getFrame();																							// Wri
 	int local_verbosity_threshold = V_RUNCL_LOADFRAME;
 																																			if(verbosity>local_verbosity_threshold) {cout << "\n RunCL::loadFrame_chk 0\n" << flush;}
 	_clEnqueueWriteBuffer(uload_queue, basemem, CL_FALSE, 0, image_size_bytes, image.data, fname);
+
+	current_frames[	current_frames_idx[0] ].dataset_frame_num	=	dataset_frame_num;
+	current_frames[	current_frames_idx[0] ].frame_count			=	frame_count;
+
+	dataset_frame_num++;
+	frame_count++;
 																																			if (verbosity>local_verbosity_threshold){
 																																				stringstream ss;	ss << dataset_frame_num << "loadFrame";
 																																				DownloadAndSave_3Channel(basemem, ss.str(), paths.at("basemem"), image_size_bytes, baseImage_size,  baseImage_type, 	false );

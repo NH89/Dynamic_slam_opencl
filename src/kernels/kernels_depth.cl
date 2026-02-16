@@ -5,6 +5,7 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 													// Needs 16 elements of local mem per 32x32 patch, to pass data between threads in recursive square reduction.
 													// Needs 32 elem array of private mem per thread.
 	//Inputs:
+	__private	const uint	frame_count,			//0
 	__private	const float	reduction,				//0		//	i.e. 2^layer		= base_cols/read_cols_;		//  NB these __private args couldbe a single __constant uint* buffer, uploaded at the start of the loop. //
 	__private	const uint	lookup_table_offset,	//1															//  Likewise could list the order of img_ and vel_ buffers with a __constant uint* buffer				 //
 	__private	const uint	out_block_size,			//2
@@ -54,6 +55,8 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 	__global float4*	img_past[num_past_frames]		= { img_past_0, img_past_1, img_past_2, img_past_3 };
 	__global float4*	vel_past[num_past_frames]		= { vel_past_0, vel_past_1, vel_past_2, vel_past_3 };
 
+	const	uint	max_frames							= min(frame_count, num_past_frames);
+
 	const	uint	global_id_uint						= get_global_id(0);
 	const	uint	lid									= get_local_id(0);
 	const	uint	group_id							= get_group_id(0);
@@ -92,7 +95,7 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 	barrier(CLK_LOCAL_MEM_FENCE );
 	////////////////////////////////////////////////////////////////////////////
 	uint depth_iter_per_layer	 = 	3;
-	for (uint iter=0; iter<depth_iter_per_layer; iter++){
+	for (uint iter=0; iter<depth_iter_per_layer ; iter++){
 		for (uint row_in_block=0; (row_in_block<block_size)&&(read_index<=stop_offset&&read_index>0); row_in_block++, v++,  read_index +=mm_cols){		// stop offset prevents bottom row patches from overrunning the bottom of the image layer. // NB readindex may be 0 if not in range according to lookup table.
 																																																	// step through rows of the patch, ////////
 			uint	offset_2								= thread_lidi_offset		+ (row_in_block	/	out_block_size);
@@ -100,7 +103,7 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 			img_cur_pvt[		row_in_block]				= img_cur[		read_index];
 			float				inv_depth 					= depth_map[	read_index];
 
-			for (uint past_frame_idx=0; past_frame_idx < num_past_frames; past_frame_idx++){																										// step though past frames //////
+			for (uint past_frame_idx=0; past_frame_idx < max_frames; past_frame_idx++){																										// step though past frames //////
 				float				u2f,	v2f;																																					// current frame
 
 				px_k2k( inv_k2k[past_frame_idx],  reduction,  v,  u,  inv_depth, &u2f,  &v2f, print_ );																								// Where to sample the past image frame //////
@@ -158,7 +161,7 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 
 					for (uint block_row=0; block_row < block_size ; block_row += step*2, write_block_row++){																						// per iteration results
 																							uint offset_1 							= frame_offset		+ write_block_row*mm_cols	+ iter*mm_cols* block_size ;			// not correct iter step
-																							Rho_[				offset_1]			== rho_pvt_arr[		block_row ];
+																							Rho_[				offset_1]			= rho_pvt_arr[		block_row ];
 
 																							uint offset_2							= thread_lidi_offset		+ (block_row	/	out_block_size);
 																							local_depth_incr[	offset_2]			+= J_inv_d[			block_row ].x	/	J_inv_d[	block_row ].y;
@@ -175,3 +178,29 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 }
 
 
+__kernel void enlarge_layer_float(
+	__private	const uint	lookup_table_read_offset,	//0
+	__private	const uint	lookup_table_write_offset,	//1
+	__private	uint		buf_width,					//2			mm_cols, i.e. width of the buffer holding the image pyramid
+	__private	uint		patch_height,				//3
+	__private	uint		stop_offset,				//4
+	__constant 	float4*		lookup_table,				//5
+	__global 	float*		img							//6
+	)
+{
+	int global_id_u 					= (int)get_global_id(0);
+	uint read_idx						= floor(	lookup_table[	global_id_u + lookup_table_read_offset].z	);
+	uint write_idx						= floor(	lookup_table[	global_id_u + lookup_table_write_offset].z	);
+
+	for (int i=0; i<patch_height; i++){
+		if (write_idx >= stop_offset) 	return;
+		float value						= img[read_idx ];
+		img[ write_idx ]				= value;
+		img[ write_idx +1 ]				= value;
+		img[ write_idx + buf_width ]	= value;
+		img[ write_idx + buf_width +1 ]	= value;
+
+		read_idx 						+= buf_width;
+		write_idx 						+= buf_width*2;
+	}
+}
