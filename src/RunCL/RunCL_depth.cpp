@@ -48,10 +48,10 @@ void RunCL::update_depth( uint out_block_size, uint layer){
 	_clSetKernelArg( kernel, 13, sizeof(uint),						&ST3_u_step,										fname);		// __private	const uint	ST3_u_step,				//13	= ST3_offset3.s1;	// step between elements of the Hessian matrix
 	_clSetKernelArg( kernel, 14, sizeof(uint),						&ST3_v_step,										fname);		// __private	const uint	ST3_v_step,				//14	= ST3_offset3.s2;
 
-	_clSetKernelArg( kernel, 15, sizeof(uint),						&cur_frames_k2kbuf,									fname);		// __constant	float16*	inv_k2k,				//15		// transforms for 4 past frames,  k2k_buf
-	_clSetKernelArg( kernel, 16, sizeof(uint),						&cur_frames_st3buf,									fname);		// __constant	float4*		st3,					//16		// array of pose transforms to the set previous frames
-	_clSetKernelArg( kernel, 17, sizeof(uint),						&patch_lookup_table_buf,							fname);		// __constant 	float4*		lookup_table,			//17		// should ideally be a constant.
-	_clSetKernelArg( kernel, 18, sizeof(uint),						&SE3_map_mem,										fname);		// __constant 	float4*		SE3_map,				//18		// _cur_frame
+	_clSetKernelArg( kernel, 15, sizeof(cl_mem),					&cur_frames_k2kbuf,									fname);		// __constant	float16*	inv_k2k,				//15		// transforms for 4 past frames,  k2k_buf
+	_clSetKernelArg( kernel, 16, sizeof(cl_mem),					&cur_frames_st3buf,									fname);		// __constant	float4*		st3,					//16		// array of pose transforms to the set previous frames
+	_clSetKernelArg( kernel, 17, sizeof(cl_mem),					&patch_lookup_table_buf,							fname);		// __constant 	float4*		lookup_table,			//17		// should ideally be a constant.
+	_clSetKernelArg( kernel, 18, sizeof(cl_mem),					&SE3_map_mem,										fname);		// __constant 	float4*		SE3_map,				//18		// _cur_frame
 
 	_clSetKernelArg( kernel, 19, sizeof(cl_mem),					&current_frames[current_frames_idx[0]].img_buf,		fname);		// __global		float4*		img_cur,				//19		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
 	_clSetKernelArg( kernel, 20, sizeof(cl_mem),					&current_frames[current_frames_idx[1]].img_buf,		fname);		// __global		float4*		img_past_0,				//20
@@ -93,7 +93,7 @@ if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_depth()_finis
 																																	int size_bytes		= rows * mm_width * 4*sizeof(float) ;
 
 																																	cv::Mat temp_mat 	= cv::Mat::zeros (rows, mm_width, CV_32FC4);
-																																	cout<<"\n offset 	= "<<offset<<",  rows ="<<rows<<flush;
+																																	cout<<"\nlayer = "<<layer<<", offset 	= "<<offset<<",  rows ="<<rows<<flush;
 
 																																	// read 1st elem of Jacobian to verify kernel summation.
 																																	ReadOutput(temp_mat.data, SE3_grad_map_mem, size_bytes, offset*4*sizeof(float)   );// , 0/*offset*/
@@ -123,8 +123,9 @@ if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_depth()_finis
 
 
 void RunCL::propagate_depth_next_layer(uint write_layer ){	// layer = write layer
-	string fname						= "RunCL::mipmap_depthmap(..)";
-	int local_verbosity_threshold		= V_RUNCL_MIPMAP_DEPTHMAP;															if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_depthmap(..)_chk0"<<flush;}
+	string 	fname						= "RunCL::mipmap_depthmap(..)";
+	int 	local_verbosity_threshold	= V_RUNCL_PROPAGATE_DEPTH_NEXT_LAYER;												if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::propagate_depth_next_layer(..)_chk0"<<
+																																",   write_layer = "<<write_layer<<flush; }
 	cl_kernel		kernel				= enlarge_layer_float_kernel;
 
 	uint	lookup_table_read_offset	= patch_lookup_table_offset[write_layer+1];
@@ -136,7 +137,16 @@ void RunCL::propagate_depth_next_layer(uint write_layer ){	// layer = write laye
 	uint	read_rows_					= uint_params[MM_PIXELS];
 	uint	layer_offset				= MipMap[write_layer*8 + MiM_READ_OFFSET];
 	uint	stop_offset					= layer_offset + (read_rows_ -1) * buf_width + read_cols_;
-
+																															if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL:propagate_depth_next_layer(..) chk1" <<
+																																"\nlookup_table_read_offset 	= "		<<lookup_table_read_offset<<
+																																"\nlookup_table_write_offset 	= "		<<lookup_table_write_offset<<
+																																"\nbuf_width                	= "		<<buf_width<<
+																																"\npatch_height             	= "		<<patch_height<<
+																																"\nstop_offset              	= "		<<stop_offset<<
+																																"\npatch_lookup_table_buf   	= "		<<patch_lookup_table_buf<<
+																																"\ndepth_mem                	= "		<<depth_mem<<
+																																endl<<flush;
+																															}
 	_clSetKernelArg( kernel, 0, sizeof(int),						&lookup_table_read_offset,							fname);		// __private	const uint	lookup_table_read_offset,	//0
 	_clSetKernelArg( kernel, 1, sizeof(int),						&lookup_table_write_offset,							fname);		// __private	const uint	lookup_table_write_offset,	//1
 	_clSetKernelArg( kernel, 2, sizeof(int),						&buf_width,											fname);		// __private	uint		buf_width,					//2		mm_cols, i.e. width of the buffer holding the image pyramid
@@ -158,12 +168,12 @@ void RunCL::propagate_depth_next_layer(uint write_layer ){	// layer = write laye
 		fname					//string           fname
 	);
 																															if(verbosity>local_verbosity_threshold) {
-																																cout<<"\n\nRunCL::mipmap_depthmap(..)_chk3 Finished all loops."<<flush;
-																																stringstream ss;	ss << dataset_frame_num << "_mipmap_depthmap";
+																																cout<<"\n\nRunCL::propagate_depth_next_layer(..)_chk3 Finished all loops."<<flush;
+																																stringstream ss;	ss << dataset_frame_num << "_propagate_depth_next_layer";
 																																cv::Size new_Image_size = cv::Size(mm_width, mm_height);
 																																ss << "_raw_";
-																																stringstream ss_path;	ss_path << "depth_GT";
+																																stringstream ss_path;	ss_path << "depth_mem";
 																																DownloadAndSave( depth_mem,   	ss.str(),   paths.at(ss_path.str()),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , fp32_params[MAX_INV_DEPTH]);
 																															}
-																															if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::mipmap_depthmap(..)_chk4 Finished:#######################################################"<<flush;}
+																															if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::propagate_depth_next_layer(..)_chk4 Finished:#######################################################"<<flush;}
 }

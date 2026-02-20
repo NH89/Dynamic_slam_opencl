@@ -32,8 +32,8 @@
     /////////////////////////////////////// DYNAMIC_SLAM_CLASS.CPP
 	#define	V_DYNAMIC_SLAM_DYNAMIC_SLAM					1
 	#define V_DYNAMIC_GENERATE_DELTAS					1
-	#define	V_DYNAMIC_SLAM_INITIALIZE_CAMERA			2
-	#define	V_DYNAMIC_SLAM_NEXTFRAME					2
+	#define	V_DYNAMIC_SLAM_INITIALIZE_CAMERA			-2
+	#define	V_DYNAMIC_SLAM_NEXTFRAME					-2
 	#define	V_DYNAMIC_SLAM_GETFRAME						2
 	#define	V_DYNAMIC_SLAM_GETPOSE						1
 	#define	V_DYNAMIC_SLAM_GETINVPOSE					1
@@ -89,6 +89,7 @@
 
 	/////////////////////////////////////// RUNCL_DEPTH.CPP
 	#define V_RUNCL_UPDATE_DEPTH						-2
+	#define	V_RUNCL_PROPAGATE_DEPTH_NEXT_LAYER			-2
 
 
 	/////////////////////////////////////// RUNCL_DOWNLOADANDSAVE.CPP
@@ -158,8 +159,8 @@
 	#define	V_RUNCL_PRECOM_PARAM_MAPS					1
 
 
-	#define	V_RUNCL_UPDATE_K2K_BUF						2
-	#define	V_RUNCL_RHO_SQ								2 //
+	#define	V_RUNCL_UPDATE_K2K_BUF						-2
+	#define	V_RUNCL_RHO_SQ								-2 //
 	#define	V_RUNCL_REDUCE_PATCH_RHO					2
 	#define	V_RUNCL_UPDATE_K2K							2
 

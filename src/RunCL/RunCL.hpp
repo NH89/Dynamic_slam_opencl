@@ -54,8 +54,10 @@ constexpr uint num_past_frames				= NUM_PAST_FRAMES;						// 1,2,4,8,16,32,64 //
 static constexpr uint max_patches_per_layer = 2^max_mipmap_layers * 2^max_mipmap_layers; //
 
 #define FLOAT_16_EYE 	{1.0f, 0.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f, 0.0f,		0.0f, 0.0f, 1.0f, 0.0f,		0.0f, 0.0f, 0.0f, 1.0f}
+constexpr float identity_flt16[16]			= FLOAT_16_EYE;
 constexpr float zero						= 0;
 constexpr uint	patch_size					= 32;	// Set global patch size from device parameters // generally: device_work_size_multiple = patch_size * integer, eg 32, 64, 128
+
 
 using namespace std;
 class RunCL
@@ -63,9 +65,10 @@ class RunCL
 public:
 	RunCL( Json::Value obj_ );
 	Json::Value 		obj;
-
 	int					verbosity;
 	bool				tiff, png, vtp;
+
+	//OpenCL
 	std::vector<cl_platform_id> 	m_platform_ids;
 	cl_context			m_context;
 	cl_device_id		m_device_id;
@@ -103,7 +106,7 @@ public:
 	cl_mem				k2kbuf, SE3_k2kbuf, cur_frames_k2kbuf, cur_frames_st3buf;
 	cl_mem				pose_buf, pose_update_buf,	distorsion_update_buf,		old_results_buf,				K_buf, inv_K_buf;
 
-
+	// current frames
 	struct frame{
 		int 			dataset_frame_num					= 0;
 		uint			frame_count							= 0;
@@ -115,7 +118,7 @@ public:
 
 		Matx44f			pose_gt								= Matx44f::eye() ;
 		float			pose[16]							= FLOAT_16_EYE;			// Absolute pose of the frame. i.e. relative to initial frame. Computed from the local sample frames. Will req adjustment at loop closure.
-		Matx44f			pose_0to1							= Matx44f::eye() ;
+		Matx44f			pose_0_to_this_frame				= Matx44f::eye() ;
 
 		Matx44f			K									= Matx44f::eye() ;		// camera intrinsic matrix
 		Matx44f			inv_K								= Matx44f::eye() ;
@@ -126,149 +129,14 @@ public:
 		Matx16f			Jacobian[max_mipmap_layers]			= { Matx16f::zeros() };
 		Matx66f			invHessian[max_mipmap_layers]		= { Matx66f::eye() };
 	};
+	std::array<	frame, 				num_current_frames	> 	current_frames;			// Needs to be initialized after the buffers are created.
+	uint	current_frames_idx[		num_current_frames]		= {4,3,2,1,0};			// NB always access via:    current_frames[  current_frames_idx[ idx ]].img_buf   or   runcl.current_frames[ runcl.current_frames_idx[0] ].img_buf...
+	uint	new_current_frames_idx[	num_current_frames]		= {4,3,2,1,0};			// Must be set correctly, because it will be swaped to current_frames_idx[.idx.]
 
-	std::array<frame, num_current_frames> 					current_frames;			// Needs to be initialized after the buffers are created.
-	uint current_frames_idx[num_current_frames]				= {4,3,2,1,0};			// NB always access via:    current_frames[  current_frames_idx[ idx ]].img_buf   or   runcl.current_frames[ runcl.current_frames_idx[0] ].img_buf...
-	uint new_current_frames_idx[num_current_frames]			= {4,3,2,1,0};			// Must be set correctly, because it will be swaped to current_frames_idx[.idx.]
-
-	const float identity_flt16[16]	=	FLOAT_16_EYE;
-
-	void update_pose_bufs_cur_frames(  ){								// To be called after tracking and before depth and other optimisations.
-		string fname = "RunCL::update_pose_bufs_cur_frames(..)";
-		int local_verbosity_threshold = V_RUNCL_UPDATE_POSE_BUFS_CUR_FRAMES;
-		float		cur_frames_k2k[num_current_frames*16];
-		cl_float4	cur_frames_st3[num_current_frames];
-
-		Matx44f pose;
-		float16arry_To_Matx44f( &current_frames[	current_frames_idx[0]	].pose[0],  pose );
-																																			if(verbosity>local_verbosity_threshold) {
-																																				cout<<"\n\nRunCL::update_pose_bufs_cur_frames(..) chk_1\n"<<flush;
-																																				PRINT_MATX44F( pose , "pose" );
-																																				for( int frame=0;	frame<num_current_frames;	frame++){
-																																					PRINT_MATX44F( current_frames[ current_frames_idx[frame] ].pose_0to1, "frame " frame );
-																																				}
-																																			}
-		for( int frame=0;	frame<num_current_frames;	frame++){
-			Matx44f new_frame_pose									= current_frames[ current_frames_idx[frame] ].pose_0to1  *  pose;
-			current_frames[ current_frames_idx[frame] ].pose_0to1 	= new_frame_pose;
-			Matx44f_To_float16arry(		new_frame_pose,				&cur_frames_k2k[frame*16] );
-			cur_frames_st3[frame]									= {{new_frame_pose(0,3), new_frame_pose(1,3), new_frame_pose(2,3), 0.0f   }};
-		}
-
-		_clEnqueueWriteBuffer(
-			uload_queue,							//cl_command_queue 	command_queue,
-			cur_frames_k2kbuf,						//cl_mem 			buffer,
-			CL_FALSE,								//cl_bool 			blocking_write,
-			0,										//size_t 			offset,
-			num_current_frames*16*sizeof(float),	//size_t 			size,
-			cur_frames_k2k,							//const void* 		ptr,
-			fname									//string 			fname
-		);
-
-		_clEnqueueWriteBuffer(
-			uload_queue,							//cl_command_queue 	command_queue,
-			cur_frames_st3buf,						//cl_mem 			buffer,
-			CL_FALSE,								//cl_bool 			blocking_write,
-			0,										//size_t 			offset,
-			num_current_frames*4*sizeof(float),		//size_t 			size,
-			cur_frames_st3,							//const void* 		ptr,
-			fname									//string 			fname
-		);
-																																			if(verbosity>local_verbosity_threshold) {
-																																				cout<<"\n\nRunCL::update_pose_bufs_cur_frames(..) chk_2\n"<<flush;
-																																				for( int frame=0;	frame<num_current_frames;	frame++){
-																																					PRINT_FLOAT_16( &cur_frames_k2k[num_current_frames*16] , "frame " frame );
-																																				}
-																																				cout<<"\n\n///RunCL::update_pose_bufs_cur_frames(..) finished //////////////////\n"<<flush;
-																																			}
-
-	}
-
-	void initialize_current_frames(){
-		for (uint idx = 0; idx < num_current_frames; idx++){
-			current_frames[idx].dataset_frame_num	= -1;
-			current_frames[idx].frame_count			= 0;
-			current_frames[idx].frame_data_index	= idx;							// Initialized with cl_mem buffers in order. This will change with update_current_frames_idx().
-
-			current_frames[idx].img_buf				= imgmem[idx];
-			current_frames[idx].r_vel_buf			= velmap[idx];					// velocity _relative_ to the camera.
-			//current_frames[idx].depth_buf			= depth_mem[idx];
-
-			current_frames[idx].pose_gt				= Matx44f::eye();
-			for(uint i=0; i<16; i++){
-				current_frames[idx].pose[i]			= identity_flt16[i];
-				current_frames[idx].k2k_0to1_est[i]	= identity_flt16[i];
-			}
-			for(uint i=0; i<max_mipmap_layers; i++){
-				current_frames[idx].invHessian[i]	= Matx66f::eye();
-			}
-		}
-	}
-
-	void update_current_frames_idx(){												// Call immediately _before_ loading new frame.
-		//int frame_count = dataset_frame_num;	// now uses runcl.frame_count
-		uint mod_16		= fmod(frame_count,16); // NB fastest way would be a nested if sequence, using bit shift to test the last bit.
-		uint mod_8  	= fmod(mod_16,8);
-		uint mod_4		= fmod(mod_8,4);
-		uint mod_2		= fmod(mod_4,2);
-
-		if ( (mod_8==0) || (frame_count<num_current_frames) ){						//cout<<"\n(mod_16==0) "; NB in first 4 frames keeps every frame until the array is full.
-			new_current_frames_idx[0] = current_frames_idx[4];
-			new_current_frames_idx[1] = current_frames_idx[0];
-			new_current_frames_idx[2] = current_frames_idx[1];
-			new_current_frames_idx[3] = current_frames_idx[2];
-			new_current_frames_idx[4] = current_frames_idx[3];
-		}else if (mod_4==0){														//cout<<"\n(mod_8==0) ";
-			new_current_frames_idx[0] = current_frames_idx[3];
-			new_current_frames_idx[1] = current_frames_idx[0];
-			new_current_frames_idx[2] = current_frames_idx[1];
-			new_current_frames_idx[3] = current_frames_idx[2];
-			new_current_frames_idx[4] = current_frames_idx[4];
-		}else if (mod_2==0){														//cout<<"\n(mod_4==0) ";
-			new_current_frames_idx[0] = current_frames_idx[2];
-			new_current_frames_idx[1] = current_frames_idx[0];
-			new_current_frames_idx[2] = current_frames_idx[1];
-			new_current_frames_idx[3] = current_frames_idx[3];
-			new_current_frames_idx[4] = current_frames_idx[4];
-		}else{																		//cout<<"\n(mod_2==0) ";
-			new_current_frames_idx[0] = current_frames_idx[1];
-			new_current_frames_idx[1] = current_frames_idx[0];
-			new_current_frames_idx[2] = current_frames_idx[2];
-			new_current_frames_idx[3] = current_frames_idx[3];
-			new_current_frames_idx[4] = current_frames_idx[4];
-		}
-		swap( new_current_frames_idx, current_frames_idx);
-
-		// for(uint i=0; i<max_mipmap_layers; i++){
-		// 	current_frames[ current_frames_idx[0] ].invHessian[i]	=  Matx66f::eye();
-		// }
-
-		current_frames[ current_frames_idx[0] ]		=	current_frames[ current_frames_idx[1] ];	// NB This will initialize the new frame with the values from the previous frame.
-
-		return;
-	};
-/*
-	// void test_update_current_frames_idx(uint num_iter){
-	// 	cout << "\n\n RunCL::test_update_current_frames_idx(uint "<<num_iter<<")";
-	// 	for (uint iter=0; iter<=num_iter; iter++){
-	// 		dataset_frame_num++;
-	// 		frame_count++;
-	// 		update_current_frames_idx();
-	// 		current_frames[current_frames_idx[0]].frame_data_index = dataset_frame_num;			//iter;
-	// 																																	cout<<"\niter="<<iter;
-	// 																																	for (uint idx=0; idx<5; idx++){
-	// 																																		cout<<"\t\t current_frames_idx["<<idx<<"]="<<current_frames_idx[idx]
-	// 																																		<<", frame="<< current_frames[current_frames_idx[idx]].frame_data_index<<",";
-	// 																																	}
-	// 																																	cout << flush;
-	// 	}
-	// }
-*/
-
-	//
-	cv::Mat				baseImage, key_frame;
+	// variables
+	cv::Mat				baseImage;
 																						// Assuming 32x32 patches. NB some GPUs may hold multipler patches pers workgroup, especially at the higher layers.
-	uint				wg_counter[max_mipmap_layers] = {0};							// 10k = 10240x4320  => 10240/2^10=10, 4320/2^10=4.21.., so 10 reductions to img pyr apex <10x10.		// Workgroups per layer
+	uint				wg_counter[max_mipmap_layers]						 =  {0};	// 10k = 10240x4320  => 10240/2^10=10, 4320/2^10=4.21.., so 10 reductions to img pyr apex <10x10.		// Workgroups per layer
 	uint				wg_offsets[max_mipmap_layers][max_patches_per_layer] = {{0}};	// 10k = 10240x4320  => 320x135=43200 (32x32)patches,	NB >75% unused, BUT avoids calloc & free.		// Workgroup start idx, for each layer
 																						// Requires 432000*sizeof(uint) = 1,728,000bytes on 32bit, or 3,456,000bytes on 64bitsystem.
 																						// Can be reduced by reducing MAX_MIPMAP_LAYERS, and => max image size.
@@ -340,6 +208,15 @@ public:
 	void CleanUp();																														// Exit...
 	void exit_(int res);
 	~RunCL();
+
+
+	///////////////////////////////////// RunCL_current_frames.cpp
+	void update_pose_bufs_cur_frames();
+	void initialize_current_frame( int idx);
+	void initialize_current_frame( int idx, int idx2 );
+	void initialize_current_frames();
+	void update_current_frames_idx();
+	//	void test_update_current_frames_idx( uint num_iter );
 
 
 	/////////////////////////////////////// RunCL_DownloadAndSave.cpp

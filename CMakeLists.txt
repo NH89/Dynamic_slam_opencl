@@ -81,6 +81,7 @@ add_executable(Dynamic_slam
          src/kernels/kernels__macros.h
          src/RunCL/RunCL.hpp
          src/RunCL/RunCL.cpp
+         src/RunCL/RunCL_current_frames.cpp
          src/RunCL/RunCL_depth.cpp
          src/RunCL/RunCL_DownloadAndSave.cpp
          src/RunCL/RunCL_first_gen_patch_kernels.cpp

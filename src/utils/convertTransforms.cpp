@@ -154,7 +154,7 @@ void Matx44f_To_float16arry(Matx44f matx, float arry[16]){
 }
 
 
-void float16arry_To_Matx44f( float arry[16], Matx44f matx ){
+void float16arry_To_Matx44f( float arry[16], Matx44f &matx ){
     for (int i=0; i<16; i++){ matx.operator()(i/4, i%4) = arry[i] ;}
 }
 

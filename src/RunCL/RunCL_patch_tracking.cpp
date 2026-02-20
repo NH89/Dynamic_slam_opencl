@@ -50,6 +50,7 @@ void RunCL::update_k2k_buf( float k2k_array[16],		float pose_arry[16] ) {
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k_buf( ..)_chk0 .##################################################################"<<flush;
 																																				PRINT_FLOAT_16( k2k_array, );
 																																				PRINT_FLOAT_16( pose_arry, );
+																																				PRINT_MATX44F( current_frames[ current_frames_idx[0] ].pose_0_to_this_frame,  );
 																																			}
 	_clEnqueueWriteBuffer( uload_queue, 	k2kbuf,		CL_FALSE, 0, 16*sizeof( float), k2k_array,  	fname);
 	_clEnqueueWriteBuffer( uload_queue, 	pose_buf,	CL_FALSE, 0, 16*sizeof( float), pose_arry, 		fname);

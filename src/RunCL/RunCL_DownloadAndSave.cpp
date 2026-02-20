@@ -342,7 +342,7 @@ void RunCL::DownloadAndSave(cl_mem buffer, std::string count, std::filesystem::p
 																																		//	if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave chk4 filename = ["<<ss.str()<<"]"<<flush;
 		if(tiff==true) cv::imwrite(folder_tiff.string(), temp_mat );
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave chk5 tiff filename = ["<<folder_tiff.string()<<"]"<<flush;
-		if(vtp==true) Save_vtk(temp_mat, key_frame, folder_png );
+	//	if(vtp==true) Save_vtk(temp_mat, key_frame, folder_png );
 
 		temp_mat *= 256*256;
 		temp_mat.convertTo(outMat, CV_16UC1);

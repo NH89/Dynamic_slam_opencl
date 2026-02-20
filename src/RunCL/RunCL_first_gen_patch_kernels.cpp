@@ -262,13 +262,13 @@ void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer )					
 																									//auto step_2 = high_resolution_clock::now();
 	clReleaseEvent(ev);
 																																			/*
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::reduce_patch_Rho( ..)_chk_2 . "<<\
-																																				"Execution time = "<<  duration_cast<microseconds>(step_1 - step_0).count() \
-																																				<<" , "<<duration_cast<microseconds>(step_2 - step_1).count() <<flush;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::reduce_patch_Rho( ..)_chk_2 . "<<flush;//<<\
+																																				// "Execution time = "<<  duration_cast<microseconds>(step_1 - step_0).count() \
+																																				// <<" , "<<duration_cast<microseconds>(step_2 - step_1).count() <<flush;
 
-																																				float old_result_arry[6];
-																																				ReadOutput( (uchar*)old_result_arry, old_results_buf, sizeof(float), 0);	//ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset)  //  size_t offset=0
-																																				cout<<"\n old_result_arry = " <<old_result_arry[0]<<flush;
+																																				// float old_result_arry[6];
+																																				// ReadOutput( (uchar*)old_result_arry, old_results_buf, sizeof(float), 0);	//ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset)  //  size_t offset=0
+																																				// cout<<"\n old_result_arry = " <<old_result_arry[0]<<flush;
 
 																																				stringstream ss;
 																																				ss << "_ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_iter"<<iter<<"_out_bock_size"<<out_block_size<<"_reduce_rho_sq()";

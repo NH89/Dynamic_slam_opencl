@@ -92,6 +92,8 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 	if( (lid	%	out_block_size) ==0 ){
 		for(int i=0; i<(block_size/out_block_size); i++){ local_depth_incr[	thread_lidi_offset + i]				= 0.0f; }
 	}
+	if(global_id_uint==0){ printf("\n__kernel void update_depth(..) frame_count=%u,  max_frames=%u,  reduction=%f ", frame_count, max_frames, reduction ); }
+
 	barrier(CLK_LOCAL_MEM_FENCE );
 	////////////////////////////////////////////////////////////////////////////
 	uint depth_iter_per_layer	 = 	3;
@@ -134,46 +136,46 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 			}
 		}
 
-		// Sum-reduce image, /////////////  Save intermediate size ST3 patches for depth map updates, and maximally reduced SE3 patches for pose updates. Second reduce_patch_Rho(..) kernel required for SE3 from lareger image pyramid layers, before update_k2k(..) kernel.
-		uint past_frame_idx =0; // TO DO remove and restore long outer loop.
-		uint step;
-		for ( step=1; step<block_size; step *=2){																																					// for each step size, (multiples of 2)
-			for (uint block_row=0; block_row<block_size ; block_row += step){																														// step through rows in column
-																							rho_pvt_arr[		block_row ]			+=rho_pvt_arr[		block_row + step ];							// sum pair of values in col,
-																							J_inv_d[			block_row ]			+=J_inv_d[			block_row + step ];
-				if( !(fmod((float)lid,(step*2))==0) &&  (fmod((float)lid,step)==0)    ){																											// selects 2nd column, sends data
-																							local_rho[			lid-step ]			= rho_pvt_arr[		block_row];
-																							local_J_inv_d[		lid-step ]			= J_inv_d[			block_row];
-				}
-				barrier(CLK_LOCAL_MEM_FENCE );																																						// Using barrier as a semaphore, for local mem messages between threads. This minimizes local_mem req, while allowing 2 patch sizes in output, full & ST3 map at out_block_size.
-
-				if( (fmod((float)lid,(step*2))==0)  ){																																				// selects 1st column, adds data. Sum of patch now held in top left element of patch.
-																							rho_pvt_arr[		block_row]			+= local_rho[		lid ];
-																							J_inv_d[			block_row]			+= local_J_inv_d[	lid ];
-				}
-				barrier(CLK_LOCAL_MEM_FENCE );
-			}
-			// Save intermediate size ST3 patches for depth map updates, //////////
-			if (step==out_block_size/2){																																							// save ST3 map at out_block_size, to use for updating depth_map and rel_vel_map
-				uint frame_offset 		= write_index + past_frame_idx * 100 + 25 ;			// NB 100 works for current img size . // stacks frame ST3 maps in adjacent columns..
-				uint write_block_row	= 0;
-				if( fmod((float)lid,out_block_size) == 0 ){																																			// selects columns i.e. threads within the workgroup
-
-					for (uint block_row=0; block_row < block_size ; block_row += step*2, write_block_row++){																						// per iteration results
-																							uint offset_1 							= frame_offset		+ write_block_row*mm_cols	+ iter*mm_cols* block_size ;			// not correct iter step
-																							Rho_[				offset_1]			= rho_pvt_arr[		block_row ];
-
-																							uint offset_2							= thread_lidi_offset		+ (block_row	/	out_block_size);
-																							local_depth_incr[	offset_2]			+= J_inv_d[			block_row ].x	/	J_inv_d[	block_row ].y;
-
-						if(iter==depth_iter_per_layer-1){																																			// final results ofkernel
-																							float2 incr								= { local_depth_incr[	offset_2],		J_inv_d[	block_row ].y  };
-																							inv_depth_incr[ 	offset_1]			= incr;
-						}
-					}
-				}
-			}//////////////////////////////////////////////////////////////////////
-		}
+// 		// Sum-reduce image, /////////////  Save intermediate size ST3 patches for depth map updates, and maximally reduced SE3 patches for pose updates. Second reduce_patch_Rho(..) kernel required for SE3 from lareger image pyramid layers, before update_k2k(..) kernel.
+// 		uint past_frame_idx =0; // TO DO remove and restore long outer loop.
+// 		uint step;
+// 		for ( step=1; step<block_size; step *=2){																																					// for each step size, (multiples of 2)
+// 			for (uint block_row=0; block_row<block_size ; block_row += step){																														// step through rows in column
+// 																							rho_pvt_arr[		block_row ]			+=rho_pvt_arr[		block_row + step ];							// sum pair of values in col,
+// 																							J_inv_d[			block_row ]			+=J_inv_d[			block_row + step ];
+// 				if( !(fmod((float)lid,(step*2))==0) &&  (fmod((float)lid,step)==0)    ){																											// selects 2nd column, sends data
+// 																							local_rho[			lid-step ]			= rho_pvt_arr[		block_row];
+// 																							local_J_inv_d[		lid-step ]			= J_inv_d[			block_row];
+// 				}
+// 				barrier(CLK_LOCAL_MEM_FENCE );																																						// Using barrier as a semaphore, for local mem messages between threads. This minimizes local_mem req, while allowing 2 patch sizes in output, full & ST3 map at out_block_size.
+//
+// 				if( (fmod((float)lid,(step*2))==0)  ){																																				// selects 1st column, adds data. Sum of patch now held in top left element of patch.
+// 																							rho_pvt_arr[		block_row]			+= local_rho[		lid ];
+// 																							J_inv_d[			block_row]			+= local_J_inv_d[	lid ];
+// 				}
+// 				barrier(CLK_LOCAL_MEM_FENCE );
+// 			}
+// 			// Save intermediate size ST3 patches for depth map updates, //////////
+// 			if (step==out_block_size/2){																																							// save ST3 map at out_block_size, to use for updating depth_map and rel_vel_map
+// 				uint frame_offset 		= write_index + past_frame_idx * 100 + 25 ;			// NB 100 works for current img size . // stacks frame ST3 maps in adjacent columns..
+// 				uint write_block_row	= 0;
+// 				if( fmod((float)lid,out_block_size) == 0 ){																																			// selects columns i.e. threads within the workgroup
+//
+// 					for (uint block_row=0; block_row < block_size ; block_row += step*2, write_block_row++){																						// per iteration results
+// 																							uint offset_1 							= frame_offset		+ write_block_row*mm_cols	+ iter*mm_cols* block_size ;			// not correct iter step
+// 																							Rho_[				offset_1]			= rho_pvt_arr[		block_row ];
+//
+// 																							uint offset_2							= thread_lidi_offset		+ (block_row	/	out_block_size);
+// 																							local_depth_incr[	offset_2]			+= J_inv_d[			block_row ].x	/	J_inv_d[	block_row ].y;
+//
+// 						if(iter==depth_iter_per_layer-1){																																			// final results ofkernel
+// 																							float2 incr								= { local_depth_incr[	offset_2],		J_inv_d[	block_row ].y  };
+// 																							inv_depth_incr[ 	offset_1]			= incr;
+// 						}
+// 					}
+// 				}
+// 			}//////////////////////////////////////////////////////////////////////
+// 		}
 	}
 }
 
@@ -191,6 +193,8 @@ __kernel void enlarge_layer_float(
 	int global_id_u 					= (int)get_global_id(0);
 	uint read_idx						= floor(	lookup_table[	global_id_u + lookup_table_read_offset].z	);
 	uint write_idx						= floor(	lookup_table[	global_id_u + lookup_table_write_offset].z	);
+
+	if(global_id_u==0){ printf("\n__kernel void enlarge_layer_float(..)  lookup_table_read_offset=%u ", lookup_table_read_offset ); }
 
 	for (int i=0; i<patch_height; i++){
 		if (write_idx >= stop_offset) 	return;

@@ -55,7 +55,7 @@ double median(const Mat& M);
 
 void Matx44f_To_float16arry(Matx44f matx, float arry[16]);
 
-void float16arry_To_Matx44f(float arry[16], Matx44f matx);
+void float16arry_To_Matx44f ( float arry[16], cv::Matx44f& matx );
 
 cv::Matx44f getPose(Mat R, Mat T/*, int verbosity*/);
 

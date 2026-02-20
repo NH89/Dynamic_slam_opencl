@@ -352,10 +352,14 @@ void Dynamic_slam::estimate_depth(){
 	string fname = "Dynamic_slam::estimate_depth()";
 	int 	local_verbosity_threshold 		= V_DYNAMIC_SLAM_ESTIMATE_DEPTH;//verbosity_mp["Dynamic_slam::estimateSE3"];
 																																		if(verbosity>local_verbosity_threshold) {
-																																			cout << "\fDynamic_slam::estimate_depth() chk_0"
+																																			cout << "\n\nDynamic_slam::estimate_depth() chk_0"
 																																			<<"  ##############################################################"<< flush;
 																																		}
-	for (int layer=4; layer<=0; layer++){
+	for (int layer=4; layer>0; layer--){
+																																		if(verbosity>local_verbosity_threshold) {
+																																			cout << "\nDynamic_slam::estimate_depth()  layer= "<<
+																																			layer << endl <<flush;
+																																		}
 		uint out_block_size = 4;
 		runcl.update_depth( out_block_size, layer);
 
