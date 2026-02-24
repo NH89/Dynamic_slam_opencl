@@ -194,12 +194,14 @@ int Dynamic_slam::nextFrame() {
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_NEXTFRAME;
 																																			if(verbosity>local_verbosity_threshold-3){ cout << "\n Dynamic_slam::nextFrame_chk 0,  runcl.dataset_frame_num="<<runcl.dataset_frame_num
 																																				<<",\t depth = runcl.amem  \n" << flush; //  runcl.frame_bool_idx="<<runcl.frame_bool_idx<<"
+																																				PRINT_MATX44F(frame_data.back().frame_data.pose,);
 																																			}
 																						auto step_0 = high_resolution_clock::now();
 	frame_data.push_back( frame_data.back() ); //////////////////////////////////////////   new_frame										// duplicate last frame, as basis for new frame.
 																																			if(verbosity>local_verbosity_threshold){
 																																				cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"
 																																					<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
+																																				PRINT_MATX44F(frame_data.back().frame_data.pose,);
 																																			}
 	runcl.update_current_frames_idx();																										// move to next img buffer and RunCL "frame" struct in the current_frames[] array. NB current_frames_idx[..] pointer swap.
 																																			if(verbosity>local_verbosity_threshold){

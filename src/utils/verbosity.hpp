@@ -37,8 +37,8 @@
 	#define	V_DYNAMIC_SLAM_GETFRAME						2
 	#define	V_DYNAMIC_SLAM_GETPOSE						1
 	#define	V_DYNAMIC_SLAM_GETINVPOSE					1
-	#define	V_DYNAMIC_SLAM_GETFRAMEDATA					1
-	#define	V_DYNAMIC_SLAM_USE_GT_POSE					1
+	#define	V_DYNAMIC_SLAM_GETFRAMEDATA					-1
+	#define	V_DYNAMIC_SLAM_USE_GT_POSE					-1
     ////
 	#define	V_DYNAMIC_SLAM_ESTIMATECALIBRATION			0
 	#define	V_DYNAMIC_SLAM_SPATIALCOSTFNS				0
@@ -82,7 +82,7 @@
 	#define	V_RUNCL_MIPMAP_CALL_KERNEL					1
 	#define V_RUNCL_LAYER_CALL_KERNEL					1
 	#define	V_RUNCL_WAITFOREVENTANDRELEASE				0
-	#define	V_RUNCL_SET_CAM_BUFS						1
+	#define	V_RUNCL_SET_CAM_BUFS						-1
 	#define	V_RUNCL_ALLOCATEMEM							0
 	#define	V__RUNCL									0
 	#define	V_EXIT_										0

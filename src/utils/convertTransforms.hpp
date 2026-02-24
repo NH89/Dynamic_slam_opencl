@@ -63,4 +63,6 @@ cv::Matx44f getInvPose(cv::Matx44f pose/*, int verbosity*/);
 
 cv::Matx44f generate_invK_(cv::Matx44f K_/*, int verbosity*/);
 
+//Matx16f Matx_16fmul66f( Matx16f A, Matx66f B );	// Not needed. correct solution is to use double precision Matx16d & Matx66d for SE3 tracking. (Better would be to balance SO3 & ST3 to reduce dependence on precision.)
+
 #endif 

@@ -13,7 +13,7 @@ void RunCL::update_depth( uint out_block_size, uint layer){
 	uint	read_offset_				= MipMap[layer*8 + MiM_READ_OFFSET];
 	uint	layer_pixels				= MipMap[layer*8 + MiM_PIXELS];
 	uint	read_cols_					= MipMap[layer*8 + MiM_READ_COLS];
-	uint	read_rows_					= uint_params[MM_PIXELS];
+	uint	read_rows_					= MipMap[layer*8 + MiM_READ_ROWS];	//uint_params[MM_PIXELS];
 
 	uint	mm_cols						= uint_params[MM_COLS];
 	uint	mm_rows						= uint_params[MM_ROWS];
@@ -75,8 +75,20 @@ void RunCL::update_depth( uint out_block_size, uint layer){
 	_clSetKernelArg( kernel, 33, sizeof(cl_float2)*local_work_size, NULL,												fname);		// __local		float*		local_depth_incr,		//33
 	_clSetKernelArg( kernel, 34, sizeof(uint),						NULL,												fname);		// __local		float2*		local_J_inv_d			//34
 
-	size_t	threads_to_launch	= block_size;						// NB could be a problem on AMD GPUs with minmum 64 threads, not 32.
+	size_t	threads_to_launch	= patch_num_threads[layer];	// block_size;						// NB could be a problem on AMD GPUs with minmum 64 threads, not 32.
 	size_t	local_work_size_	= block_size;
+																																if( verbosity>local_verbosity_threshold) {
+																																	cout<<"\n\nRunCL::update_depth()_chk1"<<
+																																	"\nthreads_to_launch   = "<<threads_to_launch<<
+																																	"\nlocal_work_size_    = "<<local_work_size_<<
+																																	"\nread_offset_        = "<<read_offset_<<
+																																	"\nlayer_offset        = "<<layer_offset<<
+																																	"\nlookup_table_offset = "<<lookup_table_offset<<
+																																	"\nlayer_pixels        = "<<layer_pixels<<
+																																	"\nread_cols_          = "<<read_cols_<<
+																																	"\nread_rows_          = "<<read_rows_<<
+																																	endl<<flush;
+																																}
 
 	_clEnqueueNDRangeKernel(										// NB depth iteration is internal to the kernel within the layer.  Regularization and propagation to next layer requires further kernels.
 		m_queue,				//cl_command_queue _queue,
@@ -87,7 +99,8 @@ void RunCL::update_depth( uint out_block_size, uint layer){
 		&local_work_size_,		//const size_t *   local_work_size,
 		fname					//string           fname
 	);
-if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_depth()_finished #############################################################"<<flush;
+																																if( verbosity>local_verbosity_threshold) {
+																																	cout<<"\n\nRunCL::update_depth()_finished #############################################################"<<flush;
 																																	int offset			=	MipMap[layer*8 +  MiM_READ_OFFSET   ];
 																																	int rows			=	MipMap[layer*8 +  MiM_READ_ROWS   ];
 																																	int size_bytes		= rows * mm_width * 4*sizeof(float) ;

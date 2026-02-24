@@ -244,3 +244,23 @@ cv::Matx44f generate_invK_( cv::Matx44f K_ ){
 	return inv_K_;
 }
 
+/*
+Matx16f Matx_16fmul66f( Matx16f A, Matx66f B ){
+	Matx16f C = {0.0f, 0.0f, 0.0f,   0.0f, 0.0f, 0.0f};
+
+	for(int j=0; j<6; j++){
+        cout<<endl<<flush;
+        float temp = 0.0f;
+		for(int k=0; k<6; k++){
+            cout <<"\n j="<<j<<", k="<<k<<",   "<<A(0,k ) * B( j,k )<<" = "<<A(0,k )<<" * "<<B( j,k )<<flush;
+
+			temp  += A(0,k ) * B( k,j );
+		}
+		C(0,j ) = temp ;
+		cout<<"\n\nC(0,"<<j<<") = "<<C(0,j ) <<flush;
+	}
+	return C;
+}
+*/
+
+

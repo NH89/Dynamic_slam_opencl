@@ -293,7 +293,7 @@ void Dynamic_slam::estimate_tracking(){
 			old_k2k					=	newK2K;
 
 			float		num_pixels	=	runcl.se3_rho_result.SE3_incr_arry[1];																		// TO DO move numpixels to SE3_incr.w   & reduce SE3_incr_map_mem from float8 tro float4
-			Matx16f		SE3_incr;	for (int i=0;	i<6; i++){	SE3_incr.operator()(i)	=	runcl.se3_rho_result.SE3_incr_arry[i*2];  };
+			Matx16d		SE3_incr;	for (int i=0;	i<6; i++){	SE3_incr.operator()(i)	=	runcl.se3_rho_result.SE3_incr_arry[i*2];  };
 																																		if( verbosity>local_verbosity_threshold ){
 																																			cout << "\nDynamic_slam::estimate_tracking() chk_4: ,  ###########################"<<
 																																			"\n sum_rho = "			<< sum_rho		<<
@@ -311,15 +311,18 @@ void Dynamic_slam::estimate_tracking(){
 																																			PRINT_MATX44F( K * invK,		);
 																																			PRINT_MATX44F( invK * K,		);
 																																		}
-			Matx66f	invH			=	runcl.current_frames[ runcl.current_frames_idx[0] ].invHessian[layer];
-			Matx16f pose_update_cpu	=	SE3_incr * invH;
+			Matx66d	invH			=	runcl.current_frames[ runcl.current_frames_idx[0] ].invHessian[layer];
+			Matx16d pose_update_cpu	=	SE3_incr * invH;	// Matx_16fmul66f( SE3_incr, invH);  //										// Double precision is required
 																																		if( verbosity>local_verbosity_threshold ){
+																																			cout << "\nSE3_incr="			<<SE3_incr			<<endl<<flush;
+																																			cout << "\ninvH="				<<invH				<<endl<<flush;
+																																			cout << "\npose_update_cpu="	<<pose_update_cpu	<<endl<<flush;
 																																			PRINT_MATX66F( invH, );
 																																			PRINT_MATX16F( pose_update_cpu, );
 																																			Matx44f	pose_old	= runcl.ReadOutput_44f( runcl.pose_buf );	PRINT_MATX44F( pose_old, );
 																																			Matx44f	k2k_old		= runcl.ReadOutput_44f( runcl.k2kbuf);		PRINT_MATX44F( k2k_old,	);
 																																		}
-			pose_update_cpu			=	factor *  pose_update_cpu.mul( deltas_matx[layer] );/*(-2.0f)*/ /*  * 0.5f; */
+			pose_update_cpu			=	factor *  pose_update_cpu.mul( deltas_matx[layer] );/*(-2.0f)*/ /*  * 0.5f; */  				//NB matx.mul(  matx ) => elementwise multiplication.
 																																		if( verbosity>local_verbosity_threshold-3 ){PRINT_MATX16F( pose_update_cpu, ); }
 			newPose					=	LieToP_Matx( pose_update_cpu )  *  pose;
 			newK2K					=	K  *  newPose  * invK ;
