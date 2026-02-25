@@ -1,7 +1,7 @@
 #include "../Dynamic_slam.hpp"
 
 
-void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec(),  Dynmaic_slam::nextFrame()
+void Dynamic_slam::getFrameData_vec( frame_datum &datum ){  // Dynamic_slam::initialize_camera_vec(),  Dynmaic_slam::nextFrame()
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_GETFRAMEDATA;//verbosity_mp["Dynamic_slam::getFrameData"];
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::getFrameData_vec_chk 0.  runcl.dataset_frame_num = "
 																																				<< runcl.dataset_frame_num << "\t###################################" << flush;
@@ -41,23 +41,23 @@ void Dynamic_slam::getFrameData_vec(){  // Dynamic_slam::initialize_camera_vec()
 	K_GT(2,3) = 1;								//
 
 																																			// 4x4 perspective matrix is not invertable for points at infinity. We correct ortho->perspective in the kernel by dividing by Z.
-	pose_datum datum 						= {};																							// default initialization.
-	datum.K									= K_GT;
-	datum.inv_K								= generate_invK_( K_GT );
-	datum.pose								= getPose( R, T );
-	datum.inv_pose							= getInvPose( datum.pose );
+	//pose_datum datum 						= {};																							// default initialization.
+	datum.frame_data_GT.K									= K_GT;
+	datum.frame_data_GT.inv_K								= generate_invK_( K_GT );
+	datum.frame_data_GT.pose								= getPose( R, T );
+	datum.frame_data_GT.inv_pose							= getInvPose( datum.frame_data_GT.pose );
 	if( frame_data.size() > 1 ){
-		datum.prev_pose2pose				= frame_data[ frame_data.size() -2].frame_data_GT.inv_pose	*	datum.pose;
+		datum.frame_data_GT.prev_pose2pose					= frame_data[ frame_data.size() -2].frame_data_GT.inv_pose	*	datum.frame_data_GT.pose;
 	}
 
-	frame_data.back().frame_data_GT			= datum; // TO DO entirely remove Dynamic_slam::frame_data.
+	frame_data.back().frame_data_GT			= datum.frame_data_GT; // TO DO entirely remove Dynamic_slam::frame_data.
 
-	runcl.current_frames[ runcl.current_frames_idx[0] ].pose_gt		= datum.pose;
+	runcl.current_frames[ runcl.current_frames_idx[0] ].pose_gt		= datum.frame_data_GT.pose;
 																																			if(verbosity>local_verbosity_threshold) {
 																																				PRINT_MATX44F( K_GT, );
-																																				PRINT_MATX44F( datum.inv_K	, );	PRINT_MATX44F( K_GT*datum.inv_K	, );
-																																				PRINT_MATX44F( datum.pose, );
-																																				PRINT_MATX44F( datum.inv_pose, );
+																																				PRINT_MATX44F( datum.frame_data_GT.inv_K	, );	PRINT_MATX44F( K_GT*datum.frame_data_GT.inv_K	, );
+																																				PRINT_MATX44F( datum.frame_data_GT.pose, );
+																																				PRINT_MATX44F( datum.frame_data_GT.inv_pose, );
 
 																																				cout << "\n\n runcl.current_frames_idx[0-5] = ";
 																																				for(int i=0; i<5; i++){ cout<< runcl.current_frames_idx[i] << ",  "; }	cout << flush;
@@ -97,7 +97,7 @@ void Dynamic_slam::set_artif_pose_error(){
 																																				PRINT_MATX44F( datum.K 		* datum.K.inv(),);
 																																				PRINT_MATX44F( datum.K.inv()* datum.K,		);
 																																			}
-	frame_data.back().frame_data 		= frame_data.back().frame_data_GT;
+	//frame_data.back().frame_data 		= frame_data.back().frame_data_GT;																	// NB also resets K and invK to GT
 	frame_data.back().frame_data.pose	= pose_frame0to1;
 	frame_data.back().frame_data.K2K	= k2k_0to1;
 

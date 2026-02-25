@@ -31,6 +31,7 @@ class Dynamic_slam
     bool					use_artif_pose_error				= false;
     bool					use_GT_pose							= false;
     bool					use_conf_camera_matx				= false;
+    bool					use_GT_camera_matx					= false;
     bool					invert_GT_depth						= false;
     bool					initialize_keyframe_from_GT 		= false;
 	bool					initialize_tracking_from_GT_depth 	= false;
@@ -143,7 +144,7 @@ class Dynamic_slam
     void ExhaustiveSearch();
 
     /////////////////////////////////////// Dynamic_slam_ground_truth.cpp
-    void getFrameData_vec();
+    void getFrameData_vec( frame_datum &datum );
     void set_artif_pose_error();
     void use_GT_pose_vec();
 

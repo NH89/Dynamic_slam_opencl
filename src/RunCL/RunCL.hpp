@@ -211,7 +211,7 @@ public:
 
 
 	///////////////////////////////////// RunCL_current_frames.cpp
-	void update_pose_bufs_cur_frames();
+	Matx44f update_pose_bufs_cur_frames(  );
 	void initialize_current_frame( int idx);
 	void initialize_current_frame( int idx, int idx2 );
 	void initialize_current_frames();

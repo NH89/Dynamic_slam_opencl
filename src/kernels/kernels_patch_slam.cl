@@ -87,7 +87,7 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	uint	mm_rows										= uint_params[MM_ROWS];
 	uint	mm_pixels									= uint_params[MM_PIXELS];
 
-	uint	stop_offset									= layer_offset + (read_rows_ -1) * mm_cols + read_cols_	;	// bottom right corner of source image layer
+	uint	stop_offset									= layer_offset + (read_rows_ -1) * mm_cols + read_cols_	;			// bottom right corner of source image layer
 /*
 // 	if(/ *global_id_uint* /lid==30)printf("\n\n__kernel void  patch_img_grad():  mm_cols=%u,  mm_rows=%u,  mm_pixels=%u   ST3_offset3=%u, %u, %u    stop_offset=%d,    read_index=%d \n", \
 // 																				mm_cols,  	mm_rows, 		mm_pixels,  ST3_offset3.x, ST3_offset3.y, ST3_offset3.z, stop_offset, read_index );

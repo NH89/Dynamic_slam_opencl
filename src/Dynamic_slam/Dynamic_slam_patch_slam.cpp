@@ -223,7 +223,8 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 																																			<<"  ##############################################################"<< flush;
 																																		}
 	estimate_tracking();
-	runcl.update_pose_bufs_cur_frames();
+	frame_data.back().frame_data.pose =  runcl.update_pose_bufs_cur_frames( );
+
 	estimate_depth();
 																																		if( verbosity>local_verbosity_threshold ){
 																																			cout << "\nDynamic_slam::estimate_SLAM() finished  ###########################"<<flush;

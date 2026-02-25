@@ -2,7 +2,7 @@
 
 
 
-void RunCL::update_pose_bufs_cur_frames(  ){								// To be called after tracking and before depth and other optimisations.
+Matx44f  RunCL::update_pose_bufs_cur_frames(  ){								// To be called after tracking and before depth and other optimisations.
 		string fname = "RunCL::update_pose_bufs_cur_frames(..)";
 		int local_verbosity_threshold = V_RUNCL_UPDATE_POSE_BUFS_CUR_FRAMES;
 		float		cur_frames_k2k[num_current_frames*16];
@@ -59,6 +59,7 @@ void RunCL::update_pose_bufs_cur_frames(  ){								// To be called after tracki
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout<<"\n\n///RunCL::update_pose_bufs_cur_frames(..) finished //////////////////\n"<<flush;
 																																			}
+		return pose;
 	}
 
 void RunCL::initialize_current_frame( int idx ){

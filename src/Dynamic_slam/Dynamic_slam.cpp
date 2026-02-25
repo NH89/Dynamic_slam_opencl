@@ -17,8 +17,11 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 	runcl.frame_count		 			= 0;
 
 	use_conf_camera_matx				= obj["use_conf_camera_matx"].asBool();
+	use_GT_camera_matx					= obj["use_GT_camera_matx"].asBool();
+
 	GT_available						= obj["GT_available"].asBool();
 	use_artif_pose_error				= obj["Artif_pose_err_bool"].asBool();
+
 	invert_GT_depth						= obj["invert_GT_depth"].asBool();
 	initialize_keyframe_from_GT  		= obj["initialize_keyframe_from_GT"].asBool();
 	initialize_tracking_from_GT_depth	= obj["initialize_tracking_from_GT_depth"].asBool();
@@ -123,15 +126,15 @@ void Dynamic_slam::initialize_camera_vec(){
 																																				cout << "\n\n datum.keyframe_index = "<< datum.keyframe_index << flush;
 																																				PRINT_MATX44F( initial_K ,  );
 																																			}
-	datum.frame_data.K 				= initial_K;
-	cv::Matx44f inv_k				= generate_invK_( initial_K );
-	datum.frame_data.inv_K 			= inv_k;																								// Current frame must be set as the new keyframe.
+	// datum.frame_data.K 				= initial_K;
+	// cv::Matx44f inv_k				= generate_invK_( initial_K );
+	// datum.frame_data.inv_K 			= inv_k;																								// Current frame must be set as the new keyframe.
 	frame_data.push_back( 	datum );																											// pushback a pose_datum, ready for getFrameData_vec() to write to.
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 2:" <<flush;
-																																				PRINT_MATX44F( inv_k, initial_K ); PRINT_MATX44F( initial_K*inv_k, );
+																																				//PRINT_MATX44F( inv_k, initial_K ); PRINT_MATX44F( initial_K*inv_k, );
 																																				PRINT_MATX44F(frame_data.back().frame_data.prev_pose2pose,);  // gets corrupted by getFrameData_vec()
 																																			}
-	if(GT_available==true){									getFrameData_vec();		//}														// Sets frame_data.back().frame_data_GT
+	if(GT_available==true){									getFrameData_vec( datum );		//}														// Sets frame_data.back().frame_data_GT
 																																			// We use orthographic matrix, then convert to perspectiveby dividing by depth.
 																																			// See notes in convertTransforms.cpp
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 3:" <<flush;
@@ -141,10 +144,12 @@ void Dynamic_slam::initialize_camera_vec(){
 																																				}
 																																				PRINT_MATX44F(frame_data.back().frame_data.prev_pose2pose,);
 																																			}
-	//if(			 GT_available		 ==true){				getFrameData_vec();																// Sets frame_data.back().frame_data_GT
+		if(		 use_GT_camera_matx	 ==true){				initial_K	= datum.frame_data_GT.K; }
 		if(		 use_artif_pose_error==true){				set_artif_pose_error();	}
 		else if( use_GT_pose		 ==true){				use_GT_pose_vec();		}
 	}
+	frame_data.back().frame_data.K							= initial_K;
+	frame_data.back().frame_data.inv_K						= generate_invK_( initial_K );
 																																			if(verbosity>local_verbosity_threshold){
 																																				cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"
 																																					<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
@@ -208,7 +213,7 @@ int Dynamic_slam::nextFrame() {
 																																				cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"
 																																					<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
 																																			}
-	if(			 GT_available		 ==true){				getFrameData_vec();																// Sets frame_data.back().frame_data_GT
+	if(			 GT_available		 ==true){				getFrameData_vec( frame_data.back() );																// Sets frame_data.back().frame_data_GT
 		if(		 use_artif_pose_error==true){				set_artif_pose_error();	}
 		else if( use_GT_pose		 ==true){				use_GT_pose_vec();		}
 		if(	initialize_tracking_from_GT_depth == true){		runcl.update_tracking_depthmap(runcl.depth_mem_GT);}
