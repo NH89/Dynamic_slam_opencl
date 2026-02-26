@@ -601,6 +601,7 @@ void RunCL::set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose, 
 																																				PRINT_MATX44F(k,);
 																																				PRINT_MATX44F(inv_k,);
 																																				PRINT_MATX44F(pose,);
+																																				PRINT_MATX44F(k2k,);
 																																			}
 	update_k2k_buf( k2k_arry, pose_arry );
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\nRunCL::"<<fname<<"(  )_chk2"<<flush;
@@ -680,7 +681,7 @@ void RunCL::allocatemem(){
 	uint_param_buf		= clCreateBuffer(m_context, CL_MEM_READ_ONLY  					, 8 * sizeof(uint), 			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 29= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	mipmap_buf			= clCreateBuffer(m_context, CL_MEM_READ_ONLY  					, 8*8*sizeof(uint), 			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 30= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
-	k2kbuf				= clCreateBuffer(m_context, CL_MEM_READ_ONLY  ,tracking_num_samples*16*sizeof(float),			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 26= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	k2kbuf				= clCreateBuffer(m_context, CL_MEM_READ_ONLY  ,						16*sizeof(float),			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 26= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	SE3_k2kbuf			= clCreateBuffer(m_context, CL_MEM_READ_ONLY  ,max_mipmap_layers*num_SE3_DoF*16*sizeof(float),	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 28= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	cur_frames_k2kbuf	= clCreateBuffer(m_context, CL_MEM_READ_ONLY  ,	 num_current_frames*16*sizeof(float),			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 28= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	cur_frames_st3buf	= clCreateBuffer(m_context, CL_MEM_READ_ONLY  ,	 num_current_frames* 4*sizeof(float),			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 28= "<<checkerror(res)<<"\n"<<flush;exit_(res);}

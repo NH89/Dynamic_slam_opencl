@@ -213,7 +213,7 @@ public:
 	///////////////////////////////////// RunCL_current_frames.cpp
 	Matx44f update_pose_bufs_cur_frames(  );
 	void initialize_current_frame( int idx);
-	void initialize_current_frame( int idx, int idx2 );
+	void initialize_new_frame ();
 	void initialize_current_frames();
 	void update_current_frames_idx();
 	//	void test_update_current_frames_idx( uint num_iter );

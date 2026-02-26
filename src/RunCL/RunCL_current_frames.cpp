@@ -88,7 +88,9 @@ void RunCL::initialize_current_frames(){
 	}
 }
 
-void RunCL::initialize_current_frame( int idx, int idx2 ){
+void RunCL::initialize_new_frame(){
+	int idx		= 0;
+	int idx2	= 1;
 	//current_frames[idx].img_buf			= imgmem[idx];			// needs to load new frame - done where ?
 
 	//current_frames[idx].r_vel_buf			= velmap[idx];			// TODO needs to sample & interpolate previous 		// velocity _relative_ to the camera.
@@ -150,7 +152,7 @@ void RunCL::update_current_frames_idx(){											// Call immediately _before_ 
 		}
 		swap( new_current_frames_idx, current_frames_idx);
 
-		initialize_current_frame( current_frames_idx[0], current_frames_idx[1] );	// Re-initializes the new frame.
+		initialize_new_frame();	// Re-initializes the new frame.
 		return;
 	};
 
