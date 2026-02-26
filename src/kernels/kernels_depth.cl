@@ -211,7 +211,7 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 
 __kernel void enlarge_layer_float(
 	__private	const uint	lookup_table_read_offset,	//0
-	__private	const uint	lookup_table_write_offset,	//1
+	__private	const uint	write_offset,				//1
 	__private	uint		buf_width,					//2			mm_cols, i.e. width of the buffer holding the image pyramid
 	__private	uint		patch_height,				//3
 	__private	uint		stop_offset,				//4
@@ -220,13 +220,16 @@ __kernel void enlarge_layer_float(
 	)
 {
 	int global_id_u 					= (int)get_global_id(0);
-	uint read_idx						= floor(	lookup_table[	global_id_u + lookup_table_read_offset].z	);
-	uint write_idx						= floor(	lookup_table[	global_id_u + lookup_table_write_offset].z	);
+	float4	lookup_ref					= lookup_table[	global_id_u + lookup_table_read_offset];
+	uint read_idx						= floor(	lookup_ref.z	);
+	uint	u							= lookup_ref.x;														// read_column
+	uint	v							= lookup_ref.y;														// read_row
+	uint write_idx						= write_offset + u*2 + (v * 2 * buf_width);
 
 	if(global_id_u==0){ printf("\n__kernel void enlarge_layer_float(..)  lookup_table_read_offset=%u ", lookup_table_read_offset ); }
 
 	for (int i=0; i<patch_height; i++){
-		if (write_idx >= stop_offset) 	return;
+		if (write_idx > stop_offset) 	return;
 		float value						= img[read_idx ];
 		img[ write_idx ]				= value;
 		img[ write_idx +1 ]				= value;

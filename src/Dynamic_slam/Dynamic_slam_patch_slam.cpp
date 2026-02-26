@@ -13,7 +13,7 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 																																			<<"  ##############################################################"<< flush;
 																																		}
 	estimate_tracking();
-	frame_data.back().frame_data.pose 	= runcl.update_pose_bufs_cur_frames( );
+	frame_data.back().frame_data.pose 	= runcl.update_pose_bufs_cur_frames( );																// NB these two lines are req because nextFrame() calls  runcl.set_cam_bufs(..), using frame_data.
 	float16arry_To_Matx44f(	 &runcl.current_frames[	runcl.current_frames_idx[0]	].k2k_0to1_est[0]	, frame_data.back().frame_data.K2K );
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\fDynamic_slam::estimate_SLAM() chk_1"<< flush;

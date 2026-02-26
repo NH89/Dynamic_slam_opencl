@@ -75,7 +75,7 @@ void RunCL::update_depth( uint out_block_size, uint layer){
 	_clSetKernelArg( kernel, 33, sizeof(cl_float2)*local_work_size, NULL,												fname);		// __local		float*		local_depth_incr,		//33
 	_clSetKernelArg( kernel, 34, sizeof(uint),						NULL,												fname);		// __local		float2*		local_J_inv_d			//34
 
-	size_t	threads_to_launch	= patch_num_threads[layer];	// block_size;						// NB could be a problem on AMD GPUs with minmum 64 threads, not 32.
+	size_t	threads_to_launch	= patch_num_threads[layer];
 	size_t	local_work_size_	= block_size;
 																																if( verbosity>local_verbosity_threshold) {
 																																	cout<<"\n\nRunCL::update_depth()_chk1"<<
@@ -142,17 +142,17 @@ void RunCL::propagate_depth_next_layer(uint write_layer ){	// layer = write laye
 	cl_kernel		kernel				= enlarge_layer_float_kernel;
 
 	uint	lookup_table_read_offset	= patch_lookup_table_offset[write_layer+1];
-	uint	lookup_table_write_offset	= patch_lookup_table_offset[write_layer];
+	uint	write_offset				= MipMap[write_layer*8 + MiM_READ_OFFSET];
 	uint	buf_width					= uint_params[MM_COLS];
 	uint	patch_height				= patch_size;
 
-	uint	read_cols_					= MipMap[ (write_layer+1)*8 + MiM_READ_COLS];
-	uint	read_rows_					= uint_params[MM_PIXELS];
-	uint	layer_offset				= MipMap[write_layer*8 + MiM_READ_OFFSET];
-	uint	stop_offset					= layer_offset + (read_rows_ -1) * buf_width + read_cols_;
+	uint	read_cols_					= MipMap[ write_layer*8 + MiM_READ_COLS];
+	uint	read_rows_					= MipMap[ write_layer*8 + MiM_READ_ROWS];  //uint_params[MM_PIXELS];
+
+	uint	stop_offset					= write_offset + (read_rows_ -1) * buf_width + read_cols_;
 																															if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL:propagate_depth_next_layer(..) chk1" <<
 																																"\nlookup_table_read_offset 	= "		<<lookup_table_read_offset<<
-																																"\nlookup_table_write_offset 	= "		<<lookup_table_write_offset<<
+																																"\nlookup_table_write_offset 	= "		<<write_offset<<
 																																"\nbuf_width                	= "		<<buf_width<<
 																																"\npatch_height             	= "		<<patch_height<<
 																																"\nstop_offset              	= "		<<stop_offset<<
@@ -161,14 +161,14 @@ void RunCL::propagate_depth_next_layer(uint write_layer ){	// layer = write laye
 																																endl<<flush;
 																															}
 	_clSetKernelArg( kernel, 0, sizeof(int),						&lookup_table_read_offset,							fname);		// __private	const uint	lookup_table_read_offset,	//0
-	_clSetKernelArg( kernel, 1, sizeof(int),						&lookup_table_write_offset,							fname);		// __private	const uint	lookup_table_write_offset,	//1
+	_clSetKernelArg( kernel, 1, sizeof(int),						&write_offset,										fname);		// __private	const uint	lookup_table_write_offset,	//1
 	_clSetKernelArg( kernel, 2, sizeof(int),						&buf_width,											fname);		// __private	uint		buf_width,					//2		mm_cols, i.e. width of the buffer holding the image pyramid
 	_clSetKernelArg( kernel, 3, sizeof(int),						&patch_height,										fname);		// __private	uint		patch_height,				//3
 	_clSetKernelArg( kernel, 4, sizeof(int),						&stop_offset,										fname);		// __private	uint		stop_offset,				//4
 	_clSetKernelArg( kernel, 5, sizeof(cl_mem),						&patch_lookup_table_buf,							fname);		// __constant 	float4*		lookup_table,				//5
 	_clSetKernelArg( kernel, 6, sizeof(cl_mem),						&depth_mem,											fname);		// __global 	float*		img							//6
 
-	size_t	threads_to_launch	= block_size;						// NB could be a problem on AMD GPUs with minmum 64 threads, not 32.
+	size_t	threads_to_launch	= patch_num_threads[write_layer+1];
 	size_t	local_work_size_	= block_size;
 
 	_clEnqueueNDRangeKernel(										// NB depth iteration is internal to the kernel within the layer.  Regularization and propagation to next layer requires further kernels.
