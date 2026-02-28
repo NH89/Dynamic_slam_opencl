@@ -884,6 +884,30 @@ void RunCL::DownloadAndSaveVolume(cl_mem buffer, std::string count, std::filesys
 }
 
 
+
+void RunCL::DownloadAndSaveDepthUpdate( uint layer  ){
+	stringstream ss;
+	ss << "ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_DepthUpdate__()";
+	stringstream ss_path;
+	bool show					= false;
+	float max_range				= -1;
+	uint vol_layers				= 1;
+	bool old_tiff				= tiff;
+	tiff						= true;
+
+	uint depth_iter_per_layer	= 3;
+	uint cols					= MipMap[ (layer+2)*8 + MiM_READ_COLS];
+	uint rows					= (MipMap[ (layer+2)*8 + MiM_READ_ROWS] + 1)	*  depth_iter_per_layer;
+
+	cv::Size depthUpdate_size( cols, rows ) ;
+	size_t	depthUpdate_bytes	= cols * rows * sizeof(cl_float2);
+
+	DownloadAndSave_2Channel_volume( SE3_rho_map_mem, ss.str( ), paths.at( "SE3_rho_map_mem"),	depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, show, max_range,	vol_layers );
+	DownloadAndSave_2Channel_volume( depth_mem_temp,  ss.str( ), paths.at( "depth_mem_temp"),	depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, show, max_range,	vol_layers );
+
+	tiff = old_tiff;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////// # TO DO New way: generic RunCL::DownloadAndSave_buffer(...) , and specialized calling functions.
 

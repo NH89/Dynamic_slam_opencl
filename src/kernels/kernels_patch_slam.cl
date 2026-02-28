@@ -54,10 +54,10 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 
 	__constant	uint8*		mipmap_params,			//5
 	__constant	uint*		uint_params,			//6
-	__constant 	float2*		SE3_map,				//7
+	__constant	float2*		SE3_map,				//7
 
-	__global 	float4*		lookup_table,			//8
-	__global 	float4*		img,					//9
+	__global	float4*		lookup_table,			//8
+	__global	float4*		img,					//9
 	__global	float*		depth_map,				//10	// current frame depth, now stored as inv_depth
 
 	//Outputs:
@@ -154,8 +154,8 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 // 																															}
 */
 			for (uint j=0; j<6; j++) {
-				Hessian_pvt_arr[row_in_block][i][j]= Jacobian[i] * Jacobian[j];	// Gauss-Newton approx H = J.transpose * J  // TO DO compute and sum lower triangle only.
-				Hessian_pvt_arr[row_in_block][i][j].w =1.0f;
+				Hessian_pvt_arr[row_in_block][i][j]		= Jacobian[i] * Jacobian[j];	// Gauss-Newton approx H = J.transpose * J  // TO DO compute and sum lower triangle only.
+				Hessian_pvt_arr[row_in_block][i][j].w 	=1.0f;
 /*
 // 																															if (lid==0 && row_in_block==0 && group_id==0 ){		// ### Debugging ###
 // 																																printf("   Hessian[i%d][j%d]=%2.10f,   ",i, j, Hessian_pinv_pvt_arr[row_in_block][i][j].x );

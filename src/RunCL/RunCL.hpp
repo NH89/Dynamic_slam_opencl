@@ -253,6 +253,7 @@ public:
 	void SaveMat(cv::Mat temp_mat, int type_mat, std::filesystem::path folder_tiff, bool show, float max_range, std::string mat_name, std::string count);
 	void DownloadAndSaveVolume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, bool exception_tiff=false );
 
+	void DownloadAndSaveDepthUpdate( uint layer  );
 
 	////////////////////////////////////// RunCL_load_image.cpp
 

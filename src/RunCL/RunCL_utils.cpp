@@ -23,16 +23,23 @@ void RunCL::_clEnqueueNDRangeKernel(	// TODO will become obsolete when all kerne
 		NULL,
 		&ev
 	);
+	cout <<"\nRunCL::_clEnqueueNDRangeKernel  chk 1 "<<fname<<flush;
 	if (res != CL_SUCCESS)	{ cout << "\n"<<fname<<"  res = " << checkerror(res) <<"\n"<<flush; exit_(res);}
 
+	cout <<"\nRunCL::_clEnqueueNDRangeKernel  chk 2 "<<fname<<flush;
 	_cl_flush_finish(_queue,  fname);
+
+	cout <<"\nRunCL::_clEnqueueNDRangeKernel  finished "<<fname<<flush;
 }
 
 
 void RunCL::_cl_flush_finish(cl_command_queue	_queue,  string fname){
 	cl_int status;
+	cout <<"\nRunCL::_cl_flush_finish  chk 0 "<<fname<<flush;
 	status = clFlush(_queue); 				if (status != CL_SUCCESS)	{ cout << "\n"<<fname<<"  clFlush(m_queue) status = " << checkerror(status) <<"\n"<<flush; 	exit_(status);}
+	cout <<"\nRunCL::_cl_flush_finish  chk 1 "<<fname<<flush;
 	status = clFinish(_queue); 				if (status != CL_SUCCESS)	{ cout << "\n"<<fname<<"  clFinish(m_queue)="<<status<<" "<<checkerror(status)<<"\n"<<flush; exit_(status);}
+	cout <<"\nRunCL::_cl_flush_finish  finished "<<fname<<flush;
 }
 
 

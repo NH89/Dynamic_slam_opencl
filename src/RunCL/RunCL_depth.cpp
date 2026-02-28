@@ -26,6 +26,20 @@ void RunCL::update_depth( uint out_block_size, uint layer){
 	uint	ST3_u_step					= patch_ST3_hessian_start_idx[layer][0][1] - ST3_offset;
 	uint	ST3_v_step					= patch_ST3_hessian_start_idx[layer][1][0] - ST3_offset;
 
+	size_t	threads_to_launch			= patch_num_threads[layer];
+	size_t	local_work_size_			= block_size;									// Could be changed to an integer multiple, i.e. use "RunCL::local_work_size", beware numbers not multiples of out_block_size.
+	uint	local_mem_size				= (block_size * local_work_size_)/(out_block_size^2);
+
+	// Zero output buffers
+	float minus_one_f					=-1.0f;
+	uint depth_iter_per_layer			= 3;
+	uint cols							= MipMap[ (layer+2)*8 + MiM_READ_COLS];
+	uint rows							= (MipMap[ (layer+2)*8 + MiM_READ_ROWS] + 1)	*  depth_iter_per_layer;
+	size_t	depthUpdate_bytes			= cols * rows * sizeof(cl_float2);
+
+	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, &minus_one_f, sizeof(float), 0, depthUpdate_bytes, fname   );
+	_clEnqueueFillBuffer( uload_queue, depth_mem_temp,  &minus_one_f, sizeof(float), 0, depthUpdate_bytes, fname   );
+
 	// constant buffers uploaded
 
 	//Inputs:
@@ -51,7 +65,7 @@ void RunCL::update_depth( uint out_block_size, uint layer){
 	_clSetKernelArg( kernel, 15, sizeof(cl_mem),					&cur_frames_k2kbuf,									fname);		// __constant	float16*	inv_k2k,				//15		// transforms for 4 past frames,  k2k_buf
 	_clSetKernelArg( kernel, 16, sizeof(cl_mem),					&cur_frames_st3buf,									fname);		// __constant	float4*		st3,					//16		// array of pose transforms to the set previous frames
 	_clSetKernelArg( kernel, 17, sizeof(cl_mem),					&patch_lookup_table_buf,							fname);		// __constant 	float4*		lookup_table,			//17		// should ideally be a constant.
-	_clSetKernelArg( kernel, 18, sizeof(cl_mem),					&SE3_map_mem,										fname);		// __constant 	float4*		SE3_map,				//18		// _cur_frame
+	_clSetKernelArg( kernel, 18, sizeof(cl_mem),					&SE3_grad_map_mem,									fname);		// __constant 	float4*		SE3_grad_map,			//18		// _cur_frame
 
 	_clSetKernelArg( kernel, 19, sizeof(cl_mem),					&current_frames[current_frames_idx[0]].img_buf,		fname);		// __global		float4*		img_cur,				//19		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
 	_clSetKernelArg( kernel, 20, sizeof(cl_mem),					&current_frames[current_frames_idx[1]].img_buf,		fname);		// __global		float4*		img_past_0,				//20
@@ -69,18 +83,18 @@ void RunCL::update_depth( uint out_block_size, uint layer){
 
 	// //outputs
 	_clSetKernelArg( kernel, 30, sizeof(cl_mem), 					&SE3_rho_map_mem,									fname);		// __global		float2*		Rho_,					//30	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
-	_clSetKernelArg( kernel, 31, sizeof(cl_float2)*local_work_size,	NULL,												fname);		// __local		float2*		local_rho,				//31	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
+	_clSetKernelArg( kernel, 31, sizeof(cl_float2)*local_mem_size,	NULL,												fname);		// __local		float2*		local_rho,				//31	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
 
 	_clSetKernelArg( kernel, 32, sizeof(cl_mem), 					&depth_mem_temp,									fname);		// __global		float2*		inv_depth_incr,			//32
-	_clSetKernelArg( kernel, 33, sizeof(cl_float2)*local_work_size, NULL,												fname);		// __local		float*		local_depth_incr,		//33
-	_clSetKernelArg( kernel, 34, sizeof(uint),						NULL,												fname);		// __local		float2*		local_J_inv_d			//34
+	_clSetKernelArg( kernel, 33, sizeof(float)*local_mem_size,		NULL,												fname);		// __local		float*		local_depth_incr,		//33
+	_clSetKernelArg( kernel, 34, sizeof(cl_float2)*local_mem_size,	NULL,												fname);		// __local		float2*		local_J_inv_d			//34
 
-	size_t	threads_to_launch	= patch_num_threads[layer];
-	size_t	local_work_size_	= block_size;
+
 																																if( verbosity>local_verbosity_threshold) {
 																																	cout<<"\n\nRunCL::update_depth()_chk1"<<
 																																	"\nthreads_to_launch   = "<<threads_to_launch<<
 																																	"\nlocal_work_size_    = "<<local_work_size_<<
+																																	"\nlocal_mem_size      = "<<local_mem_size<<
 																																	"\nread_offset_        = "<<read_offset_<<
 																																	"\nlayer_offset        = "<<layer_offset<<
 																																	"\nlookup_table_offset = "<<lookup_table_offset<<
@@ -101,6 +115,8 @@ void RunCL::update_depth( uint out_block_size, uint layer){
 	);
 																																if( verbosity>local_verbosity_threshold) {
 																																	cout<<"\n\nRunCL::update_depth()_finished #############################################################"<<flush;
+																																	DownloadAndSaveDepthUpdate( layer  );
+																																	/*
 																																	int offset			=	MipMap[layer*8 +  MiM_READ_OFFSET   ];
 																																	int rows			=	MipMap[layer*8 +  MiM_READ_ROWS   ];
 																																	int size_bytes		= rows * mm_width * 4*sizeof(float) ;
@@ -109,7 +125,7 @@ void RunCL::update_depth( uint out_block_size, uint layer){
 																																	cout<<"\nlayer = "<<layer<<", offset 	= "<<offset<<",  rows ="<<rows<<flush;
 
 																																	// read 1st elem of Jacobian to verify kernel summation.
-																																	ReadOutput(temp_mat.data, SE3_grad_map_mem, size_bytes, offset*4*sizeof(float)   );// , 0/*offset*/
+																																	ReadOutput(temp_mat.data, SE3_grad_map_mem, size_bytes, offset*4*sizeof(float)   );// , 0  //offset
 
 																																	cl_float4 sum_J1	= {{0.0f}};
 																																	cl_float4 sum_H11	= {{0.0f}};
@@ -131,6 +147,7 @@ void RunCL::update_depth( uint out_block_size, uint layer){
 																																	cout<<"\n\n##### layer = "<<layer<<", SE3_grad_map_mem sum_J1 = "<<sum_J1.w<<", "<<sum_J1.x<<", "<<sum_J1.y<<", "<<sum_J1.z
 																																													<<",    sum_H11 = "<< sum_H11.w<<", "<<sum_H11.x<<", "<<sum_H11.y<<", "<<sum_H11.z
 																																	<<endl<<endl<<flush;
+																																	*/
 																																}
 }
 
