@@ -75,14 +75,16 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 	uint			v									= lookup_ref.y;								// read_row, NB _not_ constant
 
 	const	uint	out_cols							= read_cols_/out_block_size;
-	const	uint	write_layer_pixels					= (layer_pixels / (out_block_size^2) ) + out_cols;
+	const	uint	out_rows							= read_rows_/out_block_size;
 
-	uint	write_index									= u/out_block_size	+ (v/out_block_size)*mm_cols;
+	const	uint	write_layer_pixels					= (out_rows + 1) * out_cols;																		// (layer_pixels / (out_block_size * out_block_size) ) + out_cols;
+			uint	write_index							= u/out_block_size	+ (v/out_block_size)*out_cols;
+
 	uint	thread_lidi_offset							= (lid / out_block_size) * (block_size	/ out_block_size);
 
 	float	inv_depth_incr_arr[	block_size]				= {0.0f};
-	float4	Jacobian_pvt_arr[	block_size][6]			= {{zero_f4}};								// pvt variable for values in this column.
-	float4	Hessian_pvt_arr[	block_size][6][6]		= {{{zero_f4}}};
+	//float4	Jacobian_pvt_arr[	block_size][6]			= {{zero_f4}};								// pvt variable for values in this column.
+	//float4	Hessian_pvt_arr[	block_size][6][6]		= {{{zero_f4}}};
 
 	float2	rho_pvt_arr[		block_size]				= {zero_f2};								// pvt variable for values in this column.
 	float4	rho_pvt_flt4								= zero_f4;
@@ -99,16 +101,39 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 	local_rho[					lid]					= zero_f2;
 	local_J_inv_d[				lid]					= zero_f2;
 																																						//if( group_id==1 /*lid==0*/ ){printf("\n__kernel void update_depth(..) chk 0 ####### global_id_uint=%d,  lid=%d,  group_id=%d,  ", global_id_uint, lid, group_id );}
+																																						if(global_id_uint==0){ printf("\n__kernel void update_depth(..) write_layer_pixels %d	= (layer_pixels %d / (out_block_size %d ^2) ) + out_cols %d ",\
+																																																						write_layer_pixels,		   layer_pixels,	  out_block_size,			out_cols);
+
+																																												printf("\n		write_index	%d		= u %d	/out_block_size %d	+ (v %d /out_block_size %d	) *out_cols %d ",\
+																																																write_index			, u		,out_block_size		,  v	,out_block_size		,  out_cols );
+																																						}
+
 	if( (lid	%	out_block_size) ==0 ){
-		for(int i=0; i<(block_size/out_block_size); i++){ local_depth_incr[	thread_lidi_offset + i]				= 0.0f; }
+		for(int i=0; i<(block_size/out_block_size); i++){	local_depth_incr[	thread_lidi_offset + i]				= 0.0f; }
 	}
-																																						if( u==(read_cols_/2) && v==(read_rows_/2) /*global_id_uint==0*/){ printf("\n__kernel void update_depth(..) chk 0.5,  frame_count=%u,  max_frames=%u,  reduction=%f,  read_index=%u, write_index=%u,  global_id_uint=%d", \
-																																							 frame_count, 	  max_frames, 	  reduction, 	 read_index,  	write_index,  global_id_uint );
+																																						if( u==(read_cols_/2) && v==(read_rows_/2) /*global_id_uint==0*/){
+																																							printf("\n__kernel void update_depth(..) chk 0.5,  frame_count=%u,  max_frames=%u,  reduction=%f,  read_index=%u, write_index=%u,  global_id_uint=%d", \
+																																							 													frame_count, 	  max_frames, 	  reduction, 	 read_index,  	write_index,  global_id_uint );
 																																						}
 	barrier(CLK_LOCAL_MEM_FENCE );
 	////////////////////////////////////////////////////////////////////////////
 	uint depth_iter_per_layer	 = 	3;
 	for (uint iter=0; iter<depth_iter_per_layer ; iter++, write_index+=write_layer_pixels  ){
+		for (int i=0; i<block_size; i++){
+			inv_depth_incr_arr[		i]				= 0.0f;
+			rho_pvt_arr[			i]				= zero_f2;								// pvt variable for values in this column.
+			J_inv_d[				i]				= 0;
+			img_cur_pvt[			i]				= zero_f4;								// pvt variable for values in this column.
+		}
+		J_inv_d_pvt									=  0;
+		rho_pvt_flt4								= zero_f4;
+		rho_pvt_flt2								= zero_f2;
+		old_px										= zero_f4;
+		intersection								= false;
+		print_ 										= false;
+		local_rho[					lid]			= zero_f2;
+		local_J_inv_d[				lid]			= zero_f2;
+
 		for (uint row_in_block=0; (row_in_block<block_size)&&(read_index<=stop_offset&&read_index>0); row_in_block++, v++,  read_index +=mm_cols){		// stop offset prevents bottom row patches from overrunning the bottom of the image layer.
 																																						// NB readindex may be 0 if not in range according to lookup table.
 																																						if(  u==(read_cols_/2) && v==(read_rows_/2) /*global_id_uint==0*/){
@@ -194,15 +219,18 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 		if( fmod((float)lid,out_block_size) == 0 ){																								// selects columns i.e. threads within the workgroup
 																																						//if(  group_id==1 /*lid==0*/ ){printf("\n__kernel void update_depth(..) chk 7,  step=%d, write_index(%d),  global_id_uint=%d,\n",  step,  write_index, global_id_uint );}
 
-			for (uint block_row=0, write_block_row	= 0; block_row < block_size ; block_row += step*2, write_block_row++){																					// per iteration results
+			for (uint block_row=0, write_block_row	= 0; block_row < block_size ; block_row += step, write_block_row++){																					// per iteration results
 																							uint offset_1 							= write_index		+ write_block_row*out_cols; 								//if(  group_id==1 /*lid==0*/ ){printf("\n__kernel void update_depth(..) chk 8,  offset_1=%d, global_id_uint=%d,", offset_1, global_id_uint);}
-									/* for debugging */										Rho_[				offset_1]			= rho_pvt_arr[		block_row ];												// __global float2*  tracking_num_samples*2*mm_size_bytes_C4,   SE3_rho_map_mem,
+									/* for debugging */										float2 debug							=	{ (float)global_id_uint, (float)write_block_row };
+																							Rho_[				offset_1]			= rho_pvt_arr[		block_row ];	//debug; //											// __global float2*  tracking_num_samples*2*mm_size_bytes_C4,   SE3_rho_map_mem,
 
 																							uint offset_2							= thread_lidi_offset		+ (block_row	/	out_block_size);				//if(  group_id==1 /*lid==0*/ ){printf("\n__kernel void update_depth(..) chk 9,  offset_2=%d, global_id_uint=%d,", offset_2, global_id_uint);}
 									/* for computation */									local_depth_incr[	offset_2]			+= J_inv_d[			block_row ].x	/	J_inv_d[	block_row ].y;				// __local float*  sizeof(cl_float2)*local_work_size,
 
-																							float2 incr								= { local_depth_incr[	offset_2],		J_inv_d[	block_row ].y  };
+																							float2 incr								= { local_depth_incr[	offset_2],		J_inv_d[	block_row ].y  }; // { (float)lid, (float)group_id }; // offset_1 , iter  //
 									/* for debugging */										inv_depth_incr[ 	offset_1]			= incr;																			// __global float*  mm_size_bytes_C1,    depth_mem_temp,
+																																						if(global_id_uint==0){ printf("\n__kernel void update_depth(..) offset_1 %d	= write_index %d		+ write_block_row %d  *out_cols %d   ",\
+																																																						offset_1 ,	  write_index			, write_block_row	  ,out_cols	); }
 			}
 		}
 		barrier(CLK_LOCAL_MEM_FENCE );
