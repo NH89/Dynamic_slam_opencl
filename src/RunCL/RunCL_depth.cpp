@@ -28,7 +28,7 @@ void RunCL::update_depth( uint out_block_size, uint layer){
 
 	size_t	threads_to_launch			= patch_num_threads[layer];
 	size_t	local_work_size_			= block_size;									// Could be changed to an integer multiple, i.e. use "RunCL::local_work_size", beware numbers not multiples of out_block_size.
-	uint	local_mem_size				= (block_size * local_work_size_)/(out_block_size^2);
+	uint	local_mem_size				= (block_size * local_work_size_)/(pow( out_block_size, 2) ); // i.e. one entry per 4x4 pixel patch.
 
 	// Zero output buffers
 	float minus_one_f					=-1.0f;
