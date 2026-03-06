@@ -60,15 +60,20 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 	const	uint	lid									= get_local_id(0);
 	const	uint	group_id							= get_group_id(0);
 	const	uint	local_size							= get_local_size(0);
-// 																																						if(global_id_uint==0){
-// 																																							printf("\n__kernel void update_depth(..) st3=[0]=(%f,	%f,	%f,	%f),  \ninv_k2k[0]=\n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f)",\
-// 																																								st3[0].s0,      st3[0].s1,      st3[0].s2,      st3[0].s3,\
-// 																																								inv_k2k[0].s0,  inv_k2k[0].s1,  inv_k2k[0].s2,  inv_k2k[0].s3,\
-// 																																								inv_k2k[0].s4,  inv_k2k[0].s5,  inv_k2k[0].s6,  inv_k2k[0].s7,\
-// 																																								inv_k2k[0].s8,  inv_k2k[0].s9,  inv_k2k[0].sA,  inv_k2k[0].sB,\
-// 																																								inv_k2k[0].sC,  inv_k2k[0].sD,  inv_k2k[0].sE,  inv_k2k[0].sF\
-// 																																							);
-// 																																						}
+																																					if(global_id_uint==0){
+																																						for (uint 		past_frame_idx=0; past_frame_idx < max_frames; past_frame_idx++){
+																																							printf("\n__kernel void update_depth(..) st3=[%d]=(%f,	%f,	%f,	%f),  \ninv_k2k[%d]=\n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f)",\
+																																								past_frame_idx,\
+																																								st3[past_frame_idx].s0,      st3[past_frame_idx].s1,      st3[past_frame_idx].s2,      st3[past_frame_idx].s3,\
+																																								past_frame_idx,\
+																																								inv_k2k[past_frame_idx].s0,  inv_k2k[past_frame_idx].s1,  inv_k2k[past_frame_idx].s2,  inv_k2k[past_frame_idx].s3,\
+																																								inv_k2k[past_frame_idx].s4,  inv_k2k[past_frame_idx].s5,  inv_k2k[past_frame_idx].s6,  inv_k2k[past_frame_idx].s7,\
+																																								inv_k2k[past_frame_idx].s8,  inv_k2k[past_frame_idx].s9,  inv_k2k[past_frame_idx].sA,  inv_k2k[past_frame_idx].sB,\
+																																								inv_k2k[past_frame_idx].sC,  inv_k2k[past_frame_idx].sD,  inv_k2k[past_frame_idx].sE,  inv_k2k[past_frame_idx].sF\
+																																							);
+																																						}
+																																					}
+																																					barrier(CLK_GLOBAL_MEM_FENCE );
 	const	float4	lookup_ref							= lookup_table[global_id_uint + lookup_table_offset];
 	const	uint	read_index_start					= floor(lookup_ref.z);
 			uint	read_index							= read_index_start;
@@ -152,10 +157,10 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 			for (uint 		past_frame_idx=0; past_frame_idx < max_frames; past_frame_idx++){															// step though past frames //////
 				float		u2f,	v2f;																												// current frame
 				px_k2k( 	inv_k2k[past_frame_idx],  reduction,  v,  u,  cur_inv_depth,  &u2f,  &v2f, print_ );											// Where to sample the past image frame //////
-																														if( lid /*group_id*/==1 /*u==(read_cols_/2) && v==(read_rows_/2)*/ /*global_id_uint==0*/){
-																							printf("\n__kernel void update_depth(..) chk 2,  reduction=%f,  past_frame_idx=%u, iter=%u,  group_id=%d,  row_in_block=%u, read_index=%u, inv_depth=%f,    u=%u, v=%u, u2f=%f,  v2f=%f,  read_cols_=%u,  read_rows_=%u, global_id_uint=%d, ",\
-																																			  reduction,    past_frame_idx,    iter,     group_id,     row_in_block,    read_index,    inv_depth,       u,    v,    u2f,     v2f,     read_cols_,     read_rows_ ,   global_id_uint );
-																							}
+// 																														if( lid /*group_id*/==1 /*u==(read_cols_/2) && v==(read_rows_/2)*/ /*global_id_uint==0*/){
+// 																							printf("\n__kernel void update_depth(..) chk 2,  reduction=%f,  past_frame_idx=%u, iter=%u,  group_id=%d,  row_in_block=%u, read_index=%u, inv_depth=%f,    u=%u, v=%u, u2f=%f,  v2f=%f,  read_cols_=%u,  read_rows_=%u, global_id_uint=%d, ",\
+// 																																			  reduction,    past_frame_idx,    iter,     group_id,     row_in_block,    read_index,    inv_depth,       u,    v,    u2f,     v2f,     read_cols_,     read_rows_ ,   global_id_uint );
+// 																							}
 				const uint margin							= 4;
 				intersection 								=	(u>margin)		&& (u<=read_cols_-margin)		&& (v>margin)		&& (v<=read_rows_-margin)	&& \
 																(u2f>margin)	&& (u2f<=read_cols_-margin)		&& (v2f>margin)		&& (v2f<=read_rows_-margin)	&& (global_id_uint<=layer_pixels);	// if images overlap

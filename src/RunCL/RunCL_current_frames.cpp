@@ -8,6 +8,8 @@ Matx44f  RunCL::update_pose_bufs_cur_frames(  ){								// To be called after tr
 		float		cur_frames_k2k[num_current_frames*16];
 		cl_float4	cur_frames_st3[num_current_frames];
 
+		Matx44f	inv_pose_gt	=  getInvPose(current_frames[	current_frames_idx[0]	].pose_gt);
+
 		Matx44f pose;
 		float16arry_To_Matx44f( &current_frames[	current_frames_idx[0]	].pose[0],  pose );
 																																			if(verbosity>local_verbosity_threshold) {
@@ -15,20 +17,31 @@ Matx44f  RunCL::update_pose_bufs_cur_frames(  ){								// To be called after tr
 																																				PRINT_MATX44F( pose , "pose" );
 																																				for( int frame=0;	frame<num_current_frames;	frame++){
 																																					cout<<"\nframe = "<< frame;
+																																					cout<<"\ncurrent_frames_idx["	<<frame<<"] = "<<current_frames_idx[frame]<<flush;
+																																					cout<<"\ndataset_frame_num = "	<<current_frames[ current_frames_idx[frame] ].dataset_frame_num<<flush;
+																																					cout<<"\nframe_count = "		<<current_frames[ current_frames_idx[frame] ].frame_count<<flush;
+																																					cout<<"\nframe_data_index = "	<<current_frames[ current_frames_idx[frame] ].frame_data_index<<flush;
 																																					PRINT_MATX44F( current_frames[ current_frames_idx[frame] ].pose_0_to_this_frame,  );
+																																					PRINT_MATX44F( current_frames[ current_frames_idx[frame] ].pose_gt,  );
 																																				}
 																																			}
-		for( int frame=0;	frame<num_current_frames;	frame++){
-			Matx44f new_frame_pose									= current_frames[ current_frames_idx[frame] ].pose_0_to_this_frame  *  pose;
+		for( int frame=1;	frame<num_current_frames;	frame++){
+
+			Matx44f  gt_pose_0_to_this_frame  = current_frames[ current_frames_idx[frame] ].pose_gt * inv_pose_gt;
+
+			Matx44f 									new_frame_pose			= current_frames[ current_frames_idx[frame] ].pose_0_to_this_frame  *  pose;
 			current_frames[ current_frames_idx[frame] ].pose_0_to_this_frame 	= new_frame_pose;
 
-			Matx44f new_k2k											= current_frames[ current_frames_idx[frame] ].K	* new_frame_pose * current_frames[ current_frames_idx[frame] ].inv_K;
+			Matx44f 									new_k2k					= current_frames[ current_frames_idx[frame] ].K	* new_frame_pose * current_frames[ current_frames_idx[frame] ].inv_K;
 
-			Matx44f_To_float16arry(		new_k2k,					&cur_frames_k2k[frame*16] );
-			cur_frames_st3[frame]									= {{	new_frame_pose(0,3),	new_frame_pose(1,3),	new_frame_pose(2,3),	0.0f	}};
+			Matx44f_To_float16arry(						new_k2k,				&cur_frames_k2k[frame*16] );
+			cur_frames_st3[								frame]					= {{	new_frame_pose(0,3),	new_frame_pose(1,3),	new_frame_pose(2,3),	0.0f	}};
+
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout<<"\n\nRunCL::update_pose_bufs_cur_frames(..) chk_2\n"<<flush;
 																																				cout<<"\nframe = "<<frame<<flush;
+																																				cout<<"\ncurrent_frames_idx["<<frame<<"] = "<<current_frames_idx[frame]<<flush;
+																																				PRINT_MATX44F( gt_pose_0_to_this_frame, );
 																																				PRINT_MATX44F( new_frame_pose, );
 																																				PRINT_MATX44F( current_frames[ current_frames_idx[frame] ].K, );
 																																				PRINT_MATX44F( current_frames[ current_frames_idx[frame] ].inv_K, );
@@ -89,8 +102,11 @@ void RunCL::initialize_current_frames(){
 }
 
 void RunCL::initialize_new_frame(){
-	int idx		= 0;
-	int idx2	= 1;
+	int idx		= current_frames_idx[0];
+	int idx2	= current_frames_idx[1];
+																					cout<<"\n\nRunCL::initialize_new_frame()"<<flush;
+																					cout<<"\ncurrent_frames_idx[0] = "<<current_frames_idx[0]<<flush;
+																					cout<<"\ncurrent_frames_idx[1] = "<<current_frames_idx[1]<<endl<<flush;
 	//current_frames[idx].img_buf			= imgmem[idx];			// needs to load new frame - done where ?
 
 	//current_frames[idx].r_vel_buf			= velmap[idx];			// TODO needs to sample & interpolate previous 		// velocity _relative_ to the camera.
@@ -104,17 +120,17 @@ void RunCL::initialize_new_frame(){
 		current_frames[idx].invHessian[i]	= Matx66f::eye();
 	}
 
-	current_frames[ current_frames_idx[idx] ].dataset_frame_num		= current_frames[ current_frames_idx[idx2] ].dataset_frame_num + 1;
-	current_frames[ current_frames_idx[idx] ].frame_count			= current_frames[ current_frames_idx[idx2] ].frame_count;
-	current_frames[ current_frames_idx[idx] ].frame_data_index		= current_frames[ current_frames_idx[idx2] ].frame_data_index;
+	current_frames[ idx ].dataset_frame_num		= current_frames[ idx2 ].dataset_frame_num + 1;
+	current_frames[ idx ].frame_count			= current_frames[ idx2 ].frame_count;
+	current_frames[ idx ].frame_data_index		= current_frames[ idx2 ].frame_data_index;
 
-	current_frames[idx].pose_0_to_this_frame 						= Matx44f::eye();
-
+	current_frames[ idx ].pose_0_to_this_frame 						= Matx44f::eye();
+																					PRINT_MATX44F(current_frames[ idx ].pose_0_to_this_frame , );
 	for (int i=0; i<16; i++){
-		current_frames[ current_frames_idx[idx] ].pose[i]			= current_frames[ current_frames_idx[idx2] ].pose[i];
+		current_frames[ idx ].pose[i]			= current_frames[ idx2 ].pose[i];
 	}
-	current_frames[ current_frames_idx[idx] ].K						= current_frames[ current_frames_idx[idx2] ].K;
-	current_frames[ current_frames_idx[idx] ].inv_K					= current_frames[ current_frames_idx[idx2] ].inv_K;
+	current_frames[ idx ].K						= current_frames[ idx2 ].K;
+	current_frames[ idx ].inv_K					= current_frames[ idx2 ].inv_K;
 }
 
 
@@ -124,7 +140,10 @@ void RunCL::update_current_frames_idx(){											// Call immediately _before_ 
 		uint mod_8  	= fmod(mod_16,8);
 		uint mod_4		= fmod(mod_8,4);
 		uint mod_2		= fmod(mod_4,2);
-
+																					cout<<"\n\nRunCL::update_current_frames_idx()"<<flush;
+																					for(int idx = 0; idx< num_current_frames; idx++){
+																						cout<<"\nidx="<<idx<<",  current_frames_idx["<<idx<<"] = "<<current_frames_idx[idx]<<flush;
+																					}
 		if ( (mod_8==0) || (frame_count<num_current_frames) ){						//cout<<"\n(mod_16==0) "; NB in first 4 frames keeps every frame until the array is full.
 			new_current_frames_idx[0] = current_frames_idx[4];
 			new_current_frames_idx[1] = current_frames_idx[0];
