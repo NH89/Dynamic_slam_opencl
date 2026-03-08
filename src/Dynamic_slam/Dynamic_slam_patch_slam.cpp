@@ -37,10 +37,10 @@ void Dynamic_slam::estimate_tracking(){
 	uint 	out_block_size 		= 4;
 	float	old_sum_rho_sq		= FLT_MAX-1;
 	float	factor				= -2.0f;
-	Matx44f	old_pose			= runcl.ReadOutput_44f( runcl.pose_buf );
-	Matx44f	old_k2k				= runcl.ReadOutput_44f( runcl.k2kbuf );
-	Matx44f newPose;
-	Matx44f newK2K;
+	Matx44f	old_pose			= Matx44f::eye();
+	Matx44f	old_k2k				= Matx44f::eye();
+	Matx44f newPose				= runcl.ReadOutput_44f( runcl.pose_buf );
+	Matx44f newK2K				= runcl.ReadOutput_44f( runcl.k2kbuf );
 																																		//for (uint out_block_size = 4/*32*/; out_block_size > 2; out_block_size /=2){
 	for (uint iter = 0; iter<SE_iter; iter++){
 		auto step_0 = high_resolution_clock::now();
@@ -50,6 +50,7 @@ void Dynamic_slam::estimate_tracking(){
 																																			uint	out_block_size		= 2;
 																																			uint	layer				= 0;
 																																			runcl.rho_sq( out_block_size, iter, layer	);	// For debugging, get a larger, finer Rho map
+																																			PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_pose, );
 																																		}
 		runcl.rho_sq( 			out_block_size, iter, 	(uint)layer );
 		runcl.reduce_patch_Rho( out_block_size, iter, 	(uint)layer );
@@ -71,6 +72,7 @@ void Dynamic_slam::estimate_tracking(){
 																			cout << "\nlayer = "	<<	layer;
 					old_sum_rho_sq			=	FLT_MAX-1;																				// Re-set old_sum_rho_sq for new layer
 				}
+																																		PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_pose, );
 				runcl.update_k2k_buf(		old_k2k,		old_pose);																	// Re-set to previous pose.
 																			cout<<endl<<flush;
 			}
