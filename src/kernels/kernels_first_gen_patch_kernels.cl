@@ -6,6 +6,7 @@
 __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 patches, and an integer multiple of 32 threads.
 													// Needs 16 elements of local mem per 32x32 patch, to pass data between threads in recursive square reduction.
 													// Needs 32 elem array of private mem per thread.
+	__private	uint		frame_idx,				//0
 	__private	uint		layer,					//0
 	__private	uint		cols_per_row,			//1
 	__private	uint		out_block_size,			//2
@@ -17,20 +18,20 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames,  k2k_buf
 
 	__global	float4*		img_cur,				//7		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
-	__global	float4*		img_past_0,				//8
-	__global	float4*		img_past_1,				//9
-	__global	float4*		img_past_2,				//10
-	__global	float4*		img_past_3,				//11
+	__global	float4*		img_past_1,				//8
+	__global	float4*		img_past_2,				//9
+	__global	float4*		img_past_3,				//10
+	__global	float4*		img_past_4,				//11
 
 	__global	float*		depth_map,				//12	// current frame depth, now stored as inv_depth
 	__global	float8*		g1p,					//13	// current frame g1mem
 	__global 	float4*		SE3_grad_map_cur_frame,	//14
 
 	__global	float4*		vel_cur,				//15	// multiple past frames.
-	__global	float4*		vel_past_0,				//16	// TO DO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
-	__global	float4*		vel_past_1,				//17
-	__global	float4*		vel_past_2,				//18
-	__global	float4*		vel_past_3,				//19
+	__global	float4*		vel_past_1,				//16	// TO DO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
+	__global	float4*		vel_past_2,				//17
+	__global	float4*		vel_past_3,				//18
+	__global	float4*		vel_past_4,				//19
 
 	//output
 	__global	float2*		Rho_,					//20	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
@@ -46,8 +47,8 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 	const float4 zero_f4							= {0.0f,0.0f,0.0f,0.0f};
 	const float2 zero_f2							= {0.0f,0.0f};
 
-	__global float4*	img_past[num_past_frames]	= { img_past_0, img_past_1, img_past_2, img_past_3 };
-	__global float4*	vel_past[num_past_frames]	= { vel_past_0, vel_past_1, vel_past_2, vel_past_3 };
+	__global float4*	img_past[num_current_frames]	= { img_cur, img_past_1, img_past_2, img_past_3, img_past_4 };
+	__global float4*	vel_past[num_current_frames]	= { vel_cur, vel_past_1, vel_past_2, vel_past_3, vel_past_4 };
 
 	uint  global_id_u 								= get_global_id(0);
 	uint  lid 										= get_local_id(0);
@@ -107,6 +108,11 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 // 	if (global_id_u < 1 /*num_past_frames*/){printf("\n__kernel void Rho_sq()  layer = %d,  read_index=%d,  read_index/mm_cols=%f ",
 // 																				layer,		read_index,  	(float)read_index/(float)mm_cols	);	}
 
+	if(global_id_u==0){
+		float16 k2k = inv_k2k[frame_idx];
+		printf("\n\n__kernel void Rho_sq(..) frame_idx=%u, layer=%u, inv_k2k[past_frame_idx]= \n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f, ", frame_idx, layer, \
+		k2k[0],k2k[1],k2k[2],k2k[3],	k2k[4],k2k[5],k2k[6],k2k[7],	k2k[8],k2k[9],k2k[10],k2k[11],	k2k[12],k2k[13],k2k[14],k2k[15]		);
+	}
 	local_rho[lid]									= zero_f2;
 	for (uint se3_dim=0; se3_dim<num_SE3_DoF; se3_dim++) {
 		local_SE3_incr[lid + se3_dim*local_size]	= zero_f2;
@@ -114,7 +120,7 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 																								// PATCH KERNEL //  TO DO need to transfer computation of Huber Norm weighting, Jacobian and Hessian here,
 																								// because Hessian must include weights and therefore be updated if weights change.
 	////////////////////////////////////////////////////////////////////////////				// transfer data from global memory.
-	for (uint past_frame_idx=0; past_frame_idx</*num_past_frames*/1; past_frame_idx++){			// step though past frames ///////////////////////////////////////////////////////////////////////////////
+	for (uint past_frame_idx=frame_idx; past_frame_idx</*num_past_frames*/frame_idx+1; past_frame_idx++){			// step though past frames ///////////////////////////////////////////////////////////////////////////////
 		for (uint row_in_block=0; row_in_block<block_size; row_in_block ++){					// step through rows of the patch, /////////////////////////////////////////////////////////////
 			float						u2_flt_1, 	v2_flt_1;									// current frame
 			uint read_index_row 		= read_index + row_in_block * mm_cols;

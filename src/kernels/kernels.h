@@ -22,7 +22,7 @@ __constant uint block_size				= BLOCK_SIZE;										// or send as __private arg
 __constant uint num_SE3_DoF				= NUM_SE3_DOF;
 __constant uint num_ST3_DoF				= NUM_ST3_DOF;
 
-__constant uint num_past_frames			= NUM_PAST_FRAMES;									// 1,2,4,8,16,32,64 // variable select window of 4 frames.
+__constant uint num_current_frames		= NUM_CURR_FRAMES;									// 1,2,4,8,16,32,64 // variable select window of 4 frames.
 
 
 

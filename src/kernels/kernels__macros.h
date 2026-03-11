@@ -48,7 +48,7 @@
 
 #define BLOCK_SIZE					32
 #define OUT_BLOCK_SIZE				4
-#define NUM_PAST_FRAMES				4
+#define NUM_CURR_FRAMES				5
 
 
 // LOCAL VERBOSITY FOR EACH KERNEL FILE ##############################################

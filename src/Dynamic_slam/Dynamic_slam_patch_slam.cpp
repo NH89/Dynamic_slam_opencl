@@ -12,8 +12,15 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 																																			cout << "\fDynamic_slam::estimate_SLAM() chk_0"
 																																			<<"  ##############################################################"<< flush;
 																																		}
-	estimate_tracking();
-	frame_data.back().frame_data.pose 	= runcl.update_pose_bufs_cur_frames( );																// NB these two lines are req because nextFrame() calls  runcl.set_cam_bufs(..), using frame_data.
+
+
+	estimate_tracking();																									cout<<"\nDynamic_slam::estimateSLAM() chk_0.1"<<flush;
+	Matx44f pose_temp 	= runcl.update_pose_bufs_cur_frames( );																cout<<"\nDynamic_slam::estimateSLAM() chk_0.2"<<flush;				// NB these two lines are req because nextFrame() calls  runcl.set_cam_bufs(..), using frame_data.
+	frame_data.back().frame_data.pose 	= pose_temp ;																		cout<<"\nDynamic_slam::estimateSLAM() chk_0.3"<<flush;
+
+	for( uint frame_index=0; frame_index<num_current_frames; frame_index++){													cout<<"\nDynamic_slam::estimateSLAM() chk_0.5 frame_index = "<<frame_index<<endl<<flush;
+		runcl.rho_sq( out_block_size, 10+frame_index, frame_index, 0, runcl.cur_frames_k2kbuf );	//iter, frame_idx, layer, cl_mem k2k_buf	);
+	}
 	float16arry_To_Matx44f(	 &runcl.current_frames[	runcl.current_frames_idx[0]	].k2k_0to1_est[0]	, frame_data.back().frame_data.K2K );
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\fDynamic_slam::estimate_SLAM() chk_1"<< flush;
@@ -34,13 +41,14 @@ void Dynamic_slam::estimate_tracking(){
 																																			<<"  ##############################################################"<< flush;
 																																		}
 	int		layer 				= SE3_start_layer;
+	uint 	frame_idx			= 1;
 	uint 	out_block_size 		= 4;
 	float	old_sum_rho_sq		= FLT_MAX-1;
 	float	factor				= -2.0f;
 	Matx44f	old_pose			= Matx44f::eye();
 	Matx44f	old_k2k				= Matx44f::eye();
 	Matx44f newPose				= runcl.ReadOutput_44f( runcl.pose_buf );
-	Matx44f newK2K				= runcl.ReadOutput_44f( runcl.k2kbuf );
+	Matx44f newK2K				= runcl.ReadOutput_44f( runcl.k2kbuf, cl_flt16_size ); 													// offset = current_frames_idx * cl_flt16_size
 																																		//for (uint out_block_size = 4/*32*/; out_block_size > 2; out_block_size /=2){
 	for (uint iter = 0; iter<SE_iter; iter++){
 		auto step_0 = high_resolution_clock::now();
@@ -49,10 +57,10 @@ void Dynamic_slam::estimate_tracking(){
 																																			<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
 																																			uint	out_block_size		= 2;
 																																			uint	layer				= 0;
-																																			runcl.rho_sq( out_block_size, iter, layer	);	// For debugging, get a larger, finer Rho map
+																																			runcl.rho_sq( out_block_size, iter, frame_idx, layer, runcl.k2kbuf	);	// For debugging, get a larger, finer Rho map
 																																			PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_pose, );
 																																		}
-		runcl.rho_sq( 			out_block_size, iter, 	(uint)layer );
+		runcl.rho_sq( 			out_block_size, iter, frame_idx,  	(uint)layer,  runcl.k2kbuf );
 		runcl.reduce_patch_Rho( out_block_size, iter, 	(uint)layer );
 		runcl.update_k2k_cpu( 							(uint)layer );																	// frame_data_GT.keyframe2pose for comparision only.
 		float		sum_rho		=	runcl.se3_rho_result.Rho.x;																			// currently .x colour channel only.
@@ -74,7 +82,7 @@ void Dynamic_slam::estimate_tracking(){
 				}
 																																		PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_pose, );
 				runcl.update_k2k_buf(		old_k2k,		old_pose);																	// Re-set to previous pose.
-																			cout<<endl<<flush;
+																			cout << endl << flush;
 			}
 		}else{
 			old_sum_rho_sq			=	sum_rho_sq;
@@ -118,6 +126,7 @@ void Dynamic_slam::estimate_tracking(){
 
 			runcl.update_k2k_buf(		newK2K,		newPose);
 																																		if( verbosity>local_verbosity_threshold ){
+																																			cout << "\nDynamic_slam::estimate_tracking() chk_5: ,  layer = "<<layer<<"##########"<<flush;
 																																			PRINT_MATX16F( deltas_matx[layer], );							PRINT_MATX16F( pose_update_cpu, );
 																																			PRINT_MATX16F( PToLie( LieToP_Matx(pose_update_cpu).inv() ), );
 																																			PRINT_MATX44F( newPose,	);										PRINT_MATX16F( PToLie( newPose ), );

@@ -3,7 +3,7 @@
 // patch kernels, but not using look up table /////////////////////////////////////////////////////////////////////////////////////////
 
 
-void RunCL::rho_sq( uint out_block_size, uint iter, uint layer  ){	// To be launched with 1 thread per col for 32x32 patches, and an integer multiple of 32 threads.
+void RunCL::rho_sq( uint out_block_size, uint iter, uint frame_idx, uint layer, cl_mem k2k_buf  ){	// To be launched with 1 thread per col for 32x32 patches, and an integer multiple of 32 threads.
 																	// Needs 16 elements of local mem per 32x32 patch, to pass data between threads in recursive square reduction.
 																	// Needs 32 elem array of private mem per thread.
 																	// Writes answer to SE3_rho_map_mem, BUT as float2
@@ -16,6 +16,7 @@ void RunCL::rho_sq( uint out_block_size, uint iter, uint layer  ){	// To be laun
 																																					<<",  out_block_size="		<<out_block_size
 																																					<<",  iter="				<<iter
 																																					<<",  layer="				<<layer
+																																					<<",  frame_idx="			<<frame_idx
 																																					<< flush;
 																																				float pose_ary[16];
 																																				ReadOutput( (uchar*)pose_ary, pose_buf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
@@ -117,37 +118,38 @@ void RunCL::rho_sq( uint out_block_size, uint iter, uint layer  ){	// To be laun
 																																					<< endl<<flush;
 																	 																		}
 	//input integers
-	_clSetKernelArg( kernel, 0, sizeof( uint),									&layer,	 												fname);		//__private		uint 		layer,					//0
-	_clSetKernelArg( kernel, 1, sizeof( uint),									&cols_per_row,											fname);		//__private		uint 		cols_per_row,			//1
-	_clSetKernelArg( kernel, 2, sizeof( uint),									&out_block_size,										fname);		//__private		uint 		out_block_size,			//2
+	_clSetKernelArg( kernel, 0, sizeof( uint),									&frame_idx,	 											fname);		//__private		uint 		layer,					//0
+	_clSetKernelArg( kernel, 1, sizeof( uint),									&layer,	 												fname);		//__private		uint 		layer,					//0
+	_clSetKernelArg( kernel, 2, sizeof( uint),									&cols_per_row,											fname);		//__private		uint 		cols_per_row,			//1
+	_clSetKernelArg( kernel, 3, sizeof( uint),									&out_block_size,										fname);		//__private		uint 		out_block_size,			//2
 //	_clSetKernelArg( kernel, 3, sizeof( cl_float2),								&delta_SE3,												fname);		//__private		float2		delta_SE3,				//3
 
-	_clSetKernelArg( kernel, 3, sizeof( cl_mem), 								&mipmap_buf,											fname);		//__constant	uint8*		mipmap_params,			//3
-	_clSetKernelArg( kernel, 4, sizeof( cl_mem), 								&uint_param_buf,										fname);		//__constant	uint*		uint_params,			//4
-	_clSetKernelArg( kernel, 5, sizeof( cl_mem), 								&fp32_param_buf,										fname);		//__constant	float*		fp32_params,			//5
-	_clSetKernelArg( kernel, 6, sizeof( cl_mem), 								&k2kbuf,												fname);		//__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames
+	_clSetKernelArg( kernel, 4, sizeof( cl_mem), 								&mipmap_buf,											fname);		//__constant	uint8*		mipmap_params,			//3
+	_clSetKernelArg( kernel, 5, sizeof( cl_mem), 								&uint_param_buf,										fname);		//__constant	uint*		uint_params,			//4
+	_clSetKernelArg( kernel, 6, sizeof( cl_mem), 								&fp32_param_buf,										fname);		//__constant	float*		fp32_params,			//5
+	_clSetKernelArg( kernel, 7, sizeof( cl_mem), 								&k2k_buf,												fname);		//__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames
 
-	_clSetKernelArg( kernel, 7, sizeof( cl_mem),								&current_frames[current_frames_idx[0]].img_buf,			fname);		//__global		float4*		img_cur,				//7		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
-	_clSetKernelArg( kernel, 8, sizeof( cl_mem), 								&current_frames[current_frames_idx[1]].img_buf,			fname);		//__global		float4*		img_past_0,				//8
-	_clSetKernelArg( kernel, 9, sizeof( cl_mem), 								&current_frames[current_frames_idx[2]].img_buf,			fname);		//__global		float4*		img_past_1,				//9
-	_clSetKernelArg( kernel,10, sizeof( cl_mem), 								&current_frames[current_frames_idx[3]].img_buf,			fname);		//__global		float4*		img_past_2,				//10
-	_clSetKernelArg( kernel,11, sizeof( cl_mem), 								&current_frames[current_frames_idx[4]].img_buf,			fname);		//__global		float4*		img_past_3,				//11
+	_clSetKernelArg( kernel, 8, sizeof( cl_mem),								&current_frames[current_frames_idx[0]].img_buf,			fname);		//__global		float4*		img_cur,				//7		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
+	_clSetKernelArg( kernel, 9, sizeof( cl_mem), 								&current_frames[current_frames_idx[1]].img_buf,			fname);		//__global		float4*		img_past_0,				//8
+	_clSetKernelArg( kernel,10, sizeof( cl_mem), 								&current_frames[current_frames_idx[2]].img_buf,			fname);		//__global		float4*		img_past_1,				//9
+	_clSetKernelArg( kernel,11, sizeof( cl_mem), 								&current_frames[current_frames_idx[3]].img_buf,			fname);		//__global		float4*		img_past_2,				//10
+	_clSetKernelArg( kernel,12, sizeof( cl_mem), 								&current_frames[current_frames_idx[4]].img_buf,			fname);		//__global		float4*		img_past_3,				//11
 																																																				// NB GT_depth loaded to depth_mem by void RunCL::loadFrameData( ..)
-	_clSetKernelArg( kernel,12, sizeof( cl_mem), 								&depth_mem,												fname);		//__global		float* 		depth_map,				//12	// current frame depth, now stored as inv_depth
-	_clSetKernelArg( kernel,13, sizeof( cl_mem), 								&g1mem,													fname);		//__global		float8* 	g1p,					//13	// current frame g1mem
-	_clSetKernelArg( kernel,14, sizeof( cl_mem), 								&SE3_grad_map_mem,										fname);		//__global 		float8*		SE3_grad_map_cur_frame,	//14
+	_clSetKernelArg( kernel,13, sizeof( cl_mem), 								&depth_mem,												fname);		//__global		float* 		depth_map,				//12	// current frame depth, now stored as inv_depth
+	_clSetKernelArg( kernel,14, sizeof( cl_mem), 								&g1mem,													fname);		//__global		float8* 	g1p,					//13	// current frame g1mem
+	_clSetKernelArg( kernel,15, sizeof( cl_mem), 								&SE3_grad_map_mem,										fname);		//__global 		float8*		SE3_grad_map_cur_frame,	//14
 
-	_clSetKernelArg( kernel,15, sizeof( cl_mem), 								&current_frames[current_frames_idx[0]].r_vel_buf,		fname);		//__global		float4*		img_cur,				//15	// multiple past frames.
-	_clSetKernelArg( kernel,16, sizeof( cl_mem), 								&current_frames[current_frames_idx[1]].r_vel_buf,		fname);		//__global		float4*		img_past_0,				//16
-	_clSetKernelArg( kernel,17, sizeof( cl_mem), 								&current_frames[current_frames_idx[2]].r_vel_buf,		fname);		//__global		float4*		img_past_1,				//17
-	_clSetKernelArg( kernel,18, sizeof( cl_mem), 								&current_frames[current_frames_idx[3]].r_vel_buf,		fname);		//__global		float4*		img_past_2,				//18
-	_clSetKernelArg( kernel,19, sizeof( cl_mem), 								&current_frames[current_frames_idx[4]].r_vel_buf,		fname);		//__global		float4*		img_past_3,				//19
+	_clSetKernelArg( kernel,16, sizeof( cl_mem), 								&current_frames[current_frames_idx[0]].r_vel_buf,		fname);		//__global		float4*		img_cur,				//15	// multiple past frames.
+	_clSetKernelArg( kernel,17, sizeof( cl_mem), 								&current_frames[current_frames_idx[1]].r_vel_buf,		fname);		//__global		float4*		img_past_0,				//16
+	_clSetKernelArg( kernel,18, sizeof( cl_mem), 								&current_frames[current_frames_idx[2]].r_vel_buf,		fname);		//__global		float4*		img_past_1,				//17
+	_clSetKernelArg( kernel,19, sizeof( cl_mem), 								&current_frames[current_frames_idx[3]].r_vel_buf,		fname);		//__global		float4*		img_past_2,				//18
+	_clSetKernelArg( kernel,20, sizeof( cl_mem), 								&current_frames[current_frames_idx[4]].r_vel_buf,		fname);		//__global		float4*		img_past_3,				//19
 	//output
-	_clSetKernelArg( kernel,20, sizeof( cl_mem), 								&SE3_rho_map_mem, 										fname);		//__global		float2* 	Rho_,					//20	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
-	_clSetKernelArg( kernel,21, sizeof( cl_float2)*local_work_size,				NULL, 													fname);		//__local		float2*		local_rho				//21	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
+	_clSetKernelArg( kernel,21, sizeof( cl_mem), 								&SE3_rho_map_mem, 										fname);		//__global		float2* 	Rho_,					//20	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
+	_clSetKernelArg( kernel,22, sizeof( cl_float2)*local_work_size,				NULL, 													fname);		//__local		float2*		local_rho				//21	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
 
-	_clSetKernelArg( kernel,22, sizeof( cl_mem), 								&SE3_incr_map_mem,										fname);		//__global 		float2*		SE3_incr_map_,			//22
-	_clSetKernelArg( kernel,23, sizeof( cl_float2)*local_work_size*num_SE3_DoF,	NULL,													fname);		//__local 		float2*		local_SE3_incr			//23
+	_clSetKernelArg( kernel,23, sizeof( cl_mem), 								&SE3_incr_map_mem,										fname);		//__global 		float2*		SE3_incr_map_,			//22
+	_clSetKernelArg( kernel,24, sizeof( cl_float2)*local_work_size*num_SE3_DoF,	NULL,													fname);		//__local 		float2*		local_SE3_incr			//23
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_4 .  "<<flush;}
 
 	cl_command_queue	queue_to_call		= m_queue;

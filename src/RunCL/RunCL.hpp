@@ -50,14 +50,15 @@ constexpr uint max_mipmap_layers 			= MAX_MIPMAP_LAYERS;					// Determines max i
 constexpr uint num_SE3_DoF					= NUM_SE3_DOF;
 constexpr uint block_size					= BLOCK_SIZE;							// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
 constexpr uint out_block_size				= OUT_BLOCK_SIZE;
-constexpr uint num_past_frames				= NUM_PAST_FRAMES;						// 1,2,4,8,16,32,64 // variable select window of 4 frames.
+//constexpr uint num_current_frames				= NUM_PAST_FRAMES;					// 1,2,4,8,16,32,64 // variable select window of 4 frames.  /*num_past_frames*/
+constexpr uint num_current_frames			= NUM_CURR_FRAMES;
 static constexpr uint max_patches_per_layer = 2^max_mipmap_layers * 2^max_mipmap_layers; //
 
 #define FLOAT_16_EYE 	{1.0f, 0.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f, 0.0f,		0.0f, 0.0f, 1.0f, 0.0f,		0.0f, 0.0f, 0.0f, 1.0f}
 constexpr float identity_flt16[16]			= FLOAT_16_EYE;
 constexpr float zero						= 0;
 constexpr uint	patch_size					= 32;	// Set global patch size from device parameters // generally: device_work_size_multiple = patch_size * integer, eg 32, 64, 128
-
+constexpr size_t cl_flt16_size				= sizeof(cl_float16);
 
 using namespace std;
 class RunCL
@@ -90,7 +91,7 @@ public:
 	cl_kernel			update_depth_kernel, enlarge_layer_float_kernel;
 
 	// GPU Buffers
-	static const uint 	num_current_frames	= 5;																												// static = same for all instances of class Dynamic_slam.
+																												// static = same for all instances of class Dynamic_slam.
 	cl_mem 				imgmem[num_current_frames], 	velmap[num_current_frames], 	depth_mem, 	g1mem;
 
 	cl_mem				basemem, imgmem_blurred, SE3_grad_map_mem, SE3_incr_map_mem;
@@ -124,7 +125,7 @@ public:
 		Matx44f			inv_K								= Matx44f::eye() ;
 
 		float			k2k_0to1_est[16]					=  FLOAT_16_EYE;		// Reprojection matrix to the current img. Estimated, then fitted for each new frame, also with updates of camera inrinsic mattix.
-		float			k2k[num_past_frames][16]			= {FLOAT_16_EYE};
+		float			k2k[num_current_frames][16]			= {FLOAT_16_EYE};
 
 		Matx16f			Jacobian[max_mipmap_layers]			= { Matx16f::zeros() };
 		Matx66f			invHessian[max_mipmap_layers]		= { Matx66f::eye() };
@@ -310,7 +311,7 @@ public:
 
 
 	// 1st gen,  Patch based kernels /////////////////////////////
-	void rho_sq( uint out_block_size, uint iter, uint layer);
+	void rho_sq( uint out_block_size, uint iter, uint frame_idx, uint layer, cl_mem k2k_buf);
 	void reduce_patch_Rho ( uint out_block_size, uint iter, uint layer );
 
 	struct rho_result{

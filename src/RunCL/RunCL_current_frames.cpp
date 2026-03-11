@@ -25,11 +25,11 @@ Matx44f  RunCL::update_pose_bufs_cur_frames(  ){								// To be called after tr
 																																					PRINT_MATX44F( current_frames[ current_frames_idx[frame] ].pose_gt,  );
 																																				}
 																																			}
-		for( int frame=1;	frame<num_current_frames;	frame++){
+		for( int frame=0;	frame<num_current_frames;	frame++){
 
 			Matx44f  gt_pose_0_to_this_frame  = current_frames[ current_frames_idx[frame] ].pose_gt * inv_pose_gt;
 
-			Matx44f 									new_frame_pose			= current_frames[ current_frames_idx[frame] ].pose_0_to_this_frame  *  pose;
+			Matx44f 									new_frame_pose			= gt_pose_0_to_this_frame ; // current_frames[ current_frames_idx[frame] ].pose_0_to_this_frame  *  pose;
 			current_frames[ current_frames_idx[frame] ].pose_0_to_this_frame 	= new_frame_pose;
 
 			Matx44f 									new_k2k					= current_frames[ current_frames_idx[frame] ].K	* new_frame_pose * current_frames[ current_frames_idx[frame] ].inv_K;
@@ -45,6 +45,8 @@ Matx44f  RunCL::update_pose_bufs_cur_frames(  ){								// To be called after tr
 																																				PRINT_MATX44F( new_frame_pose, );
 																																				PRINT_MATX44F( current_frames[ current_frames_idx[frame] ].K, );
 																																				PRINT_MATX44F( current_frames[ current_frames_idx[frame] ].inv_K, );
+																																				PRINT_MATX44F( (current_frames[ current_frames_idx[frame] ].K * current_frames[ current_frames_idx[frame] ].inv_K) , );
+
 																																				PRINT_MATX44F( new_k2k, );
 																																				PRINT_FLOAT_16( (cur_frames_k2k + (frame*16) ) , );
 																																			}

@@ -37,8 +37,12 @@ void RunCL::update_depth( uint out_block_size, uint layer){
 	uint rows							= (MipMap[ (layer+2)*8 + MiM_READ_ROWS] + 1)	*  depth_iter_per_layer;
 	size_t	depthUpdate_bytes			= cols * rows * sizeof(cl_float2);
 
+	float default_inv_depth				= 0.07f;	// half the max inv depth, i.e. twice the min depth.
+
 	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, &minus_one_f, sizeof(float), 0, depthUpdate_bytes, fname   );
 	_clEnqueueFillBuffer( uload_queue, depth_mem_temp,  &minus_one_f, sizeof(float), 0, depthUpdate_bytes, fname   );
+
+	if (layer==4) { _clEnqueueFillBuffer( uload_queue, depth_mem,		&default_inv_depth, sizeof(float), 0, mm_size_bytes_C1,  fname   ); }	// TODO  remove this, temporary for testing tracking and mapping given GT poses.
 
 	// constant buffers uploaded
 
