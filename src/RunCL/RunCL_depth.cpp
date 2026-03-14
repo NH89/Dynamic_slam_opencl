@@ -119,7 +119,8 @@ void RunCL::update_depth( uint out_block_size, uint layer){
 	);
 																																if( verbosity>local_verbosity_threshold) {
 																																	cout<<"\n\nRunCL::update_depth()_finished #############################################################"<<flush;
-																																	DownloadAndSaveDepthUpdate( layer  );
+																																	uint depth_iter_per_layer	= num_current_frames;
+																																	DownloadAndSaveDepthUpdate( layer, depth_iter_per_layer  );
 																																	/*
 																																	int offset			=	MipMap[layer*8 +  MiM_READ_OFFSET   ];
 																																	int rows			=	MipMap[layer*8 +  MiM_READ_ROWS   ];

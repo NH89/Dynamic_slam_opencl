@@ -235,6 +235,9 @@ public:
 	Matx61f ReadOutput_61f( cl_mem buf_mem, size_t offset=0);
 
 	void Save_vtk(cv::Mat mat, cv::Mat keyframe, std::filesystem::path folder );
+	void Save_vtk_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::path folder, uint layer, uint depth_iter_per_layer  );
+
+	void Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::path folder, uint layer, uint depth_iter_per_layer  );
 
 	void DownloadAndSave(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range=1 );
 	void DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers );
@@ -254,7 +257,7 @@ public:
 	void SaveMat(cv::Mat temp_mat, int type_mat, std::filesystem::path folder_tiff, bool show, float max_range, std::string mat_name, std::string count);
 	void DownloadAndSaveVolume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, bool exception_tiff=false );
 
-	void DownloadAndSaveDepthUpdate( uint layer  );
+	void DownloadAndSaveDepthUpdate( uint layer, uint depth_iter_per_layer  );
 
 	////////////////////////////////////// RunCL_load_image.cpp
 

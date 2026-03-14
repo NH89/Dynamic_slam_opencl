@@ -52,8 +52,8 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 	__local		float2*		local_J_inv_d			//34
 	)
 {
-	__global float4*	img_past[num_current_frames]		= { img_cur, img_past_1, img_past_2, img_past_3, img_past_4 };
-	__global float4*	vel_past[num_current_frames]		= { vel_cur, vel_past_1, vel_past_2, vel_past_3, vel_past_4 };
+	__global float4*	img_past[num_current_frames]	= { img_cur, img_past_1, img_past_2, img_past_3, img_past_4 };
+	__global float4*	vel_past[num_current_frames]	= { vel_cur, vel_past_1, vel_past_2, vel_past_3, vel_past_4 };
 
 	const	uint	max_frames							= min(frame_count-1, num_current_frames);
 	const	uint	global_id_uint						= get_global_id(0);
@@ -119,7 +119,7 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 // 																																						}
 	barrier(CLK_LOCAL_MEM_FENCE );
 	////////////////////////////////////////////////////////////////////////////
-	uint depth_iter_per_layer	 = 	3;
+	uint depth_iter_per_layer	 = 	max_frames; //3;
 	for (uint iter=0; iter<depth_iter_per_layer ; iter++, write_index+=write_layer_pixels  ){
 		for (int i=0; i<block_size; i++){
 			inv_depth_incr_arr[		i]				= 0.0f;
@@ -155,7 +155,7 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 			float	inv_depth 								= depth_map[			read_index];
 			float	cur_inv_depth							= inv_depth 			+ local_depth_incr[		offset_2];
 
-			for (uint 		past_frame_idx=1; past_frame_idx < max_frames; past_frame_idx++){															// step though past frames //////
+			for (uint 		past_frame_idx=1; past_frame_idx < iter+2 /*max_frames*/; past_frame_idx++){															// step though past frames //////
 				float		u2f,	v2f;																												// current frame
 				px_k2k( 	inv_k2k[past_frame_idx],  reduction,  v,  u,  cur_inv_depth,  &u2f,  &v2f, print_ );											// Where to sample the past image frame //////
 // 																														if( lid /*group_id*/==1 /*u==(read_cols_/2) && v==(read_rows_/2)*/ /*global_id_uint==0*/){

@@ -97,7 +97,7 @@
 	#define	V_RUNCL_READOUTPUT							2
 	#define	V_RUNCL_SAVECOSTVOLS						2
 	#define	V_RUNCL_STORE_KEYFRAME						2
-	#define	V_RUNCL_SAVE_VTK							2
+	#define	V_RUNCL_SAVE_VTK							-2
 
 	#define	V_RUNCL_DOWNLOADANDSAVE						2
 	#define	V_RUNCL_DOWNLOADANDSAVE_2CHANNEL_VOLUME		2

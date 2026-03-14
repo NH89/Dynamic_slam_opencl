@@ -250,7 +250,6 @@ void RunCL::Save_vtk(cv::Mat mat, cv::Mat keyframe, std::filesystem::path folder
 	// open file
 	ofstream vtp_file_stream;
 	vtp_file_stream.open(folder);
-
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk chk2"<<flush;
 	vtp_file_stream << "<?xml version=\"1.0\"?>\n";
 	vtp_file_stream << "<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\" header_type=\"UInt32\" compressor=\"vtkZLibDataCompressor\">\n";
@@ -263,7 +262,6 @@ void RunCL::Save_vtk(cv::Mat mat, cv::Mat keyframe, std::filesystem::path folder
 			vtp_file_stream << clr[0] <<" "<< clr[1]  <<" "<<clr[2]  <<" "<<clr[3] <<"\n";
 		}
 	}
-
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk chk3"<<flush;
 	vtp_file_stream << "</DataArray>\n";
 	vtp_file_stream << "</PointData>\n";
@@ -287,6 +285,154 @@ void RunCL::Save_vtk(cv::Mat mat, cv::Mat keyframe, std::filesystem::path folder
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk finished\n"<<flush;
 }
 
+void RunCL::Save_vtk_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::path folder, uint layer, uint depth_iter_per_layer  ){
+	int local_verbosity_threshold = V_RUNCL_SAVE_VTK;
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk_depth chk0"<<flush;
+	uint			cols					= MipMap[ (layer+2)*8 + MiM_READ_COLS];
+	uint			rows					= MipMap[ (layer+2)*8 + MiM_READ_ROWS] + 1;
+	size_t			depthUpdate_bytes		= cols * rows * sizeof(cl_float2);
+	uint			offset					= rows * (depth_iter_per_layer - 1);
+	cv::Size		depthUpdate_size(		cols, rows ) ;
+
+	cv::Mat			mat_depth				= cv::Mat::zeros (depthUpdate_size, CV_32FC2);													// (int rows, int cols, int type)
+	cv::Mat			mat_rho					= cv::Mat::zeros (depthUpdate_size, CV_32FC2);													// (int rows, int cols, int type)
+	ReadOutput(		mat_depth.data,	depth_buf,	depthUpdate_bytes, offset); 																// NB contains elements of type_mat, (CV_32FC1 for most buffers)
+	ReadOutput(		mat_rho.data,		rho_buf,	depthUpdate_bytes, offset); 															// NB contains elements of type_mat, (CV_32FC1 for most buffers)
+
+	// generate filename, by inserting folder "/vtp", and adding ".vtp" suffix,  // make csv folder, if necessary
+	stringstream ss;
+	ss << "ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_DepthUpdate__().vtp";
+	folder += "/vtp/";
+	if(std::filesystem::create_directory(folder )) { if(verbosity>-2) std::cerr<< "Directory Created: "<<folder<<std::endl;}
+	folder.replace_filename( ss.str() );
+
+	// open file
+	ofstream vtp_file_stream;
+	vtp_file_stream.open(folder);
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk chk2"
+																																				<<"  vtp file created = "<< folder <<flush;
+	vtp_file_stream << "<?xml version=\"1.0\"?>\n";
+	vtp_file_stream << "<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\" header_type=\"UInt32\" compressor=\"vtkZLibDataCompressor\">\n";
+	vtp_file_stream << "<Piece NumberOfPoints=\""<<mat_depth.total()<<"\" NumberOfVerts=\"0\" NumberOfLines=\"0\" NumberOfStrips=\"0\" NumberOfPolys=\"0\">\n";
+	vtp_file_stream << "<PointData>\n";
+	vtp_file_stream << "<DataArray type=\"UInt32\" Name=\"FCLR\" NumberOfComponents=\"4\" format=\"ascii\" \">\n"; // RangeMin=\"0\" RangeMax=\""<<4278203136<<"
+	for(int col=0; col<mat_depth.cols ; col ++ ){
+		for(int row=0; row<mat_depth.rows ; row ++ ){
+			cv::Vec2f rho =  mat_rho.at<cv::Vec2f>(col,row);
+			cv::Vec2f depth =  mat_rho.at<cv::Vec2f>(col,row);
+			vtp_file_stream << col <<" "<< row <<" "<< rho[0] <<" "<< rho[1]  <<" "<<depth[0]  <<" "<<depth[1] <<"\n";
+		}
+	}																																		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk chk3"<<flush;
+	vtp_file_stream << "</DataArray>\n";
+	vtp_file_stream << "</PointData>\n";
+	vtp_file_stream << "<Points>\n";
+	vtp_file_stream << "<DataArray type=\"Float32\" Name=\"Points\" NumberOfComponents=\"3\" format=\"ascii\" \n"; // RangeMin=\"0\" RangeMax=\""<<30<<"\">
+	for(int col=0; col<mat_depth.cols ; col ++ ){
+		for(int row=0; row<mat_depth.rows ; row ++ ){
+			cv::Vec2f depth =  mat_rho.at<cv::Vec2f>(col,row);
+			float depth_f	= 0.0f;
+			if (depth[0]>0 && isfinite(depth[0]) ) depth_f = 1/depth[0];
+			vtp_file_stream << col <<" "<< row  <<" "<<  depth_f <<"\n";
+		}
+	}
+	vtp_file_stream << "</DataArray>\n";
+	vtp_file_stream << "</Points>\n";
+	vtp_file_stream << "</Piece>\n";
+	vtp_file_stream << "</PolyData>\n";
+	vtp_file_stream << "</VTKFile>\n";
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk chk4"<<flush;
+	// close file
+	vtp_file_stream.close();
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk finished\n"<<flush;
+}
+
+void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::path folder, uint layer, uint depth_iter_per_layer  ){
+	int local_verbosity_threshold = V_RUNCL_SAVE_VTK;
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk_depth chk0"<<flush;
+	uint			cols					= MipMap[ (layer+2)*8 + MiM_READ_COLS];
+	uint			rows					= MipMap[ (layer+2)*8 + MiM_READ_ROWS] + 1;
+	size_t			depthUpdate_bytes		= cols * rows * sizeof(cl_float2);
+	uint			offset					= rows * (depth_iter_per_layer - 1);
+	cv::Size		depthUpdate_size(		cols, rows ) ;
+
+	cv::Mat			mat_depth				= cv::Mat::zeros (depthUpdate_size, CV_32FC2);													// (int rows, int cols, int type)
+	cv::Mat			mat_rho					= cv::Mat::zeros (depthUpdate_size, CV_32FC2);													// (int rows, int cols, int type)
+	ReadOutput(		mat_depth.data,	depth_buf,	depthUpdate_bytes, offset); 																// NB contains elements of type_mat, (CV_32FC1 for most buffers)
+	ReadOutput(		mat_rho.data,		rho_buf,	depthUpdate_bytes, offset); 															// NB contains elements of type_mat, (CV_32FC1 for most buffers)
+
+	// generate filename, by inserting folder "/vtp", and adding ".vtp" suffix,  // make csv folder, if necessary
+	stringstream ss;
+	ss << "ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_DepthUpdate__().vtp";
+	folder += "/vtp/";
+	if(std::filesystem::create_directory(folder )) { if(verbosity>-2) std::cerr<< "Directory Created: "<<folder<<std::endl;}
+	folder.replace_filename( ss.str() );
+
+	// open file
+	std::ofstream pcd_file( folder );
+	if(!pcd_file){std::cerr<<"\n\nvoid RunCL::Save_pcd_depth(..) failed to open file for writing: "<<folder<<endl<<flush;  exit_(1);}
+
+	pcd_file << "# .PCD v7 - Point Could Data file format\n";
+	pcd_file << "VERSION .7\n";
+	pcd_file << "FIELDS x y z normal_x normal_y normal_z\n";
+	pcd_file << "SIZE 4 4 4 4 4 4\n";
+	pcd_file << "TYPE F F F F F F\n";
+	pcd_file << "COUNT 1 1 1 1 1 1\n";
+	pcd_file << "WIDTH "<<mat_depth.cols<<"\n";
+	pcd_file << "HEIGHT "<<mat_depth.rows<<"\n";
+	pcd_file << "VIEWPOINT 0 0 0 1 0 0 0\n";
+	pcd_file << "POINTS "<<mat_depth.cols * mat_depth.rows<<"\n";
+	pcd_file << "DATA ascii\n";
+
+	for(int col=0; col<mat_depth.cols ; col ++ ){
+		for(int row=0; row<mat_depth.rows ; row ++ ){
+			cv::Vec2f depth		=  mat_rho.at<cv::Vec2f>(col,row);
+			cv::Vec2f rho		=  mat_rho.at<cv::Vec2f>(col,row);
+			float depth_f		= 0.0f;
+			if (depth[0]>0 && isfinite(depth[0]) ) { depth_f = 1/depth[0]; }
+			pcd_file << col <<" "<< row  <<" "<<  depth_f <<" "<<depth[1]<<" "<<  rho[0] <<" "<< rho[1]  <<"\n";
+		}
+	}
+	pcd_file.close();
+	/*
+	// ofstream vtp_file_stream;
+	// vtp_file_stream.open(folder);
+	// 																																		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk chk2"
+	// 																																			<<"  vtp file created = "<< folder <<flush;
+	// vtp_file_stream << "<?xml version=\"1.0\"?>\n";
+	// vtp_file_stream << "<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\" header_type=\"UInt32\" compressor=\"vtkZLibDataCompressor\">\n";
+	// vtp_file_stream << "<Piece NumberOfPoints=\""<<mat_depth.total()<<"\" NumberOfVerts=\"0\" NumberOfLines=\"0\" NumberOfStrips=\"0\" NumberOfPolys=\"0\">\n";
+	// vtp_file_stream << "<PointData>\n";
+	// vtp_file_stream << "<DataArray type=\"UInt32\" Name=\"FCLR\" NumberOfComponents=\"4\" format=\"ascii\" \">\n"; // RangeMin=\"0\" RangeMax=\""<<4278203136<<"
+	// for(int col=0; col<mat_depth.cols ; col ++ ){
+	// 	for(int row=0; row<mat_depth.rows ; row ++ ){
+	// 		cv::Vec2f rho =  mat_rho.at<cv::Vec2f>(col,row);
+	// 		cv::Vec2f depth =  mat_rho.at<cv::Vec2f>(col,row);
+	// 		vtp_file_stream << col <<" "<< row <<" "<< rho[0] <<" "<< rho[1]  <<" "<<depth[0]  <<" "<<depth[1] <<"\n";
+	// 	}
+	// }																																		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk chk3"<<flush;
+	// vtp_file_stream << "</DataArray>\n";
+	// vtp_file_stream << "</PointData>\n";
+	// vtp_file_stream << "<Points>\n";
+	// vtp_file_stream << "<DataArray type=\"Float32\" Name=\"Points\" NumberOfComponents=\"3\" format=\"ascii\" \n"; // RangeMin=\"0\" RangeMax=\""<<30<<"\">
+	// for(int col=0; col<mat_depth.cols ; col ++ ){
+	// 	for(int row=0; row<mat_depth.rows ; row ++ ){
+	// 		cv::Vec2f depth =  mat_rho.at<cv::Vec2f>(col,row);
+	// 		float depth_f	= 0.0f;
+	// 		if (depth[0]>0 && isfinite(depth[0]) ) depth_f = 1/depth[0];
+	// 		vtp_file_stream << col <<" "<< row  <<" "<<  depth_f <<"\n";
+	// 	}
+	// }
+	// vtp_file_stream << "</DataArray>\n";
+	// vtp_file_stream << "</Points>\n";
+	// vtp_file_stream << "</Piece>\n";
+	// vtp_file_stream << "</PolyData>\n";
+	// vtp_file_stream << "</VTKFile>\n";
+	// 																																		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk chk4"<<flush;
+	// // close file
+	// vtp_file_stream.close();
+	*/
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk finished\n"<<flush;
+}
 
 
 void RunCL::DownloadAndSave(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range ){
@@ -885,7 +1031,7 @@ void RunCL::DownloadAndSaveVolume(cl_mem buffer, std::string count, std::filesys
 
 
 
-void RunCL::DownloadAndSaveDepthUpdate( uint layer  ){
+void RunCL::DownloadAndSaveDepthUpdate( uint layer, uint depth_iter_per_layer  ){
 	stringstream ss;
 	ss << "ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_DepthUpdate__()";
 	stringstream ss_path;
@@ -895,7 +1041,7 @@ void RunCL::DownloadAndSaveDepthUpdate( uint layer  ){
 	bool old_tiff				= tiff;
 	tiff						= true;
 
-	uint depth_iter_per_layer	= 3;
+	//uint depth_iter_per_layer	= 3;
 	uint cols					= MipMap[ (layer+2)*8 + MiM_READ_COLS];
 	uint rows					= (MipMap[ (layer+2)*8 + MiM_READ_ROWS] + 1)	*  depth_iter_per_layer;
 
@@ -906,6 +1052,9 @@ void RunCL::DownloadAndSaveDepthUpdate( uint layer  ){
 	DownloadAndSave_2Channel_volume( depth_mem_temp,  ss.str( ), paths.at( "depth_mem_temp"),	depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, show, max_range,	vol_layers );
 
 	tiff = old_tiff;
+
+	//Save_vtk_depth( depth_mem, SE3_rho_map_mem, paths.at( "depth_mem_temp"), layer, depth_iter_per_layer );
+	Save_pcd_depth( depth_mem, SE3_rho_map_mem, paths.at( "depth_mem_temp"), layer, depth_iter_per_layer );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
