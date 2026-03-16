@@ -68,6 +68,7 @@ public:
 	Json::Value 		obj;
 	int					verbosity;
 	bool				tiff, png, vtp;
+	float				max_depth;
 
 	//OpenCL
 	std::vector<cl_platform_id> 	m_platform_ids;

@@ -17,6 +17,7 @@ RunCL::RunCL( Json::Value obj_  ){ //, int_map verbosity_mp_
 	tiff 							= obj["tiff"].asBool();
 	png 							= obj["png"].asBool();
 	vtp 							= obj["vtp"].asBool();
+	max_depth						= obj["max_depth"].asFloat();
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\nRunCL_chk 0\n" << flush;
 																																				cout << "\nverbosity = "<<verbosity<< flush;

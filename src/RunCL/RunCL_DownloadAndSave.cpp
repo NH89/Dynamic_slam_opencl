@@ -348,7 +348,10 @@ void RunCL::Save_vtk_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 
 void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::path folder, uint layer, uint depth_iter_per_layer  ){
 	int local_verbosity_threshold = V_RUNCL_SAVE_VTK;
-																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk_depth chk0"<<flush;
+																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::Save_pcd_depth chk0"<<flush;
+																																				PRINT_MATX44F(	current_frames[ current_frames_idx[0] ].inv_K, );
+																																			}
+	float			scale					= pow(2,layer);
 	uint			cols					= MipMap[ (layer+2)*8 + MiM_READ_COLS];
 	uint			rows					= MipMap[ (layer+2)*8 + MiM_READ_ROWS] + 1;
 	size_t			depthUpdate_bytes		= cols * rows * sizeof(cl_float2);
@@ -362,8 +365,8 @@ void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 
 	// generate filename, by inserting folder "/vtp", and adding ".vtp" suffix,  // make csv folder, if necessary
 	stringstream ss;
-	ss << "ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_DepthUpdate__().vtp";
-	folder += "/vtp/";
+	ss << "ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_DepthUpdate_.pcd";
+	folder += "/pcd/";
 	if(std::filesystem::create_directory(folder )) { if(verbosity>-2) std::cerr<< "Directory Created: "<<folder<<std::endl;}
 	folder.replace_filename( ss.str() );
 
@@ -373,65 +376,40 @@ void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 
 	pcd_file << "# .PCD v7 - Point Could Data file format\n";
 	pcd_file << "VERSION .7\n";
-	pcd_file << "FIELDS x y z normal_x normal_y normal_z\n";
-	pcd_file << "SIZE 4 4 4 4 4 4\n";
-	pcd_file << "TYPE F F F F F F\n";
-	pcd_file << "COUNT 1 1 1 1 1 1\n";
+	pcd_file << "FIELDS x y z \n";//normal_x normal_y normal_z
+	pcd_file << "SIZE 4 4 4 \n";
+	pcd_file << "TYPE F F F \n";
+	pcd_file << "COUNT 1 1 1 \n";
 	pcd_file << "WIDTH "<<mat_depth.cols<<"\n";
 	pcd_file << "HEIGHT "<<mat_depth.rows<<"\n";
 	pcd_file << "VIEWPOINT 0 0 0 1 0 0 0\n";
 	pcd_file << "POINTS "<<mat_depth.cols * mat_depth.rows<<"\n";
 	pcd_file << "DATA ascii\n";
 
-	for(int col=0; col<mat_depth.cols ; col ++ ){
-		for(int row=0; row<mat_depth.rows ; row ++ ){
-			cv::Vec2f depth		=  mat_rho.at<cv::Vec2f>(col,row);
-			cv::Vec2f rho		=  mat_rho.at<cv::Vec2f>(col,row);
+	for(float col=0; col<mat_depth.cols ; col ++ ){
+		for(float row=0; row<mat_depth.rows ; row ++ ){
+			cv::Vec2f depth		=  mat_depth.at<cv::Vec2f>(col,row);
+			//cv::Vec2f rho		=  mat_rho.at<cv::Vec2f>(col,row);
 			float depth_f		= 0.0f;
-			if (depth[0]>0 && isfinite(depth[0]) ) { depth_f = 1/depth[0]; }
-			pcd_file << col <<" "<< row  <<" "<<  depth_f <<" "<<depth[1]<<" "<<  rho[0] <<" "<< rho[1]  <<"\n";
+			if (depth[0]>0  ) { depth_f = 1/depth[0]; }					// && isfinite(depth[0])
+			Matx41f pixel 		= { scale*col, scale*row, depth_f, 1.0f };
+
+
+			Matx41f point 		= current_frames[ current_frames_idx[0] ].inv_K * pixel;
+			float x 			= point(0,0) ;// / point(3,0);
+			float y 			= point(1,0) ;// / point(3,0);
+			float z 			= point(2,0) ;// / point(3,0);
+			//if( x<max_depth && y<max_depth && z<max_depth ){
+				pcd_file << depth[0] <<" "<< depth[1] <<" "<< depth_f <<"\n";
+
+				// pcd_file << x <<" "<< y <<" "<< z <<"\n";				// <<" "<<depth[1]<<" "<<  rho[0] <<" "<< rho[1]   Need to project 3D points in xyz, not uvz.
+			//}else{
+			//	pcd_file << col <<" "<< row <<" "<< 0.0f <<"\n";
+			//}
 		}
 	}
 	pcd_file.close();
-	/*
-	// ofstream vtp_file_stream;
-	// vtp_file_stream.open(folder);
-	// 																																		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk chk2"
-	// 																																			<<"  vtp file created = "<< folder <<flush;
-	// vtp_file_stream << "<?xml version=\"1.0\"?>\n";
-	// vtp_file_stream << "<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\" header_type=\"UInt32\" compressor=\"vtkZLibDataCompressor\">\n";
-	// vtp_file_stream << "<Piece NumberOfPoints=\""<<mat_depth.total()<<"\" NumberOfVerts=\"0\" NumberOfLines=\"0\" NumberOfStrips=\"0\" NumberOfPolys=\"0\">\n";
-	// vtp_file_stream << "<PointData>\n";
-	// vtp_file_stream << "<DataArray type=\"UInt32\" Name=\"FCLR\" NumberOfComponents=\"4\" format=\"ascii\" \">\n"; // RangeMin=\"0\" RangeMax=\""<<4278203136<<"
-	// for(int col=0; col<mat_depth.cols ; col ++ ){
-	// 	for(int row=0; row<mat_depth.rows ; row ++ ){
-	// 		cv::Vec2f rho =  mat_rho.at<cv::Vec2f>(col,row);
-	// 		cv::Vec2f depth =  mat_rho.at<cv::Vec2f>(col,row);
-	// 		vtp_file_stream << col <<" "<< row <<" "<< rho[0] <<" "<< rho[1]  <<" "<<depth[0]  <<" "<<depth[1] <<"\n";
-	// 	}
-	// }																																		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk chk3"<<flush;
-	// vtp_file_stream << "</DataArray>\n";
-	// vtp_file_stream << "</PointData>\n";
-	// vtp_file_stream << "<Points>\n";
-	// vtp_file_stream << "<DataArray type=\"Float32\" Name=\"Points\" NumberOfComponents=\"3\" format=\"ascii\" \n"; // RangeMin=\"0\" RangeMax=\""<<30<<"\">
-	// for(int col=0; col<mat_depth.cols ; col ++ ){
-	// 	for(int row=0; row<mat_depth.rows ; row ++ ){
-	// 		cv::Vec2f depth =  mat_rho.at<cv::Vec2f>(col,row);
-	// 		float depth_f	= 0.0f;
-	// 		if (depth[0]>0 && isfinite(depth[0]) ) depth_f = 1/depth[0];
-	// 		vtp_file_stream << col <<" "<< row  <<" "<<  depth_f <<"\n";
-	// 	}
-	// }
-	// vtp_file_stream << "</DataArray>\n";
-	// vtp_file_stream << "</Points>\n";
-	// vtp_file_stream << "</Piece>\n";
-	// vtp_file_stream << "</PolyData>\n";
-	// vtp_file_stream << "</VTKFile>\n";
-	// 																																		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk chk4"<<flush;
-	// // close file
-	// vtp_file_stream.close();
-	*/
-																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk finished\n"<<flush;
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_pcd finished\n"<<flush;
 }
 
 
