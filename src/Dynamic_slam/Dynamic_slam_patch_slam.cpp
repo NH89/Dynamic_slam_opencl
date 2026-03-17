@@ -155,13 +155,13 @@ void Dynamic_slam::estimate_depth(){
 																																			cout << "\n\nDynamic_slam::estimate_depth() chk_0"
 																																			<<"  ##############################################################"<< flush;
 																																		}
-	for (int layer=4; layer>0; layer--){
+	for (int layer=4; layer>3; layer--){
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\nDynamic_slam::estimate_depth()  layer= "<<
 																																			layer << endl <<flush;
 																																		}
 		uint out_block_size = 4;
-		runcl.update_depth( out_block_size, layer);
+		runcl.update_depth_2( out_block_size, layer);
 
 		// anisotropic smoothing
 

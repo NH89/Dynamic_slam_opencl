@@ -180,6 +180,42 @@ void bilinear_SE3_grad_weight (float4 weights[6],
 	}
 }
 
+void compute_minimum( float rho_sq_0, float rho_sq_1, float rho_sq_2, float inv_depth_0, float inv_depth_1, float inv_depth_2, float * prediction, float * optimum ){	// give use with discrete min plus neighbours, _should_ always have a>0, except if min < MIN_DEPYH.
+
+	float a, b, c,   d, e,   f, g,   h, i,   j, k, d2, f2, h2;																				// compute x value of the optimum of parabola, y= a*x*x + b*x + c
+																																			// given samples at x=1,2,4
+	d = inv_depth_0;	e = rho_sq_0;
+	f = inv_depth_1;	g = rho_sq_1;
+	h = inv_depth_2;	i = rho_sq_2;
+
+	d2 = d * d;
+	f2 = f * f;
+	h2 = h * h;
+
+	j = (f2 - d2)*(f-h) - (h2 - f2)*(d-f) ; // (1*1 - 0*0)*(1-3)  - (3*3 - 1*1)*(0-1)  = 1*-2  - (9-1)*-1 = -2  -8*-1 = -2 +8 =6   //// d=0, f=1, h=3  // d2=0, 	f2=1, 	h2=9, 	j=6, k=0.72331,
+	k = (g-i)*(d-f) - (e-g)*(f-h);   		// (0.456964 - 0.4644)*(0-1) - (0.814901 - 0.456964)*(1-3) = −0,007436*-1  - 0,357937*-2 = 0,72331   //// (d,e)=(0,0.814901), 	(f,g)=(1,0.456964), 	(h,i)=(3,0.4644),
+	a = k/j;						 		// 0,72331 / 6 = 0,120551667
+	b = (e-g +a*(f2-d2))  /  (d-f);  		// (0,814901 - 0,456964  +  0,120551667 * (1*1 - 0*0))  / (0-1)  =  -0,478488667
+	c = e - a*d2 - b*d;				 		// 0.814901
+
+	if (a>0){																																// IF concavity leads to a minimum, use it.
+		float x 		= -b /(2*a);
+		*prediction 	= a*(x*x) + b*x + c;
+		*optimum 		= x;																												// dy/dx = 0 = 2*a*x + b   =>  x = -b /(2*a)
+
+	}else{																																	// IF concavity leads to a maximum, pick the best sample so far.
+		if (e>=i){
+			*prediction = i;
+			*optimum 	= h;
+		}else{
+			*prediction = e;
+			*optimum 	= d;
+		}
+	}
+}
+
+
+
 /*
 float bilinear_grad_weight (__global float8* SE3_grad_map_cur_frame, __global float8* SE3_grad_map_new_frame, int read_index, float u2_flt, float v2_flt, int cols, int read_offset_, uint reduction){
 

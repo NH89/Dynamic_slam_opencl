@@ -24,6 +24,7 @@ __constant uint num_ST3_DoF				= NUM_ST3_DOF;
 
 __constant uint num_current_frames		= NUM_CURR_FRAMES;									// 1,2,4,8,16,32,64 // variable select window of 4 frames.
 
+__constant uint num_depth_steps			= NUM_DEPTH_STEPS;
 
 
 // Declarations of local device functions used by the kernels.
@@ -49,7 +50,9 @@ void bilinear_SE3_grad_weight (float4 weights[6], __global float8* SE3_grad_map_
 
 float bilinear_grad_weight (__global float8* HSV_grad, int read_index, float u2_flt, float v2_flt, int cols, int read_offset_, uint reduction);
 
-float compute_optimum(__private float4 a, __private float4 b, __private float4 c);
+//float compute_optimum(__private float4 a, __private float4 b, __private float4 c);
+
+void compute_minimum( float rho_sq_0, float rho_sq_1, float rho_sq_2, float inv_depth_0, float inv_depth_1, float inv_depth_2, float * prediction, float * optimum );
 
 
 inline void atomic_maxf(															  				// from https://ingowald.blog/2018/06/24/float-atomics-in-opencl/

@@ -60,6 +60,8 @@ constexpr float zero						= 0;
 constexpr uint	patch_size					= 32;	// Set global patch size from device parameters // generally: device_work_size_multiple = patch_size * integer, eg 32, 64, 128
 constexpr size_t cl_flt16_size				= sizeof(cl_float16);
 
+constexpr size_t	num_depth_steps			= NUM_DEPTH_STEPS;
+
 using namespace std;
 class RunCL
 {
@@ -89,7 +91,7 @@ public:
 	// RunCL_patch_tracking.cpp
 	cl_kernel			pad_image_top_bottom2_kernel, vertcal_blur5_kernel, pad_image_left_right2_kernel, horiz_blur5_kernel, reduce_img_kernel;
 	// RunCL_depth.cpp
-	cl_kernel			update_depth_kernel, enlarge_layer_float_kernel;
+	cl_kernel			update_depth_kernel, update_depth_2_kernel, enlarge_layer_float_kernel;
 
 	// GPU Buffers
 																												// static = same for all instances of class Dynamic_slam.
@@ -338,6 +340,7 @@ public:
 
 	////////////////////////////////////// RunCL_depth.cpp
 	void update_depth( uint out_block_size, uint layer);
+	void update_depth_2( uint out_block_size, uint layer);
 	void propagate_depth_next_layer(uint layer);
 
 

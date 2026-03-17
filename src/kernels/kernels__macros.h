@@ -50,6 +50,7 @@
 #define OUT_BLOCK_SIZE				4
 #define NUM_CURR_FRAMES				5
 
+#define NUM_DEPTH_STEPS				8
 
 // LOCAL VERBOSITY FOR EACH KERNEL FILE ##############################################
 // These remove the "txt" code before compilation, so it will not take time in execution.
