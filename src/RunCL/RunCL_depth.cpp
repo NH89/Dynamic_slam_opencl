@@ -69,7 +69,7 @@ void RunCL::update_depth( uint out_block_size, uint layer){
 	_clSetKernelArg( kernel, 15, sizeof(cl_mem),					&cur_frames_k2kbuf,									fname);		// __constant	float16*	inv_k2k,				//15		// transforms for 4 past frames,  k2k_buf
 	_clSetKernelArg( kernel, 16, sizeof(cl_mem),					&cur_frames_st3buf,									fname);		// __constant	float4*		st3,					//16		// array of pose transforms to the set previous frames
 	_clSetKernelArg( kernel, 17, sizeof(cl_mem),					&patch_lookup_table_buf,							fname);		// __constant 	float4*		lookup_table,			//17		// should ideally be a constant.
-	_clSetKernelArg( kernel, 18, sizeof(cl_mem),					&SE3_grad_map_mem,									fname);		// __constant 	float4*		SE3_grad_map,			//18		// _cur_frame
+	_clSetKernelArg( kernel, 18, sizeof(cl_mem),					&SE3_map_mem,										fname);		// __constant 	float4*		SE3_map,				//18		// _cur_frame
 
 	_clSetKernelArg( kernel, 19, sizeof(cl_mem),					&current_frames[current_frames_idx[0]].img_buf,		fname);		// __global		float4*		img_cur,				//19		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
 	_clSetKernelArg( kernel, 20, sizeof(cl_mem),					&current_frames[current_frames_idx[1]].img_buf,		fname);		// __global		float4*		img_past_0,				//20
@@ -170,15 +170,10 @@ void RunCL::update_depth_2( uint out_block_size, uint layer){
 	uint	read_rows_					= MipMap[layer*8 + MiM_READ_ROWS];	//uint_params[MM_PIXELS];
 
 	uint	mm_cols						= uint_params[MM_COLS];
-	uint	mm_rows						= uint_params[MM_ROWS];
-	uint	mm_pixels					= uint_params[MM_PIXELS];
+	float	inv_depth_step				= fp32_params[MAX_INV_DEPTH] / ((float)NUM_DEPTH_STEPS);
 
 	uint	layer_offset				= MipMap[layer*8 + MiM_READ_OFFSET];
 	uint	stop_offset					= layer_offset + (read_rows_ -1) * mm_cols + read_cols_;
-
-	uint	ST3_offset					= patch_ST3_hessian_start_idx[layer][0][0];
-	uint	ST3_u_step					= patch_ST3_hessian_start_idx[layer][0][1] - ST3_offset;
-	uint	ST3_v_step					= patch_ST3_hessian_start_idx[layer][1][0] - ST3_offset;
 
 	size_t	threads_to_launch			= patch_num_threads[layer];
 	size_t	local_work_size_			= block_size;									// Could be changed to an integer multiple, i.e. use "RunCL::local_work_size", beware numbers not multiples of out_block_size.
@@ -213,38 +208,30 @@ void RunCL::update_depth_2( uint out_block_size, uint layer){
 	_clSetKernelArg( kernel, 8, sizeof(uint),						&read_rows_,										fname);		// __private	const uint	read_rows_,				//8		= mipmap_params_[MiM_READ_ROWS];
 
 	_clSetKernelArg( kernel, 9, sizeof(uint),						&mm_cols,											fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
-	_clSetKernelArg( kernel, 10, sizeof(uint),						&mm_rows,											fname);		// __private	const uint	mm_rows,				//10		= uint_params[MM_ROWS];
-	_clSetKernelArg( kernel, 11, sizeof(uint),						&mm_pixels,											fname);		// __private	const uint	mm_pixels,				//11	= uint_params[MM_PIXELS];
+	_clSetKernelArg( kernel, 10, sizeof(float),						&inv_depth_step,									fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
 
-	_clSetKernelArg( kernel, 12, sizeof(uint),						&ST3_offset,										fname);		// __private	const uint	ST3_offset,				//12	= ST3_offset3.s0;	//SE3_out_step_1 * (num_SE3_DoF + 1);// + layer_offset; __private	uint3		ST3_offset3,			//4
-	_clSetKernelArg( kernel, 13, sizeof(uint),						&ST3_u_step,										fname);		// __private	const uint	ST3_u_step,				//13	= ST3_offset3.s1;	// step between elements of the Hessian matrix
-	_clSetKernelArg( kernel, 14, sizeof(uint),						&ST3_v_step,										fname);		// __private	const uint	ST3_v_step,				//14	= ST3_offset3.s2;
+	_clSetKernelArg( kernel, 11, sizeof(cl_mem),					&cur_frames_k2kbuf,									fname);		// __constant	float16*	inv_k2k,				//15		// transforms for 4 past frames,  k2k_buf
+	_clSetKernelArg( kernel, 12, sizeof(cl_mem),					&patch_lookup_table_buf,							fname);		// __constant 	float4*		lookup_table,			//17		// should ideally be a constant.
 
-	_clSetKernelArg( kernel, 15, sizeof(cl_mem),					&cur_frames_k2kbuf,									fname);		// __constant	float16*	inv_k2k,				//15		// transforms for 4 past frames,  k2k_buf
-	_clSetKernelArg( kernel, 16, sizeof(cl_mem),					&cur_frames_st3buf,									fname);		// __constant	float4*		st3,					//16		// array of pose transforms to the set previous frames
-	_clSetKernelArg( kernel, 17, sizeof(cl_mem),					&patch_lookup_table_buf,							fname);		// __constant 	float4*		lookup_table,			//17		// should ideally be a constant.
-	_clSetKernelArg( kernel, 18, sizeof(cl_mem),					&SE3_grad_map_mem,									fname);		// __constant 	float4*		SE3_grad_map,			//18		// _cur_frame
+	_clSetKernelArg( kernel, 13, sizeof(cl_mem),					&current_frames[current_frames_idx[0]].img_buf,		fname);		// __global		float4*		img_cur,				//19		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
+	_clSetKernelArg( kernel, 14, sizeof(cl_mem),					&current_frames[current_frames_idx[1]].img_buf,		fname);		// __global		float4*		img_past_0,				//20
+	_clSetKernelArg( kernel, 15, sizeof(cl_mem),					&current_frames[current_frames_idx[2]].img_buf,		fname);		// __global		float4*		img_past_1,				//21
+	_clSetKernelArg( kernel, 16, sizeof(cl_mem),					&current_frames[current_frames_idx[3]].img_buf,		fname);		// __global		float4*		img_past_2,				//22
+	_clSetKernelArg( kernel, 17, sizeof(cl_mem),					&current_frames[current_frames_idx[4]].img_buf,		fname);		// __global		float4*		img_past_3,				//23
 
-	_clSetKernelArg( kernel, 19, sizeof(cl_mem),					&current_frames[current_frames_idx[0]].img_buf,		fname);		// __global		float4*		img_cur,				//19		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
-	_clSetKernelArg( kernel, 20, sizeof(cl_mem),					&current_frames[current_frames_idx[1]].img_buf,		fname);		// __global		float4*		img_past_0,				//20
-	_clSetKernelArg( kernel, 21, sizeof(cl_mem),					&current_frames[current_frames_idx[2]].img_buf,		fname);		// __global		float4*		img_past_1,				//21
-	_clSetKernelArg( kernel, 22, sizeof(cl_mem),					&current_frames[current_frames_idx[3]].img_buf,		fname);		// __global		float4*		img_past_2,				//22
-	_clSetKernelArg( kernel, 23, sizeof(cl_mem),					&current_frames[current_frames_idx[4]].img_buf,		fname);		// __global		float4*		img_past_3,				//23
+	_clSetKernelArg( kernel, 18, sizeof(cl_mem),					&depth_mem,											fname);		// __global		float*		depth_map,				//24	// current frame depth, now stored as inv_depth
 
-	_clSetKernelArg( kernel, 24, sizeof(cl_mem),					&depth_mem,											fname);		// __global		float*		depth_map,				//24	// current frame depth, now stored as inv_depth
-
-	_clSetKernelArg( kernel, 25, sizeof(cl_mem),					&current_frames[current_frames_idx[0]].r_vel_buf,	fname);		// __global		float4*		vel_cur,				//25	// multiple past frames.
-	_clSetKernelArg( kernel, 26, sizeof(cl_mem),					&current_frames[current_frames_idx[1]].r_vel_buf,	fname);		// __global		float4*		vel_past_0,				//26	// TO DO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
-	_clSetKernelArg( kernel, 27, sizeof(cl_mem),					&current_frames[current_frames_idx[2]].r_vel_buf,	fname);		// __global		float4*		vel_past_1,				//27
-	_clSetKernelArg( kernel, 28, sizeof(cl_mem),					&current_frames[current_frames_idx[3]].r_vel_buf,	fname);		// __global		float4*		vel_past_2,				//28
-	_clSetKernelArg( kernel, 29, sizeof(cl_mem),					&current_frames[current_frames_idx[4]].r_vel_buf,	fname);		// __global		float4*		vel_past_3,				//29
+	_clSetKernelArg( kernel, 19, sizeof(cl_mem),					&current_frames[current_frames_idx[0]].r_vel_buf,	fname);		// __global		float4*		vel_cur,				//25	// multiple past frames.
+	_clSetKernelArg( kernel, 20, sizeof(cl_mem),					&current_frames[current_frames_idx[1]].r_vel_buf,	fname);		// __global		float4*		vel_past_0,				//26	// TO DO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
+	_clSetKernelArg( kernel, 21, sizeof(cl_mem),					&current_frames[current_frames_idx[2]].r_vel_buf,	fname);		// __global		float4*		vel_past_1,				//27
+	_clSetKernelArg( kernel, 22, sizeof(cl_mem),					&current_frames[current_frames_idx[3]].r_vel_buf,	fname);		// __global		float4*		vel_past_2,				//28
+	_clSetKernelArg( kernel, 23, sizeof(cl_mem),					&current_frames[current_frames_idx[4]].r_vel_buf,	fname);		// __global		float4*		vel_past_3,				//29
 
 	// //outputs
-	_clSetKernelArg( kernel, 30, sizeof(cl_mem), 					&SE3_rho_map_mem,									fname);		// __global		float2*		Rho_,					//30	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
-	_clSetKernelArg( kernel, 31, sizeof(cl_float2)*local_mem_size,	NULL,												fname);		// __local		float2*		local_rho,				//31	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
+	_clSetKernelArg( kernel, 24, sizeof(cl_mem), 					&SE3_rho_map_mem,									fname);		// __global		float2*		Rho_,					//30	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
+	_clSetKernelArg( kernel, 25, sizeof(cl_float2)*local_mem_size,	NULL,												fname);		// __local		float2*		local_rho,				//31	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
 
-	_clSetKernelArg( kernel, 32, sizeof(cl_mem), 					&depth_mem_temp,									fname);		// __global		float2*		inv_depth_incr,			//32
-	_clSetKernelArg( kernel, 33, sizeof(float)*local_mem_size,		NULL,												fname);		// __local		float*		local_depth_incr,		//33
+	_clSetKernelArg( kernel, 26, sizeof(cl_mem), 					&depth_mem_temp,									fname);		// __global		float2*		inv_depth_incr,			//32
 
 																																if( verbosity>local_verbosity_threshold) {
 																																	cout<<"\n\nRunCL::update_depth()_chk1"<<

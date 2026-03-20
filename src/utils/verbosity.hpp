@@ -144,7 +144,7 @@
 	/////////////////////////////////////// RUNCL_PATCH_SLAM.CPP
 	#define V_RUNCL_INITIALIZE_PATCH_PARAMS				1
 	#define	V_RUNCL_COMPUTE_PATCH_LOOKUP_TABLE			2
-	#define	V_RUNCL_PATCH_IMG_GRADIENTS					2
+	#define	V_RUNCL_PATCH_IMG_GRADIENTS					-2
 
 	/////////////////////////////////////// RUNCL_PATCH_TRACKING.CPP
 	#define V_RUNCL_REDUCE_IMG							2
@@ -160,7 +160,7 @@
 
 
 	#define	V_RUNCL_UPDATE_K2K_BUF						-2
-	#define	V_RUNCL_RHO_SQ								2 //
+	#define	V_RUNCL_RHO_SQ								-2 //
 	#define	V_RUNCL_REDUCE_PATCH_RHO					2
 	#define	V_RUNCL_UPDATE_K2K							2
 

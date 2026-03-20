@@ -155,20 +155,21 @@ void Dynamic_slam::estimate_depth(){
 																																			cout << "\n\nDynamic_slam::estimate_depth() chk_0"
 																																			<<"  ##############################################################"<< flush;
 																																		}
-	for (int layer=4; layer>3; layer--){
+	for (int layer=4; layer>=3; layer--){
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\nDynamic_slam::estimate_depth()  layer= "<<
 																																			layer << endl <<flush;
 																																		}
 		uint out_block_size = 4;
-		runcl.update_depth_2( out_block_size, layer);
+		runcl.update_depth( out_block_size, layer);			// LK
+		//runcl.update_depth_2( out_block_size, layer);		// cost_vol
 
 		// anisotropic smoothing
 
 		// parsimony of orientation, plane, curvature ?
-
-		runcl.propagate_depth_next_layer(layer-1);
-
+		if( layer>0){
+			runcl.propagate_depth_next_layer(layer-1);
+		}
 
 		// NB this kernel would be faster if it used 1 thread per depth patch, ie 16 pixels. ... Maybe not. The existing method uses half as many threads, BUT benefits from contiguious reads of data.
 	}
