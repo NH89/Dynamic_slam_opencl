@@ -33,10 +33,8 @@ __kernel void compute_param_maps(
 	float v_flt			= (float)v * reduction;
 	float u2, v2;
 	uint read_index 	= read_offset_  +  v  * mm_cols  + u ;
-
 	int idx 			= layer * 6 * 16;
-
-	bool print=false;
+	bool print			= false;
 	if( (u_flt==10)&&(v==10) ){ print=true; }  // global_id_u==0) || (u==read_cols_/2.0f && v==read_rows_/2.0f) || (u==read_cols_ && v==read_rows_
 
 	for (uint i=0; i<6; i++, idx+=16) {																// for each SE3 DoF

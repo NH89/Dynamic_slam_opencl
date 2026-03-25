@@ -308,7 +308,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 
 	cl_int 			status;
 	cl_event 		writeEvt;
-	status = clEnqueueFillBuffer(runcl.uload_queue, runcl.SE3_hessian_map_mem, &zero, 	sizeof(float), 	0, 2*runcl.mm_size_bytes_C4, 	0, NULL, &writeEvt);
+	status = clEnqueueFillBuffer(runcl.uload_queue, runcl.SE3_hessian_map_mem, &zero_flt, 	sizeof(float), 	0, 2*runcl.mm_size_bytes_C4, 	0, NULL, &writeEvt);
 	clFlush(runcl.uload_queue); status = clFinish(runcl.uload_queue);
 																												if (status != CL_SUCCESS)	{
 																													cout << "\nstatus = " << runcl.checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;

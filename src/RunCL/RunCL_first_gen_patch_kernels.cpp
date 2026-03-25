@@ -40,9 +40,9 @@ void RunCL::rho_sq( uint out_block_size, uint iter, uint frame_idx, uint layer, 
 																																				}
 																																			}
 
-	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, 	&zero, sizeof( float), 0, 			  2*mm_size_bytes_C1, 	fname);				//_clEnqueueWriteBuffer( uload_queue, k2kbuf, CL_FALSE, 0, local_num_samples*16*sizeof( float), k2k_3_16_[start_sample_idx], fname);
+	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, 	&zero_flt, sizeof( float), 0, 			  2*mm_size_bytes_C1, 	fname);				//_clEnqueueWriteBuffer( uload_queue, k2kbuf, CL_FALSE, 0, local_num_samples*16*sizeof( float), k2k_3_16_[start_sample_idx], fname);
 //	_clEnqueueFillBuffer( uload_queue, SE3_weight_map_mem, 	&zero, sizeof( float), 0, num_SE3_DoF*2*mm_size_bytes_C1, 	fname);
-	_clEnqueueFillBuffer( uload_queue, SE3_incr_map_mem, 	&zero, sizeof( float), 0, 			  2*mm_size_bytes_C1, 	fname);
+	_clEnqueueFillBuffer( uload_queue, SE3_incr_map_mem, 	&zero_flt, sizeof( float), 0, 			  2*mm_size_bytes_C1, 	fname);
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_1 "<<flush;}
 	size_t kernel_workgroup_size;
 	cl_int k_wg_info =  clGetKernelWorkGroupInfo(

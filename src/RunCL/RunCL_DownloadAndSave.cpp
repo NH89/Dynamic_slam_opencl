@@ -80,7 +80,7 @@ void RunCL::createFolders(){
 	//	"dmem","amem","lomem","himem","qmem","qmem2","cdatabuf","cdatabuf_8chan","hdatabuf","dbg_databuf","img_sum_buf", "key_frame_depth_map_src",
 
 	std::vector<std::string> names = {"imgmem", "imgmem_blurred", "gxmem", "gymem", \
-										"SE3_grad_map_mem",  \
+										"SE3_grad_map_mem", "ST3_img_grad_mem", \
 										"SE3_map_mem", \
 										"SE3_weight_map_mem",\
 										"SE3_incr_map_mem", "SE3_rho_map_mem", \
@@ -363,6 +363,8 @@ void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 	ReadOutput(		mat_depth.data,	depth_buf,	depthUpdate_bytes, offset); 																// NB contains elements of type_mat, (CV_32FC1 for most buffers)
 	ReadOutput(		mat_rho.data,		rho_buf,	depthUpdate_bytes, offset); 															// NB contains elements of type_mat, (CV_32FC1 for most buffers)
 
+	Save_csv_mat(	mat_depth, folder, layer );
+
 	// generate filename, by inserting folder "/vtp", and adding ".vtp" suffix,  // make csv folder, if necessary
 	stringstream ss;
 	ss << "ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_DepthUpdate_.pcd";
@@ -409,6 +411,35 @@ void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 		}
 	}
 	pcd_file.close();
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_pcd finished\n"<<flush;
+}
+
+void RunCL::Save_csv_mat(cv::Mat mat, std::filesystem::path folder,  uint layer ){  // currently assumes 2 channel float data.
+	int local_verbosity_threshold = V_RUNCL_SAVE_VTK;
+																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::Save_scv_mat chk0"<<flush;
+																																				PRINT_MATX44F(	current_frames[ current_frames_idx[0] ].inv_K, );
+																																			}
+	std::string  	date_time_str = date_time_string();
+	stringstream 	ss;
+	ss 				<< date_time_str << "ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_DepthUpdate_.csv";
+	folder 			+= "/csv/";
+	if(std::filesystem::create_directory(folder )) { 																						if(verbosity>-2) std::cerr<< "Directory Created: "<<folder<<std::endl;}
+	folder.replace_filename( ss.str() );
+
+	// open file
+	std::ofstream csv_file ( folder ); 																					if(!csv_file ){std::cerr<<"\n\nvoid RunCL::Save_pcd_depth(..) failed to open file for writing: "<<folder<<endl<<flush;  exit_(1);}
+	csv_file << "# .CSV";
+	csv_file << "\ncv::Vec2f depth		=  mat.at<cv::Vec2f>(row,col);";
+	csv_file << "\nrow\tcol\tdepth[0]\tdepth[1]";
+
+	for(float row=0; row<mat.rows ; row ++ ){
+		for(float col=0; col<mat.cols ; col ++ ){
+			cv::Vec2f depth		=  mat.at<cv::Vec2f>(row,col);
+			csv_file << "\n" << row << "\t" << col << "\t" << depth[0] << "\t" << depth[1];
+		}
+		csv_file << "\n" ;
+	}
+	csv_file.close();
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_pcd finished\n"<<flush;
 }
 
@@ -1032,7 +1063,8 @@ void RunCL::DownloadAndSaveDepthUpdate( uint layer, uint depth_iter_per_layer  )
 	tiff = old_tiff;
 
 	//Save_vtk_depth( depth_mem, SE3_rho_map_mem, paths.at( "depth_mem_temp"), layer, depth_iter_per_layer );
-	Save_pcd_depth( depth_mem, SE3_rho_map_mem, paths.at( "depth_mem_temp"), layer, depth_iter_per_layer );
+	Save_pcd_depth( depth_mem_temp, SE3_rho_map_mem, paths.at( "depth_mem_temp"), layer, depth_iter_per_layer );
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

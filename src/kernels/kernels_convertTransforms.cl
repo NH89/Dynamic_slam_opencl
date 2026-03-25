@@ -200,7 +200,7 @@ void px_k2k( float16 k2k_,  float reduction,  uint v,  uint u,  float inv_depth,
 
 void mat_mul44( uint lid,	__local float local_A[16],		__local float local_B[16],		__local float local_C[16] ){
 
-	uint elem 						= fmod((float)lid, SE3_elems);
+	uint elem						= fmod((float)lid, SE3_elems);
 	uint col						= fmod((float)elem, 4.0f);
 	uint row						= elem / (uint)4;
 

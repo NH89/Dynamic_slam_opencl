@@ -3,14 +3,15 @@
 
 
 Matx44f  RunCL::update_pose_bufs_cur_frames(  ){								// To be called after tracking and before depth and other optimisations.
-		string fname = "RunCL::update_pose_bufs_cur_frames(..)";
-		int local_verbosity_threshold = V_RUNCL_UPDATE_POSE_BUFS_CUR_FRAMES;
+		string		fname = "RunCL::update_pose_bufs_cur_frames(..)";
+		int			local_verbosity_threshold = V_RUNCL_UPDATE_POSE_BUFS_CUR_FRAMES;
+
 		float		cur_frames_k2k[num_current_frames*16];
 		cl_float4	cur_frames_st3[num_current_frames];
 
-		Matx44f	inv_pose_gt	=  getInvPose(current_frames[	current_frames_idx[0]	].pose_gt);
+		Matx44f		inv_pose_gt		=  getInvPose(current_frames[	current_frames_idx[0]	].pose_gt);
 
-		Matx44f pose;
+		Matx44f		pose;
 		float16arry_To_Matx44f( &current_frames[	current_frames_idx[0]	].pose[0],  pose );
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout<<"\n\nRunCL::update_pose_bufs_cur_frames(..) chk_1\n"<<flush;
@@ -27,15 +28,15 @@ Matx44f  RunCL::update_pose_bufs_cur_frames(  ){								// To be called after tr
 																																			}
 		for( int frame=0;	frame<num_current_frames;	frame++){
 
-			Matx44f  gt_pose_0_to_this_frame  = current_frames[ current_frames_idx[frame] ].pose_gt * inv_pose_gt;
+			Matx44f  									gt_pose_0_to_this_frame		= current_frames[ current_frames_idx[frame] ].pose_gt * inv_pose_gt;
 
-			Matx44f 									new_frame_pose			= gt_pose_0_to_this_frame ; // current_frames[ current_frames_idx[frame] ].pose_0_to_this_frame  *  pose;
-			current_frames[ current_frames_idx[frame] ].pose_0_to_this_frame 	= new_frame_pose;
+			Matx44f 									new_frame_pose				= gt_pose_0_to_this_frame ; // current_frames[ current_frames_idx[frame] ].pose_0_to_this_frame  *  pose;
+			current_frames[ current_frames_idx[frame] ].pose_0_to_this_frame 		= new_frame_pose;
 
-			Matx44f 									new_k2k					= current_frames[ current_frames_idx[frame] ].K	* new_frame_pose * current_frames[ current_frames_idx[frame] ].inv_K;
+			Matx44f 									new_k2k						= current_frames[ current_frames_idx[frame] ].K	* new_frame_pose * current_frames[ current_frames_idx[frame] ].inv_K;
 
-			Matx44f_To_float16arry(						new_k2k,				&cur_frames_k2k[frame*16] );
-			cur_frames_st3[								frame]					= {{	new_frame_pose(0,3),	new_frame_pose(1,3),	new_frame_pose(2,3),	0.0f	}};
+			Matx44f_To_float16arry(						new_k2k,					&cur_frames_k2k[frame*16] );
+			cur_frames_st3[								frame]						= {{	new_frame_pose(0,3),	new_frame_pose(1,3),	new_frame_pose(2,3),	0.0f	}};
 
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout<<"\n\nRunCL::update_pose_bufs_cur_frames(..) chk_2\n"<<flush;

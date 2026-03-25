@@ -56,7 +56,9 @@ static constexpr uint max_patches_per_layer = 2^max_mipmap_layers * 2^max_mipmap
 
 #define FLOAT_16_EYE 	{1.0f, 0.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f, 0.0f,		0.0f, 0.0f, 1.0f, 0.0f,		0.0f, 0.0f, 0.0f, 1.0f}
 constexpr float identity_flt16[16]			= FLOAT_16_EYE;
-constexpr float zero						= 0;
+constexpr float zero_flt					= 0;
+constexpr float zero_uint					= 0;
+
 constexpr uint	patch_size					= 32;	// Set global patch size from device parameters // generally: device_work_size_multiple = patch_size * integer, eg 32, 64, 128
 constexpr size_t cl_flt16_size				= sizeof(cl_float16);
 
@@ -103,7 +105,7 @@ public:
 	cl_mem				fp32_param_buf, uint_param_buf, mipmap_buf, img_stats_buf;
 	cl_mem				SE3_map_mem, SE3_rho_map_mem, SE3_weight_map_mem;
 	cl_mem				pix_sum_mem, var_sum_mem;
-	cl_mem				HSV_grad_mem;
+	cl_mem				HSV_grad_mem, ST3_img_grad_mem;
 
 	cl_mem				patch_lookup_table_buf;
 	cl_mem				SE3_hessian_map_mem,		SE3_jacobian_map_mem;
@@ -241,6 +243,7 @@ public:
 	void Save_vtk_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::path folder, uint layer, uint depth_iter_per_layer  );
 
 	void Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::path folder, uint layer, uint depth_iter_per_layer  );
+	void Save_csv_mat(cv::Mat mat, std::filesystem::path folder,  uint layer );
 
 	void DownloadAndSave(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range=1 );
 	void DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers );

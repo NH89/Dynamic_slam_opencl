@@ -251,7 +251,8 @@ void RunCL::patch_img_gradients_set_params(){	// Uses patch lookup table		// cal
 	//__global
 	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&SE3_grad_map_mem,				fname);									// __global 	float8*		SE3_grad_map,			//7		// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
 	_clSetKernelArg( kernel,	12, sizeof( cl_mem), 	&SE3_hessian_map_mem,			fname);									// __global 	float4*		SE3_Hessian_pinv_map,	//8		// HSV (6x6) matrix so 36*float8
-	_clSetKernelArg( kernel,	14, sizeof( cl_mem), 	&HSV_grad_mem,					fname);									// __global 	float8*		HSV_grad				//10
+	_clSetKernelArg( kernel,	14, sizeof( cl_mem), 	&ST3_img_grad_mem,				fname);									// __global 	float4*		HSV_grad				//10
+	//_clSetKernelArg( kernel,	14, sizeof( cl_mem), 	&HSV_grad_mem,					fname);									// __global 	float8*		HSV_grad				//10
 
 	// For the SE3 Hessian patches, and their reduction.	/////////////
 																																if( verbosity>local_verbosity_threshold+1 ) {
@@ -395,6 +396,15 @@ size_t* param_value_size_ret);
 																																// }
 																																*/
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_finished #############################################################"<<flush;
+																																	if( layer==0){
+																																		stringstream ss;	ss << dataset_frame_num << "_ST3_img_grad_map";
+																																		float max_range = 0.0f;		// i.e. find max value, and map 0.0->0.5.
+																																		DownloadAndSave_2Channel_volume( ST3_img_grad_mem, ss.str( ), paths.at( "ST3_img_grad_mem"), mm_size_bytes_C1*2, mm_Image_size, CV_32FC2, false, max_range, num_SE3_DoF/2 );
+																																		// NB here collecting only for the value channel. Need to adapt kernel if full hsv needs to be collected.
+																																	}
+
+
+																																	////
 																																	int offset	=	MipMap[layer*8 +  MiM_READ_OFFSET   ];
 																																	int rows	=	MipMap[layer*8 +  MiM_READ_ROWS   ];
 																																	int size_bytes	= rows * mm_width * 4*sizeof(float) ;
@@ -445,7 +455,7 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 	_clSetKernelArg( kernel,	4, sizeof(int),			&mm_cols,					fname);									// __private	uint	mm_cols		//4
 
 	_clSetKernelArg( kernel,	6, sizeof(int),			&mm_layerstep,				fname);									// __private	uint	mm_pixels	//6
-	_clSetKernelArg( kernel,	7, sizeof(cl_mem),		&SE3_hessian_map_mem,	fname);									// __private	uint				//7
+	_clSetKernelArg( kernel,	7, sizeof(cl_mem),		&SE3_hessian_map_mem,		fname);									// __private	uint				//7
 
 	cl_int		status	= CL_SUCCESS;
 	cl_event	ev		= 0;
