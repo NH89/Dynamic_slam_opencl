@@ -34,11 +34,11 @@ __kernel void compute_param_maps(
 	float u2, v2;
 	uint read_index 	= read_offset_  +  v  * mm_cols  + u ;
 	int idx 			= layer * 6 * 16;
-	bool print			= false;
+	bool print			= true; //false;
 	if( (u_flt==10)&&(v==10) ){ print=true; }  // global_id_u==0) || (u==read_cols_/2.0f && v==read_rows_/2.0f) || (u==read_cols_ && v==read_rows_
 
 	for (uint i=0; i<6; i++, idx+=16) {																// for each SE3 DoF
-/*																									// Find new pixel position, h=homogeneous coords.
+																									// Find new pixel position, h=homogeneous coords.
 		if(global_id_u==0){
 			printf("\n\n\n__kernel void compute_param_maps()          layer=%d,  SE3 i=%d,  idx=%d,  SE3_k2k=(\n(%f, %f, %f, %f),\n(%f, %f, %f, %f),\n(%f, %f, %f, %f),\n(%f, %f, %f, %f))  ",\
 			layer, i, idx,\
@@ -47,18 +47,18 @@ __kernel void compute_param_maps(
 			SE3_k2k[idx+ 8],SE3_k2k[idx+ 9],SE3_k2k[idx+10],SE3_k2k[idx+11],\
 			SE3_k2k[idx+12],SE3_k2k[idx+13],SE3_k2k[idx+14],SE3_k2k[idx+15] );
 		}
-*/
+
 		float16 k2k_ = (float16)(SE3_k2k[idx+0], 	SE3_k2k[idx+1], 	SE3_k2k[idx+2], 	SE3_k2k[idx+3],\
 								 SE3_k2k[idx+4], 	SE3_k2k[idx+5], 	SE3_k2k[idx+6], 	SE3_k2k[idx+7],\
 								 SE3_k2k[idx+8], 	SE3_k2k[idx+9], 	SE3_k2k[idx+10], 	SE3_k2k[idx+11],\
 								 SE3_k2k[idx+12], 	SE3_k2k[idx+13], 	SE3_k2k[idx+14], 	SE3_k2k[idx+15]);
 
 		px_k2k( k2k_,  reduction,  v,  u,  inv_depth, &u2,  &v2,  print  );
-/*
-		if(print==true){
-			printf("\n__kernel void compute_param_maps()    u_flt=%f,  u2=%f,  v_flt=%f,   v2=%f  ", u_flt, u2 , v_flt, v2);
-		}
-*/
+
+// 		if(print==true){
+// 			printf("\n__kernel void compute_param_maps()    u_flt=%f,  u2=%f,  v_flt=%f,   v2=%f  ", u_flt, u2 , v_flt, v2);
+// 		}
+
 		float2 partial_gradient={ ((float)u)-u2 ,  ((float)v)-v2 }; 												// Find movement of pixel
 
 		SE3_map[read_index + i* uint_params[MM_PIXELS]  ] = partial_gradient;
@@ -66,7 +66,7 @@ __kernel void compute_param_maps(
 		barrier(CLK_GLOBAL_MEM_FENCE );
 	}
 
-//	if(print==true){ printf("\n");}
+	if(print==true && global_id_u==0){ printf("\n");}
 
 	// TO DO // Create a 'reproject' & 'img_grad_sum' kernels
 }

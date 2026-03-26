@@ -5,7 +5,15 @@
 void RunCL::precomp_param_maps ( float SE3_k2k[  max_mipmap_layers*num_SE3_DoF*16  ]){ //  Compute maps of pixel motion for each SE3 DoF, and camera params // Derived from RunCL::mipmap
 	string fname = "RunCL::precom_param_maps( ..)";
 	int local_verbosity_threshold = V_RUNCL_PRECOM_PARAM_MAPS;
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::precom_param_maps( float SE3_k2k[6*16])_chk_0 "<<flush;}
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::precom_param_maps( float SE3_k2k[6*16])_chk_0 "<<flush;
+																																				for(int mipmap_layer=0; mipmap_layer< max_mipmap_layers; mipmap_layer++){
+																																					cout<<"\n########################################################################\n"<<flush;
+																																					for(int se3=0; se3<num_SE3_DoF; se3++){
+																																						cout<<"\n######\n mipmap_layer="<<mipmap_layer<<"   se3="<<se3<<"\n"<<flush;
+																																						PRINT_FLOAT_16( &SE3_k2k[  max_mipmap_layers*num_SE3_DoF*16  ], )
+																																					}
+																																				}
+																																			}
 	// cv::Mat depth		= cv::Mat::ones ( mm_height, mm_width, CV_32FC1);																	// NB must recompute translation maps at run time. NB parallax motion is proportional to inv depth.
 	// float mid_depth 	= ( fp32_params[MAX_INV_DEPTH] + fp32_params[MIN_INV_DEPTH])/2.0;                                                   // TO DO fix : depthmap not used as a kernel arg. NB want to match scale of depth range, but ? parallax may vary.
 	// depth 				*= mid_depth;

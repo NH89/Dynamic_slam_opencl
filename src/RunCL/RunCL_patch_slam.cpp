@@ -399,7 +399,14 @@ size_t* param_value_size_ret);
 																																	if( layer==0){
 																																		stringstream ss;	ss << dataset_frame_num << "_ST3_img_grad_map";
 																																		float max_range = 0.0f;		// i.e. find max value, and map 0.0->0.5.
-																																		DownloadAndSave_2Channel_volume( ST3_img_grad_mem, ss.str( ), paths.at( "ST3_img_grad_mem"), mm_size_bytes_C1*2, mm_Image_size, CV_32FC2, false, max_range, num_SE3_DoF/2 );
+																																		//DownloadAndSave_2Channel_volume( ST3_img_grad_mem, ss.str( ), paths.at( "ST3_img_grad_mem"), mm_size_bytes_C1*2, mm_Image_size, CV_32FC2, false, max_range, num_SE3_DoF/2 );
+																																		//void RunCL::DownloadAndSave_3Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers,  bool exception_tiff /*=false*/, float iter, bool display)
+																																		//DownloadAndSave_3Channel_volume( ST3_img_grad_mem, ss.str( ), paths.at( "ST3_img_grad_mem"), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, max_range, num_SE3_DoF/2,  false, 1, false);
+
+																																		DownloadAndSave_6Channel_volume( ST3_img_grad_mem, ss.str(), paths.at(  "ST3_img_grad_mem"), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, 1, 3 );
+
+																																		//DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  0,			false);
+
 																																		// NB here collecting only for the value channel. Need to adapt kernel if full hsv needs to be collected.
 																																	}
 

@@ -31,8 +31,9 @@
     // DYNAIC_SLAM/ ##############################################
     /////////////////////////////////////// DYNAMIC_SLAM_CLASS.CPP
 	#define	V_DYNAMIC_SLAM_DYNAMIC_SLAM					1
-	#define V_DYNAMIC_GENERATE_DELTAS					-1
-	#define	V_DYNAMIC_SLAM_INITIALIZE_CAMERA			-2
+	#define V_DYNAMIC_GENERATE_DELTAS					1
+	#define	V_DYNAMIC_SLAM_INITIALIZE_CAMERA			2
+
 	#define	V_DYNAMIC_SLAM_NEXTFRAME					-2
 	#define	V_DYNAMIC_SLAM_GETFRAME						2
 	#define	V_DYNAMIC_SLAM_GETPOSE						1
@@ -97,7 +98,9 @@
 	#define	V_RUNCL_READOUTPUT							2
 	#define	V_RUNCL_SAVECOSTVOLS						2
 	#define	V_RUNCL_STORE_KEYFRAME						2
-	#define	V_RUNCL_SAVE_VTK							-2
+	#define	V_RUNCL_SAVE_VTK							2
+	#define V_RUNCL_SAVE_PCD							-2
+	#define V_RUNCL_SAVE_CSV							-2
 
 	#define	V_RUNCL_DOWNLOADANDSAVE						2
 	#define	V_RUNCL_DOWNLOADANDSAVE_2CHANNEL_VOLUME		2

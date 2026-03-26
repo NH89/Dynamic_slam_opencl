@@ -29,7 +29,7 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 	__constant	uint4*		lookup_table,			//17		// should ideally be a constant.
 	__constant	float2*		SE3_map,				//18		// _cur_frame
 
-	__global	float4*		ST3_img_grad_map,		//19
+	__global	float4*		ST3_img_grad,			//19
 
 	__global	float4*		img_cur,				//20		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
 	__global	float4*		img_past_1,				//21
@@ -193,9 +193,11 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 					rho_pvt_flt4.w							= 1.0f;																						// rho.w holds pixel count.
 
 					// Gradient of pixel value wrt ST3, cancelling tyhe effect of current depth map //////												// NB could use a variable blend of HSV, in place of just Value.
-					J_inv_d_pvt								=  st3[	past_frame_idx].x	* ST3_img_grad_map[ 	read_index + (0 * mm_pixels) ].x;		// Here for value channel only. Could weight the chroma and cos_hue, sins_hue channels.
-					J_inv_d_pvt								+= st3[	past_frame_idx].y	* ST3_img_grad_map[ 	read_index + (1 * mm_pixels) ].x;		// SE3_img_grad_map float4 {HSV,alpha} for each SE3 DoF,  per unit inv_depth.
-					J_inv_d_pvt								+= st3[	past_frame_idx].z	* ST3_img_grad_map[ 	read_index + (2 * mm_pixels) ].x;		// SE3_img_grad_map = (gx*SE3_map.x + gy*SE3_map.y), where (gx,gy) are the img grad in (u,v)
+																																					// (gx,gy) = img_grad( d(rgb)/du, d(rgb)/dv ).	SE3_map(se3) = pixel motion(u.v)
+																																					// ST3_img_grad[ read_index + (se3 * mm_pixels) ].x		=		gx.x* SE3_map[read_index + se3* mm_pixels][0] 	+ gy.x* SE3_map[read_index + se3* mm_pixels][1]
+					J_inv_d_pvt								=  st3[	past_frame_idx].x	* ST3_img_grad[ 	read_index + (0 * mm_pixels) ].x;		// Here for value channel only. Could weight the chroma and cos_hue, sins_hue channels.
+					J_inv_d_pvt								+= st3[	past_frame_idx].y	* ST3_img_grad[ 	read_index + (1 * mm_pixels) ].x;		// SE3_img_grad_map float4 {HSV,alpha} for each SE3 DoF,  per unit inv_depth.
+					J_inv_d_pvt								+= st3[	past_frame_idx].z	* ST3_img_grad[ 	read_index + (2 * mm_pixels) ].x;		// SE3_img_grad_map = (gx*SE3_map.x + gy*SE3_map.y), where (gx,gy) are the img grad in (u,v)
 
 					J_inv_d[		row_in_block].x			+= rho_pvt_flt4.x			* J_inv_d_pvt;													// Here for value channel only. Could weight the chroma and cos_hue, sins_hue channels.
 					J_inv_d[		row_in_block].y			+= J_inv_d_pvt				* J_inv_d_pvt;
@@ -205,7 +207,7 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 					rho_pvt_arr[row_in_block]				+= rho_pvt_flt2;																			// save to pvt mem for this column
 				}
 																																						if(  group_id==1/*u==(read_cols_/2) && v==(read_rows_/2)*/ ){printf("\n__kernel void update_depth(..) chk 4 ####### iter=%d, row_in_block=%d, past_frame_idx=%d, intersection=%d, global_id_uint=%d, lid=%d,  group_id=%d,  J_inv_d_pvt=%f, rho_pvt_flt4.x=%f, st3[	past_frame_idx].x=%f,	* ST3_img_grad_map[ read_index + (3 * mm_pixels) ].x=%f  ",\
-																																																																			iter,	 row_in_block,	  past_frame_idx,	 intersection,	  global_id_uint,	 lid,	  group_id,		J_inv_d_pvt,	rho_pvt_flt4.x,	   st3[past_frame_idx].x,		  ST3_img_grad_map[ read_index + (3 * mm_pixels) ].x );}
+																																																																			iter,	 row_in_block,	  past_frame_idx,	 intersection,	  global_id_uint,	 lid,	  group_id,		J_inv_d_pvt,	rho_pvt_flt4.x,	   st3[past_frame_idx].x,		  ST3_img_grad[ read_index + (3 * mm_pixels) ].x );}
 			}
 		}
 		barrier( CLK_GLOBAL_MEM_FENCE );
@@ -261,11 +263,12 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 																							uint offset_2							= thread_lidi_offset		+ (block_row	/	out_block_size);				//if(  group_id==1 /*lid==0*/ ){printf("\n__kernel void update_depth(..) chk 9,  offset_2=%d, global_id_uint=%d,", offset_2, global_id_uint);}
 
 									/* for computation */									float pvt_depth_incr					= J_inv_d[			block_row ].x	/	J_inv_d[	block_row ].y;
+																							if( J_inv_d[	block_row ].y > -0.0001f && J_inv_d[	block_row ].y < 0.0001f){	pvt_depth_incr = 0.0f; }
 																							pvt_depth_incr							= clamp( pvt_depth_incr , -max_inv_depth_step, max_inv_depth_step);														// max 1 pixel, at this img pyr layer.
-															if( isnan( pvt_depth_incr ))	{pvt_depth_incr 						= 0.0f;}
+																																																					//if( isnan( pvt_depth_incr ))	{pvt_depth_incr 						= 0.0f;}
 																							local_depth_incr[	offset_2]			-= pvt_depth_incr;																// J_inv_d[			block_row ].x	/	J_inv_d[	block_row ].y;				// __local float*  sizeof(cl_float2)*local_work_size,
 
-																							float2 incr								= { J_inv_d[	block_row ].x,	J_inv_d[	block_row ].y  };// {u,block_row}; //{ local_depth_incr[	offset_2],	J_inv_d[	block_row ].y  }; 								// { (float)lid, (float)group_id }; // offset_1 , iter  //
+																							float2 incr								= {local_depth_incr[	offset_2],	J_inv_d[	block_row ].y  }; //{ J_inv_d[	block_row ].x,	J_inv_d[	block_row ].y  };// {u,block_row}; // 								// { (float)lid, (float)group_id }; // offset_1 , iter  //
 									/* for debugging */										inv_depth_incr[ 	offset_1]			= incr;																								// __global float*  mm_size_bytes_C1,    depth_mem_temp,
 // 																																					/*if(global_id_uint==0){*/ printf("\n__kernel void update_depth(..) offset_1 %d	= write_index %d		+ write_block_row %d  *out_cols %d   ",\
 // 																																																						offset_1 ,	  write_index			, write_block_row	  ,out_cols	); /*}*/

@@ -347,7 +347,7 @@ void RunCL::Save_vtk_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 }
 
 void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::path folder, uint layer, uint depth_iter_per_layer  ){
-	int local_verbosity_threshold = V_RUNCL_SAVE_VTK;
+	int local_verbosity_threshold = V_RUNCL_SAVE_PCD;
 																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::Save_pcd_depth chk0"<<flush;
 																																				PRINT_MATX44F(	current_frames[ current_frames_idx[0] ].inv_K, );
 																																			}
@@ -388,12 +388,13 @@ void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 	pcd_file << "POINTS "<<mat_depth.cols * mat_depth.rows<<"\n";
 	pcd_file << "DATA ascii\n";
 
-	for(float col=0; col<mat_depth.cols ; col ++ ){
-		for(float row=0; row<mat_depth.rows ; row ++ ){
-			cv::Vec2f depth		=  mat_depth.at<cv::Vec2f>(col,row);
+
+	for(float row=0; row<mat_depth.rows ; row ++ ){
+		for(float col=0; col<mat_depth.cols ; col ++ ){
+			cv::Vec2f depth		=  mat_depth.at<cv::Vec2f>(row,col);
 			//cv::Vec2f rho		=  mat_rho.at<cv::Vec2f>(col,row);
 			float depth_f		= 0.0f;
-			if (depth[0]>0  ) { depth_f = 1/depth[0]; }					// && isfinite(depth[0])
+			if (depth[0]>0.0000001  ) { depth_f = 1/depth[0]; }					// && isfinite(depth[0])
 			Matx41f pixel 		= { scale*col, scale*row, depth_f, 1.0f };
 
 
@@ -401,13 +402,13 @@ void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 			float x 			= point(0,0) ;// / point(3,0);
 			float y 			= point(1,0) ;// / point(3,0);
 			float z 			= point(2,0) ;// / point(3,0);
-			//if( x<max_depth && y<max_depth && z<max_depth ){
-				pcd_file << depth[0] <<" "<< depth[1] <<" "<< depth_f <<"\n";
+			if( x<max_depth && y<max_depth && z<max_depth && z>=0.0f){
+				//pcd_file << depth[0] <<" "<< depth[1] <<" "<< depth_f <<"\n";
 
-				// pcd_file << x <<" "<< y <<" "<< z <<"\n";				// <<" "<<depth[1]<<" "<<  rho[0] <<" "<< rho[1]   Need to project 3D points in xyz, not uvz.
-			//}else{
-			//	pcd_file << col <<" "<< row <<" "<< 0.0f <<"\n";
-			//}
+				pcd_file << x <<" "<< y <<" "<< z <<"\n";				// <<" "<<depth[1]<<" "<<  rho[0] <<" "<< rho[1]   Need to project 3D points in xyz, not uvz.
+			}else{
+				pcd_file << col <<" "<< row <<" "<< 0.0f <<"\n";
+			}
 		}
 	}
 	pcd_file.close();
@@ -415,7 +416,7 @@ void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 }
 
 void RunCL::Save_csv_mat(cv::Mat mat, std::filesystem::path folder,  uint layer ){  // currently assumes 2 channel float data.
-	int local_verbosity_threshold = V_RUNCL_SAVE_VTK;
+	int local_verbosity_threshold = V_RUNCL_SAVE_CSV;
 																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::Save_scv_mat chk0"<<flush;
 																																				PRINT_MATX44F(	current_frames[ current_frames_idx[0] ].inv_K, );
 																																			}

@@ -141,10 +141,16 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 			float2	SE3_px								= SE3_map[read_index + i* mm_pixels];								// SE3_map[read_index + i* uint_params[MM_PIXELS]  ] = partial_gradient;  // float2 partial_gradient={u_flt-u2 , v_flt-v2}; // Find movement of pixel
 			float4	gxSE3								= gx*SE3_px[0];
 			float4	gySE3								= gy*SE3_px[1];
-			Jacobian[i]									= gxSE3 + gxSE3;	//gx*SE3_px[0]  + gy*SE3_px[1];					// J_SE3 * img gradient i.e. edges
+			Jacobian[i]									= gxSE3 + gySE3;	//gx*SE3_px[0]  + gy*SE3_px[1];					// J_SE3 * img gradient i.e. edges
 			if(i>2){
-				ST3_img_grad[read_index + (i-3)* mm_pixels] = Jacobian[i]; //(float2){gxSE3.x, gySE3.x};	// collecting full HSV.
-				Jacobian[i]								*= inv_depth;														// ST3 depends on inv_depth
+				ST3_img_grad[read_index + (i-3)* mm_pixels] = Jacobian[i];  //(float2){gxSE3.x, gySE3.x};	// collecting full HSV.
+
+				int4 J_notnan = !isnan(Jacobian[i]);
+				if(  !isnan( inv_depth ) && J_notnan.x && J_notnan.y && J_notnan.z && J_notnan.w ){
+					Jacobian[i]							*= inv_depth;														// ST3 depends on inv_depth
+				}else{
+					Jacobian[i]							= zero_f4;
+				}
 			}
 			Jacobian[i].w								= 1.0f;
 			SE3_grad_map[read_index + i* mm_pixels]	= Jacobian[i] ;														// float4
