@@ -338,6 +338,10 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 																																	<<"\n ST3_out_offset = ("<<ST3_out_offset.x <<", "<<ST3_out_offset.y <<", "<<ST3_out_offset.z <<")"
 																																	<<flush;
 																																}
+	cl_event		ev;
+	cl_int			res, status;
+	status 			= clEnqueueFillBuffer(	uload_queue, SE3_hessian_map_mem, 	&zero_flt,	sizeof(float), 0, 2*mm_size_bytes_C4,	0, NULL, &ev);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.6\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	_cl_flush_finish( uload_queue, fname );	// NB done to find cause of NaNs
 
 	_clSetKernelArg( kernel,	0, sizeof(int),			&layer,							fname);									// __private	uint		layer,						//0
 	_clSetKernelArg( kernel,	1, sizeof(int),			&lookup_table_offset_uint,		fname);									// __private	uint		lookup_table_offset_uint,	//1
@@ -346,7 +350,7 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 	_clSetKernelArg( kernel,	4, sizeof(cl_uint3),	&ST3_out_offset,				fname);									// __private	uint		SE3_hessian_offset,			//3
 
 	_clSetKernelArg( kernel,	9, sizeof( cl_mem),		&imgmem_,						fname);									// __global 	float4*		img,					//6		//	"current_frames[idx].img_buf	= imgmem[idx];", NB changes every new frame.
-	_clSetKernelArg( kernel,	10, sizeof( cl_mem), 	&depth_mem,						fname);									// __global		float* 		depth_map,				//12	// current frame depth, now stored as inv_depth
+	_clSetKernelArg( kernel,	10, sizeof(cl_mem), 	&depth_mem,						fname);									// __global		float* 		depth_map,				//12	// current frame depth, now stored as inv_depth
 
 
 	_clSetKernelArg( kernel,	13,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,			//9		// local_Hessian[ sizeof(float4) *6*6 *local_size]
@@ -360,8 +364,7 @@ void* param_value,
 size_t* param_value_size_ret);
 */
 
-	cl_event	ev;
-	cl_int		res, status;
+
 
 	res 	= clEnqueueNDRangeKernel(m_queue,		kernel, 1, 0, &threads_to_launch, &local_work_size_, 0, NULL, &ev);
 																	if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
@@ -396,6 +399,39 @@ size_t* param_value_size_ret);
 																																// }
 																																*/
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_finished #############################################################"<<flush;
+																																	size_t	offset_		=	0;
+																																	Mat	hessian_Mat(	 mm_Image_size,	CV_32FC4); ReadOutput( hessian_Mat.data,      SE3_hessian_map_mem,  mm_size_bytes_C4, offset_ );
+																																	Mat	ST3_img_grad_Mat(mm_Image_size,	CV_32FC4); ReadOutput( ST3_img_grad_Mat.data, ST3_img_grad_mem,     mm_size_bytes_C4, offset_ );
+																																	Mat	SE3_grad_map_Mat(mm_Image_size,	CV_32FC4); ReadOutput( SE3_grad_map_Mat.data, SE3_grad_map_mem,     mm_size_bytes_C4, offset_ );
+
+																																	cv::Scalar sum = cv::sum(hessian_Mat);
+																																	int idx =-1;
+																																	if ( isnan( sum[0] ) ){idx=0;}
+																																	else if ( isnan( sum[1] ) ){idx=1;}
+																																	else if ( isnan( sum[2] ) ){idx=2;}
+																																	else if ( isnan( sum[3] ) ){idx=3;}
+
+																																	if (idx>-1){
+																																		for (int row = 0; row<hessian_Mat.rows ; row++){
+																																			for (int col = 0; col<hessian_Mat.cols ; col++){
+																																				cl_float4 pixel = hessian_Mat.at<cl_float4>(row,col);
+																																				float pix = -1;
+																																				if(idx==0) pix=pixel.s0;
+																																				else if(idx==1) pix=pixel.s1;
+																																				else if(idx==2) pix=pixel.s2;
+																																				else if(idx==3) pix=pixel.s3;
+																																				if( isnan(pix) ){ cout<<"\n isnan, idx="<<idx<<",  row="<<row<<",  col="<<col<<flush; }
+																																			}
+																																		}
+																																	}
+
+																																	cout<<"\nlayer = "<<layer;
+																																	cout<<",  hessian_Mat sum = "		<<cv::sum( (hessian_Mat) ); //  / ( (float)hessian_Mat.rows *(float)hessian_Mat.cols  ))
+																																	cout<<",  ST3_img_grad_Mat sum = "	<<cv::sum(ST3_img_grad_Mat);
+																																	cout<<",  SE3_grad_map_Mat sum = "	<<cv::sum(SE3_grad_map_Mat);
+																																	cout<<endl<<flush;
+
+																																	////////////////////////////////
 																																	if( layer==0){
 																																		stringstream ss;	ss << dataset_frame_num << "_ST3_img_grad_map";
 																																		float max_range = 0.0f;		// i.e. find max value, and map 0.0->0.5.
@@ -409,10 +445,9 @@ size_t* param_value_size_ret);
 
 																																		// NB here collecting only for the value channel. Need to adapt kernel if full hsv needs to be collected.
 																																	}
+																																	////////////////////////////////
 
-
-																																	////
-																																	int offset	=	MipMap[layer*8 +  MiM_READ_OFFSET   ];
+																																	int offset	=	MipMap[layer*8 +  MiM_READ_OFFSET ];
 																																	int rows	=	MipMap[layer*8 +  MiM_READ_ROWS   ];
 																																	int size_bytes	= rows * mm_width * 4*sizeof(float) ;
 

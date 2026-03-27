@@ -270,8 +270,8 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 
 																							float2 incr								= {local_depth_incr[	offset_2],	J_inv_d[	block_row ].y  }; //{ J_inv_d[	block_row ].x,	J_inv_d[	block_row ].y  };// {u,block_row}; // 								// { (float)lid, (float)group_id }; // offset_1 , iter  //
 									/* for debugging */										inv_depth_incr[ 	offset_1]			= incr;																								// __global float*  mm_size_bytes_C1,    depth_mem_temp,
-// 																																					/*if(global_id_uint==0){*/ printf("\n__kernel void update_depth(..) offset_1 %d	= write_index %d		+ write_block_row %d  *out_cols %d   ",\
-// 																																																						offset_1 ,	  write_index			, write_block_row	  ,out_cols	); /*}*/
+//																																					/*if(global_id_uint==0){*/ printf("\n__kernel void update_depth(..) offset_1 %d	= write_index %d		+ write_block_row %d  *out_cols %d   ",\
+//																																																						offset_1 ,	  write_index			, write_block_row	  ,out_cols	); /*}*/
 			}
 		}
 		barrier(CLK_LOCAL_MEM_FENCE );
