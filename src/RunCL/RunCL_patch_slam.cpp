@@ -314,7 +314,7 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 	string fname = "RunCL::patch_img_gradients()";
 	int local_verbosity_threshold = V_RUNCL_PATCH_IMG_GRADIENTS;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_chk1 #############################################################"<<flush;}
 	cl_kernel		kernel						= patch_img_grad_kernel;
-	const cl_mem 	imgmem_						= current_frames[ 						current_frames_idx[0] ].img_buf;
+	const cl_mem 	imgmem_						= current_frames[						current_frames_idx[0] ].img_buf;
 
 	size_t			local_work_size_			= patch_img_gradients_workgroup_size[	layer];											// patch_local_work_size[	layer];						//patch_img_gradients_workgroup_size; // patch_img_gradients_local_work_size_;
 	size_t			threads_to_launch			= patch_num_threads[					layer];
@@ -340,8 +340,8 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 																																}
 	cl_event		ev;
 	cl_int			res, status;
-	status 			= clEnqueueFillBuffer(	uload_queue, SE3_hessian_map_mem, 	&zero_flt,	sizeof(float), 0, 2*mm_size_bytes_C4,	0, NULL, &ev);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.6\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
-	_cl_flush_finish( uload_queue, fname );	// NB done to find cause of NaNs
+	// status 			= clEnqueueFillBuffer(	uload_queue, SE3_hessian_map_mem, 	&zero_flt,	sizeof(float), 0, 2*mm_size_bytes_C4,	0, NULL, &ev);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.6\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	// _cl_flush_finish( uload_queue, fname );	// NB done to find cause of NaNs
 
 	_clSetKernelArg( kernel,	0, sizeof(int),			&layer,							fname);									// __private	uint		layer,						//0
 	_clSetKernelArg( kernel,	1, sizeof(int),			&lookup_table_offset_uint,		fname);									// __private	uint		lookup_table_offset_uint,	//1
@@ -354,7 +354,6 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 
 
 	_clSetKernelArg( kernel,	13,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,			//9		// local_Hessian[ sizeof(float4) *6*6 *local_size]
-
 /*
 cl_int clGetMemObjectInfo(
 cl_mem memobj,
@@ -363,11 +362,9 @@ size_t param_value_size,
 void* param_value,
 size_t* param_value_size_ret);
 */
-
-
-
 	res 	= clEnqueueNDRangeKernel(m_queue,		kernel, 1, 0, &threads_to_launch, &local_work_size_, 0, NULL, &ev);
 																	if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
+
 	status	= clFlush(m_queue);										if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_img_gradients( ),  clFlush(m_queue) status  = "<<status<<" "<<checkerror(status) <<"\n"<<flush; exit_(status);}
 	status	= clWaitForEvents (1, &ev);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_img_gradients( ),  clWaitForEventsh(1, &ev) =" <<status<<" "<<checkerror(status) <<"\n"<<flush; exit_(status);}
 																																/*
@@ -405,27 +402,77 @@ size_t* param_value_size_ret);
 																																	Mat	SE3_grad_map_Mat(mm_Image_size,	CV_32FC4); ReadOutput( SE3_grad_map_Mat.data, SE3_grad_map_mem,     mm_size_bytes_C4, offset_ );
 
 																																	cv::Scalar sum = cv::sum(hessian_Mat);
-																																	int idx =-1;
-																																	if ( isnan( sum[0] ) ){idx=0;}
-																																	else if ( isnan( sum[1] ) ){idx=1;}
-																																	else if ( isnan( sum[2] ) ){idx=2;}
-																																	else if ( isnan( sum[3] ) ){idx=3;}
+																																	bool idx0, idx1, idx2, idx3;
+																																	idx0 = idx1 = idx2 = idx3 = false;
+																																	if ( isnan( sum[0] ) ){idx0=true;}
+																																	if ( isnan( sum[1] ) ){idx1=true;}
+																																	if ( isnan( sum[2] ) ){idx2=true;}
+																																	if ( isnan( sum[3] ) ){idx3=true;}
 
-																																	if (idx>-1){
+																																	if (idx0||idx1||idx2||idx3){
+																																		cout<<"\nhessian_Mat:";
 																																		for (int row = 0; row<hessian_Mat.rows ; row++){
 																																			for (int col = 0; col<hessian_Mat.cols ; col++){
 																																				cl_float4 pixel = hessian_Mat.at<cl_float4>(row,col);
-																																				float pix = -1;
-																																				if(idx==0) pix=pixel.s0;
-																																				else if(idx==1) pix=pixel.s1;
-																																				else if(idx==2) pix=pixel.s2;
-																																				else if(idx==3) pix=pixel.s3;
-																																				if( isnan(pix) ){ cout<<"\n isnan, idx="<<idx<<",  row="<<row<<",  col="<<col<<flush; }
+																																				if(idx0){ if( isnan(pixel.s0) ){ cout<<"\n isnan, idx="<<0<<",  row="<<row<<",  col="<<col<<flush; } }
+																																				if(idx1){ if( isnan(pixel.s1) ){ cout<<"\n isnan, idx="<<1<<",  row="<<row<<",  col="<<col<<flush; } }
+																																				if(idx2){ if( isnan(pixel.s2) ){ cout<<"\n isnan, idx="<<2<<",  row="<<row<<",  col="<<col<<flush; } }
+																																				if(idx3){ if( isnan(pixel.s3) ){ cout<<"\n isnan, idx="<<3<<",  row="<<row<<",  col="<<col<<flush; } }
 																																			}
 																																		}
 																																	}
 
-																																	cout<<"\nlayer = "<<layer;
+																																	offset_		=	mm_size_bytes_C4;
+																																	Mat	jacobian_Mat(	 mm_Image_size,	CV_32FC4); ReadOutput( jacobian_Mat.data,      SE3_hessian_map_mem,  mm_size_bytes_C4, offset_ );
+
+																																	sum = cv::sum(jacobian_Mat);
+																																	idx0 = idx1 = idx2 = idx3 = false;
+																																	if ( isnan( sum[0] ) ){idx0=true;}
+																																	if ( isnan( sum[1] ) ){idx1=true;}
+																																	if ( isnan( sum[2] ) ){idx2=true;}
+																																	if ( isnan( sum[3] ) ){idx3=true;}
+
+																																	if (idx0||idx1||idx2||idx3){
+																																		cout<<"\njacoboan_Mat:";
+																																		for (int row = 0; row<jacobian_Mat.rows ; row++){
+																																			for (int col = 0; col<jacobian_Mat.cols ; col++){
+																																				cl_float4 pixel = jacobian_Mat.at<cl_float4>(row,col);
+																																				if(idx0){ if( isnan(pixel.s0) ){ cout<<"\n isnan, idx="<<0<<",  row="<<row<<",  col="<<col<<flush; } }
+																																				if(idx1){ if( isnan(pixel.s1) ){ cout<<"\n isnan, idx="<<1<<",  row="<<row<<",  col="<<col<<flush; } }
+																																				if(idx2){ if( isnan(pixel.s2) ){ cout<<"\n isnan, idx="<<2<<",  row="<<row<<",  col="<<col<<flush; } }
+																																				if(idx3){ if( isnan(pixel.s3) ){ cout<<"\n isnan, idx="<<3<<",  row="<<row<<",  col="<<col<<flush; } }
+																																			}
+																																		}
+																																	}
+/*
+																																	cout<<"\nST3_img_grad_Mat:";
+																																		for (int row = 0; row<ST3_img_grad_Mat.rows ; row++){
+																																			for (int col = 0; col<ST3_img_grad_Mat.cols ; col++){
+																																				cl_float4 pixel = ST3_img_grad_Mat.at<cl_float4>(row,col);
+																																				if( isnan(pixel.s0) ){ cout<<"\n isnan, idx="<<0<<",  row="<<row<<",  col="<<col<<flush; }
+																																				if( isnan(pixel.s1) ){ cout<<"\n isnan, idx="<<1<<",  row="<<row<<",  col="<<col<<flush; }
+																																				if( isnan(pixel.s2) ){ cout<<"\n isnan, idx="<<2<<",  row="<<row<<",  col="<<col<<flush; }
+																																				if( isnan(pixel.s3) ){ cout<<"\n isnan, idx="<<3<<",  row="<<row<<",  col="<<col<<flush; }
+																																			}
+																																		}
+
+																																	cout<<"\nSE3_grad_map_Mat:";
+																																		for (int row = 0; row<SE3_grad_map_Mat.rows ; row++){
+																																			for (int col = 0; col<SE3_grad_map_Mat.cols ; col++){
+																																				cl_float4 pixel = SE3_grad_map_Mat.at<cl_float4>(row,col);
+																																				if( isnan(pixel.s0) ){ cout<<"\n isnan, idx="<<0<<",  row="<<row<<",  col="<<col<<flush; }
+																																				if( isnan(pixel.s1) ){ cout<<"\n isnan, idx="<<1<<",  row="<<row<<",  col="<<col<<flush; }
+																																				if( isnan(pixel.s2) ){ cout<<"\n isnan, idx="<<2<<",  row="<<row<<",  col="<<col<<flush; }
+																																				if( isnan(pixel.s3) ){ cout<<"\n isnan, idx="<<3<<",  row="<<row<<",  col="<<col<<flush; }
+																																			}
+																																		}
+*/
+																																	cout<<"\ndataset_frame_num="	<<current_frames[ current_frames_idx[0] ].dataset_frame_num
+																																	<<",  frame_count="				<<current_frames[ current_frames_idx[0] ].frame_count
+																																	<<",  frame_data_index="		<<current_frames[ current_frames_idx[0] ].frame_data_index;
+
+																																	cout<<"\nlayer = "<<layer<<",  mm_Image_size="<<mm_Image_size<<",  uint_params[MM_COLS]="<<uint_params[MM_COLS]
+																																	<<",  hessian_Mat.rows="<<hessian_Mat.rows<<",  hessian_Mat.cols="<<hessian_Mat.cols;
 																																	cout<<",  hessian_Mat sum = "		<<cv::sum( (hessian_Mat) ); //  / ( (float)hessian_Mat.rows *(float)hessian_Mat.cols  ))
 																																	cout<<",  ST3_img_grad_Mat sum = "	<<cv::sum(ST3_img_grad_Mat);
 																																	cout<<",  SE3_grad_map_Mat sum = "	<<cv::sum(SE3_grad_map_Mat);
@@ -591,7 +638,7 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_hessian_reduce()_chk3 ."<<flush;	// Save buffers to file ###########
 																																	stringstream ss;
-																																	ss << "patch_hessian_reduce_";// << save_index ;
+																																	ss << "patch_hessian_reduce__frame_num="<<current_frames[ current_frames_idx[0] ].dataset_frame_num<<"_layer="<<layer<<"_";
 																																	bool show 		= false;
 																																	bool old_tiff 	= tiff;
 																																	tiff 			= true;
