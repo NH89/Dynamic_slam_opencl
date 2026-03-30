@@ -34,12 +34,12 @@
 	#define V_DYNAMIC_GENERATE_DELTAS					1
 	#define	V_DYNAMIC_SLAM_INITIALIZE_CAMERA			2
 
-	#define	V_DYNAMIC_SLAM_NEXTFRAME					-2
-	#define	V_DYNAMIC_SLAM_GETFRAME						-2
+	#define	V_DYNAMIC_SLAM_NEXTFRAME					2
+	#define	V_DYNAMIC_SLAM_GETFRAME						2
 	#define	V_DYNAMIC_SLAM_GETPOSE						1
 	#define	V_DYNAMIC_SLAM_GETINVPOSE					1
-	#define	V_DYNAMIC_SLAM_GETFRAMEDATA					-1
-	#define	V_DYNAMIC_SLAM_USE_GT_POSE					-1
+	#define	V_DYNAMIC_SLAM_GETFRAMEDATA					1
+	#define	V_DYNAMIC_SLAM_USE_GT_POSE					1
     ////
 	#define	V_DYNAMIC_SLAM_ESTIMATECALIBRATION			0
 	#define	V_DYNAMIC_SLAM_SPATIALCOSTFNS				0
@@ -56,7 +56,7 @@
 	#define	V_DYNAMIC_SLAM_COMPUTE_OPTIMUM				2
 
 	#define	V_DYNAMIC_SLAM_ESTIMATE_SLAM				-2
-	#define V_DYNAMIC_SLAM_ESTIMATE_TRACKING			-2
+	#define V_DYNAMIC_SLAM_ESTIMATE_TRACKING			2
 	#define V_DYNAMIC_SLAM_ESTIMATE_DEPTH				-2
 
 	// DYNAIC_SLAM/testing/ ##############################################
@@ -67,7 +67,7 @@
 
 	// RUNCL/ ##############################################
 	/////////////////////////////////////// RUNCL.HPP
-	#define V_RUNCL_UPDATE_POSE_BUFS_CUR_FRAMES			-2
+	#define V_RUNCL_UPDATE_POSE_BUFS_CUR_FRAMES			2
 
 	/////////////////////////////////////// RUNCL_CLASS.CPP
 	#define	V_RUNCL_RUNCL								0
@@ -79,11 +79,14 @@
 
 	#define	V_RUNCL_CONVERTTOSTRING						0
 	#define	V_RUNCL_INITIALIZE_FP32_PARAMS				0
-	#define	V_RUNCL_INITIALIZE_RUNCL					-1
+	#define	V_RUNCL_INITIALIZE_RUNCL					1
 	#define	V_RUNCL_MIPMAP_CALL_KERNEL					1
 	#define V_RUNCL_LAYER_CALL_KERNEL					1
+
+	#define V_RUNCL__CL_ENQUEUE_ND_RANGE_KERNEL			1
+	#define V_RUNCL_FLUSH_FINISH						1
 	#define	V_RUNCL_WAITFOREVENTANDRELEASE				0
-	#define	V_RUNCL_SET_CAM_BUFS						-1
+	#define	V_RUNCL_SET_CAM_BUFS						1
 	#define	V_RUNCL_ALLOCATEMEM							0
 	#define	V__RUNCL									0
 	#define	V_EXIT_										0
@@ -99,8 +102,8 @@
 	#define	V_RUNCL_SAVECOSTVOLS						2
 	#define	V_RUNCL_STORE_KEYFRAME						2
 	#define	V_RUNCL_SAVE_VTK							2
-	#define V_RUNCL_SAVE_PCD							-2
-	#define V_RUNCL_SAVE_CSV							-2
+	#define V_RUNCL_SAVE_PCD							2
+	#define V_RUNCL_SAVE_CSV							2
 
 	#define	V_RUNCL_DOWNLOADANDSAVE						2
 	#define	V_RUNCL_DOWNLOADANDSAVE_2CHANNEL_VOLUME		2
@@ -147,7 +150,7 @@
 	/////////////////////////////////////// RUNCL_PATCH_SLAM.CPP
 	#define V_RUNCL_INITIALIZE_PATCH_PARAMS				1
 	#define	V_RUNCL_COMPUTE_PATCH_LOOKUP_TABLE			2
-	#define	V_RUNCL_PATCH_IMG_GRADIENTS					-2
+	#define	V_RUNCL_PATCH_IMG_GRADIENTS					2
 
 	/////////////////////////////////////// RUNCL_PATCH_TRACKING.CPP
 	#define V_RUNCL_REDUCE_IMG							2
@@ -162,8 +165,8 @@
 	#define	V_RUNCL_PRECOM_PARAM_MAPS					1
 
 
-	#define	V_RUNCL_UPDATE_K2K_BUF						-2
-	#define	V_RUNCL_RHO_SQ								-2 //
+	#define	V_RUNCL_UPDATE_K2K_BUF						2
+	#define	V_RUNCL_RHO_SQ								2 //
 	#define	V_RUNCL_REDUCE_PATCH_RHO					2
 	#define	V_RUNCL_UPDATE_K2K							2
 

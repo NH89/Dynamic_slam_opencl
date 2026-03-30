@@ -593,8 +593,6 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 	}
 	// After iterations, need to apply result to depth map, and propagate to the next layer of depth map.  Host code must call kernel again for the next layer of the depth img pyramid.
 
-
-
 	//if( group_id==1 /*lid==0*/ ){printf("\n__kernel void update_depth(..) finished ####### global_id_uint=%d,  lid=%d,  group_id=%d,  ", global_id_uint, lid, group_id );}
 }
 

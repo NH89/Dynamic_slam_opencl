@@ -226,9 +226,6 @@ void RunCL::patch_img_gradients_set_params(){	// Uses patch lookup table		// cal
 																																if( verbosity>local_verbosity_threshold+1 ) {
 																																	cout <<"\npatches_per_workgroup_local_mem 	= "<<patches_per_workgroup_local_mem<<flush;
 																																	cout <<"\npatch_size = "<<patch_size<<flush;
-																																	// for(uint layer = 0; layer < max_mipmap_layers; layer++) {
-																																	// 	cout <<"\npatch_local_work_size["<<layer<<"] = "<<patch_local_work_size[layer]<< flush;
-																																	// }
 																																}
 	for (uint layer_=0; layer_<max_mipmap_layers; layer_++){
 		patch_img_gradients_workgroup_size[layer_]	= min( patch_local_work_size[layer_],  patches_per_workgroup_local_mem * patch_size );
@@ -293,12 +290,9 @@ void RunCL::patch_img_gradients_set_params(){	// Uses patch lookup table		// cal
 																																	<<",    st3_hessian_elem_step ="					<<st3_hessian_elem_step
 																																	<<",    st3_hessian_row_step ="						<<st3_hessian_row_step
 																																	<<",    out_block_size ="							<<out_block_size
-																																	// <<".\n    patch_hessian_cols[	"<<layer<<"]	= "		<<patch_hessian_cols[ layer]<<",    MipMap[layer*8 + MiM_READ_COLS] = "<<MipMap[layer*8 + MiM_READ_COLS]
-																																	// <<",\n    patch_hessian_rows[	"<<layer<<"]	= "		<<patch_hessian_rows[ layer]<<",    MipMap[layer*8 + MiM_READ_ROWS] = "<<MipMap[layer*8 + MiM_READ_ROWS]
-																																	// <<",\n    block_size = "								<<block_size
 																																	<<flush;
 																																}
-		hessian_layer_offset			+=		6* hessian_elem_step;					//MipMap[layer*8 + MiM_READ_OFFSET]	/mm_width;
+		hessian_layer_offset			+=		6* hessian_elem_step;
 		st3_hessian_layer_offset		+=		3* st3_hessian_row_step;
 	}
 																																if( verbosity>local_verbosity_threshold ) {
@@ -340,66 +334,26 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 																																}
 	cl_event		ev;
 	cl_int			res, status;
-	// status 			= clEnqueueFillBuffer(	uload_queue, SE3_hessian_map_mem, 	&zero_flt,	sizeof(float), 0, 2*mm_size_bytes_C4,	0, NULL, &ev);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.6\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
-	// _cl_flush_finish( uload_queue, fname );	// NB done to find cause of NaNs
 
 	_clSetKernelArg( kernel,	0, sizeof(int),			&layer,							fname);									// __private	uint		layer,						//0
 	_clSetKernelArg( kernel,	1, sizeof(int),			&lookup_table_offset_uint,		fname);									// __private	uint		lookup_table_offset_uint,	//1
-	//_clSetKernelArg( kernel,	2, sizeof(int),			&out_block_size,				fname);									// __private	uint		out_block_size,				//2
-	_clSetKernelArg( kernel,	3, sizeof(cl_uint3),	&SE3_hessian_offset,			fname);									// __private	uint		SE3_hessian_offset,			//3
+	_clSetKernelArg( kernel,	3, sizeof(cl_uint3),	&SE3_hessian_offset,			fname);									// __private	uint		SE3_hessian_offset,			//2
 	_clSetKernelArg( kernel,	4, sizeof(cl_uint3),	&ST3_out_offset,				fname);									// __private	uint		SE3_hessian_offset,			//3
 
-	_clSetKernelArg( kernel,	9, sizeof( cl_mem),		&imgmem_,						fname);									// __global 	float4*		img,					//6		//	"current_frames[idx].img_buf	= imgmem[idx];", NB changes every new frame.
-	_clSetKernelArg( kernel,	10, sizeof(cl_mem), 	&depth_mem,						fname);									// __global		float* 		depth_map,				//12	// current frame depth, now stored as inv_depth
+	_clSetKernelArg( kernel,	9, sizeof( cl_mem),		&imgmem_,						fname);									// __global 	float4*		img,						//9		//	"current_frames[idx].img_buf	= imgmem[idx];", NB changes every new frame.
+	_clSetKernelArg( kernel,	10, sizeof(cl_mem), 	&depth_mem,						fname);									// __global		float* 		depth_map,					//10	// current frame depth, now stored as inv_depth
+	_clSetKernelArg( kernel,	13,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,				//13	// local_Hessian[ sizeof(float4) *6*6 *local_size]
 
-
-	_clSetKernelArg( kernel,	13,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,			//9		// local_Hessian[ sizeof(float4) *6*6 *local_size]
-/*
-cl_int clGetMemObjectInfo(
-cl_mem memobj,
-cl_mem_info param_name,   CL_MEM_SIZE
-size_t param_value_size,
-void* param_value,
-size_t* param_value_size_ret);
-*/
 	res 	= clEnqueueNDRangeKernel(m_queue,		kernel, 1, 0, &threads_to_launch, &local_work_size_, 0, NULL, &ev);
 																	if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
-
 	status	= clFlush(m_queue);										if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_img_gradients( ),  clFlush(m_queue) status  = "<<status<<" "<<checkerror(status) <<"\n"<<flush; exit_(status);}
 	status	= clWaitForEvents (1, &ev);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_img_gradients( ),  clWaitForEventsh(1, &ev) =" <<status<<" "<<checkerror(status) <<"\n"<<flush; exit_(status);}
-																																/*
-																																// if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_chk2 ."<<flush;	// Save buffers to file ###########
-																																// 	stringstream ss;
-																																// 	ss << "patch_img_gradients_";// << save_index ;
-																																// 	bool show 		= false;
-																																// 	bool old_tiff 	= tiff;
-																																// 	tiff 			= true;
-																																// 	float max_range	= 1;
-																																// 	cv::Mat bufImg;
-																																// 	_cl_flush_finish(m_queue, fname);
-																																// 	//DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show);
-																																// 	DownloadAndSave_3Channel( 	SE3_hessian_pinv_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  0,			false);
-																																// 	DownloadAndSave_3Channel( 	SE3_hessian_pinv_map_mem,	ss.str( ), paths.at( "jacobian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  mm_size_bytes_C4 / * mm_layerstep * / , false);
-																																// 	// NB the tiff file holda the int32 values as float32. This is okay because they fit in the mantissa.
-																																// 	// BGRA format, B=u, G=v, R=read_index, A=alpha.
-																																// 	////////////////
-																																// 	if( layer==0){
-																																// 		stringstream 	ss_path;
-																																// 		ss_path.str(std::string()); // reset ss_path
-																																// 		ss_path 		<< "SE3_grad_map_mem"<<flush;
-																																// 		cout 			<< "\n" << ss_path.str() <<flush;
-																																// 		cout 			<< "\n" << paths.at(ss_path.str()) <<flush;
-																																// 		DownloadAndSave_6Channel_volume(  SE3_grad_map_mem, ss.str(), paths.at(ss_path.str()), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, -1, 6 );
-																																// 	}
-																																// 	//////////
-																																// 	tiff 			= old_tiff;
-																																// }
-																																*/
+
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_finished #############################################################"<<flush;
 																																	size_t	offset_		=	0;
-																																	Mat	hessian_Mat(	 mm_Image_size,	CV_32FC4); ReadOutput( hessian_Mat.data,      SE3_hessian_map_mem,  mm_size_bytes_C4, offset_ );
-																																	Mat	ST3_img_grad_Mat(mm_Image_size,	CV_32FC4); ReadOutput( ST3_img_grad_Mat.data, ST3_img_grad_mem,     mm_size_bytes_C4, offset_ );
-																																	Mat	SE3_grad_map_Mat(mm_Image_size,	CV_32FC4); ReadOutput( SE3_grad_map_Mat.data, SE3_grad_map_mem,     mm_size_bytes_C4, offset_ );
+																																	Mat	hessian_Mat(	 mm_Image_size,	CV_32FC4);		ReadOutput( hessian_Mat.data,      SE3_hessian_map_mem,  mm_size_bytes_C4, offset_ );
+																																	Mat	ST3_img_grad_Mat(mm_Image_size,	CV_32FC4);		ReadOutput( ST3_img_grad_Mat.data, ST3_img_grad_mem,     mm_size_bytes_C4, offset_ );
+																																	Mat	SE3_grad_map_Mat(mm_Image_size,	CV_32FC4);		ReadOutput( SE3_grad_map_Mat.data, SE3_grad_map_mem,     mm_size_bytes_C4, offset_ );
 
 																																	cv::Scalar sum = cv::sum(hessian_Mat);
 																																	bool idx0, idx1, idx2, idx3;
@@ -421,11 +375,9 @@ size_t* param_value_size_ret);
 																																			}
 																																		}
 																																	}
-
-																																	offset_		=	mm_size_bytes_C4;
-																																	Mat	jacobian_Mat(	 mm_Image_size,	CV_32FC4); ReadOutput( jacobian_Mat.data,      SE3_hessian_map_mem,  mm_size_bytes_C4, offset_ );
-
-																																	sum = cv::sum(jacobian_Mat);
+																																	offset_	=	mm_size_bytes_C4;
+																																	Mat	jacobian_Mat( mm_Image_size,	CV_32FC4);		ReadOutput( jacobian_Mat.data, SE3_hessian_map_mem, mm_size_bytes_C4, offset_ );
+																																	sum 	= 	cv::sum(jacobian_Mat);
 																																	idx0 = idx1 = idx2 = idx3 = false;
 																																	if ( isnan( sum[0] ) ){idx0=true;}
 																																	if ( isnan( sum[1] ) ){idx1=true;}
@@ -444,36 +396,14 @@ size_t* param_value_size_ret);
 																																			}
 																																		}
 																																	}
-/*
-																																	cout<<"\nST3_img_grad_Mat:";
-																																		for (int row = 0; row<ST3_img_grad_Mat.rows ; row++){
-																																			for (int col = 0; col<ST3_img_grad_Mat.cols ; col++){
-																																				cl_float4 pixel = ST3_img_grad_Mat.at<cl_float4>(row,col);
-																																				if( isnan(pixel.s0) ){ cout<<"\n isnan, idx="<<0<<",  row="<<row<<",  col="<<col<<flush; }
-																																				if( isnan(pixel.s1) ){ cout<<"\n isnan, idx="<<1<<",  row="<<row<<",  col="<<col<<flush; }
-																																				if( isnan(pixel.s2) ){ cout<<"\n isnan, idx="<<2<<",  row="<<row<<",  col="<<col<<flush; }
-																																				if( isnan(pixel.s3) ){ cout<<"\n isnan, idx="<<3<<",  row="<<row<<",  col="<<col<<flush; }
-																																			}
-																																		}
 
-																																	cout<<"\nSE3_grad_map_Mat:";
-																																		for (int row = 0; row<SE3_grad_map_Mat.rows ; row++){
-																																			for (int col = 0; col<SE3_grad_map_Mat.cols ; col++){
-																																				cl_float4 pixel = SE3_grad_map_Mat.at<cl_float4>(row,col);
-																																				if( isnan(pixel.s0) ){ cout<<"\n isnan, idx="<<0<<",  row="<<row<<",  col="<<col<<flush; }
-																																				if( isnan(pixel.s1) ){ cout<<"\n isnan, idx="<<1<<",  row="<<row<<",  col="<<col<<flush; }
-																																				if( isnan(pixel.s2) ){ cout<<"\n isnan, idx="<<2<<",  row="<<row<<",  col="<<col<<flush; }
-																																				if( isnan(pixel.s3) ){ cout<<"\n isnan, idx="<<3<<",  row="<<row<<",  col="<<col<<flush; }
-																																			}
-																																		}
-*/
 																																	cout<<"\ndataset_frame_num="	<<current_frames[ current_frames_idx[0] ].dataset_frame_num
 																																	<<",  frame_count="				<<current_frames[ current_frames_idx[0] ].frame_count
 																																	<<",  frame_data_index="		<<current_frames[ current_frames_idx[0] ].frame_data_index;
 
 																																	cout<<"\nlayer = "<<layer<<",  mm_Image_size="<<mm_Image_size<<",  uint_params[MM_COLS]="<<uint_params[MM_COLS]
 																																	<<",  hessian_Mat.rows="<<hessian_Mat.rows<<",  hessian_Mat.cols="<<hessian_Mat.cols;
-																																	cout<<",  hessian_Mat sum = "		<<cv::sum( (hessian_Mat) ); //  / ( (float)hessian_Mat.rows *(float)hessian_Mat.cols  ))
+																																	cout<<",  hessian_Mat sum = "		<<cv::sum( (hessian_Mat) );
 																																	cout<<",  ST3_img_grad_Mat sum = "	<<cv::sum(ST3_img_grad_Mat);
 																																	cout<<",  SE3_grad_map_Mat sum = "	<<cv::sum(SE3_grad_map_Mat);
 																																	cout<<endl<<flush;
@@ -481,19 +411,12 @@ size_t* param_value_size_ret);
 																																	////////////////////////////////
 																																	if( layer==0){
 																																		stringstream ss;	ss << dataset_frame_num << "_ST3_img_grad_map";
-																																		float max_range = 0.0f;		// i.e. find max value, and map 0.0->0.5.
-																																		//DownloadAndSave_2Channel_volume( ST3_img_grad_mem, ss.str( ), paths.at( "ST3_img_grad_mem"), mm_size_bytes_C1*2, mm_Image_size, CV_32FC2, false, max_range, num_SE3_DoF/2 );
-																																		//void RunCL::DownloadAndSave_3Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers,  bool exception_tiff /*=false*/, float iter, bool display)
-																																		//DownloadAndSave_3Channel_volume( ST3_img_grad_mem, ss.str( ), paths.at( "ST3_img_grad_mem"), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, max_range, num_SE3_DoF/2,  false, 1, false);
-
-																																		DownloadAndSave_6Channel_volume( ST3_img_grad_mem, ss.str(), paths.at(  "ST3_img_grad_mem"), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, 1, 3 );
-
-																																		//DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  0,			false);
-
+																																		float	max_range	= 1.0f;		// i.e. find max value, and map 0.0->0.5.
+																																		uint	vol_layers	= 3;
+																																		DownloadAndSave_6Channel_volume( ST3_img_grad_mem, ss.str(), paths.at(  "ST3_img_grad_mem"), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, max_range, vol_layers );
 																																		// NB here collecting only for the value channel. Need to adapt kernel if full hsv needs to be collected.
 																																	}
 																																	////////////////////////////////
-
 																																	int offset	=	MipMap[layer*8 +  MiM_READ_OFFSET ];
 																																	int rows	=	MipMap[layer*8 +  MiM_READ_ROWS   ];
 																																	int size_bytes	= rows * mm_width * 4*sizeof(float) ;
@@ -501,9 +424,7 @@ size_t* param_value_size_ret);
 																																	cv::Mat temp_mat = cv::Mat::zeros (rows, mm_width, CV_32FC4);
 																																	cout<<"\n offset = "<<offset<<",  rows ="<<rows<<flush;
 
-																																	ReadOutput(temp_mat.data, SE3_grad_map_mem, size_bytes, offset*4*sizeof(float)   );// , 0/*offset*/	// read 1st elem of Jacobian to verify kernel summation.
-																																	// cv::imshow( "SE3_grad_map_mem", temp_mat);
-																																	// cv::waitKey(-1);
+																																	ReadOutput( temp_mat.data, SE3_grad_map_mem, size_bytes, offset*4*sizeof(float) );	// read 1st elem of Jacobian to verify kernel summation.
 
 																																	cl_float4 sum_J1	= {{0.0f}};
 																																	cl_float4 sum_H11	= {{0.0f}};
@@ -580,26 +501,22 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 																																}
 	Mat J									= Mat( hessian_Mat, Rect(0,0,6,1)	);
 
-	for(int row=0; row<1; row++){																									// per_pixel division currently done in kernel, TO DO which is better ?
+	for(int row=0; row<1; row++){																								// per_pixel division currently done in kernel, TO DO which is better ?
 		for(int col=0; col<num_SE3_DoF; col++){
-			Jacobian.operator()(row,col)	= J.at<cl_float4>( row,col ).x;															// NB choose colour channel of Jacobian
+			Jacobian.operator()(row,col)	= J.at<cl_float4>( row,col ).x;														// NB choose colour channel of Jacobian
 		}
 	}
-/*
-	// NB we have one Hessian per color channel. HSV=>4,  HSV_grad => 8, likewise for the Jacobian.
 
-	//Mat H					= Mat( hessian_Mat, Rect(0,1,6,6)	); 																	//hessian.inv()  NB computed in kernel: sum of pixelwise pseudo-inverse of the Hessian.
-*/
-	for(int row=0; row<num_SE3_DoF; row++){																							// per_pixel division currently done in kernel, TO DO which is better ?
+	for(int row=0; row<num_SE3_DoF; row++){																						// per_pixel division currently done in kernel, TO DO which is better ?
 		for(int col=0; col<num_SE3_DoF; col++){
-			Hessian.operator()(row,col)		= hessian_Mat.at<cl_float4>( row+1,col ).x; 											// NB choose colour channel of Hessian
+			Hessian.operator()(row,col)		= hessian_Mat.at<cl_float4>( row+1,col ).x; 										// NB choose colour channel of Hessian
 		}
 	}
 	current_frames[ current_frames_idx[0] ].Jacobian[layer]			= Jacobian;
 
 	//  Eigen pseudo-inverse
-	Eigen::MatrixXd GN_H(6,6);																					// TO DO replace Eigen with a kernel for 6x6 matrix pseudo-inverse or inverse.
-	for (int i=0;i<6;i++){																						// Hard code efficient computation of 6x6 inversion, & Det.
+	Eigen::MatrixXd GN_H(6,6);																									// TO DO replace Eigen with a kernel for 6x6 matrix pseudo-inverse or inverse.
+	for (int i=0;i<6;i++){																										// Hard code efficient computation of 6x6 inversion, & Det.
 		for (int j=0;j<6;j++){
 			GN_H(i,j) 						= Hessian.operator()(i,j);	// GN_Hessian.operator()(i,j);
 		}
@@ -612,16 +529,7 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 		}
 	}
 	current_frames[ current_frames_idx[0] ].invHessian[layer]		= pinv_H;
-/*
-	//  Eigen matrix inverse ////////////////////////////////////////////////
-	typedef Eigen::Matrix<double,3,3> 		Matrix3x3;
-	Matrix3x3	m = Matrix3x3::Random();
 
-	Eigen::Matrix3f A ;
-	A <<1,2,3,4,5,6,7,8,9;
-
-	Eigen::FullPivLU<Eigen::Matrix3f>		lu(  A  ) ;
-*/
 	////Prove inv = pinv when invertible. NB pinv is numerically safer.
 	typedef Eigen::Matrix<double,6,6> Matrix6x6d;
 	Matrix6x6d GN_H2;
@@ -635,7 +543,6 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 	Eigen::FullPivLU<Matrix6x6d> lu_GN_H2(GN_H2);
 	bool invertible							= lu_GN_H2.isInvertible();
 	Matrix6x6d 			inv 				= lu_GN_H2.inverse();
-
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_hessian_reduce()_chk3 ."<<flush;	// Save buffers to file ###########
 																																	stringstream ss;
 																																	ss << "patch_hessian_reduce__frame_num="<<current_frames[ current_frames_idx[0] ].dataset_frame_num<<"_layer="<<layer<<"_";
@@ -645,25 +552,11 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 																																	float max_range	= 1;
 																																	cv::Mat bufImg;
 																																	_cl_flush_finish(m_queue, fname);
-																																	//DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show);
 																																	DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  0,			false);
 																																	DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "jacobian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  mm_size_bytes_C4/*mm_layerstep*/, false);
 																																	// NB the tiff file holda the int32 values as float32. This is okay because they fit in the mantissa.
 																																	// BGRA format, B=u, G=v, R=read_index, A=alpha.
 																																	////////////////
-																																	// cv::Mat temp_mat = cv::Mat::zeros (mm_height, mm_width, CV_32FC4);
-																																	// ReadOutput(temp_mat.data, SE3_grad_map_mem, mm_size_bytes_C4);// , 0/*offset*/	// read 1st elem of Jacobian to verify kernel summation.
-																																	// cl_float4 sum = {{0.0f}};
-																																	//
-																																	// for(int row=0; row<temp_mat.rows; row++){
-																																	// 	for(int col=0; col<temp_mat.cols; col++){
-																																	// 		sum.w += temp_mat.at<cl_float4>(row,col).w;
-																																	// 		sum.x += temp_mat.at<cl_float4>(row,col).x;
-																																	// 		sum.y += temp_mat.at<cl_float4>(row,col).y;
-																																	// 		sum.z += temp_mat.at<cl_float4>(row,col).z;
-																																	// 	}
-																																	// }
-																																	// cout<<"\n\n##### SE3_grad_map_mem sum.x = "<<sum.w<<", "<<sum.x<<", "<<sum.y<<", "<<sum.z<<endl<<endl<<flush;
 
 																																	if( layer==0){
 																																		stringstream 	ss_path;
@@ -683,43 +576,18 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 																																	cout <<"\nEigen GN_H \n" 			<< GN_H															<< endl << endl <<flush;
 																																	cout <<"\nEigen pinv \n" 			<< pinv															<< endl << endl <<flush;
 
-																																	// cout <<"\nGN_Hessian \n"			<< GN_Hessian													<< endl << endl <<flush;
-																																	// cout <<"\nGN_Hessian.inv() \n"	<< GN_Hessian.inv()												<< endl << endl <<flush;
-																																	// cout <<"\nocv invHessian \n"		<< current_frames[ current_frames_idx[0] ].invHessian[layer]	<< endl << endl <<flush;
-
 																																	cout <<"\nEigen FullPivLU GN_H2 \n" << GN_H2															<< endl << endl <<flush;
 																																	cout <<"\nEigen FullPivLU isInvertible = "<< invertible <<endl<<flush;
 																																	cout <<"\nEigen FullPivLU inv \n" 	<< inv															<< endl << endl <<flush;
 
 																																	cout << setprecision( old_precision );
-
 																																	cout <<"\n\nRunCL::patch_hessian_reduce()_finished #############################################################"<<flush;
 
-
-																																	//
-// 																													/*__private*/	uint		layer;							//,		//0
-// 																													/*__private*/	uint		lookup_table_offset;			//,		//1
-// 																													/*__private*/	cl_uint3	SE3_offset3;					//,		//3
-// 																													/*__global*/ 	cl_float4*	lookup_table;					//,		//8
-//
-// 																																	const uint	SE3_offset					= SE3_offset3.s0;
-// 																																	cl_float4	lookup_ref					= lookup_table[		 lookup_table_offset	];						// global_id_uint=0 +
-//
-// 																																	uint		u							= lookup_ref.x;														// read_column
-// 																																	uint		v							= lookup_ref.y;														// read_row
-//
-// 																																	uint		mm_pixels					= uint_params[MM_PIXELS];
-// 																																	uint		write_index_2				= u/block_size		+ (v/block_size)*mm_cols	+ SE3_offset;
-// 																																	int 		offset_2 					= write_index_2		+ mm_pixels;									// + i*SE3_v_step	i=0 for first se3 dof
 																																	if( layer ==0){
 																																		cv::Mat temp_mat = cv::Mat::zeros (mm_height, mm_width, CV_32FC4);
 																																		cout<<"\n chk 1, offset = "<<offset<<",  rows ="<<rows<<flush;
 
 																																		ReadOutput(temp_mat.data, SE3_hessian_map_mem, mm_size_bytes_C4,    mm_size_bytes_C4   );// read Jacobian buffer into Mat
-
-																																		// cout<<"\n chk 2"<<flush;
-																																		// cv::imshow( "SE3_grad_map_mem", temp_mat);
-																																		// cv::waitKey(-1);
 
 																																		cout<<"\n chk 3"<<flush;
 																																		cl_float4 sum = {{0.0f}};

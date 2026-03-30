@@ -58,14 +58,13 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 
 	__global	uint4*		lookup_table,			//8
 	__global	float4*		img,					//9
-	__global	float*		depth_map,				//10	// current frame depth, now stored as inv_depth
+	__global	float*		depth_map,				//10											// current frame depth, now stored as inv_depth
 
 	//Outputs:
 	__global 	float4*		SE3_grad_map,			//11											// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
 	__global 	float4*		SE3_Hessian_map,		//12											// HSV (6x6) matrix so 36*float4. 2nd half holds Jacobian maps, req for IC-LK algorithm. Size 2xmm_pixels.
 	__local		float4*		local_Hessian,			//13											// local_Hessian_pseudo_inverse[ sizeof(float4) *6*6 *local_size]
-	__global 	float4*		ST3_img_grad			//14	// collecting only value channel. Adapt if full HSV required.
-	//__global 	float8*		HSV_grad				//14
+	__global 	float4*		ST3_img_grad			//14
 ){
 	uint	global_id_uint								= get_global_id(0);
 	uint	lid											= get_local_id(0);
@@ -76,12 +75,12 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 
 	float	null_factor = 1.0f;
 	uint4	lookup_ref									= lookup_table[global_id_uint + lookup_table_offset];
-	if( lookup_ref.w != global_id_uint){	printf("\n__kernel void patch_img_grad(..) lookup_ref.w %u != global_id_uint %u", lookup_ref.w, global_id_uint);	// NB return cols tha are outside img_cur, BUT only after initializing local mem.
-											null_factor = 0.0f; //return;
+	if( lookup_ref.w != global_id_uint){	//printf("\n__kernel void patch_img_grad(..) lookup_ref.w %u != global_id_uint %u", lookup_ref.w, global_id_uint);	// NB nullify cols tha are outside img_cur.  TODO (1) can threads be returned when not used? (2) can if statements be reduced / made more efficient ?
+											null_factor = 0.0f;
 	}
 	uint	read_index									= lookup_ref.z;
-	uint	u											= lookup_ref.x;														// read_column
-	uint	v											= lookup_ref.y;														// read_row
+	uint	u											= lookup_ref.x;																							// read_column
+	uint	v											= lookup_ref.y;																							// read_row
 
 	uint4	lookup_ref_layer							= lookup_table[lookup_table_offset].z;	//0;
 	uint	layer_offset								= lookup_ref_layer.z;
@@ -94,25 +93,19 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	uint	mm_rows										= uint_params[MM_ROWS];
 	uint	mm_pixels									= uint_params[MM_PIXELS];
 
-	uint	stop_offset									= layer_offset + (read_rows_ -1) * mm_cols + read_cols_	;			// bottom right corner of source image layer
-/*
-// 	if(/ *global_id_uint* /lid==30)printf("\n\n__kernel void  patch_img_grad():  mm_cols=%u,  mm_rows=%u,  mm_pixels=%u   ST3_offset3=%u, %u, %u    stop_offset=%d,    read_index=%d \n", \
-// 																				mm_cols,  	mm_rows, 		mm_pixels,  ST3_offset3.x, ST3_offset3.y, ST3_offset3.z, stop_offset, read_index );
-// 	float4	blue		= {1,0,0,1};
-// 	float4 	green		= {0,1,0,1};
-// 	float4	red			= {0,0,1,1};
-*/
-	int		lfoff										= -(u >1);															//-(read_column != 0);
-	int		rtoff										=  (u < read_cols_-2);												// (read_column < mm_cols-1);
+	uint	stop_offset									= layer_offset + (read_rows_ -1) * mm_cols + read_cols_	;												// bottom right corner of source image layer
+
+	int		lfoff										= -(u >1);																								//-(read_column != 0);
+	int		rtoff										=  (u < read_cols_-2);																					// (read_column < mm_cols-1);
 
 	float4	Jacobian_pvt_arr[block_size][6]				= {{zero_f4}};
-	float4	Hessian_pvt_arr[block_size][6][6]			= {{{zero_f4}}};													// pvt variable for values in this column.
+	float4	Hessian_pvt_arr[block_size][6][6]			= {{{zero_f4}}};																						// pvt variable for values in this column.
 
 
 	const uint SE3_offset		= SE3_offset3.s0;		//layer_offset/mm_cols;
-	const uint ST3_offset		= ST3_offset3.s0;		//SE3_out_step_1 * (num_SE3_DoF + 1);// + layer_offset;
+	const uint ST3_offset		= ST3_offset3.s0;
 
-	const uint SE3_u_step		= SE3_offset3.s1;		// step between elements of the Hessian matrix
+	const uint SE3_u_step		= SE3_offset3.s1;																												// step between elements of the Hessian matrix
 	const uint ST3_u_step		= ST3_offset3.s1;
 
 	const uint SE3_v_step		= SE3_offset3.s2;
@@ -122,9 +115,9 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	uint	write_index_2								= u/block_size				 + (v/block_size)*mm_cols		+ SE3_offset;
 	uint 	offset_1_1_max								= mm_cols * read_rows_ / out_block_size 		 			+ ST3_offset;
 
-	for (uint row_in_block=0; (row_in_block<block_size)&&(read_index<=stop_offset&&read_index>0); row_in_block++, v++,  read_index +=mm_cols){	// stop offset prevents bottom row patches from overrunning the bottom of the image layer. // NB readindex may be 0 if not in range according to lookup table.
-		int upoff										= -(v  >1 )*mm_cols;												//-(read_row  != 0)*mm_cols;	// up, down, left, right offsets, by boolean logic.
-		int dnoff										=  (v  < read_rows_-2) * mm_cols;									// (read_row  < read_rows_-1) * mm_cols;
+	for (uint row_in_block=0; (row_in_block<block_size)&&(read_index<=stop_offset&&read_index>0); row_in_block++, v++,  read_index +=mm_cols){					// stop offset prevents bottom row patches from overrunning the bottom of the image layer. // NB readindex may be 0 if not in range according to lookup table.
+		int upoff										= -(v  >1 )*mm_cols;																					//-(read_row  != 0)*mm_cols;	// up, down, left, right offsets, by boolean logic.
+		int dnoff										=  (v  < read_rows_-2) * mm_cols;																		// (read_row  < read_rows_-1) * mm_cols;
 
 		float4 pu, pd, pl, pr;
 		pr												=  img[read_index + rtoff];
@@ -132,64 +125,39 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 		pu												=  img[read_index + upoff];
 		pd												=  img[read_index + dnoff];
 
-		float4 gx										= { (pr.x - pl.x)/2.0f,  (pr.y - pl.y)/2.0f,  (pr.z - pl.z)/2.0f,   0.5f };			// Signed img gradient in hsv
+		float4 gx										= { (pr.x - pl.x)/2.0f,  (pr.y - pl.y)/2.0f,  (pr.z - pl.z)/2.0f,   0.5f };								// Signed img gradient in hsv
 		float4 gy										= { (pd.x - pu.x)/2.0f,  (pd.y - pu.y)/2.0f,  (pd.z - pu.z)/2.0f,   0.5f };
 
 		float	inv_depth								=  depth_map[read_index];
 		float4	Jacobian[6]								=  {0};
-/*
-		// float4 edge_weight				= (1.0f - g1p_pvt[row_in_block].s3);  // NB any weighting needs to be folded into the Jacobian and Hessian.  // edge weighting may be better done by havig an edge list of pixels.to reduce computation.
-*/
+
 		for (uint i=0; i<6; i++) {
-			float2	SE3_px								= SE3_map[read_index + i* mm_pixels];								// SE3_map[read_index + i* uint_params[MM_PIXELS]  ] = partial_gradient;  // float2 partial_gradient={u_flt-u2 , v_flt-v2}; // Find movement of pixel
-			float4	gxSE3								= gx*SE3_px[0];
+			float2	SE3_px								= SE3_map[read_index + i* mm_pixels];																	// SE3_map[read_index + i* uint_params[MM_PIXELS]  ] = partial_gradient;  // float2 partial_gradient={u_flt-u2 , v_flt-v2}; // Find movement of pixel
+			float4	gxSE3								= gx*SE3_px[0];																							// J_SE3 * img gradient i.e. edges
 			float4	gySE3								= gy*SE3_px[1];
-			Jacobian[i]									= gxSE3 + gySE3;	//gx*SE3_px[0]  + gy*SE3_px[1];					// J_SE3 * img gradient i.e. edges
+			Jacobian[i]									= gxSE3 + gySE3;
 			if(i>2){
-				ST3_img_grad[read_index + (i-3)* mm_pixels] = Jacobian[i] * null_factor;  //(float2){gxSE3.x, gySE3.x};	// collecting full HSV.
+				ST3_img_grad[read_index + (i-3)* mm_pixels] = Jacobian[i] * null_factor;																		// collecting full HSV.
 
 				int4 J_notnan = !isnan(Jacobian[i]);
 				if(  !isnan( inv_depth ) && J_notnan.x && J_notnan.y && J_notnan.z && J_notnan.w ){
-					Jacobian[i]							*= inv_depth;														// ST3 depends on inv_depth
+					Jacobian[i]							*= inv_depth;																							// ST3 depends on inv_depth
 				}else{
 					Jacobian[i]							= zero_f4;
 				}
 			}
 			Jacobian[i].w								= 1.0f;
 			Jacobian[i]									*= null_factor;
-			SE3_grad_map[read_index + i* mm_pixels]		= Jacobian[i] ;														// float4
-
-/*
-// 																															if (lid==0 && row_in_block==0 && group_id==0 ){		// ### Debugging ###
-// 																																printf("\ndebug  i=%d SE3_px =(%f,%f),  gx,gy=(%f,%f),  read_index=%d  row=%d,  col=%d",\
-// 																																i,SE3_px.x,SE3_px.y, gx.x,gy.x,  read_index,  read_index/mm_cols,  read_index%mm_cols );
-// 																															}
-*/
+			SE3_grad_map[read_index + i* mm_pixels]		= Jacobian[i];
 		}
 		for (uint i=0; i<6; i++) {
 			Jacobian_pvt_arr[row_in_block][i]			= Jacobian[i];
-/*
-// 																															if (lid==0 && row_in_block==0 && group_id==0 ){		// ### Debugging ###
-// 																																printf("\npixel 0, Jacobian[i%d]=%2.10f,   %f,   ",i, Jacobian[i].x, Jacobian[i].w);
-// 																															}
-*/
+
 			for (uint j=0; j<6; j++) {
-				Hessian_pvt_arr[row_in_block][i][j]		= Jacobian[i] * Jacobian[j];	// Gauss-Newton approx H = J.transpose * J  // TO DO compute and sum lower triangle only.
+				Hessian_pvt_arr[row_in_block][i][j]		= Jacobian[i] * Jacobian[j];																			// Gauss-Newton approx H = J.transpose * J  // TO DO compute and sum lower triangle only.
 				Hessian_pvt_arr[row_in_block][i][j].w 	=1.0f;
-/*
-// 																															if (lid==0 && row_in_block==0 && group_id==0 ){		// ### Debugging ###
-// 																																printf("   Hessian[i%d][j%d]=%2.10f,   ",i, j, Hessian_pinv_pvt_arr[row_in_block][i][j].x );
-// 																															}
-*/
 			}
 		}
-		/*	HSV_grad[] not currently in use. Would provide 8chan colourspace.
-			float H 										= 0; img[read_index][0] * 2*M_PI_F;
-			float S 										= 0; img[read_index][1];
-			float V 										= 0; img[read_index][2];
-			float8 temp_float8								= { sin(H) , cos(H), S, V, gx[1], gy[1], gx[2], gy[2] };			// HSV_grad = { sin(H) , cos(H), S, V, gx[1], gy[1], gx[2], gy[2] };
-			HSV_grad[read_index]							= temp_float8;
-		*/
 	} // end of column of this patch.
 
 	// Sum-reduce image, /////////////  Save intermediate size ST3 patches for depth map updates, and maximally reduced SE3 patches for pose updates. Second reduce_patch_Rho(..) kernel required for SE3 from lareger image pyramid layers, before update_k2k(..) kernel.
@@ -257,23 +225,15 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 																						float4	pvt_Jacobian 					= Jacobian_pvt_arr[		block_row][i+3];
 																						if( inbounds == true ){
 																							SE3_Hessian_map[	offset_1_1 ]	= pvt_Jacobian;
-																							//if ( layer >4) printf("\n__kernel void  patch_img_grad(..) layer=%u,  i=%u,  global_id_uint=%u,  block_row=%u,  offset_1_1=%u", layer, i, global_id_uint, block_row, offset_1_1 );
 																						}
-/*
-// 																						int4 foundNaN = isnan( SE3_Hessian_map[	offset_1_1 ] );
-// 																						if( foundNaN.x==true || foundNaN.y==true || foundNaN.z==true || foundNaN.w==true ){
-// 																							printf("\n__kernel void  patch_img_grad(..) isnan( SE3_Hessian_map[ offset_1_1 ] (%f,%f,%f,%f), block_row=%u, global_id_uint=%u, lid=%u, group_id=%u, layer=%u,  inbounds=%u",\
-// 																																	 SE3_Hessian_map[	offset_1_1 ].x, SE3_Hessian_map[	offset_1_1 ].y, SE3_Hessian_map[	offset_1_1 ].z, SE3_Hessian_map[	offset_1_1 ].w,\
-// 																																	block_row, global_id_uint, lid, group_id, layer, inbounds	); }
-*/
 					}
 					barrier(CLK_GLOBAL_MEM_FENCE );			// TO DO is this needed?
-					for (uint j=0; j<3; j++) {																																					//float4	debug						= {(float)(i)/3, (float)(j)/3, global_id_uint, 1 };
-						if( /*inbounds == true*/ fmod((float)lid,out_block_size) == 0 ){																															// write Hessian to 1st page of SE3_Hessian_pinv_map buffer.		// selects columns i.e. threads within the workgroup
+					for (uint j=0; j<3; j++) {																																					// write Hessian to 1st page of SE3_Hessian_pinv_map buffer.
+						if( /*inbounds == true*/ fmod((float)lid,out_block_size) == 0 ){																										// selects columns i.e. threads within the workgroup
 																						offset_1_1								= write_index		+ i*ST3_v_step	+ j*ST3_u_step + write_block_row*mm_cols;
 																						float4	pvt_Hessian 					= Hessian_pvt_arr[	block_row ][i+3][j+3];
 																						if( inbounds == true ){
-																							SE3_Hessian_map[	offset_1_1 ]	= pvt_Hessian;													// Hessian_pinv_pvt_arr[	block_row ][i][j] / Hessian_pinv_pvt_arr[	block_row ][i][j].w;
+																							SE3_Hessian_map[	offset_1_1 ]	= pvt_Hessian;
 																						}
 						}
 						barrier(CLK_GLOBAL_MEM_FENCE );		// TO DO is this needed?
@@ -283,90 +243,30 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 		}
 	}
 	/// Save maximally reduced SE3 Hessian 32x32 patches for pose updates ////////////////////																									// Writes dense blocks. Reduces required transfer to host.
-
 	uint frame_offset_1 			=  0;
 	uint offset_2					=  0;
 	uint block_row					=  0;
 
-																																						// selects columns i.e. threads within the workgroup
-		for (uint i=0; i<num_SE3_DoF; i++) {																																					// write Jacobian to 2nd page of SE3_Hessian_pinv_map buffer.		// All 6 DoF of SE3
-			if( fmod((float)lid,block_size) == 0 ){
-																						offset_2 								= write_index_2		+ i*SE3_v_step	+ mm_pixels;				// if(global_id_uint==0){printf("\n J offset_2=%d, SE3_DoF = %d  row=%d, col=%d,   .x=%f    .w=%f",\
-																																																// offset_2, i, offset_2/mm_cols,  offset_2-mm_cols*(offset_2/mm_cols),   Jacobian_pvt_arr[	block_row][i].x, Jacobian_pvt_arr[	block_row][i].w  );}
+	for (uint i=0; i<num_SE3_DoF; i++) {																																						// write Jacobian to 2nd page of SE3_Hessian_pinv_map buffer.		// All 6 DoF of SE3
+		if( fmod((float)lid,block_size) == 0 ){																																					// selects columns i.e. threads within the workgroup
+																						offset_2 								= write_index_2		+ i*SE3_v_step	+ mm_pixels;
 																						float4	pvt_Jacobian 					= Jacobian_pvt_arr[		block_row][i];
-
-																						bool pvt_Jacobian_nan 					= isnan( pvt_Jacobian.x ) || isnan( pvt_Jacobian.y ) || isnan( pvt_Jacobian.z ) || isnan( pvt_Jacobian.w );
-																						if(pvt_Jacobian_nan==true){		printf("\npvt_Jacobian_nan_1");}
-
 																						SE3_Hessian_map[	offset_2 ]			= pvt_Jacobian;
-			}
-			barrier(CLK_GLOBAL_MEM_FENCE );
+		}
+		barrier(CLK_GLOBAL_MEM_FENCE );
+
+		for (uint j=0; j<num_SE3_DoF; j++) {																																					// write Hessian to 1st page of SE3_Hessian_pinv_map buffer.
 			if( fmod((float)lid,block_size) == 0 ){
-																						float4	pvt_Jacobian 					= Jacobian_pvt_arr[		block_row][i];
-																						bool pvt_Jacobian_nan 					= isnan( pvt_Jacobian.x ) || isnan( pvt_Jacobian.y ) || isnan( pvt_Jacobian.z ) || isnan( pvt_Jacobian.w );
-																						if(pvt_Jacobian_nan==true){		printf("\npvt_Jacobian_nan_2");}
-			}
-/*
-// 																						int4 foundNaN = isnan( SE3_Hessian_map[	offset_2 ] );
-//
-// 																						if( foundNaN.x==true || foundNaN.y==true || foundNaN.z==true || foundNaN.w==true ){
-// 																							printf("£");
-// // 																							printf("\n__kernel void  patch_img_grad(..) isnan( SE3_Hessian_map[ offset_1_1 ] (%f,%f,%f,%f), block_row=%u, global_id_uint=%u, lid=%u, group_id=%u, layer=%u",\
-// // 																																	 SE3_Hessian_map[	offset_2 ].x, SE3_Hessian_map[	offset_2 ].y, SE3_Hessian_map[	offset_2 ].z, SE3_Hessian_map[	offset_2 ].w,\
-// // 																																	block_row, global_id_uint, lid, group_id, layer	);
-// 																						}
-*/
-			for (uint j=0; j<num_SE3_DoF; j++) {																																				// write Hessian to 1st page of SE3_Hessian_pinv_map buffer.
-				if( fmod((float)lid,block_size) == 0 ){
-																						offset_2 								= write_index_2		+ i*SE3_v_step	+ j*SE3_u_step;				// if(global_id_uint==0){printf("\n H offset_2=%d, SE3_DoF = %d,%d  row=%d, col=%d ",offset_2, i,j, offset_2/mm_cols,  offset_2-mm_cols*(offset_2/mm_cols)    );}
+																						offset_2 								= write_index_2		+ i*SE3_v_step	+ j*SE3_u_step;
 																						float4	pvt_Hessian 					= Hessian_pvt_arr[	block_row ][i][j];
-																						SE3_Hessian_map[	offset_2 ]			= pvt_Hessian;													// Hessian_pinv_pvt_arr[	block_row ][i][j] / Hessian_pinv_pvt_arr[	block_row ][i][j].w;
+																						SE3_Hessian_map[	offset_2 ]			= pvt_Hessian;
 
 																						float4		debug 						= {(float)lid, global_id_uint, group_id, 1.0f};
-																						SE3_Hessian_map[read_index]				= debug;
-				}
-				barrier(CLK_GLOBAL_MEM_FENCE );
+																						SE3_Hessian_map[read_index]				= debug;														// marks top left corner of where original patches are read from.
 			}
+			barrier(CLK_GLOBAL_MEM_FENCE );
 		}
-/*
-// 		if( fmod((float)lid,block_size) == 0 ){
-//
-// 			for (uint i=0; i<num_SE3_DoF; i++) {
-// 																						offset_2 								= write_index_2		+ i*SE3_v_step	+ mm_pixels;
-//
-// 																						float4 chk_J							= SE3_Hessian_map[	offset_2 ];
-//
-// 																						printf("\nchk_J_%u(%f,%f,%f,%f),",i, chk_J.w, chk_J.x, chk_J.y, chk_J.z);
-//
-// 				for (uint j=0; j<num_SE3_DoF; j++) {
-// 																						offset_2 								= write_index_2		+ i*SE3_v_step	+ j*SE3_u_step;
-//
-// 																						float4 chk_H							= SE3_Hessian_map[	offset_2 ];
-//
-// 																						printf("\nchk_H_%u,%u(%f,%f,%f,%f),",i,j, chk_H.w, chk_H.x, chk_H.y, chk_H.z);
-// 				}
-// 			}
-// 		}
-// 		barrier(CLK_GLOBAL_MEM_FENCE );
-	//}
-*/
-/*
-	// debugging...
-	//barrier(CLK_GLOBAL_MEM_FENCE );
-
-	//SE3_Hessian_map[old_read_index + 502*mm_cols]			= debug;
-
-	//if( fmod((float)lid,block_size) == 0 ){
-		//SE3_Hessian_map[	frame_offset_1	+ 400  / *write_block_row*mm_cols* /	]	= green;
-		//SE3_Hessian_map[	offset_2		+ 100						]	= blue; //tag4;
-		//SE3_Hessian_map[	write_index_2 	+ 200						]	= red;
-
-		//printf("\n__kernel void  patch_img_grad, global_id_u=%u,	lid=%u,	read_index=%u,	step=%u,	SE3_out_step_1=%u,	SE3_out_step_2=%u,	SE3_out_step_5=%u,	offset_2=%u,	write_index_2=%u,	read_cols_=%u,	read_rows_=%u",\
-												 global_id_uint,	lid, 	read_index, 	step, 		SE3_out_step_1, 	SE3_out_step_2, 	SE3_out_step_3, 	offset_2,		write_index_2,		read_cols_,		read_rows_ );
-	//}
-	//SE3_Hessian_map[	write_index_2 	+ 300						]	= red;
-	//barrier(CLK_GLOBAL_MEM_FENCE );
-*/
+	}
 }
 
 
@@ -392,7 +292,7 @@ __kernel void  patch_hessian_reduce(						// one workgroup per element.
 
 	// Hesssian reduction	//////////////////////////////////////////////////////////////////////
 	// load pvt array
-	for( int i=0; i<=rows; i++ ){	H_pvt_arr[i]		+= SE3_Hessian_map[index + i*mm_cols]; }				// NB (i<=rows) and  in case there are partial patches. Will produce a row extra, which will be 0.000 otherwise.
+	for( int i=0; i<=rows; i++ ){	H_pvt_arr[i]		+= SE3_Hessian_map[index + i*mm_cols]; }			// NB (i<=rows) and  in case there are partial patches. Will produce a row extra, which will be 0.000 otherwise.
 
 	// Reduction
 	uint step				= 2;
@@ -403,7 +303,7 @@ __kernel void  patch_hessian_reduce(						// one workgroup per element.
 		for (uint block_row=0; block_row<block_size ; block_row += step){																											// step through rows in column
 																						H_pvt_arr[	block_row]		+=H_pvt_arr[	block_row + step ];
 
-			if( !(fmod((float)lid,(step*2))==0) &&  (fmod((float)lid,step)==0)	){		local_msg[		lid-step ]	= H_pvt_arr[	block_row ];	}									// selects 2nd column, sends data
+			if( !(fmod((float)lid,(step*2))==0) &&  (fmod((float)lid,step)==0)	){		local_msg[		lid-step ]	= H_pvt_arr[	block_row ];	}								// selects 2nd column, sends data
 			barrier(CLK_LOCAL_MEM_FENCE );																																			// Using barrier as a semaphore, for local mem messages between threads. This minimizes local_mem req, while allowing 2 patch sizes in output, full & ST3 map at out_block_size.
 
 			if( (fmod((float)lid,(step*2))==0)  ){										H_pvt_arr[	block_row]		+= local_msg[	lid ];	}										// selects 1st column, adds data. Sum of patch now held in top left element of patch.

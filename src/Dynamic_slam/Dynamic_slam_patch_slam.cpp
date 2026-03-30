@@ -174,5 +174,4 @@ void Dynamic_slam::estimate_depth(){
 		// NB this kernel would be faster if it used 1 thread per depth patch, ie 16 pixels. ... Maybe not. The existing method uses half as many threads, BUT benefits from contiguious reads of data.
 	}
 
-
 }
