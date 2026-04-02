@@ -18,9 +18,10 @@ void Dynamic_slam::estimateSLAM(){																										// Adaptive step siz
 	Matx44f pose_temp 	= runcl.update_pose_bufs_cur_frames( );																cout<<"\nDynamic_slam::estimateSLAM() chk_0.2"<<flush;				// NB these two lines are req because nextFrame() calls  runcl.set_cam_bufs(..), using frame_data.
 	frame_data.back().frame_data.pose 	= pose_temp ;																		cout<<"\nDynamic_slam::estimateSLAM() chk_0.3"<<flush;
 
-	for( uint frame_index=0; frame_index<num_current_frames; frame_index++){													cout<<"\nDynamic_slam::estimateSLAM() chk_0.5 frame_index = "<<frame_index<<endl<<flush;
-		runcl.rho_sq( out_block_size, 10+frame_index, frame_index, 0, runcl.cur_frames_k2kbuf );	//iter, frame_idx, layer, cl_mem k2k_buf	);
-	}
+	// for( uint frame_index=0; frame_index<num_current_frames; frame_index++){													cout<<"\nDynamic_slam::estimateSLAM() chk_0.5 frame_index = "<<frame_index<<endl<<flush;
+	// 	uint layer_ = 0;
+	// 	runcl.rho_sq( out_block_size, 10+frame_index, frame_index, layer_, runcl.cur_frames_k2kbuf );	//iter, frame_idx, layer, cl_mem k2k_buf	);
+	// }
 	float16arry_To_Matx44f(	 &runcl.current_frames[	runcl.current_frames_idx[0]	].k2k_0to1_est[0]	, frame_data.back().frame_data.K2K );
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\fDynamic_slam::estimate_SLAM() chk_1"<< flush;
@@ -155,15 +156,24 @@ void Dynamic_slam::estimate_depth(){
 																																			cout << "\n\nDynamic_slam::estimate_depth() chk_0"
 																																			<<"  ##############################################################"<< flush;
 																																		}
+	float default_inv_depth				= 0.007f;																						// half the max inv depth, i.e. twice the min depth.
+	runcl._clEnqueueFillBuffer( runcl.uload_queue, runcl.depth_mem,	&default_inv_depth, sizeof(float), 0, runcl.mm_size_bytes_C1, fname ); // TODO  remove this, temporary for testing tracking and mapping given GT poses.
+
 	for (int layer=4; layer>=3; layer--){
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\nDynamic_slam::estimate_depth()  layer= "<<
 																																			layer << endl <<flush;
+
+																																			 // For debugging, get a larger, finer Rho map
+																																			uint	out_block_size		= 2;
+																																			uint	layer_				= 0;
+																																			for( uint frame_index=0; frame_index<num_current_frames; frame_index++){
+																																				runcl.rho_sq( out_block_size, 10+frame_index, frame_index, layer_, runcl.cur_frames_k2kbuf );
+																																			}
 																																		}
 		uint out_block_size = 4;
 		runcl.update_depth( out_block_size, layer);			// LK
-		//runcl.update_depth_2( out_block_size, layer);		// cost_vol
-
+		//runcl.update_depth_2( out_block_size, layer);		// cost_vol & Glasgow type optimization, on depth from ST3 given transpose.
 		// anisotropic smoothing
 
 		// parsimony of orientation, plane, curvature ?

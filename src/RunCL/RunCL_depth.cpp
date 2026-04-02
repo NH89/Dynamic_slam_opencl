@@ -37,12 +37,10 @@ void RunCL::update_depth( uint out_block_size, uint layer){
 	uint rows							= (MipMap[ (layer+2)*8 + MiM_READ_ROWS] + 1)	*  depth_iter_per_layer;
 	size_t	depthUpdate_bytes			= cols * rows * sizeof(cl_float2);
 
-	float default_inv_depth				= 0.07f;	// half the max inv depth, i.e. twice the min depth.
 
 	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, &minus_one_f, sizeof(float), 0, depthUpdate_bytes, fname   );
 	_clEnqueueFillBuffer( uload_queue, depth_mem_temp,  &minus_one_f, sizeof(float), 0, depthUpdate_bytes, fname   );
 
-	if (layer==4) { _clEnqueueFillBuffer( uload_queue, depth_mem,		&default_inv_depth, sizeof(float), 0, mm_size_bytes_C1,  fname   ); }	// TODO  remove this, temporary for testing tracking and mapping given GT poses.
 
 	// constant buffers uploaded
 
@@ -95,7 +93,6 @@ void RunCL::update_depth( uint out_block_size, uint layer){
 	_clSetKernelArg( kernel, 34, sizeof(float)*local_mem_size,						NULL,								fname);		// __local		float*		local_depth_incr,		//33
 	_clSetKernelArg( kernel, 35, sizeof(cl_float2)*local_mem_size,					NULL,								fname);		// __local		float2*		local_J_inv_d			//34
 
-
 																																if( verbosity>local_verbosity_threshold) {
 																																	cout<<"\n\nRunCL::update_depth()_chk1"<<
 																																	"\nthreads_to_launch   = "<<threads_to_launch<<
@@ -121,7 +118,7 @@ void RunCL::update_depth( uint out_block_size, uint layer){
 	);
 																																if( verbosity>local_verbosity_threshold) {
 																																	cout<<"\n\nRunCL::update_depth()_finished #############################################################"<<flush;
-																																	uint depth_iter_per_layer	= min(frame_count-1, num_current_frames);	//num_current_frames;
+																																	uint depth_iter_per_layer	= min(frame_count-1, num_current_frames);	//num_current_frames;  3; //
 																																	DownloadAndSaveDepthUpdate( layer, depth_iter_per_layer  );
 																																	/*
 																																	int offset			=	MipMap[layer*8 +  MiM_READ_OFFSET   ];

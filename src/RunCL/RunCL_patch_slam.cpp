@@ -349,6 +349,14 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 	status	= clFlush(m_queue);										if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_img_gradients( ),  clFlush(m_queue) status  = "<<status<<" "<<checkerror(status) <<"\n"<<flush; exit_(status);}
 	status	= clWaitForEvents (1, &ev);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_img_gradients( ),  clWaitForEventsh(1, &ev) =" <<status<<" "<<checkerror(status) <<"\n"<<flush; exit_(status);}
 
+
+																																if( layer==0  && verbosity>local_verbosity_threshold -1){
+																																	stringstream ss;	ss << dataset_frame_num << "_ST3_img_grad_map";
+																																	float	max_range	= 1.0f;		// i.e. find max value, and map 0.0->0.5.
+																																	uint	vol_layers	= 3;
+																																	DownloadAndSave_6Channel_volume( ST3_img_grad_mem, ss.str(), paths.at(  "ST3_img_grad_mem"), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, max_range, vol_layers );
+																																	// NB here collecting only for the value channel. Need to adapt kernel if full hsv needs to be collected.
+																																}
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_finished #############################################################"<<flush;
 																																	size_t	offset_		=	0;
 																																	Mat	hessian_Mat(	 mm_Image_size,	CV_32FC4);		ReadOutput( hessian_Mat.data,      SE3_hessian_map_mem,  mm_size_bytes_C4, offset_ );
@@ -409,13 +417,7 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 																																	cout<<endl<<flush;
 
 																																	////////////////////////////////
-																																	if( layer==0){
-																																		stringstream ss;	ss << dataset_frame_num << "_ST3_img_grad_map";
-																																		float	max_range	= 1.0f;		// i.e. find max value, and map 0.0->0.5.
-																																		uint	vol_layers	= 3;
-																																		DownloadAndSave_6Channel_volume( ST3_img_grad_mem, ss.str(), paths.at(  "ST3_img_grad_mem"), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, max_range, vol_layers );
-																																		// NB here collecting only for the value channel. Need to adapt kernel if full hsv needs to be collected.
-																																	}
+
 																																	////////////////////////////////
 																																	int offset	=	MipMap[layer*8 +  MiM_READ_OFFSET ];
 																																	int rows	=	MipMap[layer*8 +  MiM_READ_ROWS   ];
