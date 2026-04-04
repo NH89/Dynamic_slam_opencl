@@ -172,8 +172,8 @@ void Dynamic_slam::estimate_depth(){
 																																			}
 																																		}
 		uint out_block_size = 4;
-		runcl.update_depth( out_block_size, layer);			// LK
-		//runcl.update_depth_2( out_block_size, layer);		// cost_vol & Glasgow type optimization, on depth from ST3 given transpose.
+		//runcl.update_depth( out_block_size, layer);			// LK
+		runcl.update_depth_2( out_block_size, layer);		// cost_vol & Glasgow type optimization, on depth from ST3 given transpose.
 		// anisotropic smoothing
 
 		// parsimony of orientation, plane, curvature ?

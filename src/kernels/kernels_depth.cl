@@ -132,7 +132,7 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 */
 	barrier(CLK_LOCAL_MEM_FENCE );
 	////////////////////////////////////////////////////////////////////////////
-	uint depth_iter_per_layer	 = 	max_frames; //3;
+	uint depth_iter_per_layer	 = 	6; //max_frames; //
 	for (uint iter=0; iter<depth_iter_per_layer ; iter++, write_index+=write_layer_pixels  ){
 		for (int i=0; i<block_size; i++){
 			//inv_depth_incr_arr[		i]				= 0.0f; // must not zero inside the iter loop
@@ -267,7 +267,7 @@ __kernel void update_depth(							// To be launched with 1 thread per col for 32
 									/* for computation */									float pvt_depth_incr					= J_inv_d[			block_row ].x	/	J_inv_d[	block_row ].y;
 																							if(	J_inv_d[ block_row ].y < 0.0001f){	pvt_depth_incr 		= 0.0f; }													// NB J_inv_d[ block_row ].y	= SUM {J_inv_d_pvt^2}
 																							float pvt_depth_incr_2					= clamp( pvt_depth_incr , -max_inv_depth_step, max_inv_depth_step);				// max 1 pixel, at this img pyr layer.
-																							local_depth_incr[	offset_2]			-= pvt_depth_incr_2;															// J_inv_d[			block_row ].x	/	J_inv_d[	block_row ].y;				// __local float*  sizeof(cl_float2)*local_work_size,
+																							local_depth_incr[	offset_2]			-= pvt_depth_incr;															// J_inv_d[			block_row ].x	/	J_inv_d[	block_row ].y;				// __local float*  sizeof(cl_float2)*local_work_size,
 
 																							float2 incr								= { local_depth_incr[ offset_2],		J_inv_d[ block_row ].y  }; 				//{ J_inv_d[	block_row ].x,	J_inv_d[	block_row ].y  };// {u,block_row}; // 								// { (float)lid, (float)group_id }; // offset_1 , iter  //
 									/* for debugging */										inv_depth_incr[ 	offset_1]			= incr;																			// __global float*  mm_size_bytes_C1,    depth_mem_temp,
