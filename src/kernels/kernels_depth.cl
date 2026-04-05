@@ -384,7 +384,7 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 
 	float2	rho_pvt_arr[ NUM_DEPTH_STEPS*block_size]	= {zero_f2};								// pvt variable for values in this column.
 	float4	rho_pvt_flt4								= zero_f4;
-	float2	rho_pvt_flt2								= zero_f2;
+	float2	rho_sq_pvt_flt2								= zero_f2;
 
 	float4	img_cur_pvt[		block_size]				= {zero_f4};								// pvt variable for values in this column.
 	float4	old_px										=  zero_f4;
@@ -393,7 +393,7 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 	bool	print_ 										= false;
 	local_rho[					lid]					= zero_f2;
 
-	if( lookup_ref.w != global_id_uint){	printf("\n__kernel void update_depth_2(..) lookup_ref.w %u != global_id_uint %u", lookup_ref.w, global_id_uint);	// NB return cols tha are outside img_cur, BUT only after initializing local mem.
+	if( lookup_ref.w != global_id_uint){	printf("\n__kernel void update_depth_2(..) chk_1 lookup_ref.w %u != global_id_uint %u", lookup_ref.w, global_id_uint);	// NB return cols tha are outside img_cur, BUT only after initializing local mem.
 											return;
 	}
 /*
@@ -411,10 +411,10 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 */
 	barrier(CLK_LOCAL_MEM_FENCE );
 	////////////////////////////////////////////////////////////////////////////
-	uint depth_iter_per_layer						= 	1;/*max_frames;*/ //3;
+//	uint depth_iter_per_layer						= 	1;/*max_frames;*/ //3;
 	//float 	inv_depth_step							=       ((float)MAX_INV_DEPTH) / ((float)NUM_DEPTH_STEPS);   // ### MAX_INV_DEPTH macro is an array index, not a value !
 
-	for (uint iter=0; iter<depth_iter_per_layer ; iter++, write_index+=write_layer_pixels  ){
+//	for (uint iter=0; iter<depth_iter_per_layer;  iter++,  write_index +=write_layer_pixels  ){
 		for (int i=0; i<block_size; i++){
 			inv_depth_incr_arr[		i]				= 0.0f;
 			rho_pvt_arr[			i]				= zero_f2;										// pvt variable for values in this column.
@@ -423,7 +423,7 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 		read_index									= read_index_start;
 		v											= v_start;
 		rho_pvt_flt4								= zero_f4;
-		rho_pvt_flt2								= zero_f2;
+		rho_sq_pvt_flt2								= zero_f2;
 		old_px										= zero_f4;
 
 		intersection								= false;
@@ -450,8 +450,10 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 
 			for (uint 	past_frame_idx=1; past_frame_idx < max_frames; past_frame_idx++){																	// step through past frames //////  /*iter+2*/
 
-				float	inv_depth		= 0.0f;
-				for (int inv_depth_layer = 0; inv_depth_layer<NUM_DEPTH_STEPS; inv_depth += inv_depth_step, inv_depth_layer++ ){							// step through depth layers
+				float	 inv_depth		 = inv_depth_step;	//0.0f;
+				for (int inv_depth_layer = 0;    inv_depth_layer<NUM_DEPTH_STEPS; inv_depth_layer++ ){							// step through depth layers
+
+					inv_depth	+= inv_depth_step;
 
 // TODO (1) build cost vol for patch, (2) then sum each layer of cost vol for the patch, (3) select the best depth layer, (4) compute optimum from 3 neighbouring layers
 //		(5) start with frame 1, then repeat for each layer, narrowing the search range.
@@ -463,18 +465,17 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 					float		u2f,	v2f;																												// current frame
 					px_k2k( 	inv_k2k[past_frame_idx],  reduction,  v,  u,  inv_depth,  &u2f,  &v2f, print_ );											// Where to sample the past image frame //////
 
-																							if( global_id_uint /*lid*/ /*group_id*/==1 /*u==(read_cols_/2) && v==(read_rows_/2)*/ /*global_id_uint==0*/){
-																							printf("\n__kernel void update_depth(..) chk 2,  reduction=%f,  past_frame_idx=%u, iter=%u,  group_id=%d,  row_in_block=%u, read_index=%u, inv_depth=%f,    u=%u, v=%u, u2f=%f,  v2f=%f,  read_cols_=%u,  read_rows_=%u, global_id_uint=%d, inv_depth_step= %f",\
-																																			  reduction,    past_frame_idx,    iter,     group_id,     row_in_block,    read_index,    inv_depth,       u,    v,    u2f,     v2f,     read_cols_,     read_rows_ ,   global_id_uint,    inv_depth_step );
-																							}
-
+// 																							if( global_id_uint ==10 && row_in_block==0 ){		//  /*lid*/ /*group_id*/  /*u==(read_cols_/2) && v==(read_rows_/2)*/ /*global_id_uint==0*/
+// 																							printf("\n__kernel void update_depth_2(..) chk_2,  reduction=%f,  past_frame_idx=%u,   group_id=%d,  row_in_block=%u, read_index=%u, inv_depth=%f,    u=%u, v=%u, u2f=%f,  v2f=%f,  read_cols_=%u,  read_rows_=%u, global_id_uint=%d, inv_depth_step= %f",\
+// 																																			   reduction,     past_frame_idx,      group_id,     row_in_block,    read_index,    inv_depth,       u,    v,    u2f,     v2f,     read_cols_,     read_rows_ ,   global_id_uint,    inv_depth_step );
+// 																							}
 					const uint margin							= 4;
 					intersection 								=	(u>margin)		&& (u<=read_cols_-margin)		&& (v>margin)		&& (v<=read_rows_-margin)	&& \
-																(u2f>margin)	&& (u2f<=read_cols_-margin)		&& (v2f>margin)		&& (v2f<=read_rows_-margin)	&& (global_id_uint<=layer_pixels);	// if images overlap
+																	(u2f>margin)	&& (u2f<=read_cols_-margin)		&& (v2f>margin)		&& (v2f<=read_rows_-margin)	&& (global_id_uint<=layer_pixels);	// if images overlap
 
 																																						//if(  group_id==1 /*u==(read_cols_/2) && v==(read_rows_/2)*/ ){printf("\n__kernel void update_depth(..) chk 3,  intersection=%d, global_id_uint=%d,  lid=%d,  group_id=%d,  ", intersection, global_id_uint, lid, group_id );}
 					if (intersection){
-						rho_pvt_flt4							= zero_f4;
+
 						old_px									= bilinear_flt4( img_past[past_frame_idx],  u2f,  v2f,  mm_cols,  read_offset_ );
 						rho_pvt_flt4							= (img_cur_pvt[ row_in_block ] - old_px) ;													// Photometric error rho ///////
 						rho_pvt_flt4.w							= 1.0f;																						// rho.w holds pixel count.
@@ -488,12 +489,16 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 // 						J_inv_d[		row_in_block].x			+= rho_pvt_flt4.x			* J_inv_d_pvt;													// Here for value channel only. Could weight the chroma and cos_hue, sins_hue channels.
 // 						J_inv_d[		row_in_block].y			+= J_inv_d_pvt				* J_inv_d_pvt;
 */
-						rho_pvt_flt2.x							=  rho_pvt_flt4.w;																			// pixel count
-						rho_pvt_flt2.y							=  rho_pvt_flt4.x			* rho_pvt_flt4.x;												// Sum Rho_squared
+						rho_sq_pvt_flt2.x						=  rho_pvt_flt4.w;																			// pixel count
+						rho_sq_pvt_flt2.y						=  rho_pvt_flt4.x			* rho_pvt_flt4.x;												// Sum Rho_squared
 
-						rho_pvt_arr[ row_in_block*NUM_DEPTH_STEPS  + inv_depth_layer]		+= rho_pvt_flt2;												// save to pvt mem for this column & depth layer
+						rho_pvt_arr[ row_in_block*NUM_DEPTH_STEPS  + inv_depth_layer]		+= rho_sq_pvt_flt2;												// save to pvt mem for this column & depth layer
 					}
-																																						//if(  group_id==1/*u==(read_cols_/2) && v==(read_rows_/2)*/ ){printf("\n__kernel void update_depth(..) chk 4 ####### global_id_uint=%d,  lid=%d,  group_id=%d,  ", global_id_uint, lid, group_id );}
+// 																																						if(  group_id==0 ){		// /*u==(read_cols_/2) && v==(read_rows_/2)*/
+// 																																						printf("\n__kernel void update_depth(..) chk 2.2 ####### global_id_uint=%d,  lid=%d,  group_id=%d,  rho_pvt_arr[ row_in_block %u *NUM_DEPTH_STEPS %u + inv_depth_layer %d][ %u ] = %f, %f ",\
+// 																																																				 global_id_uint, 	 lid, 	  group_id,					 row_in_block,	  NUM_DEPTH_STEPS,	   inv_depth_layer, \
+// 																																							(row_in_block *NUM_DEPTH_STEPS + inv_depth_layer), \
+// 																																							rho_pvt_arr[ row_in_block*NUM_DEPTH_STEPS  + inv_depth_layer].x,  rho_pvt_arr[ row_in_block*NUM_DEPTH_STEPS  + inv_depth_layer].y );  }
 				}
 			}
 		}
@@ -519,6 +524,13 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 
 					if( (fmod((float)lid,(step*2))==0)  ){																																	// selects 1st column, adds data. Sum of patch now held in top left element of patch.
 																							rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer]	+= local_rho[		lid ];
+// 																																														if(  group_id==0 ){
+// 																																															printf("\n__kernel void update_depth_2(..) chk_2.3,   global_id_uint=%d,  lid=%d,  group_id=%d, rho_pvt_arr[ block_row %u *NUM_DEPTH_STEPS %u + inv_depth_layer %d][ %u ] = %f, %f ",\
+// 																																															 														global_id_uint, 	 lid, 	  group_id,				 block_row,	   NUM_DEPTH_STEPS,	    inv_depth_layer, \
+// 													  																																			(block_row *NUM_DEPTH_STEPS + inv_depth_layer), \
+// 																																																rho_pvt_arr[ block_row*NUM_DEPTH_STEPS  + inv_depth_layer].x,  rho_pvt_arr[ block_row*NUM_DEPTH_STEPS  + inv_depth_layer].y \
+// 																																															);
+// 																																														}
 					}
 					barrier(CLK_LOCAL_MEM_FENCE );
 				}
@@ -537,21 +549,26 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 
 				for (int inv_depth_layer = 0;  inv_depth_layer<NUM_DEPTH_STEPS;  inv_depth += inv_depth_step, inv_depth_layer++ ){												// step through depth layers to pick the best fit layer.
 
+// 																							printf("\n__kernel void update_depth_2(..), chk_2.8,  rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].y = %f   /  rho_pvt_arr[	block_row %u *NUM_DEPTH_STEPS %u + inv_depth_layer %u ].x  = %f, global_id_uint= %u , frame_count= %u ",\
+// 																								rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].y  ,\
+// 																								block_row, NUM_DEPTH_STEPS , inv_depth_layer ,\
+// 																								rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].x , global_id_uint, frame_count );
+
 					if( rho_pvt_arr[  block_row*NUM_DEPTH_STEPS + inv_depth_layer ].x  > 0 ){
 																							depth_layer_rho_sq[ inv_depth_layer]	= rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].y  /  rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].x ;
 
-																							printf("\n__kernel void update_depth_2,  rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].y = %f   /  rho_pvt_arr[	block_row %u *NUM_DEPTH_STEPS %u + inv_depth_layer %u ].x  = %f, global_id_uint= %u , frame_count= %u ",\
-																							rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].y  ,\
-																							block_row, NUM_DEPTH_STEPS , inv_depth_layer ,\
-																							rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].x , global_id_uint, frame_count );
+																							printf("\n__kernel void update_depth_2(..), chk_3,  rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].y = %f   /  rho_pvt_arr[	block_row %u *NUM_DEPTH_STEPS %u + inv_depth_layer %u ].x  = %f, global_id_uint= %u , frame_count= %u ",\
+																								rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].y  ,\
+																								block_row, NUM_DEPTH_STEPS , inv_depth_layer ,\
+																								rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].x , global_id_uint, frame_count );
 						if( min_rho_sq >= depth_layer_rho_sq[ inv_depth_layer] ){
 																							min_rho_sq 								= depth_layer_rho_sq[	inv_depth_layer];
 																							opt_depth_layer[1]						= inv_depth_layer;
 						}
 					}
 				}
-																							opt_depth_layer[0] = opt_depth_layer[1] -1;
-																							opt_depth_layer[2] = opt_depth_layer[1] +1;
+																							opt_depth_layer[0]	= opt_depth_layer[1] -1;
+																							opt_depth_layer[2]	= opt_depth_layer[1] +1;
 
 				if (opt_depth_layer[0] < 0) {
 																							opt_depth_layer[0]	= 0;
@@ -568,6 +585,9 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 				// save depth update.
 																							Rho_[	offset_1]	= (float2) { prediction, 	depth_layer_rho_sq[ opt_depth_layer[1] ] };
 																				inv_depth_incr[ 	offset_1]	= optimum;
+
+																							printf("\n__kernel void update_depth_2, chk_4   frame_count= %u  lid,block_row= %u,%u,  optimum= %f,  min_rho_sq= %f, opt_depth_layer[1]= %u ", \
+																								frame_count, lid,  block_row, optimum, min_rho_sq, opt_depth_layer[1]);
 
 				// confidence measure ?  curvature of fit ?
 
@@ -602,7 +622,7 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 		barrier(CLK_GLOBAL_MEM_FENCE );
 			//}//////////////////////////////////////////////////////////////////////
 		//}
-	}
+//	}
 	// After iterations, need to apply result to depth map, and propagate to the next layer of depth map.  Host code must call kernel again for the next layer of the depth img pyramid.
 
 	//if( group_id==1 /*lid==0*/ ){printf("\n__kernel void update_depth(..) finished ####### global_id_uint=%d,  lid=%d,  group_id=%d,  ", global_id_uint, lid, group_id );}

@@ -156,10 +156,10 @@ void Dynamic_slam::estimate_depth(){
 																																			cout << "\n\nDynamic_slam::estimate_depth() chk_0"
 																																			<<"  ##############################################################"<< flush;
 																																		}
-	float default_inv_depth				= 0.007f;																						// half the max inv depth, i.e. twice the min depth.
-	runcl._clEnqueueFillBuffer( runcl.uload_queue, runcl.depth_mem,	&default_inv_depth, sizeof(float), 0, runcl.mm_size_bytes_C1, fname ); // TODO  remove this, temporary for testing tracking and mapping given GT poses.
+	//float default_inv_depth				= 0.007f;																						// half the max inv depth, i.e. twice the min depth.
+	//runcl._clEnqueueFillBuffer( runcl.uload_queue, runcl.depth_mem,	&default_inv_depth, sizeof(float), 0, runcl.mm_size_bytes_C1, fname ); // TODO  remove this, temporary for testing tracking and mapping given GT poses.
 
-	for (int layer=4; layer>=3; layer--){
+	for (int layer=4; layer>=0; layer--){
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\nDynamic_slam::estimate_depth()  layer= "<<
 																																			layer << endl <<flush;

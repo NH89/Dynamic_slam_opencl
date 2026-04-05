@@ -180,7 +180,7 @@ void RunCL::update_depth_2( uint out_block_size, uint layer){
 
 	// Zero output buffers
 	float minus_one_f					=-1.0f;
-	uint depth_iter_per_layer			= 3;
+	uint depth_iter_per_layer			= 1; //3
 	uint cols							= MipMap[ (layer+2)*8 + MiM_READ_COLS];
 	uint rows							= (MipMap[ (layer+2)*8 + MiM_READ_ROWS] + 1)	*  depth_iter_per_layer;
 	size_t	depthUpdate_bytes			= cols * rows * sizeof(cl_float2);

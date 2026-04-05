@@ -1053,7 +1053,7 @@ void RunCL::DownloadAndSaveDepthUpdate( uint layer, uint depth_iter_per_layer  )
 
 	//uint depth_iter_per_layer	= 3;
 	uint cols					= MipMap[ (layer+2)*8 + MiM_READ_COLS];
-	uint rows					= (MipMap[ (layer+2)*8 + MiM_READ_ROWS] + 1)	*  6; //depth_iter_per_layer;
+	uint rows					= (MipMap[ (layer+2)*8 + MiM_READ_ROWS] + 1)	* depth_iter_per_layer; // 6; //
 
 	cv::Size depthUpdate_size( cols, rows ) ;
 	size_t	depthUpdate_bytes	= cols * rows * sizeof(cl_float2);
