@@ -469,7 +469,7 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 // 																							printf("\n__kernel void update_depth_2(..) chk_2,  reduction=%f,  past_frame_idx=%u,   group_id=%d,  row_in_block=%u, read_index=%u, inv_depth=%f,    u=%u, v=%u, u2f=%f,  v2f=%f,  read_cols_=%u,  read_rows_=%u, global_id_uint=%d, inv_depth_step= %f",\
 // 																																			   reduction,     past_frame_idx,      group_id,     row_in_block,    read_index,    inv_depth,       u,    v,    u2f,     v2f,     read_cols_,     read_rows_ ,   global_id_uint,    inv_depth_step );
 // 																							}
-					const uint margin							= 4;
+					const uint margin							= 0;
 					intersection 								=	(u>margin)		&& (u<=read_cols_-margin)		&& (v>margin)		&& (v<=read_rows_-margin)	&& \
 																	(u2f>margin)	&& (u2f<=read_cols_-margin)		&& (v2f>margin)		&& (v2f<=read_rows_-margin)	&& (global_id_uint<=layer_pixels);	// if images overlap
 
@@ -556,38 +556,36 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 
 					if( rho_pvt_arr[  block_row*NUM_DEPTH_STEPS + inv_depth_layer ].x  > 0 ){
 																							depth_layer_rho_sq[ inv_depth_layer]	= rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].y  /  rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].x ;
-
-																							printf("\n__kernel void update_depth_2(..), chk_3,  rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].y = %f   /  rho_pvt_arr[	block_row %u *NUM_DEPTH_STEPS %u + inv_depth_layer %u ].x  = %f, global_id_uint= %u , frame_count= %u ",\
-																								rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].y  ,\
-																								block_row, NUM_DEPTH_STEPS , inv_depth_layer ,\
-																								rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].x , global_id_uint, frame_count );
+																																			//    __kernel void update_depth_2, chk_4  global_id_uint=%u, block_row=%u, frame_count=%u,
+//# 																																		printf("\n__kernel void update_depth_2, chk_3, global_id_uint=%u, block_row=%u, frame_count=%u, inv_depth_layer=%u,	depth_layer_rho_sq[ inv_depth_layer ]=%f,  rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].y = %f   /  rho_pvt_arr[	block_row *NUM_DEPTH_STEPS  + inv_depth_layer ].x  = %f,     ",\
+//# 																																														global_id_uint, 	block_row, 		frame_count,	 inv_depth_layer,		depth_layer_rho_sq[ inv_depth_layer ],		rho_pvt_arr[ block_row*NUM_DEPTH_STEPS + inv_depth_layer ].y  , 		rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].x  );
 						if( min_rho_sq >= depth_layer_rho_sq[ inv_depth_layer] ){
 																							min_rho_sq 								= depth_layer_rho_sq[	inv_depth_layer];
 																							opt_depth_layer[1]						= inv_depth_layer;
 						}
 					}
 				}
-																							opt_depth_layer[0]	= opt_depth_layer[1] -1;
-																							opt_depth_layer[2]	= opt_depth_layer[1] +1;
 
-				if (opt_depth_layer[0] < 0) {
+				if (opt_depth_layer[1] == 0) {
 																							opt_depth_layer[0]	= 0;
 																							opt_depth_layer[1]	= 1;
 																							opt_depth_layer[2]	= 2;
-				}else if (opt_depth_layer[2] >= NUM_DEPTH_STEPS  ){
+				}else if (opt_depth_layer[1] == NUM_DEPTH_STEPS -1 ){
 																							opt_depth_layer[0]	= NUM_DEPTH_STEPS -3;
 																							opt_depth_layer[1]	= NUM_DEPTH_STEPS -2;
 																							opt_depth_layer[2]	= NUM_DEPTH_STEPS -1;
+				} else {
+																							opt_depth_layer[0]	= opt_depth_layer[1] -1;
+																							opt_depth_layer[2]	= opt_depth_layer[1] +1;
 				}
 																							float prediction, optimum;
-																							compute_minimum(	depth_layer_rho_sq[ opt_depth_layer[0] ],	depth_layer_rho_sq[ opt_depth_layer[1] ],	depth_layer_rho_sq[ opt_depth_layer[2] ], \
-																												opt_depth_layer[0]*inv_depth_step ,			opt_depth_layer[0]*inv_depth_step ,			opt_depth_layer[0]*inv_depth_step ,		&prediction, &optimum );
+																							compute_minimum(	depth_layer_rho_sq[ opt_depth_layer[0] ],	depth_layer_rho_sq[ opt_depth_layer[1] ],	depth_layer_rho_sq[ opt_depth_layer[2] ],		opt_depth_layer[0]*inv_depth_step ,		opt_depth_layer[1]*inv_depth_step ,		opt_depth_layer[2]*inv_depth_step ,	 	&prediction, &optimum,  global_id_uint, block_row );
 				// save depth update.
-																							Rho_[	offset_1]	= (float2) { prediction, 	depth_layer_rho_sq[ opt_depth_layer[1] ] };
-																				inv_depth_incr[ 	offset_1]	= optimum;
+																							Rho_[	offset_1]	= (float2) { prediction/ depth_layer_rho_sq[ opt_depth_layer[1] ],	depth_layer_rho_sq[ opt_depth_layer[1] ]	};
+																				inv_depth_incr[ 	offset_1]	= (float2) { optimum,		rho_pvt_arr[ opt_depth_layer[1] ].x			};
 
-																							printf("\n__kernel void update_depth_2, chk_4   frame_count= %u  lid,block_row= %u,%u,  optimum= %f,  min_rho_sq= %f, opt_depth_layer[1]= %u ", \
-																								frame_count, lid,  block_row, optimum, min_rho_sq, opt_depth_layer[1]);
+//# 																																			printf("\n__kernel void update_depth_2, chk_4, global_id_uint=%u, block_row=%u, frame_count=%u, lid= %u, optimum= %f, min_rho_sq= %f, opt_depth_layer[0]= %u, opt_depth_layer[1]= %u, opt_depth_layer[2]= %u, inv_depth_step=%f, depth_layer_rho_sq[ opt_depth_layer[0] ]=%f, depth_layer_rho_sq[ opt_depth_layer[1] ]=%f, depth_layer_rho_sq[ opt_depth_layer[2] ]=%f ", \
+//# 																																															global_id_uint, 	block_row, 	frame_count, 	lid,	optimum, 	  min_rho_sq, 	  opt_depth_layer[0], 	   opt_depth_layer[1],		opt_depth_layer[2],  	inv_depth_step,  depth_layer_rho_sq[ opt_depth_layer[0] ],		depth_layer_rho_sq[ opt_depth_layer[1] ],	depth_layer_rho_sq[ opt_depth_layer[2] ] );
 
 				// confidence measure ?  curvature of fit ?
 
@@ -641,7 +639,7 @@ __kernel void enlarge_layer_float(
 	__global 	float*		img							//6
 	)
 {
-	uint global_id_uint 					= get_global_id(0);
+	uint global_id_uint 				= get_global_id(0);
 	uint4	lookup_ref					= lookup_table[	global_id_uint + lookup_table_read_offset];
 	if( lookup_ref.w != global_id_uint){	printf("\n__kernel void enlarge_layer_float(..) lookup_ref.w %u != global_id_uint %u", lookup_ref.w, global_id_uint);	// NB return cols tha are outside img_cur, BUT only after initializing local mem.
 											return;
