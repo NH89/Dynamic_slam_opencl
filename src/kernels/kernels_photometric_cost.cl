@@ -180,10 +180,10 @@ void bilinear_SE3_grad_weight (float4 weights[6],
 	}
 }
 
-void compute_minimum( float rho_sq_0, float rho_sq_1, float rho_sq_2, float inv_depth_0, float inv_depth_1, float inv_depth_2, float * prediction, float * optimum, uint global_id_uint, uint block_row ){	// give use with discrete min plus neighbours, _should_ always have a>0, except if min < MIN_DEPYH.
+void compute_minimum( float rho_sq_0, float rho_sq_1, float rho_sq_2, float inv_depth_0, float inv_depth_1, float inv_depth_2, float * prediction, float * optimum, float *d2ydx2, uint global_id_uint, uint block_row ){	// give use with discrete min plus neighbours, _should_ always have a>0, except if min < MIN_DEPYH.
 
-	float a, b, c,   d, e,   f, g,   h, i,   j, k, d2, f2, h2;																				// compute x value of the optimum of parabola, y= a*x*x + b*x + c
-																																			// given samples at x=1,2,4
+	float a, b, c,   d, e,   f, g,   h, i,   j, k, d2, f2, h2;
+
 	d = inv_depth_0;	e = rho_sq_0;
 	f = inv_depth_1;	g = rho_sq_1;
 	h = inv_depth_2;	i = rho_sq_2;
@@ -192,11 +192,18 @@ void compute_minimum( float rho_sq_0, float rho_sq_1, float rho_sq_2, float inv_
 	f2 = f * f;
 	h2 = h * h;
 
-// 	j = (f2 - d2)*(f-h) - (h2 - f2)*(d-f) ; // (1*1 - 0*0)*(1-3)  - (3*3 - 1*1)*(0-1)  = 1*-2  - (9-1)*-1 = -2  -8*-1 = -2 +8 =6   //// d=0, f=1, h=3  // d2=0, 	f2=1, 	h2=9, 	j=6, k=0.72331,
-// 	k = (g-i)*(d-f) - (e-g)*(f-h);   		// (0.456964 - 0.4644)*(0-1) - (0.814901 - 0.456964)*(1-3) = −0,007436*-1  - 0,357937*-2 = 0,72331   //// (d,e)=(0,0.814901), 	(f,g)=(1,0.456964), 	(h,i)=(3,0.4644),
-// 	a = k/j;						 		// 0,72331 / 6 = 0,120551667
-// 	b = (e-g +a*(f2-d2))  /  (d-f);  		// (0,814901 - 0,456964  +  0,120551667 * (1*1 - 0*0))  / (0-1)  =  -0,478488667
-// 	c = e - a*d2 - b*d;				 		// 0.814901
+	// Compute parameters a,b,c of parabola, y= a*x*x + b*x + c,
+	// by simultaneous equations, from three measured points (x,y).
+
+	// 0 = e-ad2-bd-c = g-af2-bf-c  = i-ah2-bh-c
+	// c = e-ad2-bd   = g-af2-bf    = i-ah2-bh
+	//
+	// b(d-f) = a(f2-d2)-g+e	, b(d-h) = a(h2-d2)-i+e
+	// b = (a(f2-d2)-g+e)/(d-f) = (a(h2-d2)-i+e)/(d-h)
+	//
+	// a(f2-d2)(d-h) - (h2-d2)(d-f)) =  (-i+e)*(d-f)  -  (-g+e)*(d-h)
+	// a(j) = k
+	// a = k/j
 
 	j = (f2-d2)*(d-h) - (h2-d2)*(d-f);
 	k = (-i+e)*(d-f)  -  (-g+e)*(d-h);
@@ -205,6 +212,9 @@ void compute_minimum( float rho_sq_0, float rho_sq_1, float rho_sq_2, float inv_
 	b = (a*(f2-d2) -g +e) / (d-f);
 	c = e - a*d2 -b*d;
 
+	*d2ydx2 = a;																															// the 2nd order differential, used in confidence estimate.
+
+	// Compute the optimum, i.e. where dy/dx = 0, and predict rho_sq at optimum.
 
 	if (a>0){																																// IF concavity leads to a minimum, use it.
 		float x 		= -b /(2*a);
@@ -212,7 +222,7 @@ void compute_minimum( float rho_sq_0, float rho_sq_1, float rho_sq_2, float inv_
 		*optimum 		= x;																												// dy/dx = 0 = 2*a*x + b   =>  x = -b /(2*a)
 
 	}else{																																	// IF concavity leads to a maximum, pick the best sample so far.
-		if (e>=i){
+		if (e>=i){																															// NB this is possible _iff_ the best sample is at the strt or end of the set of samples.
 			*prediction = 2.0f; //i;
 			*optimum 	= h;
 		}else{
@@ -220,6 +230,7 @@ void compute_minimum( float rho_sq_0, float rho_sq_1, float rho_sq_2, float inv_
 			*optimum 	= d;
 		}
 	}
+			// printf formating to match other debug checks, so that they can be viewed and sorted together in a spreadsheet for debugging. NB this helps to understand the cause of errors. and so find bugs.
 			//__kernel void update_depth_2, chk_4  global_id_uint=%u, block_row=%u, frame_count=%u,
 			//__kernel void update_depth_2, chk_3,						// , frame_count=%u, //
 //# 	printf("\n__ void compute_minimum(.), chk_, global_id_uint=%u, block_row=%u, frame_count= , rho_sq_0=%f, rho_sq_1=%f, rho_sq_2=%f, inv_depth_0=%f, inv_depth_1=%f, inv_depth_2=%f, prediction=%f, optimum=%f, a=%f, b=%f, c=%f, j=%f, k=%f, (f2=%f-d2=%f)*(d=%f-h=%f) - (h2=%f-d2=%f)*(d=%f-f=%f)	",\

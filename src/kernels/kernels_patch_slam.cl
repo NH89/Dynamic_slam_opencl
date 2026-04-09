@@ -61,10 +61,11 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	__global	float*		depth_map,				//10											// current frame depth, now stored as inv_depth
 
 	//Outputs:
-	__global 	float4*		SE3_grad_map,			//11											// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
-	__global 	float4*		SE3_Hessian_map,		//12											// HSV (6x6) matrix so 36*float4. 2nd half holds Jacobian maps, req for IC-LK algorithm. Size 2xmm_pixels.
-	__local		float4*		local_Hessian,			//13											// local_Hessian_pseudo_inverse[ sizeof(float4) *6*6 *local_size]
-	__global 	float4*		ST3_img_grad			//14
+	__global	float2*		img_grad_uv,			//11
+	__global 	float4*		SE3_grad_map,			//12											// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
+	__global 	float4*		SE3_Hessian_map,		//13											// HSV (6x6) matrix so 36*float4. 2nd half holds Jacobian maps, req for IC-LK algorithm. Size 2xmm_pixels.
+	__local		float4*		local_Hessian,			//14											// local_Hessian_pseudo_inverse[ sizeof(float4) *6*6 *local_size]
+	__global 	float4*		ST3_img_grad			//15
 ){
 	uint	global_id_uint								= get_global_id(0);
 	uint	lid											= get_local_id(0);
@@ -125,16 +126,17 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 		pu												=  img[read_index + upoff];
 		pd												=  img[read_index + dnoff];
 
-		float4 gx										= { (pr.x - pl.x)/2.0f,  (pr.y - pl.y)/2.0f,  (pr.z - pl.z)/2.0f,   0.5f };								// Signed img gradient in hsv
-		float4 gy										= { (pd.x - pu.x)/2.0f,  (pd.y - pu.y)/2.0f,  (pd.z - pu.z)/2.0f,   0.5f };
+		float4 gu										= { (pr.x - pl.x)/2.0f,  (pr.y - pl.y)/2.0f,  (pr.z - pl.z)/2.0f,   0.5f };								// Signed img gradient in hsv
+		float4 gv										= { (pd.x - pu.x)/2.0f,  (pd.y - pu.y)/2.0f,  (pd.z - pu.z)/2.0f,   0.5f };
+		img_grad_uv[ read_index ]						= (float2){ gu.x, gv.x };
 
 		float	inv_depth								=  depth_map[read_index];
 		float4	Jacobian[6]								=  {0};
 
 		for (uint i=0; i<6; i++) {
 			float2	SE3_px								= SE3_map[read_index + i* mm_pixels];																	// SE3_map[read_index + i* uint_params[MM_PIXELS]  ] = partial_gradient;  // float2 partial_gradient={u_flt-u2 , v_flt-v2}; // Find movement of pixel
-			float4	gxSE3								= gx*SE3_px[0];																							// J_SE3 * img gradient i.e. edges
-			float4	gySE3								= gy*SE3_px[1];
+			float4	gxSE3								= gu*SE3_px[0];																							// J_SE3 * img gradient i.e. edges
+			float4	gySE3								= gv*SE3_px[1];
 			Jacobian[i]									= gxSE3 + gySE3;
 			if(i>2){
 				ST3_img_grad[read_index + (i-3)* mm_pixels] = Jacobian[i] * null_factor;																		// collecting full HSV.

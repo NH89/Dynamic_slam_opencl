@@ -54,7 +54,7 @@ float bilinear_grad_weight (__global float8* HSV_grad, int read_index, float u2_
 
 //float compute_optimum(__private float4 a, __private float4 b, __private float4 c);
 
-void compute_minimum( float rho_sq_0, float rho_sq_1, float rho_sq_2, float inv_depth_0, float inv_depth_1, float inv_depth_2, float * prediction, float * optimum, uint global_id_uint, uint block_row );
+void compute_minimum( float rho_sq_0, float rho_sq_1, float rho_sq_2, float inv_depth_0, float inv_depth_1, float inv_depth_2, float * prediction, float * optimum, float *d2ydx2, uint global_id_uint, uint block_row );
 
 
 inline void atomic_maxf(															  				// from https://ingowald.blog/2018/06/24/float-atomics-in-opencl/

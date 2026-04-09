@@ -294,6 +294,67 @@ void RunCL::update_depth_2( uint out_block_size, uint layer){
 																																}
 }
 
+
+void RunCL::regularize_depth(uint write_layer ){
+	string		fname						= "RunCL::regularize_depth(..)";
+	int			local_verbosity_threshold	= V_RUNCL_REGULARIZE_DEPTH;												if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::regularize_depth(..)_chk0"<<
+																																",   write_layer = "<<write_layer<<flush; }
+	cl_kernel	kernel						= regularize_depth_kernel;
+
+	uint		lookup_table_read_offset	= patch_lookup_table_offset[write_layer/*+1*/];
+
+	uint		buf_width					= uint_params[MM_COLS];
+	uint		patch_height				= patch_size;
+
+	uint		read_cols_					= MipMap[ write_layer*8 + MiM_READ_COLS];
+	uint		read_rows_					= MipMap[ write_layer*8 + MiM_READ_ROWS];  //uint_params[MM_PIXELS];
+
+	uint		write_offset				= read_cols_ + uint_params[MARGIN];	// step to the right to write the regularized depth map. //MipMap[write_layer*8 + MiM_READ_OFFSET];
+
+	uint		stop_offset					= /*write_offset*/ MipMap[write_layer*8 + MiM_READ_OFFSET] + (read_rows_ -1) * buf_width + read_cols_;
+																															if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::regularize_depth(..) chk1" <<
+																																"\nlookup_table_read_offset 	= "		<<lookup_table_read_offset<<
+																																"\nlookup_table_write_offset 	= "		<<write_offset<<
+																																"\nbuf_width                	= "		<<buf_width<<
+																																"\npatch_height             	= "		<<patch_height<<
+																																"\nstop_offset              	= "		<<stop_offset<<
+																																"\npatch_lookup_table_buf   	= "		<<patch_lookup_table_buf<<
+																																"\ndepth_mem                	= "		<<depth_mem<<
+																																endl<<flush;
+																															}
+	_clSetKernelArg( kernel, 0, sizeof(int),						&lookup_table_read_offset,							fname);		// __private	const uint	lookup_table_read_offset,	//0
+	_clSetKernelArg( kernel, 1, sizeof(int),						&write_offset,										fname);		// __private	const uint	lookup_table_write_offset,	//1
+	_clSetKernelArg( kernel, 2, sizeof(int),						&buf_width,											fname);		// __private	uint		buf_width,					//2		mm_cols, i.e. width of the buffer holding the image pyramid
+	_clSetKernelArg( kernel, 3, sizeof(int),						&patch_height,										fname);		// __private	uint		patch_height,				//3
+	_clSetKernelArg( kernel, 4, sizeof(int),						&stop_offset,										fname);		// __private	uint		stop_offset,				//4
+	_clSetKernelArg( kernel, 5, sizeof(cl_mem),						&patch_lookup_table_buf,							fname);		// __constant 	float4*		lookup_table,				//5
+	_clSetKernelArg( kernel, 6, sizeof(cl_mem),						&img_grad_mem,										fname);		// __global 	float2*		img							//6
+	_clSetKernelArg( kernel, 7, sizeof(cl_mem),						&depth_mem,											fname);		// __global 	float*		img							//7
+
+	size_t	threads_to_launch	= patch_num_threads[write_layer+1];
+	size_t	local_work_size_	= block_size;
+
+	_clEnqueueNDRangeKernel(										// NB depth iteration is internal to the kernel within the layer.  Regularization and propagation to next layer requires further kernels.
+		m_queue,				//cl_command_queue _queue,
+		kernel,					//cl_kernel        kernel,
+		1,						//cl_uint          work_dim,
+		0,						//const size_t *   global_work_offset,
+		&threads_to_launch,		//const size_t *   global_work_size,
+		&local_work_size_,		//const size_t *   local_work_size,
+		fname					//string           fname
+	);
+																															if(verbosity>local_verbosity_threshold) {
+																																cout<<"\n\nRunCL::regularize_depth(..)_chk3 Finished all loops."<<flush;
+																																stringstream ss;	ss << dataset_frame_num << "_regularize_depth";
+																																cv::Size new_Image_size = cv::Size(mm_width, mm_height);
+																																ss << "_raw_";
+																																stringstream ss_path;	ss_path << "depth_mem";
+																																DownloadAndSave( depth_mem,   	ss.str(),   paths.at(ss_path.str()),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	false , fp32_params[MAX_INV_DEPTH]);
+																															}
+																															if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::regularize_depth(..)_chk4 Finished:#######################################################"<<flush;}
+}
+
+
 void RunCL::propagate_depth_next_layer(uint write_layer ){	// layer = write layer
 	string 	fname						= "RunCL::mipmap_depthmap(..)";
 	int 	local_verbosity_threshold	= V_RUNCL_PROPAGATE_DEPTH_NEXT_LAYER;												if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::propagate_depth_next_layer(..)_chk0"<<

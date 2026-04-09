@@ -237,18 +237,20 @@ void RunCL::patch_img_gradients_set_params(){	// Uses patch lookup table		// cal
 	//Inputs:
 	//__private
 	//_clSetKernelArg( kernel,	0, sizeof(int), 		&layer,							fname );								// __private	uint		layer,					//0
-	_clSetKernelArg( kernel,	2, sizeof(int), 		&out_block_size,				fname );								// __private	uint		out_block_size,			//1
+	_clSetKernelArg( kernel,	2, sizeof(int), 		&out_block_size,				fname );								// __private	uint		out_block_size,			//2
 	//__constant
-	_clSetKernelArg( kernel,	5, sizeof( cl_mem), 	&mipmap_buf,					fname);									// __constant	uint8*		mipmap_params,			//2
-	_clSetKernelArg( kernel,	6, sizeof( cl_mem), 	&uint_param_buf,				fname);									// __constant	uint*		uint_params,			//3
-	_clSetKernelArg( kernel,	7, sizeof( cl_mem), 	&SE3_map_mem,					fname);									// __constant 	float2*		SE3_map,				//4
+	_clSetKernelArg( kernel,	5, sizeof( cl_mem), 	&mipmap_buf,					fname);									// __constant	uint8*		mipmap_params,			//5
+	_clSetKernelArg( kernel,	6, sizeof( cl_mem), 	&uint_param_buf,				fname);									// __constant	uint*		uint_params,			//6
+	_clSetKernelArg( kernel,	7, sizeof( cl_mem), 	&SE3_map_mem,					fname);									// __constant 	float2*		SE3_map,				//7
 	//__global
-	_clSetKernelArg( kernel,	8, sizeof( cl_mem), 	&patch_lookup_table_buf,		fname);									// __global 	float4*		lookup_table,			//5
+	_clSetKernelArg( kernel,	8, sizeof( cl_mem), 	&patch_lookup_table_buf,		fname);									// __global 	float4*		lookup_table,			//8
 	//Outputs:
 	//__global
-	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&SE3_grad_map_mem,				fname);									// __global 	float8*		SE3_grad_map,			//7		// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
-	_clSetKernelArg( kernel,	12, sizeof( cl_mem), 	&SE3_hessian_map_mem,			fname);									// __global 	float4*		SE3_Hessian_pinv_map,	//8		// HSV (6x6) matrix so 36*float8
-	_clSetKernelArg( kernel,	14, sizeof( cl_mem), 	&ST3_img_grad_mem,				fname);									// __global 	float4*		HSV_grad				//10
+	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&img_grad_mem,					fname);									// __global 	float2*		img_grad_uv,			//11
+	_clSetKernelArg( kernel,	12, sizeof( cl_mem), 	&SE3_grad_map_mem,				fname);									// __global 	float8*		SE3_grad_map,			//12	// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
+	_clSetKernelArg( kernel,	13, sizeof( cl_mem), 	&SE3_hessian_map_mem,			fname);									// __global 	float4*		SE3_Hessian_pinv_map,	//13	// HSV (6x6) matrix so 36*float8
+
+	_clSetKernelArg( kernel,	15, sizeof( cl_mem), 	&ST3_img_grad_mem,				fname);									// __global 	float4*		HSV_grad				//15
 	//_clSetKernelArg( kernel,	14, sizeof( cl_mem), 	&HSV_grad_mem,					fname);									// __global 	float8*		HSV_grad				//10
 
 	// For the SE3 Hessian patches, and their reduction.	/////////////
@@ -337,12 +339,14 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 
 	_clSetKernelArg( kernel,	0, sizeof(int),			&layer,							fname);									// __private	uint		layer,						//0
 	_clSetKernelArg( kernel,	1, sizeof(int),			&lookup_table_offset_uint,		fname);									// __private	uint		lookup_table_offset_uint,	//1
+
 	_clSetKernelArg( kernel,	3, sizeof(cl_uint3),	&SE3_hessian_offset,			fname);									// __private	uint		SE3_hessian_offset,			//2
 	_clSetKernelArg( kernel,	4, sizeof(cl_uint3),	&ST3_out_offset,				fname);									// __private	uint		SE3_hessian_offset,			//3
 
 	_clSetKernelArg( kernel,	9, sizeof( cl_mem),		&imgmem_,						fname);									// __global 	float4*		img,						//9		//	"current_frames[idx].img_buf	= imgmem[idx];", NB changes every new frame.
 	_clSetKernelArg( kernel,	10, sizeof(cl_mem), 	&depth_mem,						fname);									// __global		float* 		depth_map,					//10	// current frame depth, now stored as inv_depth
-	_clSetKernelArg( kernel,	13,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,				//13	// local_Hessian[ sizeof(float4) *6*6 *local_size]
+
+	_clSetKernelArg( kernel,	14,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,				//13	// local_Hessian[ sizeof(float4) *6*6 *local_size]
 
 	res 	= clEnqueueNDRangeKernel(m_queue,		kernel, 1, 0, &threads_to_launch, &local_work_size_, 0, NULL, &ev);
 																	if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
@@ -351,11 +355,19 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 
 
 																																if( layer==0  && verbosity>local_verbosity_threshold -1){
-																																	stringstream ss;	ss << dataset_frame_num << "_ST3_img_grad_map";
+																																	stringstream ss;	ss << dataset_frame_num << "_patch_img_gradients";
 																																	float	max_range	= 1.0f;		// i.e. find max value, and map 0.0->0.5.
 																																	uint	vol_layers	= 3;
 																																	DownloadAndSave_6Channel_volume( ST3_img_grad_mem, ss.str(), paths.at(  "ST3_img_grad_mem"), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, max_range, vol_layers );
 																																	// NB here collecting only for the value channel. Need to adapt kernel if full hsv needs to be collected.
+
+																																	bool show			= false;
+																																	max_range			= -1;
+																																	vol_layers			= 1;
+																																	bool old_tiff		= tiff;
+																																	tiff				= true;
+																																	DownloadAndSave_2Channel_volume( img_grad_mem,	ss.str( ), paths.at( "img_grad_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	vol_layers);
+																																	tiff 				= old_tiff;
 																																}
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_finished #############################################################"<<flush;
 																																	size_t	offset_		=	0;

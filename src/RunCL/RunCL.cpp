@@ -295,6 +295,7 @@ void RunCL::createKernels(){
 	// RunCL_depth.cpp
 	update_depth_kernel					= clCreateKernel(m_program, "update_depth",					&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'update_depth'  kernel not built.\n"					<<flush; exit_(0);   }
 	update_depth_2_kernel				= clCreateKernel(m_program, "update_depth_2",				&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'update_depth'  kernel not built.\n"					<<flush; exit_(0);   }
+	regularize_depth_kernel				= clCreateKernel(m_program, "regularize_depth",				&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'regularize_depth'  kernel not built.\n"				<<flush; exit_(0);   }
 	enlarge_layer_float_kernel			= clCreateKernel(m_program, "enlarge_layer_float",			&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'enlarge_layer_float'  kernel not built.\n"			<<flush; exit_(0);   }
 }
 
@@ -676,6 +677,7 @@ void RunCL::allocatemem(){
 	depth_mem_temp		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 12= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // Used to be : Copy used by tracing & auto-calib. Now spare buffer for upload & computations
 	depth_mem_GT		= clCreateBuffer(m_context, CL_MEM_READ_WRITE /*2*mm_size_bytes_C1*/, mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 13= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // Where depthmap GT mimpap is constructed.
 
+	img_grad_mem		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 					, 2 * mm_size_bytes_C1, 		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 16= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	g1mem				= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C8, 		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 16= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	depth_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 17= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
@@ -784,6 +786,7 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 	status = clReleaseMemObject(depth_mem_temp);				if (status != CL_SUCCESS)	{ cout << "\ndepth_mem                      status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_14"<<flush;
 	status = clReleaseMemObject(depth_mem_GT);					if (status != CL_SUCCESS)	{ cout << "\ndepth_mem_GT                   status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_15"<<flush;
 
+	status = clReleaseMemObject(img_grad_mem);					if (status != CL_SUCCESS)	{ cout << "\nimg_grad_mem                   status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_20"<<flush;
 	status = clReleaseMemObject(g1mem);							if (status != CL_SUCCESS)	{ cout << "\ng1mem                          status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_20"<<flush;
 	status = clReleaseMemObject(depth_mem);						if (status != CL_SUCCESS)	{ cout << "\ndepth_mem                      status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_21"<<flush;
 
@@ -837,6 +840,7 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 	// RunCL_depth.cpp
 	status = clReleaseKernel(update_depth_kernel);					if (status != CL_SUCCESS)	{ cout << "\nupdate_depth_kernel				status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(update_depth_2_kernel);				if (status != CL_SUCCESS)	{ cout << "\nupdate_depth_2_kernel				status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(regularize_depth_kernel);				if (status != CL_SUCCESS)	{ cout << "\nregularize_depth_kernel			status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(enlarge_layer_float_kernel);			if (status != CL_SUCCESS)	{ cout << "\nenlarge_layer_float_kernel			status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 

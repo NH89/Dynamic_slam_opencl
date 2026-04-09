@@ -178,6 +178,7 @@ void Dynamic_slam::estimate_depth(){
 
 		// parsimony of orientation, plane, curvature ?
 		if( layer>0){
+			runcl.regularize_depth( layer );
 			runcl.propagate_depth_next_layer(layer-1);
 		}
 

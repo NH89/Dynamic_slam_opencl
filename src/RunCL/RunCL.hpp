@@ -93,11 +93,11 @@ public:
 	// RunCL_patch_tracking.cpp
 	cl_kernel			pad_image_top_bottom2_kernel, vertcal_blur5_kernel, pad_image_left_right2_kernel, horiz_blur5_kernel, reduce_img_kernel;
 	// RunCL_depth.cpp
-	cl_kernel			update_depth_kernel, update_depth_2_kernel, enlarge_layer_float_kernel;
+	cl_kernel			update_depth_kernel, update_depth_2_kernel, regularize_depth_kernel, enlarge_layer_float_kernel;
 
 	// GPU Buffers
 																												// static = same for all instances of class Dynamic_slam.
-	cl_mem 				imgmem[num_current_frames], 	velmap[num_current_frames], 	depth_mem, 	g1mem;
+	cl_mem 				imgmem[num_current_frames], 	velmap[num_current_frames], 	depth_mem, 	img_grad_mem,	g1mem;
 
 	cl_mem				basemem, imgmem_blurred, SE3_grad_map_mem, SE3_incr_map_mem;
 	cl_mem				depth_mem_temp, depth_mem_GT;																					// 'depth_mem_temp' is use to load & prepare data for depth_mem_GT and transform_depthmap
@@ -344,6 +344,7 @@ public:
 	////////////////////////////////////// RunCL_depth.cpp
 	void update_depth( uint out_block_size, uint layer);
 	void update_depth_2( uint out_block_size, uint layer);
+	void regularize_depth(uint write_layer );
 	void propagate_depth_next_layer(uint layer);
 
 
