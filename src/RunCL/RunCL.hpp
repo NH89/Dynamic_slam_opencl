@@ -163,6 +163,8 @@ public:
 	size_t 				lookup_table_offset[	max_mipmap_layers]		= {0};
 
 	uint				MipMap[					max_mipmap_layers	*8]	= {0};
+	uint				patch_depthmap_width[	max_mipmap_layers ]		= {0};
+	uint				patch_depthmap_offset[	max_mipmap_layers ]		= {0};
 	uint				uint_params[			8]						= {0};
 	float				fp32_params[			16]						= {0};
 	
@@ -206,6 +208,7 @@ public:
 	void mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_to_call, bool layers_sequential=false){ mipmap_call_kernel( kernel_to_call,  queue_to_call, mm_start, mm_stop, layers_sequential, local_work_size); }
 
 	void initialize_fp32_params();
+	void initialize_patch_depthmap_offset();
 	void initialize_RunCL( cv::Mat baseImage_ );																						// Setting up buffers & mipmap parameters
 	void set_mimpmap_offsets();
 	//void free_wg_offsets();
@@ -242,10 +245,11 @@ public:
 	void Save_vtk(cv::Mat mat, cv::Mat keyframe, std::filesystem::path folder );
 	void Save_vtk_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::path folder, uint layer, uint depth_iter_per_layer  );
 
-	void Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::path folder, uint layer, uint depth_iter_per_layer  );
-	void Save_csv_mat(cv::Mat mat, std::filesystem::path folder,  uint layer );
+	void Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, uint offset_rho_bytes, uint offset_depth_bytes, uint layer );
+	void Save_csv_mat(cv::Mat mat, std::filesystem::path folder, uint layer );
 
 	void DownloadAndSave(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range=1 );
+	void DownloadAndSave_2Channel(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint offset );
 	void DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers );
 	
 	void DownloadAndSave_3Channel(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range=1, uint offset=0, bool exception_tiff=false ){
@@ -263,7 +267,7 @@ public:
 	void SaveMat(cv::Mat temp_mat, int type_mat, std::filesystem::path folder_tiff, bool show, float max_range, std::string mat_name, std::string count);
 	void DownloadAndSaveVolume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, bool exception_tiff=false );
 
-	void DownloadAndSaveDepthUpdate( uint layer, uint depth_iter_per_layer  );
+	void DownloadAndSaveDepthUpdate( uint layer, uint offset_rho, uint offset_depth, string fname );
 
 	////////////////////////////////////// RunCL_load_image.cpp
 

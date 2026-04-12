@@ -346,22 +346,23 @@ void RunCL::Save_vtk_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk finished\n"<<flush;
 }
 
-void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::path folder, uint layer, uint depth_iter_per_layer  ){
+void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, uint offset_rho_bytes, uint offset_depth_bytes, uint layer ){
 	int local_verbosity_threshold = V_RUNCL_SAVE_PCD;
 																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::Save_pcd_depth chk0"<<flush;
 																																				PRINT_MATX44F(	current_frames[ current_frames_idx[0] ].inv_K, );
 																																			}
 	float			scale					= pow(2,layer);
-	uint			cols					= MipMap[ (layer+2)*8 + MiM_READ_COLS];
-	uint			rows					= MipMap[ (layer+2)*8 + MiM_READ_ROWS] + 1;
-	size_t			depthUpdate_bytes		= cols * rows * sizeof(cl_float2);
-	uint			offset					= rows * (depth_iter_per_layer - 1);
-	cv::Size		depthUpdate_size(		cols, rows ) ;
+	// uint			cols					= MipMap[ (layer+2)*8 + MiM_READ_COLS];
+	// uint			rows					= MipMap[ (layer+2)*8 + MiM_READ_ROWS] + 1;
+	// size_t			depthUpdate_bytes		= cols * rows * sizeof(cl_float2);
+	// uint			offset					= rows * (depth_iter_per_layer - 1);
+	// cv::Size		depthUpdate_size(		cols, rows ) ;
 
-	cv::Mat			mat_depth				= cv::Mat::zeros (depthUpdate_size, CV_32FC2);													// (int rows, int cols, int type)
-	cv::Mat			mat_rho					= cv::Mat::zeros (depthUpdate_size, CV_32FC2);													// (int rows, int cols, int type)
-	ReadOutput(		mat_depth.data,	depth_buf,	depthUpdate_bytes, offset); 																// NB contains elements of type_mat, (CV_32FC1 for most buffers)
-	ReadOutput(		mat_rho.data,		rho_buf,	depthUpdate_bytes, offset); 															// NB contains elements of type_mat, (CV_32FC1 for most buffers)
+	cv::Mat			mat_depth				= cv::Mat::zeros (size_mat, CV_32FC2);														// (int rows, int cols, int type)
+	cv::Mat			mat_rho					= cv::Mat::zeros (size_mat, CV_32FC2);														// (int rows, int cols, int type)
+
+	ReadOutput(		mat_depth.data,	depth_buf,	image_size_bytes, offset_depth_bytes); 																// NB contains elements of type_mat, (CV_32FC1 for most buffers)
+	ReadOutput(		mat_rho.data,	rho_buf,	image_size_bytes, offset_rho_bytes); 																// NB contains elements of type_mat, (CV_32FC1 for most buffers)
 
 	Save_csv_mat(	mat_depth, folder, layer );
 
@@ -387,7 +388,6 @@ void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 	pcd_file << "VIEWPOINT 0 0 0 1 0 0 0\n";
 	pcd_file << "POINTS "<<mat_depth.cols * mat_depth.rows<<"\n";
 	pcd_file << "DATA ascii\n";
-
 
 	for(float row=0; row<mat_depth.rows ; row ++ ){
 		for(float col=0; col<mat_depth.cols ; col ++ ){
@@ -415,14 +415,14 @@ void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_pcd finished\n"<<flush;
 }
 
-void RunCL::Save_csv_mat(cv::Mat mat, std::filesystem::path folder,  uint layer ){  // currently assumes 2 channel float data.
+void RunCL::Save_csv_mat(cv::Mat mat, std::filesystem::path folder, uint layer ){  // currently assumes 2 channel float data.
 	int local_verbosity_threshold = V_RUNCL_SAVE_CSV;
 																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::Save_scv_mat chk0"<<flush;
 																																				PRINT_MATX44F(	current_frames[ current_frames_idx[0] ].inv_K, );
 																																			}
 	std::string  	date_time_str = date_time_string();
 	stringstream 	ss;
-	ss 				<< date_time_str << "ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_DepthUpdate_.csv";
+	ss 				<< date_time_str << "ds-framenum"<<dataset_frame_num<<"_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_DepthUpdate_.csv";
 	folder 			+= "/csv/";
 	if(std::filesystem::create_directory(folder )) { 																						if(verbosity>-2) std::cerr<< "Directory Created: "<<folder<<std::endl;}
 	folder.replace_filename( ss.str() );
@@ -449,16 +449,12 @@ void RunCL::DownloadAndSave(cl_mem buffer, std::string count, std::filesystem::p
 	int local_verbosity_threshold = V_RUNCL_DOWNLOADANDSAVE;//verbosity_mp["RunCL::DownloadAndSave"];// 1;
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave chk0"<<flush;
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave filename = ["<<folder_tiff.filename().string()<<"] "<<flush;
-
-
 		cv::Mat temp_mat = cv::Mat::zeros (size_mat, type_mat);																				// (int rows, int cols, int type)
 		ReadOutput(temp_mat.data, buffer,  image_size_bytes); 																				// NB contains elements of type_mat, (CV_32FC1 for most buffers)
-
 		if (show==true){
 			cv::imshow( "temp_mat", temp_mat );
 			cv::waitKey(-1);
-		}
-																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave chk1 finished ReadOutput\n"<<flush;
+		}																																	if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave chk1 finished ReadOutput\n"<<flush;
 		cv::Mat tem_mat2;
 		if (temp_mat.type() == CV_16FC1)	temp_mat.convertTo(tem_mat2, CV_32FC1);															// NB conversion to FP32 req for cv::sum(..).
 		cv::Scalar sum = cv::sum(temp_mat);																									// NB always returns a 4 element vector.
@@ -480,7 +476,6 @@ void RunCL::DownloadAndSave(cl_mem buffer, std::string count, std::filesystem::p
 		folder_tiff += "/tiff/";
 		folder_tiff += ss.str();
 		folder_tiff += ".tiff";
-		//folder_png  += "/png/";
 																																		//	if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave chk1.5 finished ReadOutput\n"<<flush;
 		folder_png  += png_ss.str();
 		folder_png  += ".png";
@@ -496,20 +491,94 @@ void RunCL::DownloadAndSave(cl_mem buffer, std::string count, std::filesystem::p
 			temp_mat +=0.5;
 		}else{ temp_mat /=max_range;}
 																																		//	if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave chk4 filename = ["<<ss.str()<<"]"<<flush;
-		if(tiff==true) cv::imwrite(folder_tiff.string(), temp_mat );
-																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave chk5 tiff filename = ["<<folder_tiff.string()<<"]"<<flush;
+		if(tiff==true) cv::imwrite(folder_tiff.string(), temp_mat );																		if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave chk5 tiff filename = ["<<folder_tiff.string()<<"]"<<flush;
 	//	if(vtp==true) Save_vtk(temp_mat, key_frame, folder_png );
-
 		temp_mat *= 256*256;
-		temp_mat.convertTo(outMat, CV_16UC1);
-																																		//	if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave chk6 filename = ["<<ss.str()<<"]"<<flush;
-
-		if(png==true) cv::imwrite(folder_png.string(), outMat );
-																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave chk7 png filename = ["<<folder_png.string()<<"],  show="<<show<<flush;
-
-		if(show==true) {cv::imshow( ss.str(), outMat );}
-																																			//if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave chk finished filename = ["<<ss.str()<<"]"<<flush;
+		temp_mat.convertTo(outMat, CV_16UC1);																							//	if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave chk6 filename = ["<<ss.str()<<"]"<<flush;
+		if(png==true) {cv::imwrite(folder_png.string(), outMat );}																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave chk7 png filename = ["<<folder_png.string()<<"],  show="<<show<<flush;
+		if(show==true) {cv::imshow( ss.str(), outMat );}																					//if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave chk finished filename = ["<<ss.str()<<"]"<<flush;
 		return;
+}
+
+void RunCL::DownloadAndSave_2Channel(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint offset ){
+	int local_verbosity_threshold = V_RUNCL_DOWNLOADANDSAVE_2CHANNEL_VOLUME;
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_2Channel_volume() offset="<<offset\
+																																				<<", max_range="<<max_range<<", folder = ["<<folder_tiff.filename().string()<<"],   tiff="<<tiff<<flush;
+	if (type_mat != CV_32FC2){cout <<"Error (type_mat != CV_32FC2)"<<flush; return;}
+
+		cv::Mat temp_mat 	= cv::Mat::zeros (size_mat, type_mat);																			// (int rows, int cols, int type)
+		ReadOutput(temp_mat.data, buffer,  image_size_bytes, offset); 																		// NB contains elements of type_mat, (CV_32FC1 for most buffers)
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_2Channel_volume()_Chk_1"<<flush;
+		cv::Mat temp_mat2 	= temp_mat.clone();																			// (int rows, int cols, int type)
+
+		vector<cv::Mat> channels;
+		split(temp_mat, channels);
+		channels.push_back( cv::Mat::zeros( size_mat, CV_32FC1 ) );
+		channels.push_back( cv::Mat::ones(  size_mat, CV_32FC1 ) );
+		cv::Scalar 	sum_u 	= cv::sum(channels[0]);
+		cv::Scalar 	sum_v 	= cv::sum(channels[1]);
+
+		cv::Mat mat_half	= cv::Mat::ones(  channels[1].size(), channels[1].type() );
+		mat_half			*= 0.5f;
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_2Channel_volume()_Chk_2"<<flush;
+		double 			minVal_u=1, 	maxVal_u=1,  	minVal_v=1, 	maxVal_v=1;
+		cv::Point 		minLoc_u={0,0}, maxLoc_u{0,0}, 	minLoc_v={0,0}, maxLoc_v{0,0};
+		cv::minMaxLoc(	channels[0], 	&minVal_u, 		&maxVal_u, 		&minLoc_u, 		&maxLoc_u);
+		cv::minMaxLoc(	channels[1], 	&minVal_v, 		&maxVal_v, 		&minLoc_v, 		&maxLoc_v);
+
+		cv::merge(channels, temp_mat2);
+
+		float maxVal = std::max(	{ 	(minVal_u*-1), 	maxVal_u,  		(minVal_v*-1), 	maxVal_v } );
+		if (max_range !=0){
+			channels[0] /= abs(max_range);
+			channels[1] /= abs(max_range);
+			if (max_range < 0){
+				channels[0] = (channels[0]/ 2.0f) + mat_half;
+				channels[1] = (channels[1]/ 2.0f) + mat_half;
+				channels[2] = mat_half ;
+			}
+		}else{
+			channels[0] = (channels[0]/ (2.0f*maxVal) ) + mat_half;
+			channels[1] = (channels[1]/ (2.0f*maxVal) ) + mat_half;
+			channels[2] = mat_half ;
+		}
+		cv::merge(channels, temp_mat);
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\nDownloadAndSave_2Channel_volume()_Chk_3"<<flush;
+																																				cout<<"\t minVal_u="<<minVal_u<<", 	maxVal_u="<<maxVal_u
+																																				<<",	minVal_v="<<minVal_v<<",	maxVal_v="<<maxVal_v<<flush;
+																																				cout<<"\t _maxRange"<<max_range<<",  maxVal="<<maxVal<< flush;
+																																			}
+
+		stringstream 	ss;
+		stringstream 	png_ss;
+		string 			type_string 	= checkCVtype(type_mat);
+		string  		date_time_str 	= date_time_string();
+
+		ss 		<< "/" << folder_tiff.filename().string() << date_time_str <<"_UV_" << count <<"_sum_u_"<<sum_u<<"_sum_v_"<<sum_v<<"_type_"<<type_string<<"min"<<minVal_u<<"_max"<<maxVal_u<<"_maxRange"<<max_range;
+		png_ss 	<< "/" << folder_tiff.filename().string() << date_time_str <<"_UV_" << count;
+
+		std::filesystem::path folder_tiff_	= folder_tiff;
+		std::filesystem::path folder_tiff2	= folder_tiff;
+		std::filesystem::path folder_png  	= folder_tiff;
+		folder_tiff_ += "/tiff";
+		folder_tiff_ += ss.str();
+		folder_tiff_ += ".tiff";
+
+		folder_tiff2 += "/tiff";
+		folder_tiff2 += ss.str();
+		folder_tiff2 += "_";
+		folder_tiff2 += ".tiff";
+
+		folder_png  += png_ss.str();
+		folder_png  += ".png";
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_2Channel_volume()_Chk_4, max_range="<<max_range\
+																																				<<",   filepath = ["<<folder_png.string()<<" ,\t "<<folder_tiff_.string()<<"],  tiff="<<tiff<<",  true="<<true<<flush;
+		if(tiff==true){	cv::imwrite( folder_tiff_.string(), temp_mat );
+						cv::imwrite( folder_tiff2.string(), temp_mat2 );																	// save unaltered original as a tiff.
+		}
+		if(png==true)	cv::imwrite( folder_png.string(), (	temp_mat*256) );
+		if(show)		cv::imshow(  ss.str(), 				temp_mat );
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_2Channel_volume()_finished\n"<<flush;
 }
 
 void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers ){
@@ -974,7 +1043,6 @@ void RunCL::DownloadAndSave_6Channel_volume(cl_mem buffer, std::string count, st
 																																			if(verbosity> local_verbosity_threshold){cout << "DownloadAndSave_6Channel_volume_chk_1  finished\n"<<flush;}
 }
 
-
 void RunCL::DownloadAndSaveVolume(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, bool exception_tiff /*=false*/){
 	int local_verbosity_threshold = V_RUNCL_DOWNLOADANDSAVEVOLUME;//verbosity_mp["RunCL::DownloadAndSaveVolume"];// 0;
 	bool old_tiff = tiff;
@@ -1039,33 +1107,36 @@ void RunCL::DownloadAndSaveVolume(cl_mem buffer, std::string count, std::filesys
 	tiff = old_tiff;
 }
 
+void RunCL::DownloadAndSaveDepthUpdate( uint layer, uint offset_rho, uint offset_depth, string fname  ){// set up for void RunCL::update_depth_2(..)
+	stringstream 	ss;
+	ss << "ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_"<<fname;				cout<<"\nDownloadAndSaveDepthUpdate chk_1  "<<ss.str()<<" offset_rho="<<offset_rho<<",  offset_depth="<<offset_depth<<flush;
+	stringstream 	ss_path;
+	bool 			show				= false;
+	float 			max_range			= -1;
+	//uint 			vol_layers			= 1;
+	bool 			old_tiff			= tiff;
+	tiff								= true;
 
+	//uint			write_offset		= patch_depthmap_offset[ layer];
+	uint 			cols				= MipMap[ (layer+2)*8 + MiM_READ_COLS];
+	uint 			rows				= (MipMap[ (layer+2)*8 + MiM_READ_ROWS] + 1);	//	* depth_iter_per_layer; // 6; //
 
-void RunCL::DownloadAndSaveDepthUpdate( uint layer, uint depth_iter_per_layer  ){
-	stringstream ss;
-	ss << "ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_DepthUpdate__()";
-	stringstream ss_path;
-	bool show					= false;
-	float max_range				= -1;
-	uint vol_layers				= 1;
-	bool old_tiff				= tiff;
-	tiff						= true;
+	cv::Size 		depthUpdate_size( cols, rows );
+	size_t			depthUpdate_bytes	= cols * rows 	* sizeof(cl_float2);
 
-	//uint depth_iter_per_layer	= 3;
-	uint cols					= MipMap[ (layer+2)*8 + MiM_READ_COLS];
-	uint rows					= (MipMap[ (layer+2)*8 + MiM_READ_ROWS] + 1)	* depth_iter_per_layer; // 6; //
+	size_t			offset_rho_bytes	= offset_rho	* sizeof(cl_float2);
+	size_t			offset_depth_bytes	= offset_depth	* sizeof(cl_float2);
 
-	cv::Size depthUpdate_size( cols, rows ) ;
-	size_t	depthUpdate_bytes	= cols * rows * sizeof(cl_float2);
-
-	DownloadAndSave_2Channel_volume( SE3_rho_map_mem, ss.str( ), paths.at( "SE3_rho_map_mem"),	depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, show, max_range,	vol_layers );
-	DownloadAndSave_2Channel_volume( depth_mem_temp,  ss.str( ), paths.at( "depth_mem_temp"),	depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, show, max_range,	vol_layers );
+																																														cout<<"\nDownloadAndSaveDepthUpdate chk_2  "<<flush;
+	DownloadAndSave_2Channel( SE3_rho_map_mem, ss.str( ), paths.at( "SE3_rho_map_mem"),	depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, show, max_range,	offset_rho_bytes );			cout<<"\nDownloadAndSaveDepthUpdate chk_3  "<<flush;
+	DownloadAndSave_2Channel( depth_mem_temp,  ss.str( ), paths.at( "depth_mem_temp"),	depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, show, max_range,	offset_depth_bytes );		cout<<"\nDownloadAndSaveDepthUpdate chk_4  "<<flush;
+	// DownloadAndSave_2Channel_volume( SE3_rho_map_mem, ss.str( ), paths.at( "SE3_rho_map_mem"),	depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, show, max_range,	vol_layers );
+	// DownloadAndSave_2Channel_volume( depth_mem_temp,  ss.str( ), paths.at( "depth_mem_temp"),	depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, show, max_range,	vol_layers );
 
 	tiff = old_tiff;
 
 	//Save_vtk_depth( depth_mem, SE3_rho_map_mem, paths.at( "depth_mem_temp"), layer, depth_iter_per_layer );
-	Save_pcd_depth( depth_mem_temp, SE3_rho_map_mem, paths.at( "depth_mem_temp"), layer, depth_iter_per_layer );
-
+	Save_pcd_depth( depth_mem_temp, SE3_rho_map_mem, paths.at( "depth_mem_temp"), depthUpdate_bytes, depthUpdate_size, offset_rho_bytes, offset_depth_bytes, layer );					cout<<"\nDownloadAndSaveDepthUpdate finished  "<<flush;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

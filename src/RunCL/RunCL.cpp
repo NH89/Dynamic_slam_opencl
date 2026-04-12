@@ -312,6 +312,33 @@ void RunCL::initialize_fp32_params(){
 																																			}
 }
 
+void RunCL::initialize_patch_depthmap_offset(){
+	int local_verbosity_threshold = V_RUNCL_INITIALIZE_PATCH_DEPTH_MAP_OFFSET;
+																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_patch_depthmap_offset_chk_0,  \n" << flush;
+	patch_depthmap_offset[0] 			= 0;
+	uint	read_cols					= MipMap[ MiM_READ_COLS];
+	uint	read_rows					= MipMap[ MiM_READ_ROWS];
+	patch_depthmap_width[ 0 ]			= read_rows + uint_params[MARGIN];
+
+	for(uint layer=1; layer<max_mipmap_layers; layer++){
+		uint	tot_elem_prev_layer		= (read_cols + uint_params[MARGIN] ) * patch_depthmap_width[ layer-1 ];
+		patch_depthmap_offset[ layer]	= patch_depthmap_offset[ layer -1]		+  tot_elem_prev_layer	;
+
+		read_cols						= MipMap[ layer*8 + MiM_READ_COLS];
+		read_rows						= MipMap[ layer*8 + MiM_READ_ROWS];
+
+		patch_depthmap_width[ layer ]	= read_rows + uint_params[MARGIN];
+	}
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nRunCL::initialize_patch_depthmap_offset_finished,  \n"<< flush;
+																																				for (uint layer = 0; layer<max_mipmap_layers; layer++){
+																																					cout<<"\nlayer="<<layer
+																																					<<",  patch_depthmap_offset[ layer]="<<patch_depthmap_offset[ layer]
+																																					<<",  patch_depthmap_width[ layer]="<<patch_depthmap_width[ layer]
+																																					<<flush;
+																																				}
+																																			}
+}
+
 void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	int local_verbosity_threshold = V_RUNCL_INITIALIZE_RUNCL;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_RunCL_chk_0\n\n" << flush;
@@ -478,6 +505,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	pix_sum_size_bytes		= pix_sum_size * sizeof(float) * 4;																				// NB the data returned is one float4 per group, for the base image, holding hsv channels plus entry[3]=pixel count.
 																																			if(verbosity>local_verbosity_threshold) cout <<"\nRunCL::initialize_RunCL_chk finished -1 ############################################################\n"<<flush;
 	allocatemem();																													// Allocate buffers on the GPU ######
+	initialize_patch_depthmap_offset();
 	initialize_patch_params();
 	compute_patch_lookup_table();
 																																			if(verbosity>local_verbosity_threshold){ cout <<"\nRunCL::initialize_RunCL_chk finished -0.5 ############################################################\n"<<flush;
