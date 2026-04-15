@@ -141,6 +141,84 @@ void RunCL::ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t o
 																																			if(verbosity>local_verbosity_threshold) cout << "\nRunCL::ReadOutput finish"<<flush;
 }
 
+void RunCL::ReadOutputRect(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/, size_t cols, size_t margin) {
+	string fname = "RunCL::ReadOutputRect(..)";
+	int local_verbosity_threshold = V_RUNCL_READOUTPUT;//verbosity_mp["RunCL::ReadOutput"];
+																																			if(verbosity>local_verbosity_threshold) cout << "\nRunCL::ReadOutputRect chk_0"<<flush;
+																																			if(verbosity>local_verbosity_threshold) cout << "\noutmat:"<< outmat <<",  buf_mem:"<<buf_mem <<",  data_size:"<<  data_size <<",  offset:"<<  offset <<","<<flush;
+		cl_event readEvt;
+		cl_int status;
+														//cout<<"\nReadOutput: "<<flush;
+														//cout<<"&outmat="<<&outmat<<", buf_mem="<<buf_mem<<", data_size="<<data_size<<", offset="<<offset<<"\n"<<flush;
+		const size_t buffer_origin[3]	={offset,0,0};
+		const size_t host_origin[3]		={0,0,0};
+		status = clEnqueueReadBufferRect (	dload_queue,	//cl_command_queue command_queue,
+											buf_mem,		//cl_mem buffer,
+											CL_FALSE,		//cl_bool blocking_read,
+											buffer_origin,	//const size_t *buffer_origin,	(x, y, z) offset in the memory region associated with buffer.
+															//The offset in bytes is computed as 	buffer_origin[2] * buffer_slice_pitch + buffer_origin[1] * buffer_row_pitch + buffer_origin[0].
+											host_origin,	//const size_t *host_origin,	(x, y, z) offset in the memory region pointed to by ptr.
+											&data_size,		//const size_t *region,
+											(cols+margin),	//size_t buffer_row_pitch,
+											0,				//size_t buffer_slice_pitch,
+											cols,			//size_t host_row_pitch,
+											0,				//size_t host_slice_pitch,
+											outmat,			//void *ptr,
+											0,				//cl_uint num_events_in_wait_list,
+											NULL,			//const cl_event *event_wait_list,
+											&readEvt		//cl_event *event
+										);
+/*
+cl_command_queue command_queue;
+cl_mem buffer;
+cl_bool blocking_read;
+const size_t *buffer_origin;
+const size_t *host_origin;
+const size_t *region;
+size_t buffer_row_pitch;
+size_t buffer_slice_pitch;
+size_t host_row_pitch;
+size_t host_slice_pitch;
+void *ptr;
+cl_uint num_events_in_wait_list;
+const cl_event *event_wait_list;
+cl_event *event;
+
+				clEnqueueReadBufferRect ( command_queue,
+buffer,
+blocking_read,
+buffer_origin,
+host_origin,
+region,
+buffer_row_pitch,
+buffer_slice_pitch,
+host_row_pitch,
+host_slice_pitch,
+ptr,
+num_events_in_wait_list,
+event_wait_list,
+event);
+*/
+		/*
+		status = clEnqueueReadBuffer(dload_queue,			// command_queue
+											buf_mem,		// buffer
+											CL_FALSE,		// blocking_read
+											offset,			// offset
+											data_size,		// size
+											outmat,			// pointer
+											0,				// num_events_in_wait_list
+											NULL,			// event_waitlist				needs to know about preceeding events:
+											&readEvt);		// event
+		*/
+		_cl_flush_finish(dload_queue, fname);
+														if (status != CL_SUCCESS) { cout << "\nclEnqueueReadBufferRect(..) status=" << checkerror(status) <<"\n"<<flush; exit_(status);}
+														else 																				if(verbosity>local_verbosity_threshold) cout << "\nRunCL::ReadOutput chk_1"<<flush;
+		waitForEventAndRelease( &readEvt );
+		//clReleaseEvent(readEvt);
+																																			if(verbosity>local_verbosity_threshold) cout << "\nRunCL::ReadOutput finish"<<flush;
+}
+
+
 vector<Matx44f> RunCL::ReadOutput_44f_vec( cl_mem buf_mem, size_t offset/*=0*/){
 	Matx44f	out_matx_x, out_matx_y, out_matx_z, out_matx_w;
 	float	out_ary[4*16];
@@ -502,8 +580,13 @@ void RunCL::DownloadAndSave(cl_mem buffer, std::string count, std::filesystem::p
 
 void RunCL::DownloadAndSave_2Channel(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint offset ){
 	int local_verbosity_threshold = V_RUNCL_DOWNLOADANDSAVE_2CHANNEL_VOLUME;
-																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_2Channel_volume() offset="<<offset\
-																																				<<", max_range="<<max_range<<", folder = ["<<folder_tiff.filename().string()<<"],   tiff="<<tiff<<flush;
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_2Channel_volume()"
+																																				<<", offset="<<offset
+																																				<<", image_size_bytes="<<image_size_bytes
+																																				<<", max_range="<<max_range
+																																				<<", folder = ["<<folder_tiff.filename().string()
+																																				<<"],   tiff="<<tiff
+																																				<<flush;
 	if (type_mat != CV_32FC2){cout <<"Error (type_mat != CV_32FC2)"<<flush; return;}
 
 		cv::Mat temp_mat 	= cv::Mat::zeros (size_mat, type_mat);																			// (int rows, int cols, int type)
@@ -526,7 +609,7 @@ void RunCL::DownloadAndSave_2Channel(cl_mem buffer, std::string count, std::file
 		cv::minMaxLoc(	channels[0], 	&minVal_u, 		&maxVal_u, 		&minLoc_u, 		&maxLoc_u);
 		cv::minMaxLoc(	channels[1], 	&minVal_v, 		&maxVal_v, 		&minLoc_v, 		&maxLoc_v);
 
-		cv::merge(channels, temp_mat2);
+		cv::merge(channels, temp_mat2);////////////////////////////
 
 		float maxVal = std::max(	{ 	(minVal_u*-1), 	maxVal_u,  		(minVal_v*-1), 	maxVal_v } );
 		if (max_range !=0){
@@ -542,7 +625,7 @@ void RunCL::DownloadAndSave_2Channel(cl_mem buffer, std::string count, std::file
 			channels[1] = (channels[1]/ (2.0f*maxVal) ) + mat_half;
 			channels[2] = mat_half ;
 		}
-		cv::merge(channels, temp_mat);
+		cv::merge(channels, temp_mat);///////////////////////////////
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\nDownloadAndSave_2Channel_volume()_Chk_3"<<flush;
 																																				cout<<"\t minVal_u="<<minVal_u<<", 	maxVal_u="<<maxVal_u
 																																				<<",	minVal_v="<<minVal_v<<",	maxVal_v="<<maxVal_v<<flush;
@@ -1109,17 +1192,19 @@ void RunCL::DownloadAndSaveVolume(cl_mem buffer, std::string count, std::filesys
 
 void RunCL::DownloadAndSaveDepthUpdate( uint layer, uint offset_rho, uint offset_depth, string fname  ){// set up for void RunCL::update_depth_2(..)
 	stringstream 	ss;
-	ss << "ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_"<<fname;				cout<<"\nDownloadAndSaveDepthUpdate chk_1  "<<ss.str()<<" offset_rho="<<offset_rho<<",  offset_depth="<<offset_depth<<flush;
+	ss << "ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_"<<fname;				cout<<"\nDownloadAndSaveDepthUpdate chk_1  "
+																																<<ss.str()
+																																<<",  offset_rho="<<offset_rho
+																																<<",  offset_depth="<<offset_depth
+																																<<",  sizeof(cl_float2)="<<sizeof(cl_float2)
+																																<<flush;
 	stringstream 	ss_path;
 	bool 			show				= false;
 	float 			max_range			= -1;
-	//uint 			vol_layers			= 1;
 	bool 			old_tiff			= tiff;
-	tiff								= true;
-
-	//uint			write_offset		= patch_depthmap_offset[ layer];
-	uint 			cols				= MipMap[ (layer+2)*8 + MiM_READ_COLS];
-	uint 			rows				= (MipMap[ (layer+2)*8 + MiM_READ_ROWS] + 1);	//	* depth_iter_per_layer; // 6; //
+					tiff				= true;
+	uint 			cols				= patch_depthmap_width[ layer ]; // MipMap[ (layer+2)*8 + MiM_READ_COLS] +6;
+	uint 			rows				= (MipMap[ (layer+2)*8 + MiM_READ_ROWS] +1) +6;	//	* depth_iter_per_layer; // 6; //
 
 	cv::Size 		depthUpdate_size( cols, rows );
 	size_t			depthUpdate_bytes	= cols * rows 	* sizeof(cl_float2);
@@ -1130,8 +1215,13 @@ void RunCL::DownloadAndSaveDepthUpdate( uint layer, uint offset_rho, uint offset
 																																														cout<<"\nDownloadAndSaveDepthUpdate chk_2  "<<flush;
 	DownloadAndSave_2Channel( SE3_rho_map_mem, ss.str( ), paths.at( "SE3_rho_map_mem"),	depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, show, max_range,	offset_rho_bytes );			cout<<"\nDownloadAndSaveDepthUpdate chk_3  "<<flush;
 	DownloadAndSave_2Channel( depth_mem_temp,  ss.str( ), paths.at( "depth_mem_temp"),	depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, show, max_range,	offset_depth_bytes );		cout<<"\nDownloadAndSaveDepthUpdate chk_4  "<<flush;
-	// DownloadAndSave_2Channel_volume( SE3_rho_map_mem, ss.str( ), paths.at( "SE3_rho_map_mem"),	depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, show, max_range,	vol_layers );
-	// DownloadAndSave_2Channel_volume( depth_mem_temp,  ss.str( ), paths.at( "depth_mem_temp"),	depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, show, max_range,	vol_layers );
+
+	depthUpdate_bytes	=	mm_size_bytes_C1;
+	depthUpdate_size	=	cv::Size( mm_Image_size.width, mm_Image_size.height/2.0f );
+	offset_depth_bytes	=	0;
+	ss	<<"_test_";
+
+	DownloadAndSave_2Channel( depth_mem_temp,  ss.str( ), paths.at( "depth_mem_temp"),	depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, show, max_range,	offset_depth_bytes );		cout<<"\nDownloadAndSaveDepthUpdate chk_4  "<<flush;
 
 	tiff = old_tiff;
 

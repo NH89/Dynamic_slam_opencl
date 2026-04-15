@@ -57,7 +57,8 @@ static constexpr uint max_patches_per_layer = 2^max_mipmap_layers * 2^max_mipmap
 #define FLOAT_16_EYE 	{1.0f, 0.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f, 0.0f,		0.0f, 0.0f, 1.0f, 0.0f,		0.0f, 0.0f, 0.0f, 1.0f}
 constexpr float identity_flt16[16]			= FLOAT_16_EYE;
 constexpr float zero_flt					= 0;
-constexpr float zero_uint					= 0;
+constexpr uint  zero_uint					= 0;
+constexpr cl_uint8  zero_uint8				= (cl_uint8){{0}};
 
 constexpr uint	patch_size					= 32;	// Set global patch size from device parameters // generally: device_work_size_multiple = patch_size * integer, eg 32, 64, 128
 constexpr size_t cl_flt16_size				= sizeof(cl_float16);
@@ -162,9 +163,12 @@ public:
 	size_t 				num_threads[			max_mipmap_layers]		= {0};
 	size_t 				lookup_table_offset[	max_mipmap_layers]		= {0};
 
+	cl_uint8			depthmap_params[		max_mipmap_layers]		= {zero_uint8};// depthmap params for depth inference kernels. NB dense packed img layers with margin.
+	uint				patch_depthmap_width[	max_mipmap_layers ]		= {0};//TODO	could make these a struct, or an object.
+	uint				patch_depthmap_offset[	max_mipmap_layers ]		= {0};//
+	uint 				depth_save_offset[		max_mipmap_layers ]		= {0};//
+
 	uint				MipMap[					max_mipmap_layers	*8]	= {0};
-	uint				patch_depthmap_width[	max_mipmap_layers ]		= {0};
-	uint				patch_depthmap_offset[	max_mipmap_layers ]		= {0};
 	uint				uint_params[			8]						= {0};
 	float				fp32_params[			16]						= {0};
 	
@@ -232,6 +236,7 @@ public:
 
 	void createFolders();																												// Called by RunCL(..) constructor, above.
 	void ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset=0) ;
+	void ReadOutputRect(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/, size_t cols, size_t margin);
 
 	vector<Matx44f> ReadOutput_44f_vec( cl_mem buf_mem, size_t offset=0);
 	vector<Matx66f> ReadOutput_66f_vec( cl_mem buf_mem, size_t offset=0);

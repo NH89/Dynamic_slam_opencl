@@ -25,6 +25,15 @@
 #define MM_ROWS				6
 #define MM_COLS				7
 
+#define DM_MARGIN			s0	// uint8 dm_params[MAX_MIPMAP_LAYERS]
+#define DM_WIN_COLS			s1
+#define DM_DATA_COLS		s2
+#define DM_WIN_ROWS			s3
+#define DM_DATA_ROWS		s4
+#define DM_WIN_OFFSET		s5
+#define DM_DATA_OFFSET		s6
+#define DM_WIN_BYTES		s7
+
 #define MiM_PIXELS			0	// for mipmap_buf, 				when launching one kernel per layer. 	Updated for each layer.
 #define MiM_READ_OFFSET		1	// for ths layer, 				start of image data
 #define MiM_WRITE_OFFSET	2

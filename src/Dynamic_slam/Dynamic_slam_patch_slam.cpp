@@ -171,7 +171,7 @@ void Dynamic_slam::estimate_depth(){
 																																				runcl.rho_sq( out_block_size, 10+frame_index, frame_index, layer_, runcl.cur_frames_k2kbuf );
 																																			}
 																																		}
-		uint out_block_size = 4;
+		// uint out_block_size = 4;					// NB constexpr uint out_block_size	= OUT_BLOCK_SIZE	 4
 		//runcl.update_depth( out_block_size, layer);			// LK
 		runcl.update_depth_2( out_block_size, layer);		// cost_vol & Glasgow type optimization, on depth from ST3 given transpose.
 		// anisotropic smoothing

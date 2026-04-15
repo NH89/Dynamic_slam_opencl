@@ -315,28 +315,82 @@ void RunCL::initialize_fp32_params(){
 void RunCL::initialize_patch_depthmap_offset(){
 	int local_verbosity_threshold = V_RUNCL_INITIALIZE_PATCH_DEPTH_MAP_OFFSET;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_patch_depthmap_offset_chk_0,  \n" << flush;
-	patch_depthmap_offset[0] 			= 0;
-	uint	read_cols					= MipMap[ MiM_READ_COLS];
-	uint	read_rows					= MipMap[ MiM_READ_ROWS];
-	patch_depthmap_width[ 0 ]			= read_rows + uint_params[MARGIN];
+	uint	read_cols					= MipMap[ MiM_READ_COLS]/out_block_size;	// NB constexpr uint out_block_size	= OUT_BLOCK_SIZE	 4
+	uint	read_rows					= MipMap[ MiM_READ_ROWS]/out_block_size;
+	//uint	margin						= uint_params[MARGIN];
 
+	depthmap_params[0].DM_MARGIN		= obj["depthmap_margin"].asUInt();
+	uint	dm_margin					= depthmap_params[0].DM_MARGIN;
+	depthmap_params[0].DM_WIN_COLS		= read_cols + 2*dm_margin;
+	depthmap_params[0].DM_DATA_COLS		= read_cols;
+	depthmap_params[0].DM_WIN_ROWS		= read_rows + 2*dm_margin;
+	depthmap_params[0].DM_DATA_ROWS		= read_rows;
+	depthmap_params[0].DM_WIN_OFFSET	= 0;
+	depthmap_params[0].DM_DATA_OFFSET	= depthmap_params[0].DM_WIN_OFFSET	+ depthmap_params[0].DM_WIN_COLS + dm_margin;
+	depthmap_params[0].DM_WIN_BYTES		= depthmap_params[0].DM_WIN_COLS	* depthmap_params[0].DM_WIN_ROWS * sizeof(cl_float2);
+
+	///
+	// depth_save_offset[0] 				= 0;
+	// patch_depthmap_width[0]				= read_cols + 2*dm_margin;
+	// patch_depthmap_offset[0] 			= depth_save_offset[0] + patch_depthmap_width[0] + dm_margin;
+																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_patch_depthmap_offset_chk_1, layer=0\n"
+																																				<<"\n depthmap_params[layer].DM_MARGIN="		<<depthmap_params[0].DM_MARGIN
+																																				<<"\n depthmap_params[layer].DM_WIN_COLS="		<<depthmap_params[0].DM_WIN_COLS
+																																				<<"\n depthmap_params[layer].DM_DATA_COLS="		<<depthmap_params[0].DM_DATA_COLS
+																																				<<"\n depthmap_params[layer].DM_WIN_ROWS="		<<depthmap_params[0].DM_WIN_ROWS
+																																				<<"\n depthmap_params[layer].DM_DATA_ROWS="		<<depthmap_params[0].DM_DATA_ROWS
+																																				<<"\n depthmap_params[layer].DM_WIN_OFFSET="	<<depthmap_params[0].DM_WIN_OFFSET
+																																				<<"\n depthmap_params[layer].DM_DATA_OFFSET="	<<depthmap_params[0].DM_DATA_OFFSET
+																																				<<"\n depthmap_params[layer].DM_WIN_BYTES="		<<depthmap_params[0].DM_WIN_BYTES
+																																				// <<"\n read_cols="					<<read_cols
+																																				// <<"\n read_rows="					<<read_rows
+																																				// <<"\n dm_margin="					<<dm_margin
+																																				// <<"\n depth_save_offset[0]="		<<depth_save_offset[0]
+																																				// <<"\n patch_depthmap_width[0]="		<<patch_depthmap_width[0]
+																																				// <<"\n patch_depthmap_offset[0]="	<<patch_depthmap_offset[0]
+																																				<< flush;
 	for(uint layer=1; layer<max_mipmap_layers; layer++){
-		uint	tot_elem_prev_layer		= (read_cols + uint_params[MARGIN] ) * patch_depthmap_width[ layer-1 ];
-		patch_depthmap_offset[ layer]	= patch_depthmap_offset[ layer -1]		+  tot_elem_prev_layer	;
+		depthmap_params[layer].DM_MARGIN		= dm_margin;
+		depthmap_params[layer].DM_WIN_COLS		= read_cols + 2*dm_margin;
+		depthmap_params[layer].DM_DATA_COLS		= read_cols;
+		depthmap_params[layer].DM_WIN_ROWS		= read_rows + 2*dm_margin;
+		depthmap_params[layer].DM_DATA_ROWS		= read_rows;
+		depthmap_params[layer].DM_WIN_OFFSET	= depthmap_params[layer-1].DM_WIN_OFFSET	+ depthmap_params[layer-1].DM_WIN_COLS	* depthmap_params[layer-1].DM_WIN_ROWS;
+		depthmap_params[layer].DM_DATA_OFFSET	= depthmap_params[layer].DM_WIN_OFFSET		+ depthmap_params[layer].DM_WIN_COLS	+ dm_margin;
+		depthmap_params[layer].DM_WIN_BYTES		= depthmap_params[layer].DM_WIN_COLS		* depthmap_params[layer].DM_WIN_ROWS	* sizeof(cl_float2);
 
-		read_cols						= MipMap[ layer*8 + MiM_READ_COLS];
-		read_rows						= MipMap[ layer*8 + MiM_READ_ROWS];
+		read_cols								= MipMap[ layer*8 + MiM_READ_COLS]	/out_block_size;
+		read_rows								= MipMap[ layer*8 + MiM_READ_ROWS]	/out_block_size;
 
-		patch_depthmap_width[ layer ]	= read_rows + uint_params[MARGIN];
+		///
+// 		uint	depthmap_width			= patch_depthmap_width[ (layer-1) ];
+// 		uint	tot_elem_prev_layer		= (read_rows + 2*dm_margin )		* depthmap_width;
+// 		depth_save_offset[ layer]		= depth_save_offset[ layer -1]		+ tot_elem_prev_layer;
+// 		patch_depthmap_offset[ layer]	= depth_save_offset[layer]			+ patch_depthmap_width[layer] + dm_margin;
+//
+// 		read_cols						= MipMap[ layer*8 + MiM_READ_COLS]	/out_block_size;
+// 		read_rows						= MipMap[ layer*8 + MiM_READ_ROWS]	/out_block_size;
+// 		patch_depthmap_width[ layer ]	= read_cols + 2*dm_margin;
+																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_patch_depthmap_offset_chk_2, layer="<<layer
+																																				<<"\n depthmap_params[layer].DM_MARGIN="		<<depthmap_params[layer].DM_MARGIN
+																																				<<"\n depthmap_params[layer].DM_WIN_COLS="		<<depthmap_params[layer].DM_WIN_COLS
+																																				<<"\n depthmap_params[layer].DM_DATA_COLS="		<<depthmap_params[layer].DM_DATA_COLS
+																																				<<"\n depthmap_params[layer].DM_WIN_ROWS="		<<depthmap_params[layer].DM_WIN_ROWS
+																																				<<"\n depthmap_params[layer].DM_DATA_ROWS="		<<depthmap_params[layer].DM_DATA_ROWS
+																																				<<"\n depthmap_params[layer].DM_WIN_OFFSET="	<<depthmap_params[layer].DM_WIN_OFFSET
+																																				<<"\n depthmap_params[layer].DM_DATA_OFFSET="	<<depthmap_params[layer].DM_DATA_OFFSET
+																																				<<"\n depthmap_params[layer].DM_WIN_BYTES="		<<depthmap_params[layer].DM_WIN_BYTES
+																																				// <<"\n depthmap_width="						<<depthmap_width
+																																				// <<"\n tot_elem_prev_layer="					<<tot_elem_prev_layer
+																																				// <<"\n depth_save_offset[ layer]="			<< depth_save_offset[ layer]
+																																				// <<"\n patch_depthmap_offset[ layer]("		<< patch_depthmap_offset[ layer]
+																																				// <<"\n read_cols="							<< read_cols
+																																				// <<"\n read_rows="							<< read_rows
+																																				// <<"\n patch_depthmap_width[ layer ]="		<< patch_depthmap_width[ layer ]
+																																				<< flush;
+		// ### TODO set size for depth_temp buffer NB check where it is used. Ensure it is always large enough.
+		// NB the final "mipmap" layer is a dummy for offsetting regularized depthmas from the raw depthmaps.
 	}
-																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nRunCL::initialize_patch_depthmap_offset_finished,  \n"<< flush;
-																																				for (uint layer = 0; layer<max_mipmap_layers; layer++){
-																																					cout<<"\nlayer="<<layer
-																																					<<",  patch_depthmap_offset[ layer]="<<patch_depthmap_offset[ layer]
-																																					<<",  patch_depthmap_width[ layer]="<<patch_depthmap_width[ layer]
-																																					<<flush;
-																																				}
-																																			}
 }
 
 void RunCL::initialize_RunCL(cv::Mat baseImage_){
@@ -411,9 +465,16 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	mm_size_bytes_C4	= temp.total() * 4 * sizeof(float);
 	mm_size_bytes_C8	= temp.total() * 8 * sizeof(float);
 	cv::Mat temp2(mm_height, mm_width, CV_32FC1);
-	mm_size_bytes_C1	= temp2.total() * temp2.elemSize();
+	mm_size_bytes_C1	= temp.total()	   * sizeof(float);			//temp2.total() * temp2.elemSize(); // NB elemSize() -> size bytes _per_ channel.
 	mm_vol_size_bytes	= mm_size_bytes_C1 * costVolLayers;
-																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_RunCL_chk1  mm_gaussian_size="<<mm_gaussian_size<<" \n\n" << flush;
+																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_RunCL_chk1  "
+																																				<<"\nmm_gaussian_size="<<mm_gaussian_size
+																																				<<"\nmm_Image_size="<<mm_Image_size
+																																				<<"\ntemp.total()="<<temp.total()
+																																				<<"\nmm_size_bytes_C3="<<mm_size_bytes_C3
+																																				<<"\nmm_size_bytes_C4="<<mm_size_bytes_C4
+																																				<<"\nmm_size_bytes_C1="<<mm_size_bytes_C1
+																																				<<" \n\n" << flush;
 																																			// Get the maximum work group size for executing the kernel on the device ///////
 																																			// From https://github.com/rsnemmen/OpenCL-examples/blob/e2c34f1dfefbd265cfb607c2dd6c82c799eb322a/square_array/square.c
 	cl_int 				status;
@@ -770,9 +831,7 @@ void RunCL::allocatemem(){
 	status = clEnqueueFillBuffer(uload_queue, depth_mem_GT, 			&default_depth, sizeof(float),   0, mm_size_bytes_C1,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueFillBuffer(uload_queue, HSV_grad_mem, 			&zero_flt,		sizeof(float),   0, mm_size_bytes_C8,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueFillBuffer(uload_queue, ST3_img_grad_mem,			&zero_flt,		sizeof(float),   0, 3*mm_size_bytes_C4,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
-
-
-	status = clEnqueueFillBuffer(uload_queue, patch_lookup_table_buf,	&zero_uint,		sizeof(float), 	0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	status = clEnqueueFillBuffer(uload_queue, patch_lookup_table_buf,	&zero_uint,		sizeof(uint),   0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 
 	clFlush(uload_queue); status = clFinish(uload_queue); 																				if (status != CL_SUCCESS)	{ cout << "\nclFinish(uload_queue)=" << status << checkerror(status) <<"\n"  << flush; exit_(status);}
 

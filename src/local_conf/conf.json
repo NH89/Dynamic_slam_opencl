@@ -35,6 +35,8 @@
     "max_depth":450.0,          // only if max_depth_infinity==false    // NB units depend on the scene.  // See values in DTAM_mapping/input/*.json file for each dataset.
     "min_depth":70.0,           //70.0;//3289.0;
 
+    "depthmap_margin":1,												// margin around depth map layers, (in densely packed buffer), to allow efficient kernels.
+
 
     // Tracking parameters //////////////////////////////////////////////////////////////////////////////////////////////////////////
     "SE3_start_layer":4,//4 NB seems to track faster starting at layer 4 on Office dataset.
