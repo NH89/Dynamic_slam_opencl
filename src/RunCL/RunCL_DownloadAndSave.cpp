@@ -1203,11 +1203,11 @@ void RunCL::DownloadAndSaveDepthUpdate( uint layer, uint offset_rho, uint offset
 	float 			max_range			= -1;
 	bool 			old_tiff			= tiff;
 					tiff				= true;
-	uint 			cols				= patch_depthmap_width[ layer ]; // MipMap[ (layer+2)*8 + MiM_READ_COLS] +6;
-	uint 			rows				= (MipMap[ (layer+2)*8 + MiM_READ_ROWS] +1) +6;	//	* depth_iter_per_layer; // 6; //
+//	uint 			cols				= patch_depthmap_width[ layer ]; 												// MipMap[ (layer+2)*8 + MiM_READ_COLS] +6;
+//	uint 			rows				= (MipMap[ (layer+2)*8 + MiM_READ_ROWS] +1) +6;									//	* depth_iter_per_layer; // 6; //
 
-	cv::Size 		depthUpdate_size( cols, rows );
-	size_t			depthUpdate_bytes	= cols * rows 	* sizeof(cl_float2);
+	cv::Size 		depthUpdate_size( depthmap_params[layer].DM_WIN_COLS ,  depthmap_params[layer].DM_WIN_ROWS); 		// cols, rows );
+	size_t			depthUpdate_bytes	= depthmap_params[layer].DM_WIN_BYTES; 											//cols * rows 	* sizeof(cl_float2);
 
 	size_t			offset_rho_bytes	= offset_rho	* sizeof(cl_float2);
 	size_t			offset_depth_bytes	= offset_depth	* sizeof(cl_float2);

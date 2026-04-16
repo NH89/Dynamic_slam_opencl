@@ -315,54 +315,59 @@ void RunCL::initialize_fp32_params(){
 void RunCL::initialize_patch_depthmap_offset(){
 	int local_verbosity_threshold = V_RUNCL_INITIALIZE_PATCH_DEPTH_MAP_OFFSET;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_patch_depthmap_offset_chk_0,  \n" << flush;
-	uint	read_cols					= MipMap[ MiM_READ_COLS]/out_block_size;	// NB constexpr uint out_block_size	= OUT_BLOCK_SIZE	 4
-	uint	read_rows					= MipMap[ MiM_READ_ROWS]/out_block_size;
+/*
+																																			//uint	read_cols					= MipMap[ MiM_READ_COLS]/out_block_size;	// NB constexpr uint out_block_size	= OUT_BLOCK_SIZE	 4
+	//uint	read_rows					= MipMap[ MiM_READ_ROWS]/out_block_size;
 	//uint	margin						= uint_params[MARGIN];
-
-	depthmap_params[0].DM_MARGIN		= obj["depthmap_margin"].asUInt();
-	uint	dm_margin					= depthmap_params[0].DM_MARGIN;
-	depthmap_params[0].DM_WIN_COLS		= read_cols + 2*dm_margin;
-	depthmap_params[0].DM_DATA_COLS		= read_cols;
-	depthmap_params[0].DM_WIN_ROWS		= read_rows + 2*dm_margin;
-	depthmap_params[0].DM_DATA_ROWS		= read_rows;
-	depthmap_params[0].DM_WIN_OFFSET	= 0;
-	depthmap_params[0].DM_DATA_OFFSET	= depthmap_params[0].DM_WIN_OFFSET	+ depthmap_params[0].DM_WIN_COLS + dm_margin;
-	depthmap_params[0].DM_WIN_BYTES		= depthmap_params[0].DM_WIN_COLS	* depthmap_params[0].DM_WIN_ROWS * sizeof(cl_float2);
-
-	///
-	// depth_save_offset[0] 				= 0;
-	// patch_depthmap_width[0]				= read_cols + 2*dm_margin;
-	// patch_depthmap_offset[0] 			= depth_save_offset[0] + patch_depthmap_width[0] + dm_margin;
-																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_patch_depthmap_offset_chk_1, layer=0\n"
-																																				<<"\n depthmap_params[layer].DM_MARGIN="		<<depthmap_params[0].DM_MARGIN
-																																				<<"\n depthmap_params[layer].DM_WIN_COLS="		<<depthmap_params[0].DM_WIN_COLS
-																																				<<"\n depthmap_params[layer].DM_DATA_COLS="		<<depthmap_params[0].DM_DATA_COLS
-																																				<<"\n depthmap_params[layer].DM_WIN_ROWS="		<<depthmap_params[0].DM_WIN_ROWS
-																																				<<"\n depthmap_params[layer].DM_DATA_ROWS="		<<depthmap_params[0].DM_DATA_ROWS
-																																				<<"\n depthmap_params[layer].DM_WIN_OFFSET="	<<depthmap_params[0].DM_WIN_OFFSET
-																																				<<"\n depthmap_params[layer].DM_DATA_OFFSET="	<<depthmap_params[0].DM_DATA_OFFSET
-																																				<<"\n depthmap_params[layer].DM_WIN_BYTES="		<<depthmap_params[0].DM_WIN_BYTES
-																																				// <<"\n read_cols="					<<read_cols
-																																				// <<"\n read_rows="					<<read_rows
-																																				// <<"\n dm_margin="					<<dm_margin
-																																				// <<"\n depth_save_offset[0]="		<<depth_save_offset[0]
-																																				// <<"\n patch_depthmap_width[0]="		<<patch_depthmap_width[0]
-																																				// <<"\n patch_depthmap_offset[0]="	<<patch_depthmap_offset[0]
-																																				<< flush;
-	for(uint layer=1; layer<max_mipmap_layers; layer++){
-		depthmap_params[layer].DM_MARGIN		= dm_margin;
-		depthmap_params[layer].DM_WIN_COLS		= read_cols + 2*dm_margin;
-		depthmap_params[layer].DM_DATA_COLS		= read_cols;
-		depthmap_params[layer].DM_WIN_ROWS		= read_rows + 2*dm_margin;
-		depthmap_params[layer].DM_DATA_ROWS		= read_rows;
-		depthmap_params[layer].DM_WIN_OFFSET	= depthmap_params[layer-1].DM_WIN_OFFSET	+ depthmap_params[layer-1].DM_WIN_COLS	* depthmap_params[layer-1].DM_WIN_ROWS;
-		depthmap_params[layer].DM_DATA_OFFSET	= depthmap_params[layer].DM_WIN_OFFSET		+ depthmap_params[layer].DM_WIN_COLS	+ dm_margin;
-		depthmap_params[layer].DM_WIN_BYTES		= depthmap_params[layer].DM_WIN_COLS		* depthmap_params[layer].DM_WIN_ROWS	* sizeof(cl_float2);
-
-		read_cols								= MipMap[ layer*8 + MiM_READ_COLS]	/out_block_size;
-		read_rows								= MipMap[ layer*8 + MiM_READ_ROWS]	/out_block_size;
-
-		///
+*/
+	uint	dm_margin							= obj["depthmap_margin"].asUInt();
+/*
+	//depthmap_params[0].DM_MARGIN		= depthmap_params[0].DM_MARGIN;
+	// depthmap_params[0].DM_WIN_COLS		= read_cols + 2*dm_margin;
+	// depthmap_params[0].DM_DATA_COLS		= read_cols;
+	// depthmap_params[0].DM_WIN_ROWS		= read_rows + 2*dm_margin;
+	// depthmap_params[0].DM_DATA_ROWS		= read_rows;
+	// depthmap_params[0].DM_WIN_OFFSET	= 0;
+	// depthmap_params[0].DM_DATA_OFFSET	= depthmap_params[0].DM_WIN_OFFSET	+ depthmap_params[0].DM_WIN_COLS + dm_margin;
+	// depthmap_params[0].DM_WIN_BYTES		= depthmap_params[0].DM_WIN_COLS	* depthmap_params[0].DM_WIN_ROWS * sizeof(cl_float2);
+ //
+	// ///
+	// // depth_save_offset[0] 				= 0;
+	// // patch_depthmap_width[0]				= read_cols + 2*dm_margin;
+	// // patch_depthmap_offset[0] 			= depth_save_offset[0] + patch_depthmap_width[0] + dm_margin;
+	// 																																		if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_patch_depthmap_offset_chk_1, layer=0\n"
+	// 																																			<<"\n depthmap_params[layer].DM_MARGIN="		<<depthmap_params[0].DM_MARGIN
+	// 																																			<<"\n depthmap_params[layer].DM_WIN_COLS="		<<depthmap_params[0].DM_WIN_COLS
+	// 																																			<<"\n depthmap_params[layer].DM_DATA_COLS="		<<depthmap_params[0].DM_DATA_COLS
+	// 																																			<<"\n depthmap_params[layer].DM_WIN_ROWS="		<<depthmap_params[0].DM_WIN_ROWS
+	// 																																			<<"\n depthmap_params[layer].DM_DATA_ROWS="		<<depthmap_params[0].DM_DATA_ROWS
+	// 																																			<<"\n depthmap_params[layer].DM_WIN_OFFSET="	<<depthmap_params[0].DM_WIN_OFFSET
+	// 																																			<<"\n depthmap_params[layer].DM_DATA_OFFSET="	<<depthmap_params[0].DM_DATA_OFFSET
+	// 																																			<<"\n depthmap_params[layer].DM_WIN_BYTES="		<<depthmap_params[0].DM_WIN_BYTES
+	// 																																			// <<"\n read_cols="					<<read_cols
+	// 																																			// <<"\n read_rows="					<<read_rows
+	// 																																			// <<"\n dm_margin="					<<dm_margin
+	// 																																			// <<"\n depth_save_offset[0]="		<<depth_save_offset[0]
+	// 																																			// <<"\n patch_depthmap_width[0]="		<<patch_depthmap_width[0]
+	// 																																			// <<"\n patch_depthmap_offset[0]="	<<patch_depthmap_offset[0]
+	// 																																			<< flush;
+*/
+	uint	win_offset_prev_layer				= 0;
+	uint	tot_elem_prev_layer					= 0;
+	for(uint layer=0; layer<max_mipmap_layers; layer++){
+		uint read_cols							= MipMap[ layer*8 + MiM_READ_COLS]	/out_block_size;														cout<<" ,1"<<flush;
+		uint read_rows							= MipMap[ layer*8 + MiM_READ_ROWS]	/out_block_size;														cout<<",2"<<flush;
+		depthmap_params[layer].DM_MARGIN		= dm_margin;																								cout<<",3"<<flush;
+		depthmap_params[layer].DM_WIN_COLS		= read_cols + 2*dm_margin;																					cout<<",4"<<flush;
+		depthmap_params[layer].DM_DATA_COLS		= read_cols;																								cout<<",5"<<flush;
+		depthmap_params[layer].DM_WIN_ROWS		= read_rows + 2*dm_margin;																					cout<<",6"<<flush;
+		depthmap_params[layer].DM_DATA_ROWS		= read_rows;																								cout<<",7"<<flush;
+		depthmap_params[layer].DM_WIN_OFFSET	= win_offset_prev_layer						+ tot_elem_prev_layer;											cout<<",8"<<flush;
+		depthmap_params[layer].DM_DATA_OFFSET	= depthmap_params[layer].DM_WIN_OFFSET		+ depthmap_params[layer].DM_WIN_COLS	+ dm_margin;			cout<<",9"<<flush;
+		depthmap_params[layer].DM_WIN_BYTES		= depthmap_params[layer].DM_WIN_COLS		* depthmap_params[layer].DM_WIN_ROWS	* sizeof(cl_float2);	cout<<",10"<<flush;
+		tot_elem_prev_layer						= depthmap_params[layer].DM_WIN_COLS		* depthmap_params[layer].DM_WIN_ROWS;							cout<<",11"<<flush;
+		win_offset_prev_layer					= depthmap_params[layer].DM_WIN_OFFSET;
+/*		///
 // 		uint	depthmap_width			= patch_depthmap_width[ (layer-1) ];
 // 		uint	tot_elem_prev_layer		= (read_rows + 2*dm_margin )		* depthmap_width;
 // 		depth_save_offset[ layer]		= depth_save_offset[ layer -1]		+ tot_elem_prev_layer;
@@ -371,6 +376,7 @@ void RunCL::initialize_patch_depthmap_offset(){
 // 		read_cols						= MipMap[ layer*8 + MiM_READ_COLS]	/out_block_size;
 // 		read_rows						= MipMap[ layer*8 + MiM_READ_ROWS]	/out_block_size;
 // 		patch_depthmap_width[ layer ]	= read_cols + 2*dm_margin;
+*/
 																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_patch_depthmap_offset_chk_2, layer="<<layer
 																																				<<"\n depthmap_params[layer].DM_MARGIN="		<<depthmap_params[layer].DM_MARGIN
 																																				<<"\n depthmap_params[layer].DM_WIN_COLS="		<<depthmap_params[layer].DM_WIN_COLS
@@ -380,6 +386,7 @@ void RunCL::initialize_patch_depthmap_offset(){
 																																				<<"\n depthmap_params[layer].DM_WIN_OFFSET="	<<depthmap_params[layer].DM_WIN_OFFSET
 																																				<<"\n depthmap_params[layer].DM_DATA_OFFSET="	<<depthmap_params[layer].DM_DATA_OFFSET
 																																				<<"\n depthmap_params[layer].DM_WIN_BYTES="		<<depthmap_params[layer].DM_WIN_BYTES
+																																				/*
 																																				// <<"\n depthmap_width="						<<depthmap_width
 																																				// <<"\n tot_elem_prev_layer="					<<tot_elem_prev_layer
 																																				// <<"\n depth_save_offset[ layer]="			<< depth_save_offset[ layer]
@@ -387,6 +394,7 @@ void RunCL::initialize_patch_depthmap_offset(){
 																																				// <<"\n read_cols="							<< read_cols
 																																				// <<"\n read_rows="							<< read_rows
 																																				// <<"\n patch_depthmap_width[ layer ]="		<< patch_depthmap_width[ layer ]
+																																				*/
 																																				<< flush;
 		// ### TODO set size for depth_temp buffer NB check where it is used. Ensure it is always large enough.
 		// NB the final "mipmap" layer is a dummy for offsetting regularized depthmas from the raw depthmaps.

@@ -157,7 +157,7 @@ void RunCL::update_depth( uint out_block_size, uint layer){
 
 void RunCL::update_depth_2( uint out_block_size, uint layer){
 	string		fname 						= "RunCL::update_depth(..)";
-	int 		local_verbosity_threshold 	= V_RUNCL_UPDATE_DEPTH;																if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_depth(..)_chk0"<<flush;}
+	int 		local_verbosity_threshold 	= V_RUNCL_UPDATE_DEPTH;																if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_depth_2(..)_chk0"<<flush;}
 	cl_kernel	kernel						= update_depth_2_kernel;
 
 	float		reduction					= pow(2,layer);
@@ -166,14 +166,19 @@ void RunCL::update_depth_2( uint out_block_size, uint layer){
 	uint		read_offset_				= MipMap[layer*8 + MiM_READ_OFFSET];
 	uint		layer_pixels				= MipMap[layer*8 + MiM_PIXELS];
 	uint		read_cols_					= MipMap[layer*8 + MiM_READ_COLS];
-	uint		read_rows_					= MipMap[layer*8 + MiM_READ_ROWS];	//uint_params[MM_PIXELS];
-
-	uint		write_offset				= patch_depthmap_offset[ layer];
+	uint		read_rows_					= MipMap[layer*8 + MiM_READ_ROWS];
 	uint		mm_cols						= uint_params[MM_COLS];
+
+	uint		write_offset				= depthmap_params[layer].DM_DATA_OFFSET; 						//patch_depthmap_offset[ layer];
+	uint		dm_win_cols					= depthmap_params[layer].DM_WIN_COLS;
+	uint		dm_data_rows				= depthmap_params[layer].DM_DATA_ROWS;
+	uint		dm_data_stop				= write_offset + dm_win_cols * dm_data_rows;
+
+
 	float		inv_depth_step				= fp32_params[MAX_INV_DEPTH] / ((float)NUM_DEPTH_STEPS);
 
 	uint		layer_offset				= MipMap[layer*8 + MiM_READ_OFFSET];
-	uint		stop_offset					= layer_offset + (read_rows_ -1) * mm_cols + read_cols_;
+	uint		stop_offset					= layer_offset + (read_rows_ -1) * mm_cols + read_cols_;	cout<<"\nstop_offset("<<stop_offset<<")= layer_offset("<<layer_offset<<") + (read_rows_("<<read_rows_<<")_ -1) * mm_cols("<<mm_cols<<") + read_cols_("<<read_cols_<<")_"<<flush;
 
 	size_t		threads_to_launch			= patch_num_threads[layer];
 	size_t		local_work_size_			= block_size;									// Could be changed to an integer multiple, i.e. use "RunCL::local_work_size", beware numbers not multiples of out_block_size.
@@ -182,7 +187,7 @@ void RunCL::update_depth_2( uint out_block_size, uint layer){
 	// Zero output buffers
 	float 		minus_one_f					=-1.0f;
 	uint 		depth_iter_per_layer		= 1; //3
-	uint 		cols						= MipMap[ (layer+2)*8 + MiM_READ_COLS];
+	uint 		cols						=  MipMap[ (layer+2)*8 + MiM_READ_COLS];
 	uint 		rows						= (MipMap[ (layer+2)*8 + MiM_READ_ROWS] + 1)	*  depth_iter_per_layer;
 	size_t		depthUpdate_bytes			= cols * rows * sizeof(cl_float2);
 
@@ -206,40 +211,47 @@ void RunCL::update_depth_2( uint out_block_size, uint layer){
 	_clSetKernelArg( kernel, 6, sizeof(uint),						&layer_pixels,										fname);		// __private	const uint	layer_pixels,			//6		= mipmap_params_[MiM_PIXELS];
 	_clSetKernelArg( kernel, 7, sizeof(uint),						&read_cols_,										fname);		// __private	const uint	read_cols_,				//7		= mipmap_params_[MiM_READ_COLS];
 	_clSetKernelArg( kernel, 8, sizeof(uint),						&read_rows_,										fname);		// __private	const uint	read_rows_,				//8		= mipmap_params_[MiM_READ_ROWS];
+	_clSetKernelArg( kernel, 9, sizeof(uint),						&mm_cols,											fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
 
-	_clSetKernelArg( kernel, 9, sizeof(uint),						&write_offset,										fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
-	_clSetKernelArg( kernel, 10, sizeof(uint),						&mm_cols,											fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
-	_clSetKernelArg( kernel, 11, sizeof(float),						&inv_depth_step,									fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
+	_clSetKernelArg( kernel, 10, sizeof(uint),						&write_offset,										fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
+	_clSetKernelArg( kernel, 11, sizeof(uint),						&dm_win_cols,										fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
+	_clSetKernelArg( kernel, 12, sizeof(uint),						&dm_data_rows,										fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
+	_clSetKernelArg( kernel, 13, sizeof(uint),						&dm_data_stop,										fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
 
-	_clSetKernelArg( kernel, 12, sizeof(cl_mem),					&cur_frames_k2kbuf,									fname);		// __constant	float16*	inv_k2k,				//15		// transforms for 4 past frames,  k2k_buf
-	_clSetKernelArg( kernel, 13, sizeof(cl_mem),					&patch_lookup_table_buf,							fname);		// __constant 	uint4*		lookup_table,			//17		// should ideally be a constant.
 
-	_clSetKernelArg( kernel, 14, sizeof(cl_mem),					&current_frames[current_frames_idx[0]].img_buf,		fname);		// __global		float4*		img_cur,				//19		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
-	_clSetKernelArg( kernel, 15, sizeof(cl_mem),					&current_frames[current_frames_idx[1]].img_buf,		fname);		// __global		float4*		img_past_0,				//20
-	_clSetKernelArg( kernel, 16, sizeof(cl_mem),					&current_frames[current_frames_idx[2]].img_buf,		fname);		// __global		float4*		img_past_1,				//21
-	_clSetKernelArg( kernel, 17, sizeof(cl_mem),					&current_frames[current_frames_idx[3]].img_buf,		fname);		// __global		float4*		img_past_2,				//22
-	_clSetKernelArg( kernel, 18, sizeof(cl_mem),					&current_frames[current_frames_idx[4]].img_buf,		fname);		// __global		float4*		img_past_3,				//23
 
-	_clSetKernelArg( kernel, 19, sizeof(cl_mem),					&depth_mem,											fname);		// __global		float*		depth_map,				//24	// current frame depth, now stored as inv_depth
+	_clSetKernelArg( kernel, 14, sizeof(float),						&inv_depth_step,									fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
 
-	_clSetKernelArg( kernel, 20, sizeof(cl_mem),					&current_frames[current_frames_idx[0]].r_vel_buf,	fname);		// __global		float4*		vel_cur,				//25	// multiple past frames.
-	_clSetKernelArg( kernel, 21, sizeof(cl_mem),					&current_frames[current_frames_idx[1]].r_vel_buf,	fname);		// __global		float4*		vel_past_0,				//26	// TO DO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
-	_clSetKernelArg( kernel, 22, sizeof(cl_mem),					&current_frames[current_frames_idx[2]].r_vel_buf,	fname);		// __global		float4*		vel_past_1,				//27
-	_clSetKernelArg( kernel, 23, sizeof(cl_mem),					&current_frames[current_frames_idx[3]].r_vel_buf,	fname);		// __global		float4*		vel_past_2,				//28
-	_clSetKernelArg( kernel, 24, sizeof(cl_mem),					&current_frames[current_frames_idx[4]].r_vel_buf,	fname);		// __global		float4*		vel_past_3,				//29
+	_clSetKernelArg( kernel, 15, sizeof(cl_mem),					&cur_frames_k2kbuf,									fname);		// __constant	float16*	inv_k2k,				//15		// transforms for 4 past frames,  k2k_buf
+	_clSetKernelArg( kernel, 16, sizeof(cl_mem),					&patch_lookup_table_buf,							fname);		// __constant 	uint4*		lookup_table,			//17		// should ideally be a constant.
+
+	_clSetKernelArg( kernel, 17, sizeof(cl_mem),					&current_frames[current_frames_idx[0]].img_buf,		fname);		// __global		float4*		img_cur,				//19		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
+	_clSetKernelArg( kernel, 18, sizeof(cl_mem),					&current_frames[current_frames_idx[1]].img_buf,		fname);		// __global		float4*		img_past_0,				//20
+	_clSetKernelArg( kernel, 19, sizeof(cl_mem),					&current_frames[current_frames_idx[2]].img_buf,		fname);		// __global		float4*		img_past_1,				//21
+	_clSetKernelArg( kernel, 20, sizeof(cl_mem),					&current_frames[current_frames_idx[3]].img_buf,		fname);		// __global		float4*		img_past_2,				//22
+	_clSetKernelArg( kernel, 21, sizeof(cl_mem),					&current_frames[current_frames_idx[4]].img_buf,		fname);		// __global		float4*		img_past_3,				//23
+
+	_clSetKernelArg( kernel, 22, sizeof(cl_mem),					&depth_mem,											fname);		// __global		float*		depth_map,				//24	// current frame depth, now stored as inv_depth
+
+	_clSetKernelArg( kernel, 23, sizeof(cl_mem),					&current_frames[current_frames_idx[0]].r_vel_buf,	fname);		// __global		float4*		vel_cur,				//25	// multiple past frames.
+	_clSetKernelArg( kernel, 24, sizeof(cl_mem),					&current_frames[current_frames_idx[1]].r_vel_buf,	fname);		// __global		float4*		vel_past_0,				//26	// TO DO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
+	_clSetKernelArg( kernel, 25, sizeof(cl_mem),					&current_frames[current_frames_idx[2]].r_vel_buf,	fname);		// __global		float4*		vel_past_1,				//27
+	_clSetKernelArg( kernel, 26, sizeof(cl_mem),					&current_frames[current_frames_idx[3]].r_vel_buf,	fname);		// __global		float4*		vel_past_2,				//28
+	_clSetKernelArg( kernel, 27, sizeof(cl_mem),					&current_frames[current_frames_idx[4]].r_vel_buf,	fname);		// __global		float4*		vel_past_3,				//29
 
 	// //outputs
-	_clSetKernelArg( kernel, 25, sizeof(cl_mem), 					&SE3_rho_map_mem,									fname);		// __global		float2*		Rho_,					//30	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
-	_clSetKernelArg( kernel, 26, sizeof(cl_float2)*local_mem_size,	NULL,												fname);		// __local		float2*		local_rho,				//31	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
+	_clSetKernelArg( kernel, 28, sizeof(cl_mem), 					&SE3_rho_map_mem,									fname);		// __global		float2*		Rho_,					//30	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
+	_clSetKernelArg( kernel, 29, sizeof(cl_float2)*local_mem_size,	NULL,												fname);		// __local		float2*		local_rho,				//31	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
 
-	_clSetKernelArg( kernel, 27, sizeof(cl_mem), 					&depth_mem_temp,									fname);		// __global		float2*		inv_depth_incr,			//32
+	_clSetKernelArg( kernel, 30, sizeof(cl_mem), 					&depth_mem_temp,									fname);		// __global		float2*		inv_depth_incr,			//32
 
 																																if( verbosity>local_verbosity_threshold) {
-																																	cout<<"\n\nRunCL::update_depth()_chk1"<<
+																																	cout<<"\n\nRunCL::update_depth_2()_chk1"<<
 																																	"\nthreads_to_launch   = "<<threads_to_launch<<
 																																	"\nlocal_work_size_    = "<<local_work_size_<<
 																																	"\nlocal_mem_size      = "<<local_mem_size<<
 																																	"\nread_offset_        = "<<read_offset_<<
+																																	"\nstop_offset         = "<<stop_offset<<
 																																	"\nlayer_offset        = "<<layer_offset<<
 																																	"\nlookup_table_offset = "<<lookup_table_offset<<
 																																	"\nlayer_pixels        = "<<layer_pixels<<
@@ -258,9 +270,11 @@ void RunCL::update_depth_2( uint out_block_size, uint layer){
 		fname					//string           fname
 	);
 																																if( verbosity>local_verbosity_threshold) {
-																																	cout<<"\nRunCL::update_depth() chk_1   write_offset = "<< write_offset<<",   mm_size_bytes_C1="<< mm_size_bytes_C1<<flush;
-																																	DownloadAndSaveDepthUpdate( layer, write_offset, depth_save_offset[layer], fname );
-																																	cout<<"\n\nRunCL::update_depth()_finished #############################################################"<<flush;
+																																	cout<<"\nRunCL::update_depth_2() chk_1   write_offset = "<< write_offset<<",   mm_size_bytes_C1="<< mm_size_bytes_C1<<flush;
+																																	uint win_offset 	= depthmap_params[layer].DM_WIN_OFFSET;
+																																	DownloadAndSaveDepthUpdate( layer, win_offset, win_offset, fname );		//  write_offset, depthmap_params[layer].DM_WIN_OFFSET
+																																																			//  depth_save_offset[layer]
+																																	cout<<"\n\nRunCL::update_depth_2()_finished #############################################################"<<flush;
 																																}
 }
 
@@ -271,16 +285,24 @@ void RunCL::regularize_depth(uint write_layer ){
 																																",   write_layer = "<<write_layer<<flush; }
 	cl_kernel	kernel						= regularize_depth_kernel;
 
-	uint		lookup_table_read_offset	= patch_lookup_table_offset[ write_layer +2];	// i.e. read a 4x reduction of the current layer. Used to generate (u,v) pixel coords, and to colourize point cloud.
-	uint		buf_width					= uint_params[MM_COLS];
+	uint		lookup_table_read_offset	= patch_lookup_table_offset[ write_layer +2];		// i.e. read a 4x reduction of the current layer. Used to generate (u,v) pixel coords, and to colourize point cloud.
+	uint		buf_width					= uint_params[MM_COLS];								// For reading img_grad_mem
 
-	uint		depth_width					= patch_depthmap_width[  write_layer ];
-	uint		depth_read_offset			= patch_depthmap_offset[ write_layer ];										// NB these are pixel offsets. The buffer has mm_size_bytes_C1. The depth patches are 4x4, so 16x reduced, but float2.
-	uint		write_offset				= depth_read_offset + depth_save_offset[ max_mipmap_layers-1];// Place to store the regularized depth maps. NB these maps (pixels+margins) are packed densely in the buffer, _not_ as a mipmap.
-
+	uint		depth_width					= depthmap_params[write_layer].DM_WIN_COLS;			//patch_depthmap_width[  write_layer ];
+	uint		depth_read_offset			= depthmap_params[write_layer].DM_DATA_OFFSET;		//patch_depthmap_offset[ write_layer ];
+																														// NB these are pixel offsets. The buffer has mm_size_bytes_C1. The depth patches are 4x4, so 16x reduced, but float2.
+	uint		write_offset				= depthmap_params[write_layer].DM_DATA_OFFSET +  depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET ;
+																														// depth_read_offset + depth_save_offset[ max_mipmap_layers-1];
+																														// Place to store the regularized depth maps. NB these maps (pixels+margins) are packed densely in the buffer, _not_ as a mipmap.
 	uint		patch_height				= patch_size;
 	uint		read_cols_					= MipMap[ write_layer*8 + MiM_READ_COLS];
 	uint		stop_offset					= write_offset + depth_width * read_cols_;
+
+	//
+	uint		dm_win_cols					= depthmap_params[ write_layer].DM_WIN_COLS;
+	uint		dm_data_rows				= depthmap_params[ write_layer].DM_DATA_ROWS;
+	uint		dm_data_stop				= write_offset + dm_win_cols * dm_data_rows;
+
 																															if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::regularize_depth(..) chk1"<<
 																																"\nlookup_table_read_offset 	= "		<<lookup_table_read_offset<<
 																																"\nbuf_width                	= "		<<buf_width<<
@@ -292,6 +314,8 @@ void RunCL::regularize_depth(uint write_layer ){
 																																"\npatch_height             	= "		<<patch_height<<
 																																"\nread_cols_               	= "		<<read_cols_<<
 																																"\nstop_offset              	= "		<<stop_offset<<
+
+																																"\ndm_data_stop             	= "		<<dm_data_stop<<
 																																endl<<flush;
 																															}
 	_clSetKernelArg( kernel, 0, sizeof(int),						&lookup_table_read_offset,							fname);		// __private	const uint	lookup_table_read_offset,	//0
@@ -300,7 +324,7 @@ void RunCL::regularize_depth(uint write_layer ){
 	_clSetKernelArg( kernel, 3, sizeof(int),						&depth_width,										fname);		// __private	const uint	depth_width					//3
 	_clSetKernelArg( kernel, 4, sizeof(int),						&buf_width,											fname);		// __private	uint		buf_width,					//2		mm_cols, i.e. width of the buffer holding the image pyramid
 	_clSetKernelArg( kernel, 5, sizeof(int),						&patch_height,										fname);		// __private	uint		patch_height,				//3
-	_clSetKernelArg( kernel, 6, sizeof(int),						&stop_offset,										fname);		// __private	uint		stop_offset,				//4
+	_clSetKernelArg( kernel, 6, sizeof(int),						&dm_data_stop,/*stop_offset,*/										fname);		// __private	uint		stop_offset,				//4
 	_clSetKernelArg( kernel, 7, sizeof(cl_mem),						&patch_lookup_table_buf,							fname);		// __constant 	uint4*		lookup_table,				//5
 	_clSetKernelArg( kernel, 8, sizeof(cl_mem),						&img_grad_mem,										fname);		// __global 	float2*		img							//6
 	_clSetKernelArg( kernel, 9, sizeof(cl_mem),						&depth_mem_temp,									fname);		// __global 	float*		img							//7
@@ -319,9 +343,11 @@ void RunCL::regularize_depth(uint write_layer ){
 	);
 																															if(verbosity>local_verbosity_threshold) {
 																																cout<<"\n\nRunCL::regularize_depth(..)_chk3"<<flush;
-																																uint depth_save_offset_ = depth_save_offset[ write_layer] + depth_save_offset[ max_mipmap_layers-1];
+																																uint rho_save_offset 	= depthmap_params[ write_layer].DM_WIN_OFFSET;
+																																uint depth_save_offset_ = depthmap_params[ write_layer].DM_WIN_OFFSET  + depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET ;
+																																// depth_save_offset[ write_layer] + depth_save_offset[ max_mipmap_layers-1];
 
-																																DownloadAndSaveDepthUpdate( write_layer, depth_read_offset, depth_save_offset_, fname );
+																																DownloadAndSaveDepthUpdate( write_layer, rho_save_offset, depth_save_offset_, fname );
 																																// stringstream ss;	ss << dataset_frame_num << "_regularize_depth";
 																																// cv::Size new_Image_size = cv::Size(mm_width, mm_height);
 																																// ss << "_raw_";

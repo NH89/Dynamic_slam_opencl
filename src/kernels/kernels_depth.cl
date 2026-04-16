@@ -314,10 +314,15 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 	__private	const uint	layer_pixels,			//6					= mipmap_params_[MiM_PIXELS];
 	__private	const uint	read_cols_,				//7					= mipmap_params_[MiM_READ_COLS];
 	__private	const uint	read_rows_,				//8					= mipmap_params_[MiM_READ_ROWS];
+	__private	const uint	mm_cols,				//9					= uint_params[MM_COLS];
 
-	__private	const uint	write_offset,			//9					= patch_depthmap_offset_[layer];
-	__private	const uint	mm_cols,				//10				= uint_params[MM_COLS];
+	__private	const uint	write_offset,			//10				= patch_depthmap_offset_[layer];
+	__private	const uint	dm_win_cols,			//11
+	__private	const uint	dm_data_rows,			//12
+	__private	const uint	dm_data_stop,			//13
+
 	__private	const float inv_depth_step,			//11
+
 
 	__constant	float16*	inv_k2k,				//12		// transforms for 4 past frames,  k2k_buf
 	__constant	uint4*		lookup_table,			//13		// should ideally be a constant.
@@ -354,9 +359,9 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 																																					//st3=[%d]=(%f,	%f,	%f,	%f),     past_frame_idx,
 																																					//	st3[past_frame_idx].s0,      st3[past_frame_idx].s1,      st3[past_frame_idx].s2,      st3[past_frame_idx].s3,
 																																					if(global_id_uint==0){
-																																						printf("\n__kernel void update_depth(..) max_frames = %d", max_frames );
+																																						printf("\n__kernel void update_depth_2(..) max_frames = %d", max_frames );
 																																						for (uint		past_frame_idx=0; past_frame_idx < max_frames; past_frame_idx++){
-																																							printf("\n__kernel void update_depth(..)   \ninv_k2k[%d]=\n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f)",\
+																																							printf("\n__kernel void update_depth_2(..)   \ninv_k2k[%d]=\n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f)",\
 																																								past_frame_idx,\
 																																								inv_k2k[past_frame_idx].s0,  inv_k2k[past_frame_idx].s1,  inv_k2k[past_frame_idx].s2,  inv_k2k[past_frame_idx].s3,\
 																																								inv_k2k[past_frame_idx].s4,  inv_k2k[past_frame_idx].s5,  inv_k2k[past_frame_idx].s6,  inv_k2k[past_frame_idx].s7,\
@@ -373,8 +378,8 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 	const	uint	v_start								= lookup_ref.y;								// read_row, NB _not_ constant
 			uint	v									= v_start;
 
-	const	uint	out_cols							= (read_cols_/out_block_size) + 6; // + margin ?
-	const	uint	out_rows							= read_rows_/out_block_size;
+	const	uint	out_cols							= dm_win_cols;		//(read_cols_/out_block_size) +2; //TODO  need values from dm_params  // + 6; // + margin ?
+	const	uint	out_rows							= dm_data_rows;		//read_rows_/out_block_size;
 
 	const	uint	write_layer_pixels					= (out_rows + 1) * out_cols;																				// (layer_pixels / (out_block_size * out_block_size) ) + out_cols;
 			uint	write_index							= write_offset +  (u/out_block_size)	+ (v/out_block_size)*out_cols;										// NB write_offset allow each layer of the depthmap to be saved, without overwriting.
@@ -449,7 +454,7 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 					img_cur_pvt[	row_in_block]	= img_cur[				read_index];
 
 
-			for (uint 	past_frame_idx=1; past_frame_idx < max_frames; past_frame_idx++){																	// step through past frames //////  /*iter+2*/
+			for (uint 	past_frame_idx=1; past_frame_idx < max_frames; past_frame_idx++){																// step through past frames //////  /*iter+2*/
 
 				float	 inv_depth		 = inv_depth_step;	//0.0f;
 				for (int inv_depth_layer = 0;    inv_depth_layer<NUM_DEPTH_STEPS; inv_depth_layer++ ){							// step through depth layers
@@ -503,7 +508,6 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 // 																																							(row_in_block *NUM_DEPTH_STEPS + inv_depth_layer), \
 // 																																							rho_pvt_arr[ row_in_block*NUM_DEPTH_STEPS  + inv_depth_layer].x,  rho_pvt_arr[ row_in_block*NUM_DEPTH_STEPS  + inv_depth_layer].y );  }
 */
-
 				}
 			}
 		}
@@ -547,8 +551,9 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 
 		if( fmod((float)lid,out_block_size) == 0 ){																																// selects columns i.e. threads within the workgroup
 
-			for (uint block_row=0, write_block_row	= 0; block_row < block_size ; block_row += step, write_block_row++){														// step through rows in column
+			for (uint block_row=0, write_block_row	= 0; block_row < block_size; block_row += step, write_block_row++){														// step through rows in column
 																							uint	offset_1 								= write_index	+ write_block_row*out_cols;
+																							if( offset_1>=dm_data_stop ) return;
 																							float	inv_depth								= 0.0f;
 																							float	min_rho_sq								= FLT_MAX;
 																							int		opt_depth_layer[3]						= {-1};
@@ -599,9 +604,9 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 																							confidence			= d2ydx2 ;// * pixels_sampled	*	brightness / prediction;
 																							if(confidence<0.0f){	confidence = FLT_MIN;}	// TODO could clamp  0<confidence<1
 				// save depth, confidence and predicted rho.
-																							Rho_[	offset_1]	= (float2) { prediction,	prediction/ depth_layer_rho_sq[ opt_depth_layer[1] ]	};
-																				inv_depth_incr[ 	offset_1]	= (float2) { optimum,		confidence };		// pixels_sampled
-
+																							Rho_[	offset_1]	= (float2) { prediction,	prediction/ depth_layer_rho_sq[ opt_depth_layer[1] ]	};	//{ 0.3f, prediction }; //
+																				inv_depth_incr[ 	offset_1]	= (float2) { optimum,		confidence };		// pixels_sampled		//{ 0.3f, confidence }; //
+//TODO needd areturn if offset_1 goes beyond dm_data
 //# 																																			printf("\n__kernel void update_depth_2, chk_4, global_id_uint=%u, block_row=%u, frame_count=%u, lid= %u, optimum= %f, min_rho_sq= %f, opt_depth_layer[0]= %u, opt_depth_layer[1]= %u, opt_depth_layer[2]= %u, inv_depth_step=%f, depth_layer_rho_sq[ opt_depth_layer[0] ]=%f, depth_layer_rho_sq[ opt_depth_layer[1] ]=%f, depth_layer_rho_sq[ opt_depth_layer[2] ]=%f ", \
 //# 																																															global_id_uint, 	block_row, 	frame_count, 	lid,	optimum, 	  min_rho_sq, 	  opt_depth_layer[0], 	   opt_depth_layer[1],		opt_depth_layer[2],  	inv_depth_step,  depth_layer_rho_sq[ opt_depth_layer[0] ],		depth_layer_rho_sq[ opt_depth_layer[1] ],	depth_layer_rho_sq[ opt_depth_layer[2] ] );
 /*
@@ -648,14 +653,14 @@ __kernel void regularize_depth(
 	__private	const uint	lookup_table_read_offset,	//0
 	__private	const uint	depth_read_offset,			//1
 	__private	const uint	write_offset,				//2
-	__private	const uint	depth_width,				//3			mm_cols, i.e. width of the buffer holding the image pyramid
+	__private	const uint	depth_width,				//3
 
-	__private	const uint	buf_width,					//3			mm_cols, i.e. width of the buffer holding the image pyramid
-	__private	const uint	patch_height,				//4
-	__private	const uint	stop_offset,				//5
-	__constant 	uint4*		lookup_table,				//6
-	__global	float2*		img_grad,					//7			(d_val/du, d_val/dv)	### TODO Need to be reading a patch condensed version for the img pyr layer.
-	__global 	float2*		depth						//8			{ optimum,	confidence = d2ydx2 * pixels_sampled * brightness / prediction; }	### TODO need to (i) write regularized version, to the right of 1st version. (ii) take account of previous layer, => close null zone gaps eg screen
+	__private	const uint	buf_width,					//4			i.e. width of the buffer holding the image pyramid
+	__private	const uint	patch_height,				//5
+	__private	const uint	stop_offset,				//6
+	__constant	uint4*		lookup_table,				//7
+	__global	float2*		img_grad,					//8			(d_val/du, d_val/dv)	### TODO Need to be reading a patch condensed version for the img pyr layer.
+	__global 	float2*		depth						//9			{ optimum,	confidence = d2ydx2 * pixels_sampled * brightness / prediction; }	### TODO need to (i) write regularized version, to the right of 1st version. (ii) take account of previous layer, => close null zone gaps eg screen
 														//																											(iii) possibly iterate regularization ?  (iv) scale for use in tracking.  (v) ? reduce range and refine step size of depth search.
 	)
 {
@@ -664,14 +669,14 @@ __kernel void regularize_depth(
 	if( lookup_ref.w != global_id_uint){	printf("\n__kernel void regularize_depth(..) lookup_ref.w %u != global_id_uint %u", lookup_ref.w, global_id_uint);	// NB return cols tha are outside img_cur, BUT only after initializing local mem.
 											return;
 	}
-	uint read_idx						= lookup_ref.z - buf_width - 1;										// up one row and left one column.
+	uint read_idx_imgrad						= lookup_ref.z - buf_width - 1;										// up one row and left one column.
 	uint	u							= lookup_ref.x;														// read_column
 	uint	v							= lookup_ref.y;														// read_row
 
 	//uint write_idx						= lookup_ref.z + write_offset; /*+ u*2 + (v * 2 * buf_width);*/		// ### TODO to the right of previous version of this layer. step set by host code pvt variable.
 
 	uint pixel_offset					= u + (v * depth_width);
-	uint read_idx_depth					= depth_read_offset + pixel_offset;		float2 depth_test = depth[read_idx_depth];
+	uint read_idx_depth					= depth_read_offset + pixel_offset;		//float2 depth_test = depth[read_idx_depth];
 	uint write_idx						= write_offset		+ pixel_offset;
 
 	////////// from __kernel void update_depth_2(..)   ofset_1    is the   read_index    we need.
@@ -692,28 +697,28 @@ __kernel void regularize_depth(
 
 	if(global_id_uint==0){ printf("\n__kernel void regularize_depth(..) chk_0  lookup_table_read_offset=%u,	 write_idx=%u,  buf_width=%u, write_offset=%u ", lookup_table_read_offset, write_idx, buf_width, write_offset ); }
 
-	float2 pvt_depth[3][3];//				=	{{0.0f,0.0f}};		// 3x3 arrays of global data.
-	float2 pvt_img_grad[3][3]			=	{{0.0f,0.0f}};
 
 	uint read_idx_layer_step			= buf_width -3;
 	uint depth_idx_layer_step			= depth_width -3;
 	uint arr_idx						= 0;
 
-	printf("\n__kernel void regularize_depth() chk_1  global_id_uint=%u,	read_idx=%u", global_id_uint,	read_idx );
+	printf("\n__kernel void regularize_depth() chk_1  global_id_uint=%u,	read_idx=%u", global_id_uint,	read_idx_imgrad );
 	barrier( CLK_GLOBAL_MEM_FENCE );
 
+	float2 pvt_img_grad[3][3];			// 3x3 arrays of global data.
+	float2 pvt_depth[3][3];
 
 	for(int j=0; j<3; j++){
 		for(int i=0; i<3; i++){									// NB image must be surrounded by empty (zero valued) margin in the mipmap. This avoids the need to check image bounds.
-			pvt_img_grad[j][i]			= img_grad[read_idx];
+			pvt_img_grad[j][i]			= img_grad[read_idx_imgrad];
 			pvt_depth[j][i]				= depth[read_idx_depth];
-			read_idx++;
+			read_idx_imgrad++;
 			read_idx_depth++;
 		}
-		printf("\n__kernel void regularize_depth() chk_1.5  global_id_uint=%u,	read_idx=%u, read_idx_layer_step=%u,   j=%d", global_id_uint,	read_idx,	read_idx_layer_step,	j );
+		printf("\n__kernel void regularize_depth() chk_1.5  global_id_uint=%u,	read_idx=%u, read_idx_layer_step=%u,   j=%d", global_id_uint,	read_idx_imgrad,	read_idx_layer_step,	j );
 		barrier( CLK_GLOBAL_MEM_FENCE );
 
-		read_idx						+= read_idx_layer_step;
+		read_idx_imgrad						+= read_idx_layer_step;
 		read_idx_depth					+= depth_idx_layer_step;
 	}
 
@@ -791,22 +796,22 @@ __kernel void regularize_depth(
 
 		////
 		float regularized_depth			= sum_depth / sum_weights;
-	//	depth[write_idx]				= (float2){ regularized_depth, sum_weights };
+		depth[write_idx]				= (float2){ regularized_depth, sum_weights };
 
-		depth[read_idx_depth]			= (float2){0.1f,0.0f};
-		depth[write_idx]				= (float2){0.5f,0.0f};	//depth_test;
+	//	depth[read_idx_depth]			= (float2){0.1f,0.0f};
+	//	depth[write_idx]				= (float2){0.5f,0.0f};	//depth_test;
 
 		// fill next row of rolling arrays from __global buffers.
 		arr_idx++;
 		arr_idx							= arr_idx%3;				// increment, then integer modulus => cycle through [0,1,2]
-		read_idx						+= read_idx_layer_step;
+		read_idx_imgrad						+= read_idx_layer_step;
 		read_idx_depth					+= depth_idx_layer_step;
 
 		printf("\n__kernel void regularize_depth() chk_2.2  global_id_uint=%u,  read_idx=%u, read_idx_layer_step=%u,  read_idx_depth=%u,  depth_idx_layer_step=%u,  depth_width=%u",\
-															global_id_uint, 	read_idx, 	 read_idx_layer_step,	  read_idx_depth,	  depth_idx_layer_step,		depth_width );
+															global_id_uint, 	read_idx_imgrad, 	 read_idx_layer_step,	  read_idx_depth,	  depth_idx_layer_step,		depth_width );
 
 		for(int i=0; i<3; i++){
-			pvt_img_grad[arr_idx][i]	= img_grad[read_idx];
+			pvt_img_grad[arr_idx][i]	= img_grad[read_idx_imgrad];
 			printf("\n__kernel void regularize_depth() chk_2.3  global_id_uint=%u", global_id_uint);
 
 			barrier( CLK_GLOBAL_MEM_FENCE );
@@ -814,7 +819,7 @@ __kernel void regularize_depth(
 			pvt_depth[arr_idx][i]		= depth[read_idx_depth];
 			printf("\n__kernel void regularize_depth() chk_2.4  global_id_uint=%u", global_id_uint);
 
-			read_idx++;
+			read_idx_imgrad++;
 			read_idx_depth++;
 		}
 
@@ -822,7 +827,7 @@ __kernel void regularize_depth(
 		barrier( CLK_GLOBAL_MEM_FENCE );
 
 		write_idx 						+= depth_width;
-		if (write_idx > stop_offset) 	return;
+		if (write_idx >= stop_offset) 	return;
 	}
 }
 
