@@ -472,14 +472,14 @@ void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 			cv::Vec2f depth		=  mat_depth.at<cv::Vec2f>(row,col);
 			//cv::Vec2f rho		=  mat_rho.at<cv::Vec2f>(col,row);
 			float depth_f		= 0.0f;
-			if (depth[0]>0.0000001  ) { depth_f = 1/depth[0]; }					// && isfinite(depth[0])
-			Matx41f pixel 		= { scale*col, scale*row, depth_f, 1.0f };
+			if (depth[0]>0.0000001  ) { depth_f = depth[0]; }					// && isfinite(depth[0])
+			Matx41f pixel 		= { scale*col, scale*row, 1.0f, depth_f };
 
 
-			Matx41f point 		= current_frames[ current_frames_idx[0] ].inv_K * pixel;
-			float x 			= point(0,0) ;// / point(3,0);
-			float y 			= point(1,0) ;// / point(3,0);
-			float z 			= point(2,0) ;// / point(3,0);
+			Matx41f point 		= current_frames[ current_frames_idx[0] ].inv_K * pixel;						cout<<"\n\n\n("<<point<<")\n,\n("<<pixel<<")"<<flush;
+			float x 			= point(0,0)  / point(3,0);
+			float y 			= point(1,0)  / point(3,0);
+			float z 			= point(2,0)  / point(3,0);
 			if( x<max_depth && y<max_depth && z<max_depth && z>=0.0f){
 				//pcd_file << depth[0] <<" "<< depth[1] <<" "<< depth_f <<"\n";
 
@@ -1203,8 +1203,6 @@ void RunCL::DownloadAndSaveDepthUpdate( uint layer, uint offset_rho, uint offset
 	float 			max_range			= -1;
 	bool 			old_tiff			= tiff;
 					tiff				= true;
-//	uint 			cols				= patch_depthmap_width[ layer ]; 												// MipMap[ (layer+2)*8 + MiM_READ_COLS] +6;
-//	uint 			rows				= (MipMap[ (layer+2)*8 + MiM_READ_ROWS] +1) +6;									//	* depth_iter_per_layer; // 6; //
 
 	cv::Size 		depthUpdate_size( depthmap_params[layer].DM_WIN_COLS ,  depthmap_params[layer].DM_WIN_ROWS); 		// cols, rows );
 	size_t			depthUpdate_bytes	= depthmap_params[layer].DM_WIN_BYTES; 											//cols * rows 	* sizeof(cl_float2);
@@ -1215,14 +1213,14 @@ void RunCL::DownloadAndSaveDepthUpdate( uint layer, uint offset_rho, uint offset
 																																														cout<<"\nDownloadAndSaveDepthUpdate chk_2  "<<flush;
 	DownloadAndSave_2Channel( SE3_rho_map_mem, ss.str( ), paths.at( "SE3_rho_map_mem"),	depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, show, max_range,	offset_rho_bytes );			cout<<"\nDownloadAndSaveDepthUpdate chk_3  "<<flush;
 	DownloadAndSave_2Channel( depth_mem_temp,  ss.str( ), paths.at( "depth_mem_temp"),	depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, show, max_range,	offset_depth_bytes );		cout<<"\nDownloadAndSaveDepthUpdate chk_4  "<<flush;
-
+/*
 	depthUpdate_bytes	=	mm_size_bytes_C1;
 	depthUpdate_size	=	cv::Size( mm_Image_size.width, mm_Image_size.height/2.0f );
 	offset_depth_bytes	=	0;
 	ss	<<"_test_";
 
 	DownloadAndSave_2Channel( depth_mem_temp,  ss.str( ), paths.at( "depth_mem_temp"),	depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, show, max_range,	offset_depth_bytes );		cout<<"\nDownloadAndSaveDepthUpdate chk_4  "<<flush;
-
+*/
 	tiff = old_tiff;
 
 	//Save_vtk_depth( depth_mem, SE3_rho_map_mem, paths.at( "depth_mem_temp"), layer, depth_iter_per_layer );

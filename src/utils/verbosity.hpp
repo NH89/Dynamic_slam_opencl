@@ -104,7 +104,7 @@
 	#define	V_RUNCL_SAVECOSTVOLS						2
 	#define	V_RUNCL_STORE_KEYFRAME						2
 	#define	V_RUNCL_SAVE_VTK							2
-	#define V_RUNCL_SAVE_PCD							2
+	#define V_RUNCL_SAVE_PCD							-2
 	#define V_RUNCL_SAVE_CSV							2
 
 	#define	V_RUNCL_DOWNLOADANDSAVE						2
