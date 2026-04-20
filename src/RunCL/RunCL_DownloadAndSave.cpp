@@ -475,11 +475,11 @@ void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 			if (depth[0]>0.0000001  ) { depth_f = depth[0]; }					// && isfinite(depth[0])
 			Matx41f pixel 		= { scale*col, scale*row, 1.0f, depth_f };
 
-
-			Matx41f point 		= current_frames[ current_frames_idx[0] ].inv_K * pixel;						cout<<"\n\n\n("<<point<<")\n,\n("<<pixel<<")"<<flush;
+			Matx41f point 		= current_frames[ current_frames_idx[0] ].inv_K * pixel;						//  cout<<"\n\n\n("<<point<<")\n,\n("<<pixel<<")"<<flush;
 			float x 			= point(0,0)  / point(3,0);
 			float y 			= point(1,0)  / point(3,0);
 			float z 			= point(2,0)  / point(3,0);
+
 			if( x<max_depth && y<max_depth && z<max_depth && z>=0.0f){
 				//pcd_file << depth[0] <<" "<< depth[1] <<" "<< depth_f <<"\n";
 

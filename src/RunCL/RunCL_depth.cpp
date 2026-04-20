@@ -289,7 +289,7 @@ void RunCL::regularize_depth(uint write_layer ){
 	uint		buf_width					= uint_params[MM_COLS];								// For reading img_grad_mem
 
 	uint		depth_width					= depthmap_params[write_layer].DM_WIN_COLS;			//patch_depthmap_width[  write_layer ];
-	uint		depth_read_offset			= depthmap_params[write_layer].DM_DATA_OFFSET;		//patch_depthmap_offset[ write_layer ];
+	uint		depth_read_offset			= depthmap_params[write_layer].DM_WIN_OFFSET;		//patch_depthmap_offset[ write_layer ];
 																														// NB these are pixel offsets. The buffer has mm_size_bytes_C1. The depth patches are 4x4, so 16x reduced, but float2.
 	uint		write_offset				= depthmap_params[write_layer].DM_DATA_OFFSET +  depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET ;
 																														// depth_read_offset + depth_save_offset[ max_mipmap_layers-1];
@@ -346,6 +346,16 @@ void RunCL::regularize_depth(uint write_layer ){
 																																uint rho_save_offset 	= depthmap_params[ write_layer].DM_WIN_OFFSET;
 																																uint depth_save_offset_ = depthmap_params[ write_layer].DM_WIN_OFFSET  + depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET ;
 																																// depth_save_offset[ write_layer] + depth_save_offset[ max_mipmap_layers-1];
+
+																																cout<<"\n write_layer = "<< write_layer
+																																	<<"\n rho_save_offset   = depthmap_params[ write_layer].DM_WIN_OFFSET = "<< rho_save_offset
+																																	<<"\n depth_read_offset = depthmap_params[write_layer].DM_DATA_OFFSET = "<< depth_read_offset
+																																	<<"\n depthmap_params[write_layer].DM_DATA_OFFSET                     = "<< depthmap_params[write_layer].DM_DATA_OFFSET
+																																	<<"\n depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET             = "<< depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET
+																																	<<"\n"
+																																	<<"\n write_offset      = depthmap_params[ write_layer].DM_DATA_OFFSET  + depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET = "<< write_offset
+																																	<<"\n depth_save_offset_= depthmap_params[ write_layer].DM_WIN_OFFSET   + depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET = "<< depth_save_offset_
+																																	<<flush;
 
 																																DownloadAndSaveDepthUpdate( write_layer, rho_save_offset, depth_save_offset_, fname );
 																																// stringstream ss;	ss << dataset_frame_num << "_regularize_depth";

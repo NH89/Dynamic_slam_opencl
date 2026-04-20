@@ -96,8 +96,8 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 
 	uint	stop_offset									= layer_offset + (read_rows_ -1) * mm_cols + read_cols_	;												// bottom right corner of source image layer
 
-	int		lfoff										= -(u >1);																								//-(read_column != 0);
-	int		rtoff										=  (u < read_cols_-2);																					// (read_column < mm_cols-1);
+	int		rtoff										=  (u < read_cols_-2);						// +1														// (read_column < mm_cols-1);
+	int		lfoff										= -(u >1);									// -1														//-(read_column != 0);
 
 	float4	Jacobian_pvt_arr[block_size][6]				= {{zero_f4}};
 	float4	Hessian_pvt_arr[block_size][6][6]			= {{{zero_f4}}};																						// pvt variable for values in this column.
@@ -117,17 +117,17 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	uint 	offset_1_1_max								= mm_cols * read_rows_ / out_block_size 		 			+ ST3_offset;
 
 	for (uint row_in_block=0; (row_in_block<block_size)&&(read_index<=stop_offset&&read_index>0); row_in_block++, v++,  read_index +=mm_cols){					// stop offset prevents bottom row patches from overrunning the bottom of the image layer. // NB readindex may be 0 if not in range according to lookup table.
-		int upoff										= -(v  >1 )*mm_cols;																					//-(read_row  != 0)*mm_cols;	// up, down, left, right offsets, by boolean logic.
-		int dnoff										=  (v  < read_rows_-2) * mm_cols;																		// (read_row  < read_rows_-1) * mm_cols;
+		int dnoff										=  (v  < read_rows_-2) * mm_cols;			// +1														// (read_row  < read_rows_-1) * mm_cols;
+		int upoff										= -(v  >1 )*mm_cols;						// -1														//-(read_row  != 0)*mm_cols;	// up, down, left, right offsets, by boolean logic.
 
 		float4 pu, pd, pl, pr;
-		pr												=  img[read_index + rtoff];
-		pl												=  img[read_index + lfoff];
-		pu												=  img[read_index + upoff];
-		pd												=  img[read_index + dnoff];
+		pr												=  img[read_index + rtoff];					// +1
+		pl												=  img[read_index + lfoff];					// -1
+		pu												=  img[read_index + upoff];					// -mm_cols
+		pd												=  img[read_index + dnoff];					// +mm_cols
 
-		float4 gu										= { (pr.x - pl.x)/2.0f,  (pr.y - pl.y)/2.0f,  (pr.z - pl.z)/2.0f,   0.5f };								// Signed img gradient in hsv
-		float4 gv										= { (pd.x - pu.x)/2.0f,  (pd.y - pu.y)/2.0f,  (pd.z - pu.z)/2.0f,   0.5f };
+		float4 gu										= { (pr.x - pl.x)/2.0f,  (pr.y - pl.y)/2.0f,  (pr.z - pl.z)/2.0f,   0.5f };		// right-left			// Signed img gradient in hsv,
+		float4 gv										= { (pd.x - pu.x)/2.0f,  (pd.y - pu.y)/2.0f,  (pd.z - pu.z)/2.0f,   0.5f };		// down -up				// in +ve (u,v) directions, origin at top left of image.
 		img_grad_uv[ read_index ]						= (float2){ gu.x, gv.x };
 
 		float	inv_depth								=  depth_map[read_index];
