@@ -291,7 +291,8 @@ void RunCL::regularize_depth(uint write_layer ){
 	uint		depth_width					= depthmap_params[write_layer].DM_WIN_COLS;			//patch_depthmap_width[  write_layer ];
 	uint		depth_read_offset			= depthmap_params[write_layer].DM_WIN_OFFSET;		//patch_depthmap_offset[ write_layer ];
 																														// NB these are pixel offsets. The buffer has mm_size_bytes_C1. The depth patches are 4x4, so 16x reduced, but float2.
-	uint		write_offset				= depthmap_params[write_layer].DM_DATA_OFFSET +  depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET ;
+	uint		write_offset				= depthmap_params[write_layer].DM_DATA_OFFSET +  depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET;
+	uint		regluarized_dm_offset		= depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET ;
 																														// depth_read_offset + depth_save_offset[ max_mipmap_layers-1];
 																														// Place to store the regularized depth maps. NB these maps (pixels+margins) are packed densely in the buffer, _not_ as a mipmap.
 	uint		patch_height				= patch_size;
@@ -329,7 +330,9 @@ void RunCL::regularize_depth(uint write_layer ){
 	_clSetKernelArg( kernel, 8, sizeof(cl_mem),						&img_grad_mem,										fname);		// __global 	float2*		img							//6
 	_clSetKernelArg( kernel, 9, sizeof(cl_mem),						&depth_mem_temp,									fname);		// __global 	float*		img							//7
 
-	size_t	threads_to_launch	= patch_num_threads[write_layer+1];
+	_clSetKernelArg( kernel, 10, sizeof(int),						&regluarized_dm_offset,								fname);		// __private	uint		stop_offset,				//4
+
+	size_t	threads_to_launch	= patch_num_threads[write_layer+2];
 	size_t	local_work_size_	= block_size;
 
 	_clEnqueueNDRangeKernel(										// NB depth iteration is internal to the kernel within the layer.  Regularization and propagation to next layer requires further kernels.
@@ -344,12 +347,15 @@ void RunCL::regularize_depth(uint write_layer ){
 																															if(verbosity>local_verbosity_threshold) {
 																																cout<<"\n\nRunCL::regularize_depth(..)_chk3"<<flush;
 																																uint rho_save_offset 	= depthmap_params[ write_layer].DM_WIN_OFFSET;
-																																uint depth_save_offset_ = depthmap_params[ write_layer].DM_WIN_OFFSET  + depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET ;
+																																uint depth_save_offset_ = depthmap_params[ write_layer].DM_WIN_OFFSET  + depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET ;	//DM_WIN_OFFSET
 																																// depth_save_offset[ write_layer] + depth_save_offset[ max_mipmap_layers-1];
+
+																																DownloadAndSaveDepthUpdate( write_layer, rho_save_offset, depth_save_offset_, fname );
 
 																																cout<<"\n write_layer = "<< write_layer
 																																	<<"\n rho_save_offset   = depthmap_params[ write_layer].DM_WIN_OFFSET = "<< rho_save_offset
-																																	<<"\n depth_read_offset = depthmap_params[write_layer].DM_DATA_OFFSET = "<< depth_read_offset
+																																	<<"\n depth_read_offset = depthmap_params[ write_layer].DM_WIN_OFFSET = "<< depth_read_offset
+																																	<<"\n"
 																																	<<"\n depthmap_params[write_layer].DM_DATA_OFFSET                     = "<< depthmap_params[write_layer].DM_DATA_OFFSET
 																																	<<"\n depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET             = "<< depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET
 																																	<<"\n"
@@ -357,7 +363,6 @@ void RunCL::regularize_depth(uint write_layer ){
 																																	<<"\n depth_save_offset_= depthmap_params[ write_layer].DM_WIN_OFFSET   + depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET = "<< depth_save_offset_
 																																	<<flush;
 
-																																DownloadAndSaveDepthUpdate( write_layer, rho_save_offset, depth_save_offset_, fname );
 																																// stringstream ss;	ss << dataset_frame_num << "_regularize_depth";
 																																// cv::Size new_Image_size = cv::Size(mm_width, mm_height);
 																																// ss << "_raw_";

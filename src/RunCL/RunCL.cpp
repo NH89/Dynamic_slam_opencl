@@ -378,6 +378,10 @@ void RunCL::initialize_patch_depthmap_offset(){
 // 		patch_depthmap_width[ layer ]	= read_cols + 2*dm_margin;
 */
 																																			if(verbosity>local_verbosity_threshold) cout << "\n\nRunCL::initialize_patch_depthmap_offset_chk_2, layer="<<layer
+																																				<<"\n MipMap[ layer*8 + MiM_READ_COLS]="		<<MipMap[ layer*8 + MiM_READ_COLS]
+																																				<<"\n MipMap[ layer*8 + MiM_READ_ROWS]="		<<MipMap[ layer*8 + MiM_READ_ROWS]
+																																				<<"\n read_cols="								<<read_cols
+																																				<<"\n read_rows="								<<read_rows
 																																				<<"\n depthmap_params[layer].DM_MARGIN="		<<depthmap_params[layer].DM_MARGIN
 																																				<<"\n depthmap_params[layer].DM_WIN_COLS="		<<depthmap_params[layer].DM_WIN_COLS
 																																				<<"\n depthmap_params[layer].DM_DATA_COLS="		<<depthmap_params[layer].DM_DATA_COLS
