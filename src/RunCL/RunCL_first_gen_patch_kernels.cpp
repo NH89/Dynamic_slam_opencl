@@ -180,8 +180,8 @@ void RunCL::rho_sq( uint out_block_size, uint iter, uint frame_idx, uint layer, 
 																																				float max_range_ = 0;
 																																				DownloadAndSave( depth_mem,   	ss.str(),   paths.at("depth_mem"),   	mm_size_bytes_C1,   mm_Image_size,   CV_32FC1, 	show , max_range_ );	cout << "\nDownloadAndSave (.. depth_mem_GT ..)\n"<<flush;
 																																				for(int i=0; i<5; i++){
-																																					ss<<"_"<<i;
-																																					DownloadAndSave_3Channel( current_frames[current_frames_idx[i]].img_buf,  ss.str(),   paths.at("imgmem"),   	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , max_range_);
+																																					stringstream ss_; ss_<< ss.str()<<"_current_frames_idx"<<i;
+																																					DownloadAndSave_3Channel( current_frames[current_frames_idx[i]].img_buf,  ss_.str(),   paths.at("imgmem"),   	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , max_range_);
 																																				}
 																																				//DownloadAndSave_2Channel_volume(  SE3_weight_map_mem,	ss.str( ), paths.at( "SE3_weight_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	vol_layers);
 																																				DownloadAndSave_2Channel_volume(  SE3_incr_map_mem,		ss.str( ), paths.at( "SE3_incr_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	vol_layers);

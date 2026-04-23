@@ -168,7 +168,7 @@
 
 
 	#define	V_RUNCL_UPDATE_K2K_BUF						2
-	#define	V_RUNCL_RHO_SQ								-2 //
+	#define	V_RUNCL_RHO_SQ								2 //
 	#define	V_RUNCL_REDUCE_PATCH_RHO					2
 	#define	V_RUNCL_UPDATE_K2K							2
 

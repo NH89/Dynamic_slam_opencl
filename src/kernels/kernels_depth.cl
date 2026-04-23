@@ -359,8 +359,8 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 																																					//st3=[%d]=(%f,	%f,	%f,	%f),     past_frame_idx,
 																																					//	st3[past_frame_idx].s0,      st3[past_frame_idx].s1,      st3[past_frame_idx].s2,      st3[past_frame_idx].s3,
 																																					if(global_id_uint==0){
-																																						printf("\n__kernel void update_depth_2(..) max_frames = %d", max_frames );
-																																						for (uint		past_frame_idx=0; past_frame_idx < max_frames; past_frame_idx++){
+																																						printf("\n__kernel void update_depth_2(..) frame_count=%d,  max_frames = %d", frame_count, max_frames );
+																																						for (uint		past_frame_idx=0; past_frame_idx <= max_frames; past_frame_idx++){
 																																							printf("\n__kernel void update_depth_2(..)   \ninv_k2k[%d]=\n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f)",\
 																																								past_frame_idx,\
 																																								inv_k2k[past_frame_idx].s0,  inv_k2k[past_frame_idx].s1,  inv_k2k[past_frame_idx].s2,  inv_k2k[past_frame_idx].s3,\
@@ -454,7 +454,7 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 					img_cur_pvt[	row_in_block]	= img_cur[				read_index];
 
 
-			for (uint 	past_frame_idx=1; past_frame_idx < max_frames; past_frame_idx++){																// step through past frames //////  /*iter+2*/
+			for (uint 	past_frame_idx=1; past_frame_idx <= max_frames; past_frame_idx++){																// step through past frames //////  /*iter+2*/
 
 				float	 inv_depth		 = inv_depth_step;	//0.0f;
 				for (int inv_depth_layer = 0;    inv_depth_layer<NUM_DEPTH_STEPS; inv_depth_layer++ ){							// step through depth layers
