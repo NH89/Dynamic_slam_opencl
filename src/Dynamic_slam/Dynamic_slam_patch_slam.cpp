@@ -158,18 +158,37 @@ void Dynamic_slam::estimate_depth(){
 																																		}
 	//float default_inv_depth				= 0.007f;																						// half the max inv depth, i.e. twice the min depth.
 	//runcl._clEnqueueFillBuffer( runcl.uload_queue, runcl.depth_mem,	&default_inv_depth, sizeof(float), 0, runcl.mm_size_bytes_C1, fname ); // TODO  remove this, temporary for testing tracking and mapping given GT poses.
+	runcl._clEnqueueFillBuffer( runcl.uload_queue, runcl.depth_mem_temp,	&zero_flt, sizeof(float), 0, runcl.mm_size_bytes_C1, fname );
+
 
 	for (int layer=4; layer>=0; layer--){
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\nDynamic_slam::estimate_depth()  layer= "<<
 																																			layer << endl <<flush;
+																																			/*
+																																			size_t depthUpdate_bytes	=	runcl.mm_size_bytes_C1;
+																																			cv::Size depthUpdate_size	=	cv::Size( runcl.mm_Image_size.width, runcl.mm_Image_size.height/2.0f );
+																																			size_t offset_depth_bytes	=	0;
 
-																																			 // For debugging, get a larger, finer Rho map
-																																			uint	out_block_size		= 2;
-																																			uint	layer_				= 0;
-																																			for( uint frame_index=0; frame_index<num_current_frames; frame_index++){
-																																				runcl.rho_sq( out_block_size, 10+frame_index, frame_index, layer_, runcl.cur_frames_k2kbuf );
-																																			}
+																																			stringstream 	ss;
+																																			ss << "ds-framenum"<<runcl.dataset_frame_num<<"_img_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_"<<fname;
+																																			ss	<<"_test__";
+
+																																			bool 			show				= false;
+																																			float 			max_range			= -1;
+																																			bool 			old_tiff			= runcl.tiff;
+																																							runcl.tiff				= true;
+
+																																			runcl.DownloadAndSave_2Channel( runcl.depth_mem_temp,  ss.str( ), runcl.paths.at( "depth_mem_temp"),	depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, show, max_range,	offset_depth_bytes );	cout<<"\nDownloadAndSaveDepthUpdate chk_4  "<<flush;
+
+																																			runcl.tiff = old_tiff;
+																																			*/
+																																			//  // For debugging, get a larger, finer Rho map
+																																			// uint	out_block_size		= 2;
+																																			// uint	layer_				= 0;
+																																			// for( uint frame_index=0; frame_index<num_current_frames; frame_index++){
+																																			// 	runcl.rho_sq( out_block_size, 10+frame_index, frame_index, layer_, runcl.cur_frames_k2kbuf );
+																																			// }
 																																		}
 		// uint out_block_size = 4;					// NB constexpr uint out_block_size	= OUT_BLOCK_SIZE	 4
 		//runcl.update_depth( out_block_size, layer);			// LK

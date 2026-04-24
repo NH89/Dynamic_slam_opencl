@@ -571,7 +571,7 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 																								block_row, NUM_DEPTH_STEPS , inv_depth_layer ,\
 																								rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].x , global_id_uint, frame_count );
 */
-					if( rho_pvt_arr[  block_row*NUM_DEPTH_STEPS + inv_depth_layer ].x  > 0 ){
+					if( rho_pvt_arr[  block_row*NUM_DEPTH_STEPS + inv_depth_layer ].x  > 0 ){	//	where .x = pixel count.
 																							depth_layer_rho_sq[ inv_depth_layer]	= rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].y  /  rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].x ;
 																																			//    __kernel void update_depth_2, chk_4  global_id_uint=%u, block_row=%u, frame_count=%u,
 																																		printf("\n__kernel void update_depth_2, chk_3, global_id_uint=%u, block_row=%u, frame_count=%u, inv_depth_layer=%u,	depth_layer_rho_sq[ inv_depth_layer ]=%f,  rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].y = %f   /  rho_pvt_arr[	block_row *NUM_DEPTH_STEPS  + inv_depth_layer ].x  = %f,     ",\
@@ -602,7 +602,7 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 																							brightness			= img_cur_pvt[ block_row ].x;
 																							pixels_sampled		= rho_pvt_arr[ opt_depth_layer[1] ].x;
 																							confidence			= d2ydx2  * pixels_sampled	*	brightness / prediction;
-																							if(confidence<0.0f){	confidence = FLT_MIN;}	// TODO could clamp  0<confidence<1
+																							if(confidence<0.0f || prediction<0.0f){	confidence = FLT_MIN;}		// TODO could clamp  0<confidence<1
 				// save depth, confidence and predicted rho.
 																							Rho_[	offset_1]	= (float2) { prediction,	prediction/ depth_layer_rho_sq[ opt_depth_layer[1] ]	};	//{ 0.3f, prediction }; //
 // 																				float U_;
@@ -665,8 +665,9 @@ __kernel void regularize_depth(
 	__global	float2*		img_grad,					//8			(d_val/du, d_val/dv)	### TODO Need to be reading a patch condensed version for the img pyr layer.
 	__global	float2*		depth,						//9			{ optimum,	confidence = d2ydx2 * pixels_sampled * brightness / prediction; }	### TODO need to (i) write regularized version, to the right of 1st version. (ii) take account of previous layer, => close null zone gaps eg screen
 														//																											(iii) possibly iterate regularization ?  (iv) scale for use in tracking.  (v) ? reduce range and refine step size of depth search.
-
-	__private	const uint	regularized_dm_offset		//10
+	__private	const uint	prev_layer_dm_offset,		//10
+	__private	const uint	prev_layer_depth_width		//11
+	//__private	const uint	regularized_dm_offset		//10
 )
 {
 	uint global_id_uint 				= get_global_id(0);
@@ -682,9 +683,13 @@ __kernel void regularize_depth(
 	uint read_idx_depth					= depth_read_offset + pixel_offset;
 	uint write_idx						= write_offset		+ pixel_offset;
 
+	uint prev_layer_u					= u/2;
+	uint prev_layer_v					= v/2;
+	uint prev_layer_index				= prev_layer_dm_offset + prev_layer_u + (prev_layer_v * prev_layer_depth_width);
+/*
 																																				if(global_id_uint==0){ printf("\n__kernel void regularize_depth(..) chk_0  lookup_table_read_offset=%u,	 read_idx_depth=%u,  write_idx=%u,  regluarized_dm_offset=%u,  write_idx -read_idx_depth -regluarized_dm_offset=%d,  buf_width=%u, write_offset=%u ", \
 																																																						   lookup_table_read_offset, 	 read_idx_depth,     write_idx, 	regularized_dm_offset,    ((int)write_idx -(int)read_idx_depth -(int)regularized_dm_offset),   buf_width,    write_offset ); }
-
+*/
 	barrier( CLK_GLOBAL_MEM_FENCE );
 
 	float2 pvt_depth[3][3];				// 3x3 arrays of global data.
@@ -696,15 +701,17 @@ __kernel void regularize_depth(
 			pvt_depth[j][i]				= depth[read_idx_depth];
 			read_idx_depth++;
 		}
+/*
 																																				if(global_id_uint==0) printf("\n__kernel void regularize_depth() chk_1.5  global_id_uint=%u,	read_idx_depth=%u,   j=%d", \
 																																																	                      global_id_uint,		read_idx_depth,      j );
+*/
 		barrier( CLK_GLOBAL_MEM_FENCE );
-
 		read_idx_depth					+= depth_idx_layer_step;
 	}
-
+/*
 																																				if(global_id_uint==0) printf("\n__kernel void regularize_depth() chk_2  global_id_uint=%u,  depth_idx_layer_step=%u,   depth_width=%u \n\n", \
 																																																					    global_id_uint,     depth_idx_layer_step,      depth_width );
+*/
 	barrier( CLK_GLOBAL_MEM_FENCE );
 	uint arr_idx[3]						= {0,1,2};
 	float lambda_sq						= pown( 0.25, 2);								// typical lambda should be 0.0 to 0.25. => lambda_sq 0.0 to 0.0625
@@ -716,18 +723,18 @@ __kernel void regularize_depth(
 																						//float sum_aniostropy			= 0.0f;
 		float temp_anisotropy;
 		float depth_flt;
-																						//float confidence;
+		float confidence;
 		float weight;
 
 		float2 pvt_img_grad				= img_grad[ read_idx_imgrad];					// lookup_ref.z];
 
 		float anisotropy[3][3];
-		anisotropy[0][0]				=	M_SQRT2_F * fabs(pvt_img_grad.x		+pvt_img_grad.y	);											// magnitude of scalar img grad =  sqrt(1/2) * fabs( imgrad_x + imgrad_y)   i.e cos(45)=sin(45)
+		anisotropy[0][0]				=	M_SQRT2_F * fabs(pvt_img_grad.x		+pvt_img_grad.y	);												// magnitude of scalar img grad =  sqrt(1/2) * fabs( imgrad_x + imgrad_y)   i.e cos(45)=sin(45)
 		anisotropy[0][1]				=				fabs(					 pvt_img_grad.y	);
 		anisotropy[0][2]				=	M_SQRT2_F * fabs(pvt_img_grad.x		-pvt_img_grad.y	);
 		anisotropy[1][0]				=				fabs(pvt_img_grad.x						);
 		for (int i=0; i<4; i++){
-			anisotropy[i/3][i%3]		= anisotropy[i/3][i%3] / ( 1 + ( pown(anisotropy[i/3][i%3],2) / lambda_sq) );						// Perona-Malik non-linear fn.
+			anisotropy[i/3][i%3]		= anisotropy[i/3][i%3] / ( 1 + ( pown(anisotropy[i/3][i%3],2) / lambda_sq) );							// Perona-Malik non-linear fn.
 		}
 		anisotropy[1][1]				=	( anisotropy[0][0] +anisotropy[0][1] +anisotropy[0][2] +anisotropy[1][0] )/ 4.0f;
 		anisotropy[1][2]				=	anisotropy[1][0];
@@ -738,19 +745,26 @@ __kernel void regularize_depth(
 		for (int j=0; j<3; j++){
 			for (int k=0; k<3; k++){
 				depth_flt				= pvt_depth[ arr_idx[j] ][k].x;
-																						//confidence					= pvt_depth[ arr_idx[j] ][k].y;
+				confidence				= pvt_depth[ arr_idx[j] ][k].y;
 				temp_anisotropy			= anisotropy[j][k];
 
-				weight					= 1.0f / temp_anisotropy;						// confidence 										// confidence * img grad in dir of pixel.		// use mad( ,  ,  )  multiply add
+				weight					= confidence / temp_anisotropy;					//  1.0f 												// confidence * img grad in dir of pixel.		// use mad( ,  ,  )  multiply add
 																						//sum_aniostropy				+= temp_anisotropy;
 				sum_weights				+= weight;
 				sum_depth				+= depth_flt * weight;
 			}
 		}
-
+		// previous layer
+		float2 prev_layer				= depth[prev_layer_index];
+		if( prev_layer.y >0.0f  ){															// i.e. If not 1st layer to be processed.
+			weight						= prev_layer.y ;								// NB this is regularized confidence.
+			sum_weights					+= 1;
+			sum_depth					+= prev_layer.x;// * weight;
+		}
+/*
 		                                                                                                                                        if(global_id_uint==0) printf("\n__kernel void regularize_depth() chk_2.1  global_id_uint=%u,  read_idx_depth=%u,  write_idx=%u,   write_idx -read_idx_depth -regluarized_dm_offset=%d", \
 			                                                                                                                                                                                                              global_id_uint,     read_idx_depth,     write_idx,     ((int)write_idx -(int)read_idx_depth -(int)regularized_dm_offset) );
-
+*/
 		float regularized_depth			= sum_depth / sum_weights;
 		float2 out;
 		//if (global_id_uint==0){	out		= (float2){ u, patch_row }; }
@@ -762,27 +776,29 @@ __kernel void regularize_depth(
 			arr_idx[j]					+=1;
 			arr_idx[j]					= arr_idx[j]%3;
 		}
-
-
+/*
 		                                                                                                                                        if(global_id_uint==0){
 			                                                                                                                                    	printf("\n__kernel void regularize_depth() chk_2.2  global_id_uint=%u,  read_idx_layer_step=%u,  read_idx_depth=%u,  write_idx=%u,  regluarized_dm_offset=%u,  write_idx -read_idx_depth -regluarized_dm_offset=%d,               depth_idx_layer_step=%u,  depth_width=%u,   arr_idx[j]=%u,%u,%u",\
 																                                                                                                                                        global_id_uint, 	read_idx_layer_step,     read_idx_depth,     write_idx,     regularized_dm_offset,    ((int)write_idx -(int)read_idx_depth -(int)regularized_dm_offset),  depth_idx_layer_step,     depth_width,      arr_idx[0],arr_idx[1],arr_idx[2] );
 		}
-
+*/
 		for(int i=0; i<3; i++){
+/*
 			                                                                                                                                    if(global_id_uint==0) printf("\n__kernel void regularize_depth() chk_2.3  global_id_uint=%u,   write_idx -read_idx_depth -regluarized_dm_offset=%d",\
 				                                                                                                                                                                                                          global_id_uint,     ((int)write_idx -(int)read_idx_depth -(int)regularized_dm_offset) );
-
+*/
 			pvt_depth[ arr_idx[2] ][i]	= depth[read_idx_depth];						// Load next row of raw depth data.
 			barrier( CLK_GLOBAL_MEM_FENCE );
 			read_idx_depth++;
 		}
-
+/*
 																																				if(global_id_uint==0) printf("\n__kernel void regularize_depth() chk_3  global_id_uint=%u,  patch_row=%u,   write_idx -read_idx_depth -regluarized_dm_offset=%d \n",\
 			                                                                                                                                                                                                            global_id_uint,     patch_row,     ((int)write_idx -(int)read_idx_depth -(int)regularized_dm_offset)    );
+*/
 		read_idx_depth					+= depth_idx_layer_step;
 		read_idx_imgrad					+= buf_width;
 		write_idx 						+= depth_width;
+		prev_layer_index				+= prev_layer_depth_width * patch_row%2;	// i.e. increment every second loop iteration.
 		if (write_idx >= stop_offset) 	return;
 	}
 }

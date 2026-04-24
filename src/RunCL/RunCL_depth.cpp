@@ -174,7 +174,6 @@ void RunCL::update_depth_2( uint out_block_size, uint layer){
 	uint		dm_data_rows				= depthmap_params[layer].DM_DATA_ROWS;
 	uint		dm_data_stop				= write_offset + dm_win_cols * dm_data_rows;
 
-
 	float		inv_depth_step				= fp32_params[MAX_INV_DEPTH] / ((float)NUM_DEPTH_STEPS);
 
 	uint		layer_offset				= MipMap[layer*8 + MiM_READ_OFFSET];
@@ -183,20 +182,6 @@ void RunCL::update_depth_2( uint out_block_size, uint layer){
 	size_t		threads_to_launch			= patch_num_threads[layer];
 	size_t		local_work_size_			= block_size;									// Could be changed to an integer multiple, i.e. use "RunCL::local_work_size", beware numbers not multiples of out_block_size.
 	uint		local_mem_size				= (block_size * local_work_size_)/(pow( out_block_size, 2) ); // i.e. one entry per 4x4 pixel patch.
-
-	// Zero output buffers
-	float 		minus_one_f					=-1.0f;
-	uint 		depth_iter_per_layer		= 1; //3
-	uint 		cols						=  MipMap[ (layer+2)*8 + MiM_READ_COLS];
-	uint 		rows						= (MipMap[ (layer+2)*8 + MiM_READ_ROWS] + 1)	*  depth_iter_per_layer;
-	size_t		depthUpdate_bytes			= cols * rows * sizeof(cl_float2);
-
-	float 		default_inv_depth			= 0.07f;	// half the max inv depth, i.e. twice the min depth.
-
-	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, &minus_one_f, sizeof(float), 0, depthUpdate_bytes, fname   );
-	_clEnqueueFillBuffer( uload_queue, depth_mem_temp,  &minus_one_f, sizeof(float), 0, depthUpdate_bytes, fname   );
-
-	if (layer==4) { _clEnqueueFillBuffer( uload_queue, depth_mem, &default_inv_depth, sizeof(float), 0, mm_size_bytes_C1, fname   ); }	// TODO  remove this, temporary for testing tracking and mapping given GT poses.
 
 	// constant buffers uploaded
 
@@ -217,8 +202,6 @@ void RunCL::update_depth_2( uint out_block_size, uint layer){
 	_clSetKernelArg( kernel, 11, sizeof(uint),						&dm_win_cols,										fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
 	_clSetKernelArg( kernel, 12, sizeof(uint),						&dm_data_rows,										fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
 	_clSetKernelArg( kernel, 13, sizeof(uint),						&dm_data_stop,										fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
-
-
 
 	_clSetKernelArg( kernel, 14, sizeof(float),						&inv_depth_step,									fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
 
@@ -291,8 +274,10 @@ void RunCL::regularize_depth(uint write_layer ){
 	uint		depth_width					= depthmap_params[write_layer].DM_WIN_COLS;			//patch_depthmap_width[  write_layer ];
 	uint		depth_read_offset			= depthmap_params[write_layer].DM_WIN_OFFSET;		//patch_depthmap_offset[ write_layer ];
 																														// NB these are pixel offsets. The buffer has mm_size_bytes_C1. The depth patches are 4x4, so 16x reduced, but float2.
-	uint		write_offset				= depthmap_params[write_layer].DM_DATA_OFFSET +  depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET;
-	uint		regluarized_dm_offset		= depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET ;
+	uint		write_offset				= depthmap_params[write_layer].DM_DATA_OFFSET	+  depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET;
+	uint		prev_layer_dm_offset		= depthmap_params[write_layer+1].DM_DATA_OFFSET +  depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET;
+	uint		prev_layer_depth_width		= depthmap_params[write_layer+1].DM_WIN_COLS;
+	//uint		regluarized_dm_offset		= depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET ;
 																														// depth_read_offset + depth_save_offset[ max_mipmap_layers-1];
 																														// Place to store the regularized depth maps. NB these maps (pixels+margins) are packed densely in the buffer, _not_ as a mipmap.
 	uint		patch_height				= patch_size;
@@ -329,8 +314,10 @@ void RunCL::regularize_depth(uint write_layer ){
 	_clSetKernelArg( kernel, 7, sizeof(cl_mem),						&patch_lookup_table_buf,							fname);		// __constant 	uint4*		lookup_table,				//5
 	_clSetKernelArg( kernel, 8, sizeof(cl_mem),						&img_grad_mem,										fname);		// __global 	float2*		img							//6
 	_clSetKernelArg( kernel, 9, sizeof(cl_mem),						&depth_mem_temp,									fname);		// __global 	float*		img							//7
+	_clSetKernelArg( kernel, 10, sizeof(int),						&prev_layer_dm_offset,								fname);		// __private	uint		stop_offset,				//4
+	_clSetKernelArg( kernel, 11, sizeof(int),						&prev_layer_depth_width,							fname);		// __private	uint		stop_offset,				//4
 
-	_clSetKernelArg( kernel, 10, sizeof(int),						&regluarized_dm_offset,								fname);		// __private	uint		stop_offset,				//4
+	//_clSetKernelArg( kernel, 10, sizeof(int),						&regluarized_dm_offset,								fname);		// __private	uint		stop_offset,				//4
 
 	size_t	threads_to_launch	= patch_num_threads[write_layer+2];
 	size_t	local_work_size_	= block_size;
