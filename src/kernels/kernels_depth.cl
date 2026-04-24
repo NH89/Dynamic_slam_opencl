@@ -748,7 +748,7 @@ __kernel void regularize_depth(
 				confidence				= pvt_depth[ arr_idx[j] ][k].y;
 				temp_anisotropy			= anisotropy[j][k];
 
-				weight					= confidence / temp_anisotropy;					//  1.0f 												// confidence * img grad in dir of pixel.		// use mad( ,  ,  )  multiply add
+				weight					= clamp( (confidence / temp_anisotropy), 0.0f, FLT_MAX );					//  1.0f 												// confidence * img grad in dir of pixel.		// use mad( ,  ,  )  multiply add
 																						//sum_aniostropy				+= temp_anisotropy;
 				sum_weights				+= weight;
 				sum_depth				+= depth_flt * weight;
@@ -756,10 +756,10 @@ __kernel void regularize_depth(
 		}
 		// previous layer
 		float2 prev_layer				= depth[prev_layer_index];
-		if( prev_layer.y >0.0f  ){															// i.e. If not 1st layer to be processed.
-			weight						= prev_layer.y ;								// NB this is regularized confidence.
-			sum_weights					+= 1;
-			sum_depth					+= prev_layer.x;// * weight;
+		if( prev_layer.y >0.0f && prev_layer.x>0.0f ){															// i.e. If not 1st layer to be processed.
+			weight						= 0.1 ;								// NB this is regularized confidence.
+			sum_weights					+= weight;
+			sum_depth					+= prev_layer.x * weight;
 		}
 /*
 		                                                                                                                                        if(global_id_uint==0) printf("\n__kernel void regularize_depth() chk_2.1  global_id_uint=%u,  read_idx_depth=%u,  write_idx=%u,   write_idx -read_idx_depth -regluarized_dm_offset=%d", \

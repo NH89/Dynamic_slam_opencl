@@ -443,6 +443,7 @@ void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 	ReadOutput(		mat_rho.data,	rho_buf,	image_size_bytes, offset_rho_bytes); 																// NB contains elements of type_mat, (CV_32FC1 for most buffers)
 
 	Save_csv_mat(	mat_depth, folder, layer );
+	SavePoints_asciiPLY( mat_depth, folder, layer );
 
 	// generate filename, by inserting folder "/vtp", and adding ".vtp" suffix,  // make csv folder, if necessary
 	stringstream ss;
@@ -495,7 +496,7 @@ void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 
 void RunCL::Save_csv_mat(cv::Mat mat, std::filesystem::path folder, uint layer ){  // currently assumes 2 channel float data.
 	int local_verbosity_threshold = V_RUNCL_SAVE_CSV;
-																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::Save_scv_mat chk0"<<flush;
+																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::Save_scv chk0"<<flush;
 																																				PRINT_MATX44F(	current_frames[ current_frames_idx[0] ].inv_K, );
 																																			}
 	std::string  	date_time_str = date_time_string();
@@ -506,7 +507,7 @@ void RunCL::Save_csv_mat(cv::Mat mat, std::filesystem::path folder, uint layer )
 	folder.replace_filename( ss.str() );
 
 	// open file
-	std::ofstream csv_file ( folder ); 																					if(!csv_file ){std::cerr<<"\n\nvoid RunCL::Save_pcd_depth(..) failed to open file for writing: "<<folder<<endl<<flush;  exit_(1);}
+	std::ofstream csv_file ( folder ); 																					if(!csv_file ){std::cerr<<"\n\nvoid RunCL::Save_csv(..) failed to open file for writing: "<<folder<<endl<<flush;  exit_(1);}
 	csv_file << "# .CSV";
 	csv_file << "\ncv::Vec2f depth		=  mat.at<cv::Vec2f>(row,col);";
 	csv_file << "\nrow\tcol\tdepth[0]\tdepth[1]";
@@ -519,9 +520,67 @@ void RunCL::Save_csv_mat(cv::Mat mat, std::filesystem::path folder, uint layer )
 		csv_file << "\n" ;
 	}
 	csv_file.close();
-																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_pcd finished\n"<<flush;
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_csv finished\n"<<flush;
 }
 
+void RunCL::SavePoints_asciiPLY ( cv::Mat mat, std::filesystem::path folder, uint layer ){
+	int local_verbosity_threshold = V_RUNCL_SAVE_PLY;
+																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::Save_ply chk0"<<flush;
+																																				PRINT_MATX44F(	current_frames[ current_frames_idx[0] ].inv_K, );
+																																			}
+	std::string  	date_time_str = date_time_string();
+	stringstream 	ss;
+	ss 				<< date_time_str << "ds-framenum"<<dataset_frame_num<<"_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_DepthUpdate_.csv";
+	folder 			+= "/ply/";
+	if(std::filesystem::create_directory(folder )) { 																						if(verbosity>-2) std::cerr<< "Directory Created: "<<folder<<std::endl;}
+	folder.replace_filename( ss.str() );
+
+	int numpt		= mat.cols * mat.rows;
+
+	// open file
+	std::ofstream csv_file ( folder ); 																					if(!csv_file ){std::cerr<<"\n\nvoid RunCL::Save_ply(..) failed to open file for writing: "<<folder<<endl<<flush;  exit_(1);}
+	csv_file << "ply \n format ascii 1.0\n comment particle cloud from Dynamic_slam_opencl\n element vertex %i\n", numpt;
+	csv_file << "property float x\nproperty float y\nproperty float z\n";
+	csv_file << "end_header\n";
+
+	for(float row=0; row<mat.rows ; row ++ ){
+		for(float col=0; col<mat.cols ; col ++ ){
+			cv::Vec2f depth		=  mat.at<cv::Vec2f>(row,col);
+			csv_file << "\n" << row << "\t" << col << "\t" << depth[0];		// << "\t" << depth[1];
+		}
+		csv_file << "\n" ;
+	}
+	csv_file.close();
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_ply finished\n"<<flush;
+/*	// from SavePoints_asciiPLY from Morphogenesis - master.
+	char buf[256];
+    frame += 100000;    // ensures numerical and alphabetic order match
+	sprintf ( buf, "particles_pos%04d.ply", frame );
+	FILE* fp = fopen ( buf, "w" );
+
+	int numpnt = NumPoints();
+	int numfield = 3;
+	int ftype;         // 0=char, 1=int, 2=float, 3=double
+	int fcnt;
+
+    Vector3DF* Pos;
+    Vector3DF* Vel;
+    uint* Clr;
+
+    fprintf(fp, "ply \n format ascii 1.0\n comment particle cloud from Dynamic_slam_opencl\n element vertex %i\n", numpnt );
+    fprintf(fp, "property float x\nproperty float y\nproperty float z\n");
+    fprintf(fp, "end_header\n");
+
+    for(int i=0;i<numpnt;i++){
+        Pos = getPos(i);
+        Vel = getVel(i);
+        Clr = getClr(i);
+        fprintf(fp, "%f %f %f\n", Pos->x, Pos->y,Pos->z);
+    }
+	fclose ( fp );
+	fflush ( fp );
+*/
+}
 
 void RunCL::DownloadAndSave(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range ){
 	int local_verbosity_threshold = V_RUNCL_DOWNLOADANDSAVE;//verbosity_mp["RunCL::DownloadAndSave"];// 1;

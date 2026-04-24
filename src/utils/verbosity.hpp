@@ -106,6 +106,7 @@
 	#define	V_RUNCL_SAVE_VTK							2
 	#define V_RUNCL_SAVE_PCD							-2
 	#define V_RUNCL_SAVE_CSV							2
+	#define V_RUNCL_SAVE_PLY							-2
 
 	#define	V_RUNCL_DOWNLOADANDSAVE						2
 	#define	V_RUNCL_DOWNLOADANDSAVE_2CHANNEL_VOLUME		-2
