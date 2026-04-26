@@ -463,7 +463,7 @@ void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 
 	pcd_file << "# .PCD v7 - Point Could Data file format\n";
 	pcd_file << "VERSION .7\n";
-	pcd_file << "FIELDS x y z  rgba\n";//normal_x normal_y normal_z   color_r color_g color_b color_a
+	pcd_file << "FIELDS x y z  rgb\n";//normal_x normal_y normal_z   color_r color_g color_b color_a
 	pcd_file << "SIZE 4 4 4  4\n";
 	pcd_file << "TYPE F F F  F\n";
 	pcd_file << "COUNT 1 1 1  1\n";
@@ -475,13 +475,14 @@ void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 
 	const float			scale	= pow(2,layer+2);
 	const float min_inv_depth	= 1.0f/max_depth;
+	const float max_inv_depth	= 1.0f/30;//min_depth;
 
 	for(float row=0; row<mat_depth.rows ; row ++ ){
 		for(float col=0; col<mat_depth.cols ; col ++ ){
 
 			cv::Vec2f depth		=  mat_depth.at<cv::Vec2f>(row,col);
 			float inv_depth_f	= min_inv_depth;
-			//if (depth[0]>min_inv_depth && !isnan(depth[0]) ) { inv_depth_f = depth[0]; }
+			if (depth[0]>min_inv_depth && !isnan(depth[0]) ) { inv_depth_f = depth[0]; }
 
 			Matx41f pixel		= { scale*col, scale*row, inv_depth_f, 1.0f };
 			Matx41f point		= current_frames[ current_frames_idx[0] ].inv_K * pixel;
@@ -490,17 +491,15 @@ void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 			float y 			= point(1,0)  / point(3,0);
 			float z 			= point(2,0)  / point(3,0);
 
-			// Vec4f pixel_rgb		= mat_img.at<Vec4f>(row, col);// NB bgra order
-			// Vec4b uchar_rgb		= (Vec4b)(pixel_rgb * 255);
-			//float flt_row	= row/mat_depth.rows;
-			//float flt_col	= col;
-			uint uint_row	= 256 * row;//
-			uint_row		/= mat_depth.rows;
-			//uint uint_col	= (256.0f*256.0f*flt_col)/mat_depth.cols;
+			uint uint_row		= (256.0f * row)		/(mat_depth.rows * 4.0f);
+			uint uint_col		= (256.0f * col)		/(mat_depth.cols * 4.0f);
+			uint inv_depth_u	= (256.0f * inv_depth_f)/max_inv_depth;
 
-			uint  uint_rgb		= uint_row;// + uint_col  ;  // 256*((float)row)/((float)mat_depth.rows) ;//+ col*256*256 + (uint)(z/max_depth)*256 + 255 ;
+			uint_col			*= 256;
+			inv_depth_u			*= 256*256;
+			uint  uint_rgb		=  inv_depth_u + uint_col + uint_row;
 
-			pcd_file << x <<"\t"<< y <<"\t"<< z <<"\t"<< uint_rgb <<"\n";		//(uint)uchar_rgb[2] <<"\t"<< (uint)uchar_rgb[1] <<"\t"<< (uint)uchar_rgb[0] <<"\t"<< (uint)uchar_rgb[3] <<"\n";	// scale*col <<"\t"<< scale*row <<"\t"<< inv_depth_f <<"\n";
+			pcd_file << x <<"\t"<< y <<"\t"<< z <<"\t"<< uint_rgb <<"\n";
 		}
 	}
 	pcd_file.close();
@@ -536,7 +535,7 @@ void RunCL::Save_csv_mat(cv::Mat mat, std::filesystem::path folder, uint layer )
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_csv finished\n"<<flush;
 }
 
-void RunCL::SavePoints_asciiPLY ( cv::Mat mat, cv::Mat mat_img, std::filesystem::path folder, uint layer ){
+void RunCL::SavePoints_asciiPLY ( cv::Mat mat, cv::Mat mat_depth, std::filesystem::path folder, uint layer ){
 	int local_verbosity_threshold = V_RUNCL_SAVE_PLY;
 																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::Save_ply chk0"<<flush;
 																																				PRINT_MATX44F(	current_frames[ current_frames_idx[0] ].inv_K, );
@@ -557,6 +556,7 @@ void RunCL::SavePoints_asciiPLY ( cv::Mat mat, cv::Mat mat_img, std::filesystem:
 
 	const float scale			= pow(2,layer+2);	// NB this depth map is from 4x4 patches => 2 layers higher.
 	const float min_inv_depth	= 1.0f/max_depth;
+	const float max_inv_depth	= 1.0f/30;//min_depth;
 
 	for(float row=0; row<mat.rows ; row ++ ){
 		for(float col=0; col<mat.cols ; col ++ ){
@@ -571,9 +571,20 @@ void RunCL::SavePoints_asciiPLY ( cv::Mat mat, cv::Mat mat_img, std::filesystem:
 			float y				= point(1,0)  / point(3,0);
 			float z				= point(2,0)  / point(3,0);
 
-			Vec4f pixel_rgb		= mat_img.at<Vec4f>(col, row);// NB bgra order
+			uint uint_row		= (256.0f * row)		/(mat_depth.rows * 4.0f);
+			uint uint_col		= (256.0f * col)		/(mat_depth.cols * 4.0f);
+			uint inv_depth_u	= (256.0f * inv_depth_f)/max_inv_depth;
 
-			csv_file << x <<"\t"<< y <<"\t"<< z <<"\t"<< 		pixel_rgb[2] <<"\t"<< pixel_rgb[1] <<"\t"<< pixel_rgb[0] <<"\t"<< pixel_rgb[3] <<"\n";	// scale*col <<"\t"<< scale*row <<"\t"<< inv_depth_f <<"\n";
+			uint_col			*= 256;
+			inv_depth_u			*= 256*256;
+			uint  uint_rgb		=  inv_depth_u + uint_col + uint_row;
+
+			csv_file << x <<"\t"<< y <<"\t"<< z <<"\t"<< uint_rgb <<"\n";
+			///
+
+			// Vec4f pixel_rgb		= mat_img.at<Vec4f>(col, row);// NB bgra order
+   //
+			// csv_file << x <<"\t"<< y <<"\t"<< z <<"\t"<< 		pixel_rgb[2] <<"\t"<< pixel_rgb[1] <<"\t"<< pixel_rgb[0] <<"\t"<< pixel_rgb[3] <<"\n";	// scale*col <<"\t"<< scale*row <<"\t"<< inv_depth_f <<"\n";
 		}
 	}
 	csv_file.close();
