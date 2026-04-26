@@ -12,7 +12,7 @@
 	#define	V_LOADDEPTHAHANDA							2
 
 	/////////////////////////////////////// CONVERT_TRANSFORMS.CPP
-	#define	V_CONVERT_TRANSFORMS						1
+	#define	V_CONVERT_TRANSFORMS						-1
 
 	/////////////////////////////////////// CONF_PARAMS.CPP
 	#define	V_CONF_PARAMS_CONF_PARAMS					1

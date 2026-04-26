@@ -573,9 +573,11 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 */
 					if( rho_pvt_arr[  block_row*NUM_DEPTH_STEPS + inv_depth_layer ].x  > 0 ){	//	where .x = pixel count.
 																							depth_layer_rho_sq[ inv_depth_layer]	= rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].y  /  rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].x ;
+/*
 																																			//    __kernel void update_depth_2, chk_4  global_id_uint=%u, block_row=%u, frame_count=%u,
 																																		printf("\n__kernel void update_depth_2, chk_3, global_id_uint=%u, block_row=%u, frame_count=%u, inv_depth_layer=%u,	depth_layer_rho_sq[ inv_depth_layer ]=%f,  rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].y = %f   /  rho_pvt_arr[	block_row *NUM_DEPTH_STEPS  + inv_depth_layer ].x  = %f,     ",\
 																																														global_id_uint, 	block_row, 		frame_count,	 inv_depth_layer,		depth_layer_rho_sq[ inv_depth_layer ],		rho_pvt_arr[ block_row*NUM_DEPTH_STEPS + inv_depth_layer ].y  , 		rho_pvt_arr[	block_row*NUM_DEPTH_STEPS + inv_depth_layer ].x  );
+*/
 						if( min_rho_sq >= depth_layer_rho_sq[ inv_depth_layer] ){
 																							min_rho_sq 								= depth_layer_rho_sq[	inv_depth_layer];
 																							opt_depth_layer[1]						= inv_depth_layer;

@@ -429,21 +429,26 @@ void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::Save_pcd_depth chk0"<<flush;
 																																				PRINT_MATX44F(	current_frames[ current_frames_idx[0] ].inv_K, );
 																																			}
-	float			scale					= pow(2,layer);
+
 	// uint			cols					= MipMap[ (layer+2)*8 + MiM_READ_COLS];
 	// uint			rows					= MipMap[ (layer+2)*8 + MiM_READ_ROWS] + 1;
-	// size_t			depthUpdate_bytes		= cols * rows * sizeof(cl_float2);
+	// size_t		depthUpdate_bytes		= cols * rows * sizeof(cl_float2);
 	// uint			offset					= rows * (depth_iter_per_layer - 1);
 	// cv::Size		depthUpdate_size(		cols, rows ) ;
 
 	cv::Mat			mat_depth				= cv::Mat::zeros (size_mat, CV_32FC2);														// (int rows, int cols, int type)
 	cv::Mat			mat_rho					= cv::Mat::zeros (size_mat, CV_32FC2);														// (int rows, int cols, int type)
+	cv::Mat			mat_img					= cv::Mat::zeros (size_mat, CV_32FC4);														// (int rows, int cols, int type)
 
-	ReadOutput(		mat_depth.data,	depth_buf,	image_size_bytes, offset_depth_bytes); 																// NB contains elements of type_mat, (CV_32FC1 for most buffers)
-	ReadOutput(		mat_rho.data,	rho_buf,	image_size_bytes, offset_rho_bytes); 																// NB contains elements of type_mat, (CV_32FC1 for most buffers)
+	cl_mem im_buf	= current_frames[current_frames_idx[0]].img_buf;
+
+	ReadOutput(		mat_depth.data,	depth_buf,	image_size_bytes, 	offset_depth_bytes); 												// NB contains elements of type_mat, (CV_32FC1 for most buffers)
+	ReadOutput(		mat_rho.data,	rho_buf,	image_size_bytes, 	offset_rho_bytes); 													// NB contains elements of type_mat, (CV_32FC1 for most buffers)
+	ReadOutput(		mat_img.data,	im_buf,		2*image_size_bytes, offset_rho_bytes); 													// NB contains elements of type_mat, (CV_32FC1 for most buffers)
+
 
 	Save_csv_mat(	mat_depth, folder, layer );
-	SavePoints_asciiPLY( mat_depth, folder, layer );
+	SavePoints_asciiPLY( mat_depth, mat_img, folder, layer );
 
 	// generate filename, by inserting folder "/vtp", and adding ".vtp" suffix,  // make csv folder, if necessary
 	stringstream ss;
@@ -458,36 +463,44 @@ void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 
 	pcd_file << "# .PCD v7 - Point Could Data file format\n";
 	pcd_file << "VERSION .7\n";
-	pcd_file << "FIELDS x y z \n";//normal_x normal_y normal_z
-	pcd_file << "SIZE 4 4 4 \n";
-	pcd_file << "TYPE F F F \n";
-	pcd_file << "COUNT 1 1 1 \n";
+	pcd_file << "FIELDS x y z  rgba\n";//normal_x normal_y normal_z   color_r color_g color_b color_a
+	pcd_file << "SIZE 4 4 4  4\n";
+	pcd_file << "TYPE F F F  F\n";
+	pcd_file << "COUNT 1 1 1  1\n";
 	pcd_file << "WIDTH "<<mat_depth.cols<<"\n";
 	pcd_file << "HEIGHT "<<mat_depth.rows<<"\n";
 	pcd_file << "VIEWPOINT 0 0 0 1 0 0 0\n";
 	pcd_file << "POINTS "<<mat_depth.cols * mat_depth.rows<<"\n";
 	pcd_file << "DATA ascii\n";
 
+	const float			scale	= pow(2,layer+2);
+	const float min_inv_depth	= 1.0f/max_depth;
+
 	for(float row=0; row<mat_depth.rows ; row ++ ){
 		for(float col=0; col<mat_depth.cols ; col ++ ){
-			cv::Vec2f depth		=  mat_depth.at<cv::Vec2f>(row,col);
-			//cv::Vec2f rho		=  mat_rho.at<cv::Vec2f>(col,row);
-			float depth_f		= 0.0f;
-			if (depth[0]>0.0000001  ) { depth_f = depth[0]; }					// && isfinite(depth[0])
-			Matx41f pixel 		= { scale*col, scale*row, 1.0f, depth_f };
 
-			Matx41f point 		= current_frames[ current_frames_idx[0] ].inv_K * pixel;						//  cout<<"\n\n\n("<<point<<")\n,\n("<<pixel<<")"<<flush;
+			cv::Vec2f depth		=  mat_depth.at<cv::Vec2f>(row,col);
+			float inv_depth_f	= min_inv_depth;
+			//if (depth[0]>min_inv_depth && !isnan(depth[0]) ) { inv_depth_f = depth[0]; }
+
+			Matx41f pixel		= { scale*col, scale*row, inv_depth_f, 1.0f };
+			Matx41f point		= current_frames[ current_frames_idx[0] ].inv_K * pixel;
+
 			float x 			= point(0,0)  / point(3,0);
 			float y 			= point(1,0)  / point(3,0);
 			float z 			= point(2,0)  / point(3,0);
 
-			if( x<max_depth && y<max_depth && z<max_depth && z>=0.0f){
-				//pcd_file << depth[0] <<" "<< depth[1] <<" "<< depth_f <<"\n";
+			// Vec4f pixel_rgb		= mat_img.at<Vec4f>(row, col);// NB bgra order
+			// Vec4b uchar_rgb		= (Vec4b)(pixel_rgb * 255);
+			//float flt_row	= row/mat_depth.rows;
+			//float flt_col	= col;
+			uint uint_row	= 256 * row;//
+			uint_row		/= mat_depth.rows;
+			//uint uint_col	= (256.0f*256.0f*flt_col)/mat_depth.cols;
 
-				pcd_file << x <<" "<< y <<" "<< z <<"\n";				// <<" "<<depth[1]<<" "<<  rho[0] <<" "<< rho[1]   Need to project 3D points in xyz, not uvz.
-			}else{
-				pcd_file << col <<" "<< row <<" "<< 0.0f <<"\n";
-			}
+			uint  uint_rgb		= uint_row;// + uint_col  ;  // 256*((float)row)/((float)mat_depth.rows) ;//+ col*256*256 + (uint)(z/max_depth)*256 + 255 ;
+
+			pcd_file << x <<"\t"<< y <<"\t"<< z <<"\t"<< uint_rgb <<"\n";		//(uint)uchar_rgb[2] <<"\t"<< (uint)uchar_rgb[1] <<"\t"<< (uint)uchar_rgb[0] <<"\t"<< (uint)uchar_rgb[3] <<"\n";	// scale*col <<"\t"<< scale*row <<"\t"<< inv_depth_f <<"\n";
 		}
 	}
 	pcd_file.close();
@@ -523,63 +536,48 @@ void RunCL::Save_csv_mat(cv::Mat mat, std::filesystem::path folder, uint layer )
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_csv finished\n"<<flush;
 }
 
-void RunCL::SavePoints_asciiPLY ( cv::Mat mat, std::filesystem::path folder, uint layer ){
+void RunCL::SavePoints_asciiPLY ( cv::Mat mat, cv::Mat mat_img, std::filesystem::path folder, uint layer ){
 	int local_verbosity_threshold = V_RUNCL_SAVE_PLY;
 																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::Save_ply chk0"<<flush;
 																																				PRINT_MATX44F(	current_frames[ current_frames_idx[0] ].inv_K, );
 																																			}
 	std::string  	date_time_str = date_time_string();
 	stringstream 	ss;
-	ss 				<< date_time_str << "ds-framenum"<<dataset_frame_num<<"_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_DepthUpdate_.csv";
+	ss 				<< date_time_str << "ds-framenum"<<dataset_frame_num<<"_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_DepthUpdate_.ply";
 	folder 			+= "/ply/";
 	if(std::filesystem::create_directory(folder )) { 																						if(verbosity>-2) std::cerr<< "Directory Created: "<<folder<<std::endl;}
-	folder.replace_filename( ss.str() );
 
+	folder.replace_filename( ss.str() );
 	int numpt		= mat.cols * mat.rows;
 
-	// open file
 	std::ofstream csv_file ( folder ); 																					if(!csv_file ){std::cerr<<"\n\nvoid RunCL::Save_ply(..) failed to open file for writing: "<<folder<<endl<<flush;  exit_(1);}
-	csv_file << "ply \n format ascii 1.0\n comment particle cloud from Dynamic_slam_opencl\n element vertex %i\n", numpt;
-	csv_file << "property float x\nproperty float y\nproperty float z\n";
+	csv_file << "ply\nformat ascii 1.0\ncomment particle cloud from Dynamic_slam_opencl\nelement vertex "<<numpt<<"\n";
+	csv_file << "property float x\nproperty float y\nproperty float z\nproperty float r\nproperty float g\nproperty float b\nproperty float a\n";
 	csv_file << "end_header\n";
+
+	const float scale			= pow(2,layer+2);	// NB this depth map is from 4x4 patches => 2 layers higher.
+	const float min_inv_depth	= 1.0f/max_depth;
 
 	for(float row=0; row<mat.rows ; row ++ ){
 		for(float col=0; col<mat.cols ; col ++ ){
+
 			cv::Vec2f depth		=  mat.at<cv::Vec2f>(row,col);
-			csv_file << "\n" << row << "\t" << col << "\t" << depth[0];		// << "\t" << depth[1];
+			float inv_depth_f	= min_inv_depth;
+			if (depth[0]>min_inv_depth && !isnan(depth[0]) ) { inv_depth_f = depth[0]; }
+
+			Matx41f pixel		= { scale*col, scale*row, inv_depth_f, 1.0f };
+			Matx41f point		= current_frames[ current_frames_idx[0] ].inv_K * pixel;
+			float x				= point(0,0)  / point(3,0);
+			float y				= point(1,0)  / point(3,0);
+			float z				= point(2,0)  / point(3,0);
+
+			Vec4f pixel_rgb		= mat_img.at<Vec4f>(col, row);// NB bgra order
+
+			csv_file << x <<"\t"<< y <<"\t"<< z <<"\t"<< 		pixel_rgb[2] <<"\t"<< pixel_rgb[1] <<"\t"<< pixel_rgb[0] <<"\t"<< pixel_rgb[3] <<"\n";	// scale*col <<"\t"<< scale*row <<"\t"<< inv_depth_f <<"\n";
 		}
-		csv_file << "\n" ;
 	}
 	csv_file.close();
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_ply finished\n"<<flush;
-/*	// from SavePoints_asciiPLY from Morphogenesis - master.
-	char buf[256];
-    frame += 100000;    // ensures numerical and alphabetic order match
-	sprintf ( buf, "particles_pos%04d.ply", frame );
-	FILE* fp = fopen ( buf, "w" );
-
-	int numpnt = NumPoints();
-	int numfield = 3;
-	int ftype;         // 0=char, 1=int, 2=float, 3=double
-	int fcnt;
-
-    Vector3DF* Pos;
-    Vector3DF* Vel;
-    uint* Clr;
-
-    fprintf(fp, "ply \n format ascii 1.0\n comment particle cloud from Dynamic_slam_opencl\n element vertex %i\n", numpnt );
-    fprintf(fp, "property float x\nproperty float y\nproperty float z\n");
-    fprintf(fp, "end_header\n");
-
-    for(int i=0;i<numpnt;i++){
-        Pos = getPos(i);
-        Vel = getVel(i);
-        Clr = getClr(i);
-        fprintf(fp, "%f %f %f\n", Pos->x, Pos->y,Pos->z);
-    }
-	fclose ( fp );
-	fflush ( fp );
-*/
 }
 
 void RunCL::DownloadAndSave(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range ){

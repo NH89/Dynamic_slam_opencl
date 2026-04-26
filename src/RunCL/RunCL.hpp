@@ -252,7 +252,7 @@ public:
 
 	void Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, uint offset_rho_bytes, uint offset_depth_bytes, uint layer );
 	void Save_csv_mat(cv::Mat mat, std::filesystem::path folder, uint layer );
-	void SavePoints_asciiPLY ( cv::Mat mat, std::filesystem::path folder, uint layer );
+	void SavePoints_asciiPLY ( cv::Mat mat, cv::Mat mat_img, std::filesystem::path folder, uint layer );
 
 	void DownloadAndSave(cl_mem buffer, std::string count, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range=1 );
 	void DownloadAndSave_2Channel(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint offset );
