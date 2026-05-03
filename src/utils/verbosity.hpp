@@ -111,7 +111,7 @@
 	#define	V_RUNCL_DOWNLOADANDSAVE						2
 	#define	V_RUNCL_DOWNLOADANDSAVE_2CHANNEL_VOLUME		-2
 
-	#define	V_RUNCL_DOWNLOADANDSAVE_3CHANNEL			2
+	#define	V_RUNCL_DOWNLOADANDSAVE_3CHANNEL			-2
 	#define	V_RUNCL_DOWNLOADANDSAVE_3CHANNEL_VOLUME		2
 
 	#define	V_RUNCL_PREPARERESULTS_3CHANNEL				2
@@ -133,7 +133,7 @@
 
 	////////////////////////////////////// RUNCL_LOAD_IMAGE.CPP
 	#define	V_RUNCL_LOADFRAME							1
-	#define	V_RUNCL_CVT_COLOR_SPACE						0
+	#define	V_RUNCL_CVT_COLOR_SPACE						-1
 	#define	V_RUNCL_SUM_IMAGE_VARIANCE					1
 	#define	V_RUNCL_SAMPLE_IMAGE_VARIANCE				0
 
@@ -156,7 +156,7 @@
 	#define	V_RUNCL_PATCH_IMG_GRADIENTS					0
 
 	/////////////////////////////////////// RUNCL_PATCH_TRACKING.CPP
-	#define V_RUNCL_REDUCE_IMG							2
+	#define V_RUNCL_REDUCE_IMG							-2
 	#define V_RUNCL_BLUR_IMG							2
 
 

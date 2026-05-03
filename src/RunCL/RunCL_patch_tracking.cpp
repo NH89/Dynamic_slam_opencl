@@ -48,7 +48,7 @@ void RunCL::precomp_param_maps ( float SE3_k2k[  max_mipmap_layers*num_SE3_DoF*1
 void RunCL::update_tracking_depthmap(cl_mem depthmap_){
 	string fname = "RunCL::update_tracking_depthmap(cl_mem depthmap_)";
 
-	_clEnqueueCopyBuffer( m_queue, depthmap_, depth_mem, 0, 0, mm_size_bytes_C1, fname);
+	_clEnqueueCopyBuffer( m_queue, depthmap_, depth_mem, 0, 0, 2*mm_size_bytes_C1, fname);
 }
 
 
@@ -87,8 +87,8 @@ void RunCL::build_img_pyramid( std::string folder ){
 																																	cout << "\nlayer = "<<layer<<flush;
 																																	cout << "\nmm_stop = "<<mm_stop<<flush;
 																																}
-	reduce_img( layer, folder);
-	for (layer=1; layer<mm_stop ; layer++){
+	//reduce_img( layer, folder);
+	for (layer=0/*1*/; layer<mm_stop ; layer++){
 																																if(verbosity>local_verbosity_threshold) {	cout<<"\n\nRunCL::build_img_pyramid(..) pyramid layer = "<<layer<<flush;
 																																	cout << "\nlayer = "<<layer<<flush;
 																																}
@@ -105,7 +105,8 @@ void RunCL::build_img_pyramid( std::string folder ){
 																																	size_t   new_size_bytes = mm_width * mm_height * 4*4;
 																																	ss << "_raw_";
 																																	DownloadAndSave_3Channel( imgmem_, ss.str(), paths.at(folder), new_size_bytes, new_Image_size, CV_32FC4, false, 1, 0, true );
-																																	cout << "\n  (local_size+4) *5*4* sizeof(float) = "<<  (local_size+4) *5*4* sizeof(float) << " ,   (local_size+4) = " <<  (local_size+4) << endl << flush;
+																																	cout << "\nss.str() = " << ss.str()
+																																	<< "\n  (local_size+4) *5*4* sizeof(float) = "<<  (local_size+4) *5*4* sizeof(float) << " ,   (local_size+4) = " <<  (local_size+4) << endl << flush;
 																																}
 																																if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::build_img_pyramid(..)_chk4 Finished"<<flush;}
 }

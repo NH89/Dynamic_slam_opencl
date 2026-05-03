@@ -161,7 +161,7 @@ void Dynamic_slam::estimate_depth(){
 	runcl._clEnqueueFillBuffer( runcl.uload_queue, runcl.depth_mem_temp,	&zero_flt, sizeof(float), 0, runcl.mm_size_bytes_C1, fname );
 
 
-	for (int layer=4; layer>=0; layer--){
+	for (int layer=3; layer>=0; layer--){	// NB must start at least 2 layers below apex of image pyramid. Uses img grad fom 2 layers higher.
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\nDynamic_slam::estimate_depth()  layer= "<<
 																																			layer << endl <<flush;
@@ -202,5 +202,6 @@ void Dynamic_slam::estimate_depth(){
 
 		// NB this kernel would be faster if it used 1 thread per depth patch, ie 16 pixels. ... Maybe not. The existing method uses half as many threads, BUT benefits from contiguious reads of data.
 	}
+	// copy depth to tracking depth map ### TODO
 
 }

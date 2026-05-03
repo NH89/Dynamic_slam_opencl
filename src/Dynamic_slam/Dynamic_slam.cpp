@@ -218,7 +218,8 @@ int Dynamic_slam::nextFrame() {
 	if(			 GT_available		 ==true){				getFrameData_vec( frame_data.back() );																// Sets frame_data.back().frame_data_GT
 		if(		 use_artif_pose_error==true){				set_artif_pose_error();	}
 		else if( use_GT_pose		 ==true){				use_GT_pose_vec();		}
-		if(	initialize_tracking_from_GT_depth == true){		runcl.update_tracking_depthmap(runcl.depth_mem_GT);}
+		if(	initialize_tracking_from_GT_depth == true)	{	runcl.update_tracking_depthmap(runcl.depth_mem_GT);}
+		else											{	runcl.use_inferred_depthmap();}
 	}																																		// else implies ( GT_available==false || (use_artif_pose_erro==false && use_GT_pose== flase) )
 																																			// NB new frame_data element was a copy of the previous one, so identity for first step, and constant vel thereafter.
 	runcl.set_cam_bufs(  frame_data.back().frame_data.K ,  frame_data.back().frame_data.inv_K,  frame_data.back().frame_data.pose,  frame_data.back().frame_data.K2K  );

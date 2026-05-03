@@ -551,7 +551,7 @@ void RunCL::SavePoints_asciiPLY ( cv::Mat mat, cv::Mat mat_depth, std::filesyste
 
 	std::ofstream csv_file ( folder ); 																					if(!csv_file ){std::cerr<<"\n\nvoid RunCL::Save_ply(..) failed to open file for writing: "<<folder<<endl<<flush;  exit_(1);}
 	csv_file << "ply\nformat ascii 1.0\ncomment particle cloud from Dynamic_slam_opencl\nelement vertex "<<numpt<<"\n";
-	csv_file << "property float x\nproperty float y\nproperty float z\nproperty float r\nproperty float g\nproperty float b\nproperty float a\n";
+	csv_file << "property float x\nproperty float y\nproperty float z\nproperty uint rgb\n";
 	csv_file << "end_header\n";
 
 	const float scale			= pow(2,layer+2);	// NB this depth map is from 4x4 patches => 2 layers higher.

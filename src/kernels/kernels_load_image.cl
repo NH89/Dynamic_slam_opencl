@@ -181,7 +181,7 @@ __kernel void cvt_color_space_linear(																// Writes the first entry i
 
 	for (uint iter=0; iter<=max_iter ; iter++) {	// for log2(local work group size)				// problem : how to produce one result for each mipmap layer ?
 																									// NB kernels launched separately for each layer, but workgroup size varies between GPUs.
-		group_size   /= 2;
+		group_size   			/= 2;
 		barrier(CLK_LOCAL_MEM_FENCE);																// No 'if->return' before fence between write & read local mem
 		if (lid<group_size)  local_sum_pix[lid] += local_sum_pix[lid+group_size];					// local_sum_pix
 	}
@@ -190,13 +190,13 @@ __kernel void cvt_color_space_linear(																// Writes the first entry i
 		uint global_sum_offset 	= 0; //read_offset_ / local_size ;		// only the base layer		// Compute offset for this layer
 		uint num_groups 		= get_num_groups(0);
 
-		float4 layer_data = {num_groups, reduction, 0.0f, 0.0f };			// Write layer data to first entry
-		if (global_id == 0) {global_sum_pix[global_sum_offset] = layer_data; }
-		global_sum_offset += 1+ group_id;
+		float4 layer_data 		= {num_groups, reduction, 0.0f, 0.0f };			// Write layer data to first entry
+		if (global_id == 0) {	global_sum_pix[global_sum_offset] 		= layer_data; }
+		global_sum_offset 		+= 1+ group_id;
 
 		if (local_sum_pix[0][3] >0){																// Using alpha channel local_sum_pix[0][3], to count valid pixels being summed.
-			global_sum_pix[global_sum_offset] = local_sum_pix[0] / local_sum_pix[0][3];				// Save to global_sum_pix // Count hits, and divide group by num hits, without using atomics!
-		}else global_sum_pix[global_sum_offset] = 0;
+			global_sum_pix[global_sum_offset] 		= local_sum_pix[0] / local_sum_pix[0][3];		// Save to global_sum_pix // Count hits, and divide group by num hits, without using atomics!
+		}else global_sum_pix[global_sum_offset] 	= 0;
 	}
 }
 

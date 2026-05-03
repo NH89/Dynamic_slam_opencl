@@ -297,6 +297,8 @@ void RunCL::createKernels(){
 	update_depth_2_kernel				= clCreateKernel(m_program, "update_depth_2",				&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'update_depth'  kernel not built.\n"					<<flush; exit_(0);   }
 	regularize_depth_kernel				= clCreateKernel(m_program, "regularize_depth",				&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'regularize_depth'  kernel not built.\n"				<<flush; exit_(0);   }
 	enlarge_layer_float_kernel			= clCreateKernel(m_program, "enlarge_layer_float",			&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'enlarge_layer_float'  kernel not built.\n"			<<flush; exit_(0);   }
+
+	use_inferred_depthmap_kernel		= clCreateKernel(m_program, "use_inferred_depthmap",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'use_inferred_depthmap'  kernel not built.\n"		<<flush; exit_(0);   }
 }
 
 void RunCL::initialize_fp32_params(){
@@ -780,7 +782,7 @@ void RunCL::allocatemem(){
 
 	img_grad_mem		= clCreateBuffer(m_context, CL_MEM_READ_WRITE 					, 2 * mm_size_bytes_C1, 		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 16= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	g1mem				= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C8, 		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 16= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	depth_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 						, mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 17= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	depth_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE 					, 2 * mm_size_bytes_C1,			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 17= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 	fp32_param_buf		= clCreateBuffer(m_context, CL_MEM_READ_ONLY  					, 16* sizeof(float),			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 25= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	uint_param_buf		= clCreateBuffer(m_context, CL_MEM_READ_ONLY  					, 8 * sizeof(uint), 			0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 29= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
@@ -835,10 +837,12 @@ void RunCL::allocatemem(){
 	status = clEnqueueWriteBuffer(uload_queue, mipmap_buf,		CL_FALSE, 0,  8*8* sizeof(uint), MipMap, 				0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.5\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueWriteBuffer(uload_queue, basemem, 		CL_FALSE, 0, image_size_bytes, 	baseImage.data, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.6\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 																																		if(verbosity>local_verbosity_threshold) cout <<"\n\nRunCL::allocatemem_chk4.2\n\n" << flush;
-	float depth = 1/( obj["max_depth"].asFloat() - (obj["min_depth"].asFloat() / 2)  );
-	float default_depth = fp32_params[MAX_INV_DEPTH] / 2.0f;
+	//float depth 				= 1/( obj["max_depth"].asFloat() - (obj["min_depth"].asFloat() / 2)  );
+	float default_depth 		= fp32_params[MAX_INV_DEPTH] / 2.0f;
+	float default_confidence	= 0.1f;
+	cl_float2 start_depth		= {{ default_depth, default_confidence }};
 
-	status = clEnqueueFillBuffer(uload_queue, depth_mem, 				&depth,			sizeof(float),   0, mm_size_bytes_C1,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.6\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	status = clEnqueueFillBuffer(uload_queue, depth_mem, 				&start_depth,	sizeof(float),   0, 2*mm_size_bytes_C1,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.6\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueFillBuffer(uload_queue, depth_mem_temp, 			&default_depth, sizeof(float),   0, mm_size_bytes_C1,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueFillBuffer(uload_queue, depth_mem_GT, 			&default_depth, sizeof(float),   0, mm_size_bytes_C1,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueFillBuffer(uload_queue, HSV_grad_mem, 			&zero_flt,		sizeof(float),   0, mm_size_bytes_C8,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
@@ -941,6 +945,8 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 	status = clReleaseKernel(update_depth_2_kernel);				if (status != CL_SUCCESS)	{ cout << "\nupdate_depth_2_kernel				status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(regularize_depth_kernel);				if (status != CL_SUCCESS)	{ cout << "\nregularize_depth_kernel			status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(enlarge_layer_float_kernel);			if (status != CL_SUCCESS)	{ cout << "\nenlarge_layer_float_kernel			status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+
+	status = clReleaseKernel(use_inferred_depthmap_kernel);			if (status != CL_SUCCESS)	{ cout << "\nuse_inferred_depthmap_kernel		status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 
 	// release command queues

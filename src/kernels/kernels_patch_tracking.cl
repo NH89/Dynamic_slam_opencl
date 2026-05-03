@@ -146,6 +146,14 @@ __kernel void horiz_blur3(
 ///////////////////////////////////
 /////5_x_5 box blur kernekls //////
 
+// Discrete gaussian weights
+//0.05	0.20	0.50	0.20	0.05
+//0.10	0.25	0.30	0.25	0.10
+//0.11	0.22	0.34	0.22	0.11
+#define	w0	0.10f
+#define w1	0.22f
+#define w2	0.34f
+
 __kernel void pad_image_top_bottom2(			// Apply before vertical blur
 	__private	uint	offset1,			//0	top left corner
 	__private	uint	offset2,			//1 bottom left corner
@@ -195,7 +203,7 @@ __kernel void vertcal_blur5(
 
 	for (int i =0; i<32; i++){
 		if( read_idx > stop_offset ) return;
-		pixel = ( img[read_idx - buf_width*2] + img[read_idx - buf_width] + img[read_idx ] + img[read_idx + buf_width ] + img[read_idx + buf_width*2 ] )/5.0f;
+		pixel = ( w0*img[read_idx - buf_width*2] 	+ w1*img[read_idx - buf_width] 	+ w2*img[read_idx ] 	+ w1*img[read_idx + buf_width ] 	+ w0*img[read_idx + buf_width*2 ] );	//  /5.0f;  try gausian rather than box blur, for sharper edges for regularization.
 
 		tmp_img[read_idx ]		= pixel;
 		read_idx				+= buf_width;
@@ -264,7 +272,7 @@ __kernel void horiz_blur5(
 
 	for (int i =0; i<32; i++){							// Write fully blurred img back to current imgmem.
 		if( read_idx > stop_offset ) return;
-		float4 pixel			= ( tmp_img[read_idx - 2] + tmp_img[read_idx - 1] + tmp_img[read_idx ] + tmp_img[read_idx + 1 ] + tmp_img[read_idx + 2 ] )/5.0f;
+		float4 pixel			= ( w0*tmp_img[read_idx - 2] 	+ w1*tmp_img[read_idx - 1] 	+ w2*tmp_img[read_idx ] 	+ w1*tmp_img[read_idx + 1 ] 	+ w0*tmp_img[read_idx + 2 ] ); //  /5.0f;
 		img[read_idx ]			= pixel;
 		read_idx				+= buf_width;
 	}
