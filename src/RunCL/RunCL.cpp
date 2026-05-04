@@ -299,6 +299,7 @@ void RunCL::createKernels(){
 	enlarge_layer_float_kernel			= clCreateKernel(m_program, "enlarge_layer_float",			&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'enlarge_layer_float'  kernel not built.\n"			<<flush; exit_(0);   }
 
 	use_inferred_depthmap_kernel		= clCreateKernel(m_program, "use_inferred_depthmap",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'use_inferred_depthmap'  kernel not built.\n"		<<flush; exit_(0);   }
+	use_GT_depthmap_kernel				= clCreateKernel(m_program, "use_GT_depthmap_kernel",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'use_GT_depthmap_kernel'  kernel not built.\n"		<<flush; exit_(0);   }
 }
 
 void RunCL::initialize_fp32_params(){
@@ -947,6 +948,7 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 	status = clReleaseKernel(enlarge_layer_float_kernel);			if (status != CL_SUCCESS)	{ cout << "\nenlarge_layer_float_kernel			status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 	status = clReleaseKernel(use_inferred_depthmap_kernel);			if (status != CL_SUCCESS)	{ cout << "\nuse_inferred_depthmap_kernel		status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(use_GT_depthmap_kernel);				if (status != CL_SUCCESS)	{ cout << "\nuse_GT_depthmap_kernel				status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 
 	// release command queues

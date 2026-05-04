@@ -37,7 +37,7 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 	__global	float4*		img_past_3,				//17
 	__global	float4*		img_past_4,				//18
 
-	__global	float*		depth_map,				//19	// current frame depth, now stored as inv_depth
+//	__global	float*		depth_map,				//19	// current frame depth, now stored as inv_depth
 
 	__global	float4*		vel_cur,				//20	// multiple past frames.
 	__global	float4*		vel_past_1,				//21	// TO DO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
@@ -522,7 +522,7 @@ __kernel void enlarge_layer_float(
 	__private	uint		patch_height,				//3
 	__private	uint		stop_offset,				//4
 	__constant 	uint4*		lookup_table,				//5
-	__global 	float*		img							//6
+	__global 	float2*		img							//6
 	)
 {
 	uint global_id_uint 				= get_global_id(0);
@@ -539,7 +539,7 @@ __kernel void enlarge_layer_float(
 
 	for (int i=0; i<patch_height; i++){
 		if (write_idx > stop_offset) 	return;
-		float value						= img[read_idx ];
+		float2 value					= img[read_idx ];
 		img[ write_idx ]				= value;
 		img[ write_idx +1 ]				= value;
 		img[ write_idx + buf_width ]	= value;
@@ -638,33 +638,34 @@ __kernel void use_inferred_depthmap(
 }
 
 
+__kernel void use_GT_depthmap(
+	__private	const uint	lookup_table_read_offset,	//0
+	__private	const uint	write_offset,				//1
 
+	__private	uint		depth_width_out,			//2
+	__private	uint		patch_height,				//3
+	__private	uint		stop_offset,				//4
 
+	__constant 	uint4*		lookup_table,				//5
 
+	__global 	float*		GT_depth,					//6
+	__global	float2*		depth_map					//7
+	)
+{
+	uint global_id_uint 					= get_global_id(0);
+	uint4	lookup_ref						= lookup_table[	global_id_uint + lookup_table_read_offset];
+	if( lookup_ref.w != global_id_uint){	printf("\n__kernel void use_inferred_depthmap(..) lookup_ref.w %u != global_id_uint %u", lookup_ref.w, global_id_uint);	// NB return cols tha are outside img_cur, BUT only after initializing local mem.
+											return;
+	}
+	uint	u								= lookup_ref.x;														// read_column
+	uint	v								= lookup_ref.y;														// read_row
+	int		write_index 					= write_offset + u*4 + (v * 4 * depth_width_out);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	for (int i=0; i<patch_height; i++){
+		float2 depth						= {GT_depth[write_index], 1.0f};
+		depth_map[write_index]				= depth;
+		write_index							+= depth_width_out;
+		if (write_index >= stop_offset) return;
+	}
+}
 
