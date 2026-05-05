@@ -56,7 +56,7 @@
 	#define	V_DYNAMIC_SLAM_COMPUTE_OPTIMUM				2
 
 	#define	V_DYNAMIC_SLAM_ESTIMATE_SLAM				-2
-	#define V_DYNAMIC_SLAM_ESTIMATE_TRACKING			2
+	#define V_DYNAMIC_SLAM_ESTIMATE_TRACKING			-2
 	#define V_DYNAMIC_SLAM_ESTIMATE_DEPTH				-2
 
 	// DYNAIC_SLAM/testing/ ##############################################
@@ -153,7 +153,7 @@
 	/////////////////////////////////////// RUNCL_PATCH_SLAM.CPP
 	#define V_RUNCL_INITIALIZE_PATCH_PARAMS				1
 	#define	V_RUNCL_COMPUTE_PATCH_LOOKUP_TABLE			2
-	#define	V_RUNCL_PATCH_IMG_GRADIENTS					0
+	#define	V_RUNCL_PATCH_IMG_GRADIENTS					-2
 
 	/////////////////////////////////////// RUNCL_PATCH_TRACKING.CPP
 	#define V_RUNCL_REDUCE_IMG							-2
@@ -169,8 +169,8 @@
 
 
 	#define	V_RUNCL_UPDATE_K2K_BUF						2
-	#define	V_RUNCL_RHO_SQ								2 //
-	#define	V_RUNCL_REDUCE_PATCH_RHO					2
+	#define	V_RUNCL_RHO_SQ								-2 //
+	#define	V_RUNCL_REDUCE_PATCH_RHO					-2
 	#define	V_RUNCL_UPDATE_K2K							2
 
 	#define	V_RELATIVEVEL_MAP							1

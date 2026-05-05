@@ -279,6 +279,7 @@ void RunCL::use_inferred_depthmap(uint write_layer ){
 	uint		read_cols_					= MipMap[ write_layer*8 + MiM_READ_COLS];
 	uint		read_rows_					= MipMap[ write_layer*8 + MiM_READ_ROWS];
 	uint		stop_offset					= write_offset + (read_rows_ -1) * depth_width_out + read_cols_;			//6
+																															cout << "\nstop_offset="<<stop_offset<<"	= write_offset("<<write_offset<<") + (read_rows_"<<read_rows_<<" -1) * depth_width_out("<<depth_width_out<<") + read_cols_("<<read_cols_<<");"<<flush;
 
 
 	_clSetKernelArg( kernel, 0, sizeof(int),						&lookup_table_read_offset,	fname);		// __private	const uint	lookup_table_read_offset,	//0
@@ -289,10 +290,10 @@ void RunCL::use_inferred_depthmap(uint write_layer ){
 	_clSetKernelArg( kernel, 4, sizeof(int),						&patch_height,				fname);		// __private	uint		patch_height,				//4
 	_clSetKernelArg( kernel, 5, sizeof(int),						&stop_offset,				fname);		// __private	uint		stop_offset,				//5
 
-	_clSetKernelArg( kernel, 6, sizeof(int),						&patch_lookup_table_buf,	fname);		// __constant 	uint4*		lookup_table,				//6
+	_clSetKernelArg( kernel, 6, sizeof(cl_mem),						&patch_lookup_table_buf,	fname);		// __constant 	uint4*		lookup_table,				//6
 
-	_clSetKernelArg( kernel, 7, sizeof(int),						&depth_mem_temp,			fname);		// __global		float2*		temp_depth,					//7
-	_clSetKernelArg( kernel, 8, sizeof(int),						&depth_mem,					fname);		// __global		float2*		depth_map					//8
+	_clSetKernelArg( kernel, 7, sizeof(cl_mem),						&depth_mem_temp,			fname);		// __global		float2*		temp_depth,					//7
+	_clSetKernelArg( kernel, 8, sizeof(cl_mem),						&depth_mem,					fname);		// __global		float2*		depth_map					//8
 
 	size_t	threads_to_launch	= patch_num_threads[write_layer+2];
 	size_t	local_work_size_	= block_size;
@@ -323,8 +324,8 @@ void RunCL::use_inferred_depthmap(uint write_layer ){
 
 
 void RunCL::use_GT_depthmap(uint write_layer ){
-	string 	fname						= "RunCL::use_inferred_depthmap(..)";
-	int 	local_verbosity_threshold	= V_RUNCL_PROPAGATE_DEPTH_NEXT_LAYER;												if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::use_inferred_depthmap(..)_chk0"<<
+	string 	fname						= "RunCL::use_GT_depthmap(..)";
+	int 	local_verbosity_threshold	= V_RUNCL_PROPAGATE_DEPTH_NEXT_LAYER;												if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::use_GT_depthmap(..)_chk0"<<
 																																",   write_layer = "<<write_layer<<flush; }
 	cl_kernel 	kernel					= use_GT_depthmap_kernel;
 
@@ -347,10 +348,10 @@ void RunCL::use_GT_depthmap(uint write_layer ){
 	_clSetKernelArg( kernel, 3, sizeof(int),						&patch_height,				fname);		// __private	uint		patch_height,				//3
 	_clSetKernelArg( kernel, 4, sizeof(int),						&stop_offset,				fname);		// __private	uint		stop_offset,				//4
 
-	_clSetKernelArg( kernel, 5, sizeof(int),						&patch_lookup_table_buf,	fname);		// __constant 	uint4*		lookup_table,				//5
+	_clSetKernelArg( kernel, 5, sizeof(cl_mem),						&patch_lookup_table_buf,	fname);		// __constant 	uint4*		lookup_table,				//5
 
-	_clSetKernelArg( kernel, 6, sizeof(int),						&depth_mem_GT,				fname);		// __global		float*		temp_depth,					//6
-	_clSetKernelArg( kernel, 7, sizeof(int),						&depth_mem,					fname);		// __global		float2*		depth_map					//7
+	_clSetKernelArg( kernel, 6, sizeof(cl_mem),						&depth_mem_GT,				fname);		// __global		float*		temp_depth,					//6
+	_clSetKernelArg( kernel, 7, sizeof(cl_mem),						&depth_mem,					fname);		// __global		float2*		depth_map					//7
 
 	size_t	threads_to_launch	= patch_num_threads[write_layer+2];
 	size_t	local_work_size_	= block_size;

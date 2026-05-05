@@ -99,7 +99,7 @@ void Dynamic_slam::estimate_tracking(){
 																																			",	num_pixels = "		<< num_pixels	<< endl<<flush;
 																																			PRINT_MATX16F( SE3_incr, );
 																																		}
-			Matx44f		pose		=	runcl.ReadOutput_44f( 	runcl.pose_buf );
+			Matx44f		pose		=	runcl.ReadOutput_44f(	runcl.pose_buf );
 			Matx44f		invK		=	runcl.ReadOutput_44f(	runcl.inv_K_buf);
 			Matx44f		K			=	runcl.ReadOutput_44f(	runcl.K_buf	 );
 																																		if( verbosity>local_verbosity_threshold ){

@@ -136,7 +136,7 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 
 		float2	flt2_inv_depth							=  depth_map[read_index];
 		float	inv_depth								= flt2_inv_depth.x;
-		confidence_pvt_arr[row_in_block]				= flt2_inv_depth.y;
+		confidence_pvt_arr[row_in_block]				= 1.0f;	//flt2_inv_depth.y; ### TODO restore use of depthmap confidence
 
 		float4	Jacobian[6]								=  {0};
 

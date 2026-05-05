@@ -94,7 +94,7 @@ public:
 	// RunCL_patch_tracking.cpp
 	cl_kernel			pad_image_top_bottom2_kernel, vertcal_blur5_kernel, pad_image_left_right2_kernel, horiz_blur5_kernel, reduce_img_kernel;
 	// RunCL_depth.cpp
-	cl_kernel			update_depth_kernel, update_depth_2_kernel, regularize_depth_kernel, enlarge_layer_float_kernel, use_inferred_depthmap_kernel, use_GT_depthmap_kernel;
+	cl_kernel			/*update_depth_kernel,*/ update_depth_2_kernel, regularize_depth_kernel, enlarge_layer_float_kernel, use_inferred_depthmap_kernel, use_GT_depthmap_kernel;
 
 	// GPU Buffers
 																												// static = same for all instances of class Dynamic_slam.

@@ -293,13 +293,13 @@ void RunCL::createKernels(){
 	reduce_img_kernel					= clCreateKernel(m_program, "reduce_img",					&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'reduce_img'  kernel not built.\n"					<<flush; exit_(0);   }
 
 	// RunCL_depth.cpp
-	update_depth_kernel					= clCreateKernel(m_program, "update_depth",					&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'update_depth'  kernel not built.\n"					<<flush; exit_(0);   }
+	//update_depth_kernel					= clCreateKernel(m_program, "update_depth",					&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'update_depth'  kernel not built.\n"					<<flush; exit_(0);   }
 	update_depth_2_kernel				= clCreateKernel(m_program, "update_depth_2",				&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'update_depth'  kernel not built.\n"					<<flush; exit_(0);   }
 	regularize_depth_kernel				= clCreateKernel(m_program, "regularize_depth",				&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'regularize_depth'  kernel not built.\n"				<<flush; exit_(0);   }
 	enlarge_layer_float_kernel			= clCreateKernel(m_program, "enlarge_layer_float",			&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'enlarge_layer_float'  kernel not built.\n"			<<flush; exit_(0);   }
 
 	use_inferred_depthmap_kernel		= clCreateKernel(m_program, "use_inferred_depthmap",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'use_inferred_depthmap'  kernel not built.\n"		<<flush; exit_(0);   }
-	use_GT_depthmap_kernel				= clCreateKernel(m_program, "use_GT_depthmap_kernel",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'use_GT_depthmap_kernel'  kernel not built.\n"		<<flush; exit_(0);   }
+	use_GT_depthmap_kernel				= clCreateKernel(m_program, "use_GT_depthmap",				&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'use_GT_depthmap_kernel'  kernel not built.\n"		<<flush; exit_(0);   }
 }
 
 void RunCL::initialize_fp32_params(){
@@ -942,7 +942,7 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 	status = clReleaseKernel(horiz_blur5_kernel);					if (status != CL_SUCCESS)	{ cout << "\nhoriz_blur5_kernel					status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(reduce_img_kernel);					if (status != CL_SUCCESS)	{ cout << "\nreduce_img_kernel					status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	// RunCL_depth.cpp
-	status = clReleaseKernel(update_depth_kernel);					if (status != CL_SUCCESS)	{ cout << "\nupdate_depth_kernel				status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	//status = clReleaseKernel(update_depth_kernel);					if (status != CL_SUCCESS)	{ cout << "\nupdate_depth_kernel				status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(update_depth_2_kernel);				if (status != CL_SUCCESS)	{ cout << "\nupdate_depth_2_kernel				status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(regularize_depth_kernel);				if (status != CL_SUCCESS)	{ cout << "\nregularize_depth_kernel			status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(enlarge_layer_float_kernel);			if (status != CL_SUCCESS)	{ cout << "\nenlarge_layer_float_kernel			status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
