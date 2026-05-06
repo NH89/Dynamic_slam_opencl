@@ -140,7 +140,7 @@
 	#define	V_RUNCL_MIPMAP_LINEAR						1
 	#define	V_RUNCL_IMG_GRADIENTS						1
 
-	#define	V_RUNCL_LOAD_GT_DEPTH						1
+	#define	V_RUNCL_LOAD_GT_DEPTH						-1
 	#define	V_RUNCL_CONVERT_DEPTH						1
 	#define	V_RUNCL_MIPMAP_DEPTHMAP						2
 

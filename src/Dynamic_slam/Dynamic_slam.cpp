@@ -215,13 +215,13 @@ int Dynamic_slam::nextFrame() {
 																																				cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"
 																																					<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
 																																			}
-	if(			 GT_available		 ==true){				getFrameData_vec( frame_data.back() );																// Sets frame_data.back().frame_data_GT
+	uint depth_layer = 0;																													// i.e. layer of depth map used for tracking. Currently has to be 0.
+
+	if(			 GT_available		 ==true){				getFrameData_vec( frame_data.back() );											// Sets frame_data.back().frame_data_GT
 		if(		 use_artif_pose_error==true){				set_artif_pose_error();	}
 		else if( use_GT_pose		 ==true){				use_GT_pose_vec();		}
-															uint write_layer = 0;
-		if(	initialize_tracking_from_GT_depth == true)	{	//runcl.update_tracking_depthmap(runcl.depth_mem_GT);}
-															runcl.use_GT_depthmap( write_layer ); }
-		else											{	runcl.use_inferred_depthmap( write_layer );}
+
+		if(	initialize_tracking_from_GT_depth == true)	{	runcl.use_GT_depthmap( depth_layer );		}
 	}																																		// else implies ( GT_available==false || (use_artif_pose_erro==false && use_GT_pose== flase) )
 																																			// NB new frame_data element was a copy of the previous one, so identity for first step, and constant vel thereafter.
 	runcl.set_cam_bufs(  frame_data.back().frame_data.K ,  frame_data.back().frame_data.inv_K,  frame_data.back().frame_data.pose,  frame_data.back().frame_data.K2K  );

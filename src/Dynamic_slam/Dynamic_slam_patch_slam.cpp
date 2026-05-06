@@ -196,12 +196,14 @@ void Dynamic_slam::estimate_depth(){
 		// anisotropic smoothing
 		runcl.regularize_depth( layer );
 		// parsimony of orientation, plane, curvature ?
-		if( layer>0){
-			runcl.propagate_depth_next_layer(layer-1);
-		}
+		// if( layer>0){
+		// 	runcl.propagate_depth_next_layer(layer-1);
+		// }
+
 
 		// NB this kernel would be faster if it used 1 thread per depth patch, ie 16 pixels. ... Maybe not. The existing method uses half as many threads, BUT benefits from contiguious reads of data.
 	}
 	// copy depth to tracking depth map ### TODO
-
+	uint depth_layer = 0;																													// i.e. layer of depth map used for tracking. Currently has to be 0.
+	if(	initialize_tracking_from_GT_depth == false){	runcl.use_inferred_depthmap( depth_layer );	}
 }
