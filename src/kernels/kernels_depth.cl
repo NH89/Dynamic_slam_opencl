@@ -392,10 +392,10 @@ __kernel void regularize_depth(
 	uint prev_layer_u					= u/2;
 	uint prev_layer_v					= v/2;
 	uint prev_layer_index				= prev_layer_dm_offset + prev_layer_u + (prev_layer_v * prev_layer_depth_width);
-
+/*
 											if(global_id_uint==0){ printf("\n__kernel void regularize_depth(..) chk_0  lookup_table_read_offset=%u,	 read_idx_depth=%u, depth_read_offset=%u,	u=%u, v=%u,	depth_width=%u,	pixel_offset=%u,	write_idx=%u, 	write_offset=%u,  buf_width=%u,  ", \
 																													   lookup_table_read_offset, 	 read_idx_depth,    depth_read_offset,		u,		v,	depth_width,	pixel_offset,		write_idx,		write_offset,     buf_width     ); }
-
+*/
 	barrier( CLK_GLOBAL_MEM_FENCE );
 
 	float2 pvt_depth[3][3];				// 3x3 arrays of global data.
@@ -458,9 +458,10 @@ __kernel void regularize_depth(
 																						//sum_aniostropy				+= temp_anisotropy;
 				sum_weights				+= weight;
 				sum_depth				+= depth_flt * weight;
-
+/*
 				if(global_id_uint==5) printf("\n__kernel void regularize_depth() chk_2.1 global_id_uint=%u,  u=%u, patch_row=%u, (j,k)=(%u,%u),  depth_flt=%f,  confidence = %f,  temp_anisotropy=%f  weight=%f", \
 																						 global_id_uint,     u,    patch_row,    j, k,           depth_flt,     confidence,       temp_anisotropy,    weight);
+*/
 			}
 		}
 		// previous layer
@@ -470,9 +471,10 @@ __kernel void regularize_depth(
 			sum_weights					+= weight;
 			sum_depth					+= prev_layer.x * weight;
 		}
+/*
 		if(global_id_uint<32) printf("\n__kernel void regularize_depth() chk_2.1 global_id_uint=%u,  u=%u, patch_row=%u,  prev_layer = ( %f, %f ),     sum_depth=%f,  sum_weights=%f,  weight=%f,  pvt_img_grad=(%f, %f),          read_idx_imgrad=%u", \
 																				 global_id_uint,     u,    patch_row,     prev_layer.x, prev_layer.y,  sum_depth,     sum_weights,     weight,     pvt_img_grad.x, pvt_img_grad.y, read_idx_imgrad	);
-/*
+
 		                                                                                                                                        if(global_id_uint==0) printf("\n__kernel void regularize_depth() chk_2.1  global_id_uint=%u,  read_idx_depth=%u,  write_idx=%u,   write_idx -read_idx_depth -regluarized_dm_offset=%d", \
 			                                                                                                                                                                                                              global_id_uint,     read_idx_depth,     write_idx,     ((int)write_idx -(int)read_idx_depth -(int)regularized_dm_offset) );
 */
@@ -534,9 +536,9 @@ __kernel void enlarge_layer_float(
 	uint	u							= lookup_ref.x;														// read_column
 	uint	v							= lookup_ref.y;														// read_row
 	uint write_idx						= write_offset + u*2 + (v * 2 * buf_width);
-
+/*
 	if(global_id_uint==0){ printf("\n__kernel void enlarge_layer_float(..)  lookup_table_read_offset=%u ", lookup_table_read_offset ); }
-
+*/
 	for (int i=0; i<patch_height; i++){
 		if (write_idx > stop_offset) 	return;
 		float2 value					= img[read_idx ];
@@ -550,7 +552,6 @@ __kernel void enlarge_layer_float(
 	}
 }
 
-//	__private	uint		depth_read_offset,			//2
 
 __kernel void use_inferred_depthmap(
 	__private	const uint	lookup_table_read_offset,	//0
@@ -569,58 +570,39 @@ __kernel void use_inferred_depthmap(
 	__global	float2*		depth_map					//9
 	)
 {
-	uint global_id_uint 					= get_global_id(0);
-	uint4	lookup_ref						= lookup_table[	global_id_uint + lookup_table_read_offset];
-	if( lookup_ref.w != global_id_uint){	printf("\n__kernel void use_inferred_depthmap(..) lookup_ref.w %u != global_id_uint %u", lookup_ref.w, global_id_uint);	// NB return cols tha are outside img_cur, BUT only after initializing local mem.
-											return;
+	uint global_id_uint 						= get_global_id(0);
+	uint4	lookup_ref							= lookup_table[	global_id_uint + lookup_table_read_offset];
+	if( lookup_ref.w != global_id_uint){		printf("\n__kernel void use_inferred_depthmap(..) lookup_ref.w %u != global_id_uint %u", lookup_ref.w, global_id_uint);	// NB return cols tha are outside img_cur, BUT only after initializing local mem.
+												return;
 	}
-	uint	u								= lookup_ref.x;														// read_column
-	uint	v								= lookup_ref.y;														// read_row
-	uint pixel_offset						= u + (v * depth_in_width);
-	uint read_idx							= read_offset		+ pixel_offset - depth_in_width - 1;
-
-/////////////  from "__kernel regularize_depth()" i.e. what we need to read in.
-// 	uint write_layer=0;
-// 	//
-// 	uint	lookup_table_read_offset	= patch_lookup_table_offset[ write_layer +2];
-// 	uint	write_offset				= MipMap[write_layer*8 + MiM_READ_OFFSET];
-// 	uint	depth_width					= depthmap_params[write_layer].DM_WIN_COLS;
-// 	//
-// 	uint4	lookup_ref					= lookup_table[	global_id_uint + lookup_table_read_offset];
-// 	uint	u							= lookup_ref.x;														// read_column
-// 	uint	v							= lookup_ref.y;														// read_row
-//
-// 	uint pixel_offset					= u + (v * depth_width);
-// 	uint write_idx						= write_offset		+ pixel_offset;
-//
-// 	for (int patch_row=0; patch_row<patch_height; patch_row++){
-// 		write_idx 						+= depth_width;
-// 	}
-//////////////
-
+	uint	u									= lookup_ref.x;														// read_column
+	uint	v									= lookup_ref.y;														// read_row
+	uint pixel_offset							= u + (v * depth_in_width);
+	uint read_idx								= read_offset		+ pixel_offset - depth_in_width - 1;
+/*
 	if ( global_id_uint==0) printf("\n__kernel void use_inferred_depthmap()  read_idx(%u)	= read_offset(%u)	+ pixel_offset(%u) - depth_in_width(%u),		lookup_table_read_offset=%u",\
 																			 read_idx,		read_offset,		pixel_offset,		depth_in_width,				lookup_table_read_offset  );
-
-	uint arr_idx[3]							= {0,1,2};
-
+*/
+	uint	arr_idx[3]							= {0,1,2};
 	float2	depth_in[3][3];
 	__attribute__((opencl_unroll_hint))																			// depends on opencl >=2.0
 	for (int i=1; i<3; i++){
 		for (int j=0; j<3; j++){
-			depth_in[i][j]					= temp_depth[read_idx];
+			depth_in[i][j]						= temp_depth[read_idx];
 			read_idx++;
 		}
-		read_idx 							+= depth_in_width - 3;
+		read_idx 								+= depth_in_width - 3;
 	}
-
-	int		write_index_start 				= write_offset + u*4 + (v * 4 * depth_width_out);
-
+	int		write_index_start 					= write_offset + u*4 + (v * 4 * depth_width_out);
+/*
 	if ( global_id_uint==0) printf("\n__kernel void use_inferred_depthmap()  write_index_start(%u)	= write_offset(%u) + u(%u)*4 + (v(%u) * 4 * depth_width_out(%u))",\
 																			write_index_start,		write_offset,		u,			v,			depth_width_out);
+*/
+	const float weights_u[16] = {  3.0f/8.0f,  1.0f/8.0f,  3.0f/8.0f,  1.0f/8.0f,  7.0f/8.0f,  5.0f/8.0f,  7.0f/8.0f,  5.0f/8.0f,  3.0f/8.0f,  1.0f/8.0f,  3.0f/8.0f,  1.0f/8.0f,  7.0f/8.0f,  5.0f/8.0f,  7.0f/8.0f,  5.0f/8.0f  };
+	const float weights_v[16] = {  3.0f/8.0f,  3.0f/8.0f,  1.0f/8.0f,  1.0f/8.0f,  3.0f/8.0f,  3.0f/8.0f,  1.0f/8.0f,  1.0f/8.0f,  7.0f/8.0f,  7.0f/8.0f,  5.0f/8.0f,  5.0f/8.0f,  7.0f/8.0f,  7.0f/8.0f,  5.0f/8.0f,  5.0f/8.0f  };
+//									0			1			2			3			4			5			6			7			8			9			10			11			12			13			14			15
 
 	for (int patch_row=0; patch_row<patch_height; patch_row++){
-		float offset_u 							= 3.0f/8.0f;
-		float offset_v 							= 3.0f/8.0f;
 		int	  write_index						= write_index_start + 4*patch_row*depth_width_out;
 
 		__attribute__((opencl_unroll_hint))
@@ -635,45 +617,34 @@ __kernel void use_inferred_depthmap(
 		}
 		read_idx 								+= depth_in_width - 3;
 
-		float m = 0.0f;
+		int m = 0;
 		__attribute__((opencl_unroll_hint))																		// depends on opencl >=2.0
 		for (int i=0; i<2; i++){
 			for (int j=0; j<2; j++){
 				for (int k=0; k<2; k++){
 					for (int l=0; l<2; l++){
-//						if ( global_id_uint==10 && patch_row<2 ) {
-						depth_map[write_index]	=  depth_in[ arr_idx[i] ][j];	//offset_v*(  offset_u*depth_in[i][j]	+	(1-offset_u)*depth_in[i][j+1] )	+ 	(1-offset_v)*(  offset_u*depth_in[i+1][j]	+	(1-offset_u)*depth_in[i+1][j+1]		);
-
-// 							printf("\n__kernel void use_inferred_depthmap(), write_index(%u), i(%u), j(%u), k(%u), l(%u), m(%f)", write_index, i,j,k,l,m );
-// 							float2 flt2_ = { i,j};	//global_id_uint, patch_row };	//m
-// 							depth_map[write_index]	= flt2_;
-// 							m++;
-// 						}
-
-						offset_u				-= 0.25;
+						float2 depth_conf		=  weights_v[m]*(  weights_u[m]*depth_in[arr_idx[i]][j]	+	(1-weights_u[m])*depth_in[arr_idx[i]][j+1] )	+	(1-weights_v[m])*(  weights_u[m]*depth_in[arr_idx[i+1]][j]	+	(1-weights_u[m])*depth_in[arr_idx[i+1]][j+1]	);
+						if (depth_conf.x>1.0f		|| depth_conf.x<0.0f	|| isnan(depth_conf.x) )	depth_conf.x =0.0f;
+						if (depth_conf.y>FLT_MAX	|| depth_conf.y<0.0f	|| isnan(depth_conf.y) )	depth_conf.y =0.0f;
+						depth_map[write_index]	=	depth_conf;													// ### TODO (1) move this check to the regularize depth kernel. (2) apply confidence & anisotropy in enlargement.
+						m++;
 						write_index				+= 1;
 					}
-					offset_u					+= 0.25;
-					offset_v					-= 0.25;
-					write_index					+= depth_width_out -2;	// -1
+					write_index					+=   depth_width_out -2;
 				}
-				offset_u 						+= 0.5;
-				offset_v 						+= 0.25;
 				write_index						-= 2*depth_width_out -2;
 			}
-			offset_u 							-= 0.5;
-			offset_v 							-= 0.75;
 			write_index							+= 2*depth_width_out -4;
 		}
-
+/*
 		if ( global_id_uint==10) {
 			float2	depth_in_	=	depth_in[ arr_idx[1] ][1];
 			float2	depth_out	=	depth_map[write_index];
 			printf("\n__kernel void use_inferred_depthmap()  read_idx(%u),	write_index(%u),	patch_row=%d,	depth_in[ arr_idx[1] ][1]=( %f, %f ),	temp_depth[read_idx]=( %f, %f ),				depth_map[write_index]=( %f, %f )",\
 															read_idx,		write_index,		patch_row,		depth_in_.x,	depth_in_.y,			temp_depth[read_idx].x, temp_depth[read_idx].y,	depth_out.x,	depth_out.y		 );
 		}
-
-		if (read_idx >= stop_offset) return;
+*/
+		if (read_idx >= stop_offset) 			return;
 	}
 }
 

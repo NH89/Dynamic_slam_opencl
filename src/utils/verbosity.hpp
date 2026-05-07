@@ -12,7 +12,7 @@
 	#define	V_LOADDEPTHAHANDA							2
 
 	/////////////////////////////////////// CONVERT_TRANSFORMS.CPP
-	#define	V_CONVERT_TRANSFORMS						-1
+	#define	V_CONVERT_TRANSFORMS						1
 
 	/////////////////////////////////////// CONF_PARAMS.CPP
 	#define	V_CONF_PARAMS_CONF_PARAMS					1
@@ -79,7 +79,7 @@
 
 	#define	V_RUNCL_CONVERTTOSTRING						0
 	#define	V_RUNCL_INITIALIZE_FP32_PARAMS				0
-	#define V_RUNCL_INITIALIZE_PATCH_DEPTH_MAP_OFFSET	-1
+	#define V_RUNCL_INITIALIZE_PATCH_DEPTH_MAP_OFFSET	1
 	#define	V_RUNCL_INITIALIZE_RUNCL					1
 	#define	V_RUNCL_MIPMAP_CALL_KERNEL					1
 	#define V_RUNCL_LAYER_CALL_KERNEL					1
@@ -93,9 +93,9 @@
 	#define	V_EXIT_										0
 
 	/////////////////////////////////////// RUNCL_DEPTH.CPP
-	#define V_RUNCL_UPDATE_DEPTH						-2
-	#define V_RUNCL_REGULARIZE_DEPTH					-2
-	#define	V_RUNCL_PROPAGATE_DEPTH_NEXT_LAYER			-2
+	#define V_RUNCL_UPDATE_DEPTH						2
+	#define V_RUNCL_REGULARIZE_DEPTH					2
+	#define	V_RUNCL_PROPAGATE_DEPTH_NEXT_LAYER			2
 
 
 	/////////////////////////////////////// RUNCL_DOWNLOADANDSAVE.CPP
@@ -109,9 +109,9 @@
 	#define V_RUNCL_SAVE_PLY							-2
 
 	#define	V_RUNCL_DOWNLOADANDSAVE						2
-	#define	V_RUNCL_DOWNLOADANDSAVE_2CHANNEL_VOLUME		-2
+	#define	V_RUNCL_DOWNLOADANDSAVE_2CHANNEL_VOLUME		2
 
-	#define	V_RUNCL_DOWNLOADANDSAVE_3CHANNEL			-2
+	#define	V_RUNCL_DOWNLOADANDSAVE_3CHANNEL			2
 	#define	V_RUNCL_DOWNLOADANDSAVE_3CHANNEL_VOLUME		2
 
 	#define	V_RUNCL_PREPARERESULTS_3CHANNEL				2
@@ -133,14 +133,14 @@
 
 	////////////////////////////////////// RUNCL_LOAD_IMAGE.CPP
 	#define	V_RUNCL_LOADFRAME							1
-	#define	V_RUNCL_CVT_COLOR_SPACE						-1
+	#define	V_RUNCL_CVT_COLOR_SPACE						1
 	#define	V_RUNCL_SUM_IMAGE_VARIANCE					1
 	#define	V_RUNCL_SAMPLE_IMAGE_VARIANCE				0
 
 	#define	V_RUNCL_MIPMAP_LINEAR						1
 	#define	V_RUNCL_IMG_GRADIENTS						1
 
-	#define	V_RUNCL_LOAD_GT_DEPTH						-1
+	#define	V_RUNCL_LOAD_GT_DEPTH						1
 	#define	V_RUNCL_CONVERT_DEPTH						1
 	#define	V_RUNCL_MIPMAP_DEPTHMAP						2
 
@@ -156,7 +156,7 @@
 	#define	V_RUNCL_PATCH_IMG_GRADIENTS					-2
 
 	/////////////////////////////////////// RUNCL_PATCH_TRACKING.CPP
-	#define V_RUNCL_REDUCE_IMG							-2
+	#define V_RUNCL_REDUCE_IMG							2
 	#define V_RUNCL_BLUR_IMG							2
 
 
@@ -169,8 +169,8 @@
 
 
 	#define	V_RUNCL_UPDATE_K2K_BUF						2
-	#define	V_RUNCL_RHO_SQ								-2 //
-	#define	V_RUNCL_REDUCE_PATCH_RHO					-2
+	#define	V_RUNCL_RHO_SQ								2 //
+	#define	V_RUNCL_REDUCE_PATCH_RHO					2
 	#define	V_RUNCL_UPDATE_K2K							2
 
 	#define	V_RELATIVEVEL_MAP							1
