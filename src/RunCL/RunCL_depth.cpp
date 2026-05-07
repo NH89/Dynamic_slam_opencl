@@ -265,7 +265,7 @@ void RunCL::propagate_depth_next_layer(uint write_layer ){	// layer = write laye
 
 void RunCL::use_inferred_depthmap(uint write_layer ){
 	string 	fname						= "RunCL::use_inferred_depthmap(..)";
-	int 	local_verbosity_threshold	= V_RUNCL_PROPAGATE_DEPTH_NEXT_LAYER;												if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::use_inferred_depthmap(..)_chk0"<<
+	int 	local_verbosity_threshold	= V_RUNCL_USE_INFERRED_DEPTH;												if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::use_inferred_depthmap(..)_chk0"<<
 																																",   write_layer = "<<write_layer<<flush; }
 	cl_kernel 	kernel					= use_inferred_depthmap_kernel;
 
@@ -312,26 +312,47 @@ void RunCL::use_inferred_depthmap(uint write_layer ){
 	);
 																															if(verbosity>local_verbosity_threshold) {
 																																cout<<"\n\nRunCL::use_inferred_depthmap(..)_chk1 Finished all loops."<<flush;
-																																stringstream ss;	ss << dataset_frame_num << "_use_inferred_depthmap_";
-																																cv::Size new_Image_size = cv::Size(mm_width, mm_height);
+																																stringstream ss;				ss << dataset_frame_num << "_use_inferred_depthmap_";
+																																cv::Size new_Image_size 		= cv::Size(mm_width, mm_height);
 																																ss << "_raw_";
-																																stringstream ss_path;	ss_path << "depth_mem";
-																																uint offset_depth_bytes	=0;
-																																DownloadAndSave_2Channel( depth_mem,   	ss.str(),   paths.at(ss_path.str()),   	2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, 	false , fp32_params[MAX_INV_DEPTH], offset_depth_bytes);
+																																stringstream ss_path;			ss_path << "depth_mem";
+																																uint offset_depth_bytes			=0;
+																																DownloadAndSave_2Channel( 		depth_mem,   	ss.str(),   paths.at(ss_path.str()),   	2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, 	false , fp32_params[MAX_INV_DEPTH], offset_depth_bytes);
 
 																																cv::Size depth_mem_temp_size	= { mm_Image_size.width, mm_Image_size.height/2 };
-																																DownloadAndSave_2Channel( depth_mem_temp,  ss.str( ), paths.at( "depth_mem_temp"),	mm_size_bytes_C1, depth_mem_temp_size,	CV_32FC2, false , fp32_params[MAX_INV_DEPTH], offset_depth_bytes);
+																																DownloadAndSave_2Channel( 		  depth_mem_temp,  ss.str( ), paths.at( "depth_mem_temp"),	mm_size_bytes_C1, depth_mem_temp_size,	CV_32FC2, false , fp32_params[MAX_INV_DEPTH], offset_depth_bytes);
 
 																																////// save point clouds
-																																cv::Size depthUpdate_size(    depthmap_params[write_layer].DM_WIN_COLS*4 ,  depthmap_params[write_layer].DM_WIN_ROWS*4);		// cols, rows );
-																																size_t	 depthUpdate_bytes	= depthmap_params[write_layer].DM_WIN_BYTES*4*4; 												//cols * rows 	* sizeof(cl_float2);
+																																cv::Size depthUpdate_size(		  depthmap_params[write_layer].DM_WIN_COLS*4 ,  depthmap_params[write_layer].DM_WIN_ROWS*4);	// cols, rows );
+																																size_t	 depthUpdate_bytes		= depthmap_params[write_layer].DM_WIN_BYTES*4*4; 												//cols * rows 	* sizeof(cl_float2);
 
-																																uint rho_save_offset 		= depthmap_params[ write_layer].DM_WIN_OFFSET;
-																																//uint depth_save_offset_ 	= depthmap_params[ write_layer].DM_WIN_OFFSET  + depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET ;	//DM_WIN_OFFSET
+																																uint 	rho_save_offset			= depthmap_params[ write_layer].DM_WIN_OFFSET;
+																																//uint depth_save_offset_		= depthmap_params[ write_layer].DM_WIN_OFFSET  + depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET ;	//DM_WIN_OFFSET
 
-																																size_t	offset_rho_bytes	= rho_save_offset		* sizeof(cl_float2);
-																																size_t	offset_depth_bytes_	= write_offset			* sizeof(cl_float2);
-																																Save_pcd_depth( depth_mem, SE3_rho_map_mem, paths.at( "depth_mem"), depthUpdate_bytes, depthUpdate_size, offset_rho_bytes, offset_depth_bytes_, write_layer );
+																																size_t	offset_rho_bytes		= rho_save_offset		* sizeof(cl_float2);
+																																size_t	offset_depth_bytes_		= write_offset			* sizeof(cl_float2);
+																																float 	scale 					= 1.0f;
+
+																																cout << "\nRunCL::use_inferred_depthmap(..)_chk1.5  "
+																																<<   "\ndepthUpdate_bytes("		<<depthUpdate_bytes
+																																<<"), \ndepthUpdate_size("		<<depthUpdate_size
+																																<<"), \noffset_rho_bytes("		<<offset_rho_bytes
+																																<<"), \noffset_depth_bytes_("	<<offset_depth_bytes_
+																																<<"), \nwrite_layer("			<<write_layer
+																																<<"), \nscale("					<<scale
+																																<<"), \nwrite_offset("			<<write_offset
+																																<<")"<<flush;
+																																//Save_pcd_depth( 			depth_mem, 		SE3_rho_map_mem, 	paths.at( "depth_mem"), 	 depthUpdate_bytes,   depthUpdate_size, offset_rho_bytes, 	offset_depth_bytes_, 		write_layer, 		scale );
+
+																																//DownloadAndSave_2Channel( depth_mem,   	ss.str(),			paths.at(ss_path.str()),   	2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, 	false , fp32_params[MAX_INV_DEPTH], offset_depth_bytes);
+																															//	Save_pcd_depth( 			depth_mem,   	SE3_rho_map_mem,	paths.at(ss_path.str()),   	 depthUpdate_bytes,   depthUpdate_size,   offset_rho_bytes, offset_depth_bytes_, 		write_layer, 		scale );
+
+																																//DownloadAndSave_2Channel( depth_mem_temp, ss.str( ), 			paths.at( "depth_mem_temp"), depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, 			show, max_range,			offset_depth_bytes );
+																																//Save_pcd_depth( 			depth_mem_temp, SE3_rho_map_mem, 	paths.at( "depth_mem_temp"), depthUpdate_bytes,   depthUpdate_size, offset_rho_bytes, 	offset_depth_bytes, 		layer, 				scale );
+
+
+																																Save_pcd_depth( 			depth_mem,   	SE3_rho_map_mem,	paths.at(ss_path.str()),   	 mm_size_bytes_C1,    depth_mem_temp_size, offset_rho_bytes, offset_depth_bytes, 		write_layer, 		scale );
+
 																															}
 																															if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::use_inferred_depthmap(..)_chk2 Finished:#######################################################"<<flush;}
 }

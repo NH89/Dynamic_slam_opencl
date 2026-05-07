@@ -93,9 +93,10 @@
 	#define	V_EXIT_										0
 
 	/////////////////////////////////////// RUNCL_DEPTH.CPP
-	#define V_RUNCL_UPDATE_DEPTH						2
-	#define V_RUNCL_REGULARIZE_DEPTH					2
-	#define	V_RUNCL_PROPAGATE_DEPTH_NEXT_LAYER			2
+	#define V_RUNCL_UPDATE_DEPTH						-2
+	#define V_RUNCL_REGULARIZE_DEPTH					-2
+	#define	V_RUNCL_PROPAGATE_DEPTH_NEXT_LAYER			-2
+	#define V_RUNCL_USE_INFERRED_DEPTH					-2
 
 
 	/////////////////////////////////////// RUNCL_DOWNLOADANDSAVE.CPP

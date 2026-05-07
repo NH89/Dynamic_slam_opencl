@@ -424,7 +424,7 @@ void RunCL::Save_vtk_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::Save_vtk finished\n"<<flush;
 }
 
-void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, uint offset_rho_bytes, uint offset_depth_bytes, uint layer ){
+void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, uint offset_rho_bytes, uint offset_depth_bytes, uint layer, float scale ){
 	int local_verbosity_threshold = V_RUNCL_SAVE_PCD;
 																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::Save_pcd_depth chk0"<<flush;
 																																				PRINT_MATX44F(	current_frames[ current_frames_idx[0] ].inv_K, );
@@ -473,7 +473,7 @@ void RunCL::Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::pa
 	pcd_file << "POINTS "<<mat_depth.cols * mat_depth.rows<<"\n";
 	pcd_file << "DATA ascii\n";
 
-	const float			scale	= pow(2,layer+2);
+	//const float			scale	= pow(2,layer+2);
 	const float min_inv_depth	= 1.0f/max_depth;
 	const float max_inv_depth	= 1.0f/30;//min_depth;
 
@@ -1289,10 +1289,10 @@ void RunCL::DownloadAndSaveDepthUpdate( uint layer, uint offset_rho, uint offset
 
 	DownloadAndSave_2Channel( depth_mem_temp,  ss.str( ), paths.at( "depth_mem_temp"),	depthUpdate_bytes,   depthUpdate_size,	CV_32FC2, show, max_range,	offset_depth_bytes );		cout<<"\nDownloadAndSaveDepthUpdate chk_4  "<<flush;
 */
-	tiff = old_tiff;
-
+					tiff 				= old_tiff;
+	float			scale				= pow(2,layer+2);
 	//Save_vtk_depth( depth_mem, SE3_rho_map_mem, paths.at( "depth_mem_temp"), layer, depth_iter_per_layer );
-	Save_pcd_depth( depth_mem_temp, SE3_rho_map_mem, paths.at( "depth_mem_temp"), depthUpdate_bytes, depthUpdate_size, offset_rho_bytes, offset_depth_bytes, layer );					cout<<"\nDownloadAndSaveDepthUpdate finished  "<<flush;
+	Save_pcd_depth( depth_mem_temp, SE3_rho_map_mem, paths.at( "depth_mem_temp"), depthUpdate_bytes, depthUpdate_size, offset_rho_bytes, offset_depth_bytes, layer, scale );					cout<<"\nDownloadAndSaveDepthUpdate finished  "<<flush;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

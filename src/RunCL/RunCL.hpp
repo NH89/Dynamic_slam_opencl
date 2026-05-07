@@ -250,7 +250,7 @@ public:
 	void Save_vtk(cv::Mat mat, cv::Mat keyframe, std::filesystem::path folder );
 	void Save_vtk_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::path folder, uint layer, uint depth_iter_per_layer  );
 
-	void Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, uint offset_rho_bytes, uint offset_depth_bytes, uint layer );
+	void Save_pcd_depth(cl_mem depth_buf, cl_mem rho_buf, std::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, uint offset_rho_bytes, uint offset_depth_bytes, uint layer, float scale );
 	void Save_csv_mat(cv::Mat mat, std::filesystem::path folder, uint layer );
 	void SavePoints_asciiPLY ( cv::Mat mat, cv::Mat mat_depth, std::filesystem::path folder, uint layer );
 
