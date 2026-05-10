@@ -47,18 +47,17 @@ void Dynamic_slam::report_GT_pose_error(){																																		// A
 	cout << "\n void Dynamic_slam::report_GT_pose_error() Finished ######################################################################\n\f" << flush;
 }
 
-void Dynamic_slam::getNextFrameProfile(time_pt step_0, time_pt step_1, time_pt step_2, time_pt step_3, time_pt step_4, time_pt step_5, time_pt step_6, time_pt step_7, time_pt step_8){
+void Dynamic_slam::getNextFrameProfile(time_pt step_0, time_pt step_1, time_pt step_2, time_pt step_3, time_pt step_4, time_pt step_5 ){
 	stringstream ss;
 	ss 	<<"\nExecution times:(microseconds)####################################################"
-		<<"\ngetFrameData()                                    "	<<  duration_cast<microseconds>(step_1 - step_0).count()
-		<<"\npredictFrame()...................................."	<<  duration_cast<microseconds>(step_2 - step_1).count()
-		<<"\nuse_GT_pose()                                     "	<<  duration_cast<microseconds>(step_3 - step_2).count()
-		<<"\ngetFrame()........................................"	<<  duration_cast<microseconds>(step_4 - step_3).count()
-		<<"\nartificial_pose_error()                           "	<<  duration_cast<microseconds>(step_5 - step_4).count()
-		<<"\nestimateSE3_LK()                                  "	<<  duration_cast<microseconds>(step_6 - step_5).count()
-		<<"\nreport_GT_pose_error() &  display_frame_resluts() "	<<  duration_cast<microseconds>(step_7 - step_6).count()
-		<<"\nupdateDepthCostVol()                              "	<<  duration_cast<microseconds>(step_8 - step_7).count()
-		<<"\nTotal                                             "	<<  duration_cast<microseconds>(step_8 - step_0).count()
+		<<"\nCPU fns()                                     "	<<  duration_cast<microseconds>(step_1 - step_0).count()
+		<<"\ngetFrame()...................................."	<<  duration_cast<microseconds>(step_2 - step_1).count()
+		<<"\nestimate_tracking()                           "	<<  duration_cast<microseconds>(step_3 - step_2).count()
+		<<"\nestimate_depth().............................."	<<  duration_cast<microseconds>(step_4 - step_3).count()
+		<<"\nestimate_calibration()........................"	<<  duration_cast<microseconds>(step_5 - step_4).count()
+
+
+		<<"\nTotal                                         "	<<  duration_cast<microseconds>(step_5 - step_0).count()
 		<<"\n##################################################################################";
 	cout << ss.str() << flush;
 }

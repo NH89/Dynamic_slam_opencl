@@ -48,6 +48,9 @@ constexpr uint tracking_tot_samples 		= TRACKING_TOT_SAMPLES;
 constexpr uint max_mipmap_layers 			= MAX_MIPMAP_LAYERS;					// Determines max image size, for img pyr apex < 10x10. 10k=>10, 8k=>9, 4k=>8, 2k=>7, SD(640x480)=>6 (2^6=64).
 																					// Insufficient layers would reduce tracking robustness, due to more pixels in apex of image pyramid.
 constexpr uint num_SE3_DoF					= NUM_SE3_DOF;
+constexpr uint num_camera_matrix_DoF		= NUM_CAMERA_MATRIX_DOF;
+constexpr uint num_lens_distortion_DoF		= NUM_LENS_DISTOTION_DOF;
+
 constexpr uint block_size					= BLOCK_SIZE;							// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
 constexpr uint out_block_size				= OUT_BLOCK_SIZE;
 //constexpr uint num_current_frames				= NUM_PAST_FRAMES;					// 1,2,4,8,16,32,64 // variable select window of 4 frames.  /*num_past_frames*/
@@ -105,6 +108,7 @@ public:
 
 	cl_mem				fp32_param_buf, uint_param_buf, mipmap_buf, img_stats_buf;
 	cl_mem				SE3_map_mem, SE3_rho_map_mem, SE3_weight_map_mem;
+	cl_mem				camera_matrix_map_mem;
 	cl_mem				pix_sum_mem, var_sum_mem;
 	cl_mem				HSV_grad_mem, ST3_img_grad_mem;
 
@@ -142,7 +146,7 @@ public:
 
 	// variables
 	cv::Mat				baseImage;
-																						// Assuming 32x32 patches. NB some GPUs may hold multipler patches pers workgroup, especially at the higher layers.
+						// workgroup counter and offsets	### ? unused ?					// Assuming 32x32 patches. NB some GPUs may hold multipler patches pers workgroup, especially at the higher layers.
 	uint				wg_counter[max_mipmap_layers]						 =  {0};	// 10k = 10240x4320  => 10240/2^10=10, 4320/2^10=4.21.., so 10 reductions to img pyr apex <10x10.		// Workgroups per layer
 	uint				wg_offsets[max_mipmap_layers][max_patches_per_layer] = {{0}};	// 10k = 10240x4320  => 320x135=43200 (32x32)patches,	NB >75% unused, BUT avoids calloc & free.		// Workgroup start idx, for each layer
 																						// Requires 432000*sizeof(uint) = 1,728,000bytes on 32bit, or 3,456,000bytes on 64bitsystem.
@@ -161,12 +165,12 @@ public:
 	float				img_stats[				img_stats_size]			= {0};
 
 	size_t 				num_threads[			max_mipmap_layers]		= {0};
-	size_t 				lookup_table_offset[	max_mipmap_layers]		= {0};
+	size_t 				lookup_table_offset[	max_mipmap_layers]		= {0};	//	### ? unused ?
 
 	cl_uint8			depthmap_params[		max_mipmap_layers]		= {zero_uint8};// depthmap params for depth inference kernels. NB dense packed img layers with margin.
-	uint				patch_depthmap_width[	max_mipmap_layers ]		= {0};//TODO	could make these a struct, or an object.
-	uint				patch_depthmap_offset[	max_mipmap_layers ]		= {0};//
-	uint 				depth_save_offset[		max_mipmap_layers ]		= {0};//
+	uint				patch_depthmap_width[	max_mipmap_layers ]		= {0};//TODO	could make these a struct, or an object.	//  ### ? unused ?
+	uint				patch_depthmap_offset[	max_mipmap_layers ]		= {0};//													//  ### ? unused ?
+	uint 				depth_save_offset[		max_mipmap_layers ]		= {0};//													//  ### ? unused ?
 
 	uint				MipMap[					max_mipmap_layers	*8]	= {0};
 	uint				uint_params[			8]						= {0};
@@ -277,7 +281,7 @@ public:
 
 	////////////////////////////////////// RunCL_load_image.cpp
 
-	void precomp_param_maps (float SE3_k2k[max_mipmap_layers*num_SE3_DoF*16]);																						// Image loading & preparation
+	void precomp_param_maps (float SE3_k2k[max_mipmap_layers*num_SE3_DoF*16], cl_mem map_mem, uint num_vars);																						// Image loading & preparation
 	void update_tracking_depthmap(cl_mem depthmap_);
 	void use_inferred_depthmap();
 	void loadFrame(cv::Mat image);

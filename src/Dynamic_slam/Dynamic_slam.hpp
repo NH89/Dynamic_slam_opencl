@@ -79,14 +79,14 @@ class Dynamic_slam
       pose_datum            frame_data_GT           = {};
       pose_datum            error_data              = {};
     };
-
+/*
     struct keyframe_datum{  // default intitialization, if instatiated with " ... = {}; "
       uint                  first_frame_index       = 0 ;
       cv::Mat               reference_image;
       cv::Mat               depthmap;
       frame_datum           frame_data              = {};
     };
-
+*/
     std::vector<frame_datum>     frame_data;			// (frame_data start, old, current, key_frame) are now indices of elements in the vector.
 //    std::vector<keyframe_datum>  keyframe_data;		// TO DO remove keyframes ?
 
@@ -125,7 +125,6 @@ class Dynamic_slam
     }
 
     /////////////////////////////////////// Dynamic_slam_class.cpp
-    void generate_deltas();
     void initialize_resultsMat();
     void initialize_camera_intrinsic_matrix();
     void initialize_camera_vec();
@@ -133,36 +132,44 @@ class Dynamic_slam
     int  nextFrame();
     void getFrame();
 
-    // Code profiling
-    typedef std::chrono::_V2::system_clock::time_point time_pt;
-    void getNextFrameProfile(time_pt step_0, time_pt step_1, time_pt step_2, time_pt step_3, time_pt step_4, time_pt step_5, time_pt step_6, time_pt step_7, time_pt step_8);
-
-    // Not yet deveoped
-    void estimateCalibration();
-    void SpatialCostFns();
-    void ParsimonyCostFns();
-    void ExhaustiveSearch();
-
     /////////////////////////////////////// Dynamic_slam_ground_truth.cpp
     void getFrameData_vec( frame_datum &datum );
     void set_artif_pose_error();
     void use_GT_pose_vec();
 
     /////////////////////////////////////// Dynamic_slam_tracking.cpp
-    void report_GT_pose_error();
-//    void artificial_pose_error_vec();
-    void generate_SE3_k2k_vec( float _SE3_k2k[  max_mipmap_layers* num_SE3_DoF *16  ] );		// TO DO chk all maths vs Python version. Also ensure compatibility with new code.
-//    void compute_optimum( float steps[3], float Rho_sq_results_[tracking_num_samples][8][tracking_num_colour_channels], int layer, int channel, float *prediction, float *optimum, float *stepsize );
+    void precompute_SE3_buffers();
+    void generate_SE3_deltas();
+    void generate_SE3_k2k_vec( float _SE3_k2k[  max_mipmap_layers* num_SE3_DoF *16  ] );
+    void estimate_tracking();
 
     //////////////////////////////////// Dynamic_slam_patch_slam.cpp
-    void patch_slam();
-    void estimateSLAM();
-    void estimate_tracking();
 	void estimate_depth();
+        // Not yet deveoped
+    void SpatialCostFns();
+    void ParsimonyCostFns();
+    void ExhaustiveSearch();
+    // To add :
+    // depth from previous frame estimates
+    // rel vel & accel -> deformation
+    // SIRFS, specularity...SPMP
+
+    //////////////////////////////////// Dynamic_slam_autocalibration.cpp
+    void estimate_calibration();
+    void precompute_cam_matrix_and_lens_distortion_buffers();
+    void generate_camera_matrix_k2k_vec( float _SE3_k2k[  max_mipmap_layers* num_camera_matrix_DoF *16  ] );
+    void estimate_camera_matrix();
+    // To add :
+    // lens distortion...
 
 
-    ///////////////////////////////////// Dynamic_slam_pose_vec_print_fns.cpp
+    ///////////////////////////////////// Dynamic_slam_results.cpp
+    void report_GT_pose_error();
     void print_pose_datum(      Dynamic_slam::pose_datum datum );
     void print_frame_datum(     Dynamic_slam::frame_datum datum );
     void print_frame_data_vector(       uint start,     uint stop,  vector<Dynamic_slam::frame_datum>       frame_data_vector,      string vector_name );
+        // Code profiling
+    typedef std::chrono::_V2::system_clock::time_point time_pt;
+    void getNextFrameProfile(time_pt step_0, time_pt step_1, time_pt step_2, time_pt step_3, time_pt step_4, time_pt step_5 );
+
 };

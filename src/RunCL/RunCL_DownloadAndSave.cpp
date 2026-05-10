@@ -678,7 +678,7 @@ void RunCL::DownloadAndSave_2Channel(cl_mem buffer, std::string count, std::file
 		cv::minMaxLoc(	channels[1], 	&minVal_v, 		&maxVal_v, 		&minLoc_v, 		&maxLoc_v);
 
 		cv::merge(channels, temp_mat2);////////////////////////////
-
+/*
 		float maxVal = std::max(	{ 	(minVal_u*-1), 	maxVal_u,  		(minVal_v*-1), 	maxVal_v } );
 		if (max_range !=0){
 			channels[0] /= abs(max_range);
@@ -699,7 +699,7 @@ void RunCL::DownloadAndSave_2Channel(cl_mem buffer, std::string count, std::file
 																																				<<",	minVal_v="<<minVal_v<<",	maxVal_v="<<maxVal_v<<flush;
 																																				cout<<"\t _maxRange"<<max_range<<",  maxVal="<<maxVal<< flush;
 																																			}
-
+*/
 		stringstream 	ss;
 		stringstream 	png_ss;
 		string 			type_string 	= checkCVtype(type_mat);
@@ -724,11 +724,11 @@ void RunCL::DownloadAndSave_2Channel(cl_mem buffer, std::string count, std::file
 		folder_png  += ".png";
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_2Channel_volume()_Chk_4, max_range="<<max_range\
 																																				<<",   filepath = ["<<folder_png.string()<<" ,\t "<<folder_tiff_.string()<<"],  tiff="<<tiff<<",  true="<<true<<flush;
-		if(tiff==true){	cv::imwrite( folder_tiff_.string(), temp_mat );
+		if(tiff==true){	//cv::imwrite( folder_tiff_.string(), temp_mat );
 						cv::imwrite( folder_tiff2.string(), temp_mat2 );																	// save unaltered original as a tiff.
 		}
-		if(png==true)	cv::imwrite( folder_png.string(), (	temp_mat*256) );
-		if(show)		cv::imshow(  ss.str(), 				temp_mat );
+	//	if(png==true)	cv::imwrite( folder_png.string(), (	temp_mat*256) );
+	//	if(show)		cv::imshow(  ss.str(), 				temp_mat );
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_2Channel_volume()_finished\n"<<flush;
 }
 
@@ -1273,7 +1273,7 @@ void RunCL::DownloadAndSaveDepthUpdate( uint layer, uint offset_rho, uint offset
 					tiff				= true;
 
 	cv::Size 		depthUpdate_size( depthmap_params[layer].DM_WIN_COLS ,  depthmap_params[layer].DM_WIN_ROWS); 		// cols, rows );
-	size_t			depthUpdate_bytes	= depthmap_params[layer].DM_WIN_BYTES; 											//cols * rows 	* sizeof(cl_float2);
+	size_t			depthUpdate_bytes	= depthmap_params[layer].DM_WIN_BYTES; 											// cols * rows * sizeof(cl_float2);
 
 	size_t			offset_rho_bytes	= offset_rho	* sizeof(cl_float2);
 	size_t			offset_depth_bytes	= offset_depth	* sizeof(cl_float2);

@@ -2,7 +2,7 @@
 
 // old functions
 
-void RunCL::precomp_param_maps ( float SE3_k2k[  max_mipmap_layers*num_SE3_DoF*16  ]){ //  Compute maps of pixel motion for each SE3 DoF, and camera params // Derived from RunCL::mipmap
+void RunCL::precomp_param_maps ( float SE3_k2k[  max_mipmap_layers*num_SE3_DoF*16  ],  cl_mem map_mem, uint num_vars){ //  Compute maps of pixel motion for each SE3 DoF, and camera params // Derived from RunCL::mipmap
 	string fname = "RunCL::precom_param_maps( ..)";
 	int local_verbosity_threshold = V_RUNCL_PRECOM_PARAM_MAPS;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::precom_param_maps( float SE3_k2k[6*16])_chk_0 "<<flush;
@@ -27,11 +27,14 @@ void RunCL::precomp_param_maps ( float SE3_k2k[  max_mipmap_layers*num_SE3_DoF*1
 	_clEnqueueWriteBuffer( uload_queue, SE3_k2kbuf,		CL_FALSE, 0, max_mipmap_layers*num_SE3_DoF*16*sizeof( float), 	SE3_k2k,		fname);
 
 	//      __private	 uint layer, set in mipmap_call_kernel( ..) below                                                                      __private	 uint	 layer,			//0
+
 	_clSetKernelArg( comp_param_maps_kernel, 1, sizeof( float),		&inv_depth,	 fname);														//__private	float 	inv_depth,		//1
-	_clSetKernelArg( comp_param_maps_kernel, 2, sizeof( cl_mem),	&mipmap_buf, fname);														//__constant uint*	mipmap_params,	//2
-	_clSetKernelArg( comp_param_maps_kernel, 3, sizeof( cl_mem), 	&uint_param_buf, fname);													//__global 	uint*	uint_params		//3
-	_clSetKernelArg( comp_param_maps_kernel, 4, sizeof( cl_mem), 	&SE3_k2kbuf, fname);														//__global 	float* 	k2k,			//4
-	_clSetKernelArg( comp_param_maps_kernel, 5, sizeof( cl_mem), 	&SE3_map_mem, fname);														//__global 	float* 	SE3_map,		//5
+	_clSetKernelArg( comp_param_maps_kernel, 2, sizeof( uint),		&num_vars,	 fname);														//__private	uint,	num_vars		//2
+
+	_clSetKernelArg( comp_param_maps_kernel, 3, sizeof( cl_mem),	&mipmap_buf, fname);														//__constant uint*	mipmap_params,	//3
+	_clSetKernelArg( comp_param_maps_kernel, 4, sizeof( cl_mem), 	&uint_param_buf, fname);													//__global 	uint*	uint_params		//4
+	_clSetKernelArg( comp_param_maps_kernel, 5, sizeof( cl_mem), 	&SE3_k2kbuf, fname);														//__global 	float* 	k2k,			//5
+	_clSetKernelArg( comp_param_maps_kernel, 6, sizeof( cl_mem), 	&SE3_map_mem, fname);														//__global 	float* 	SE3_map,		//6
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\nRunCL::precom_param_maps( float SO3_k2k[6*16])_chk_1 "<<flush;}
 	// SE3_map_mem, k_map_mem, dist_map_mem;
 	mipmap_call_kernel( comp_param_maps_kernel, m_queue );

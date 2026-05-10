@@ -4,12 +4,13 @@
 __kernel void compute_param_maps(
 	__private	uint	layer,			//0
 	__private	float	inv_depth,		//1
+	__private	uint	num_vars,		//2
 
-	__constant 	uint8*	mipmap_params,	//2
-	__constant 	uint*	uint_params,	//3
-	__constant 	float* 	SE3_k2k,		//4
+	__constant 	uint8*	mipmap_params,	//3
+	__constant 	uint*	uint_params,	//4
+	__constant 	float* 	SE3_k2k,		//5
 
-	__global 	float2*	SE3_map			//5
+	__global 	float2*	SE3_map			//6
 		 )
 {
 	uint global_id_u 	= get_global_id(0);
@@ -29,7 +30,7 @@ __kernel void compute_param_maps(
 	float reduction		= base_cols/read_cols_;
 	uint v				= global_id_u / read_cols_;													// read_row
 	uint u				= fmod(global_id_flt, read_cols_);											// read_column
-	float u_flt			= (float)u * reduction;															// NB this causes sparse sampling of the original space, to use the same k2k at every scale.
+	float u_flt			= (float)u * reduction;														// NB this causes sparse sampling of the original space, to use the same k2k at every scale.
 	float v_flt			= (float)v * reduction;
 	float u2, v2;
 	uint read_index 	= read_offset_  +  v  * mm_cols  + u ;
@@ -37,7 +38,7 @@ __kernel void compute_param_maps(
 	bool print			= true; //false;
 	if( (u_flt==10)&&(v==10) ){ print=true; }  // global_id_u==0) || (u==read_cols_/2.0f && v==read_rows_/2.0f) || (u==read_cols_ && v==read_rows_
 
-	for (uint i=0; i<6; i++, idx+=16) {																// for each SE3 DoF
+	for (uint i=0; i<num_vars; i++, idx+=16) {																// for each SE3 DoF
 																									// Find new pixel position, h=homogeneous coords.
 		if(global_id_u==0){
 			printf("\n\n\n__kernel void compute_param_maps()          layer=%d,  SE3 i=%d,  idx=%d,  SE3_k2k=(\n(%f, %f, %f, %f),\n(%f, %f, %f, %f),\n(%f, %f, %f, %f),\n(%f, %f, %f, %f))  ",\

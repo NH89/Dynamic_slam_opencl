@@ -5,6 +5,51 @@
 using namespace cv;
 using namespace std;
 
+void Dynamic_slam::precompute_SE3_buffers(){	// For Lucas-Kanade inverse compositional optimization of (1) tracking (2) camera calibration, (3) lens distortion.
+	const int local_verbosity_threshold = V_DYNAMIC_SLAM_PRECOMPUTE_BUFFERS;
+																																			if (verbosity>local_verbosity_threshold) { cout << "\nprecompute_SE3_buffers_chk 0:" <<flush;
+																																				cout<<"\n frame_data.size() = "<<frame_data.size()<<flush;
+																																			}
+	// SE3 tracking
+	generate_SE3_deltas();																													// depends on f &=> camera_intrinsic_matrix
+	generate_SE3_k2k_vec( SE3_k2k );																										// fills float[96] ie 6xfloat[16] from conf.json intrinsic camera matrix + SE3 increments.
+	runcl.precomp_param_maps ( SE3_k2k, 	runcl.SE3_map_mem,	num_SE3_DoF );																									// GPU computes J(u,v/SE3) Jacobian of optical flow wrt SE3.
+
+}
+
+void Dynamic_slam::generate_SE3_deltas(){	// Principle : delta for each parameter causes maximum 1 pixel of warp in the full size image.
+										// i.e. when computing J = (d_warp/d_param) * img_grad, only the difference betwen neigbouring pixels counts.
+										// NB images should be blurred to eliminate noise and bilinear interpolation artefacts.
+	int local_verbosity_threshold = V_DYNAMIC_GENERATE_DELTAS;
+																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::generate_deltas()_chk 0:"<<flush;}
+	f								= fmaxf(	frame_data.back().frame_data.K(0,0),	frame_data.back().frame_data.K(1,1)	);	//(initial_K.operator()(0,0),	initial_K.operator()(1,1)	);							// NB [0]&[4] are u,v focal length
+	float min_depth					= obj["min_depth"].asFloat();
+
+	for (int layer=0; layer<max_mipmap_layers; layer++){
+		float factor				= 1.0f; //pow(2,layer)
+		delta[layer]				= factor ;
+		delta_theta[layer]			= factor * 1/f;
+		cos_theta[layer]			= cos(delta_theta[layer]);
+		sin_theta[layer]			= sin(delta_theta[layer]);
+		delta_depth[layer]			= factor * 	f * 2.0f 	/ ( min_depth * 	fmaxf( 	frame_data.back().frame_data.K(0,2),	frame_data.back().frame_data.K(1,2)		)	);//(obj["cameraMatrix"][2].asFloat(),	obj["cameraMatrix"][5].asFloat() )  );	// NB [2]&[5] are image sensor size
+
+		deltas_matx[layer]			= { delta_theta[layer], delta_theta[layer], delta_theta[layer], delta[layer], delta[layer], delta[layer] };
+
+																																			if (verbosity>local_verbosity_threshold) { cout<<endl
+																																				<<"\nlayer			= "<<layer
+																																				<<"\nf				= "<<f
+																																				<<"\nmin_depth		= "<<min_depth
+																																				<<"\ndelta			= "<<delta[layer]
+																																				<<"\ndelta_theta	= "<<delta_theta[layer]
+																																				<<"\ncos_theta		= "<<cos_theta[layer]
+																																				<<"\nsin_theta		= "<<sin_theta[layer]
+																																				<<"\ndelta_depth	= "<<delta_depth[layer]
+																																				<<"\ndeltas_matx	= "<<deltas_matx[layer]
+																																				<<"\nDynamic_slam::generate_deltas()_finished"<<flush;
+																																			}
+	}
+}
+
 void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[  max_mipmap_layers* num_SE3_DoF *16  ] ) {																			// Generates a set of 6 k2k to be used to compute the SE3 maps for the current camera intrinsic matrix.
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_GENERATE_SE3_K2K;//verbosity_mp["Dynamic_slam::generate_SE3_k2k"];// -2;
 																																			if(verbosity>local_verbosity_threshold) cout << "\nDynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) chk_0" << endl << flush;
@@ -134,80 +179,131 @@ void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[  max_mipmap_layers* num
 																																			}
 }
 
-/*
-void Dynamic_slam::compute_optimum( float steps[3], float Rho_sq_results_[tracking_num_samples][max_mipmap_layers][tracking_num_colour_channels], int layer, int channel, float *prediction, float *optimum, float *stepsize  ){
-	int local_verbosity_threshold = V_DYNAMIC_SLAM_COMPUTE_OPTIMUM;//verbosity_mp["Dynamic_slam::compute_tracking_increment"];
-
-	float a, b, c,   d, e,   f, g,   h, i,   j, k, d2, f2, h2;																				// compute x value of the optimum of parabola, y= a*x*x + b*x + c
-																																			// given samples at x=1,2,4
-	d = steps[0];	e = Rho_sq_results_[0][layer][channel] ;
-	f = steps[1];	g = Rho_sq_results_[1][layer][channel] ;
-	h = steps[2];	i = Rho_sq_results_[2][layer][channel] ;
-
-	d2 = d * d;
-	f2 = f * f;
-	h2 = h * h;
-
-	j = (f2 - d2)*(f-h) - (h2 - f2)*(d-f) ; // (1*1 - 0*0)*(1-3)  - (3*3 - 1*1)*(0-1)  = 1*-2  - (9-1)*-1 = -2  -8*-1 = -2 +8 =6   //// d=0, f=1, h=3  // d2=0, 	f2=1, 	h2=9, 	j=6, k=0.72331,
-	k = (g-i)*(d-f) - (e-g)*(f-h);   		// (0.456964 - 0.4644)*(0-1) - (0.814901 - 0.456964)*(1-3) = −0,007436*-1  - 0,357937*-2 = 0,72331   //// (d,e)=(0,0.814901), 	(f,g)=(1,0.456964), 	(h,i)=(3,0.4644),
-	a = k/j;						 		// 0,72331 / 6 = 0,120551667
-	b = (e-g +a*(f2-d2))  /  (d-f);  		// (0,814901 - 0,456964  +  0,120551667 * (1*1 - 0*0))  / (0-1)  =  -0,478488667
-	c = e - a*d2 - b*d;				 		// 0.814901
-
-	if (a>0){																																// IF concavity leads to a minimum, use it.
-		float x 		= -b /(2*a);
-		*prediction 	= a*(x*x) + b*x + c;
-		*optimum 		= x;																												// dy/dx = 0 = 2*a*x + b   =>  x = -b /(2*a)
-/ *
-																																			if(verbosity>local_verbosity_threshold) {
-																																				cout << "\n Dynamic_slam::compute_optimum: if (a>0)"
-																																				<< ", \ta=" << a
-																																				<< ", \tb=" << b
-																																				<< ", \tc=" << c
-
-																																				<< ", \td2=" << d2
-																																				<< ", \tf2=" << f2
-																																				<< ", \th2=" << h2
-
-																																				<< ", \tj=" << j
-																																				<< ", \tk=" << k
-
-																																				<< ", \t(d,e)=("<<d<<","<<e<<")"
-																																				<< ", \t(f,g)=("<<f<<","<<g<<")"
-																																				<< ", \t(h,i)=("<<h<<","<<i<<")"
-																																				<< ", \tprediction="<<*prediction
-																																				<< ", \toptimum="<<*optimum
-																																				<< ", \tstepsize="<<*stepsize
-																																				<< endl << flush;
-																																			}
-* /
-	}else{																																	// IF concavity leads to a maximum, pick the best sample so far.
-		if (e>=i){
-			*prediction = i;
-			*optimum 	= h;
-			// *stepsize 	*=2;
+void Dynamic_slam::estimate_tracking(){
+	string fname = "Dynamic_slam::estimate_tracking()";
+	int 	local_verbosity_threshold 		= V_DYNAMIC_SLAM_ESTIMATE_TRACKING;//verbosity_mp["Dynamic_slam::estimateSE3"];
+																																		if(verbosity>local_verbosity_threshold) {
+																																			cout << "\fDynamic_slam::estimate_tracking() chk_0"
+																																			<<"  ##############################################################"<< flush;
+																																		}
+	int		layer 				= SE3_start_layer;
+	uint 	frame_idx			= 1;
+	uint 	out_block_size 		= 4;
+	float	old_sum_rho_sq		= FLT_MAX-1;
+	float	factor				= -2.0f;
+	Matx44f	old_pose			= Matx44f::eye();
+	Matx44f	old_k2k				= Matx44f::eye();
+	Matx44f newPose				= runcl.ReadOutput_44f( runcl.pose_buf );
+	Matx44f newK2K				= runcl.ReadOutput_44f( runcl.k2kbuf, cl_flt16_size ); 													// offset = current_frames_idx * cl_flt16_size
+																																		//for (uint out_block_size = 4/*32*/; out_block_size > 2; out_block_size /=2){
+	for (uint iter = 0; iter<SE_iter; iter++){
+		auto step_0 = high_resolution_clock::now();
+																																		if(verbosity>local_verbosity_threshold) {
+																																			cout << "\nDynamic_slam::estimate_tracking() chk_1: layer="<<layer
+																																			<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
+																																			uint	out_block_size		= 2;
+																																			uint	layer				= 0;
+																																			runcl.rho_sq( out_block_size, iter, frame_idx, layer, runcl.k2kbuf	);	// For debugging, get a larger, finer Rho map
+																																			PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_pose, );
+																																		}
+		runcl.rho_sq( 			out_block_size, iter, frame_idx,  	(uint)layer,  runcl.k2kbuf );
+		runcl.reduce_patch_Rho( out_block_size, iter, 	(uint)layer );
+		runcl.update_k2k_cpu( 							(uint)layer );																	// frame_data_GT.keyframe2pose for comparision only.
+		float		sum_rho		=	runcl.se3_rho_result.Rho.x;																			// currently .x colour channel only.
+		float		sum_rho_sq	=	runcl.se3_rho_result.Rho.y;
+		if( isnan(sum_rho_sq) ){
+																			cout << "\nisnan(sum_rho_sq)" <<flush;
+			break;
+		}else if(sum_rho_sq > old_sum_rho_sq     ){																						// Rho, photometric error, got worse not better
+			if(layer<=0) {break;}																										// Reached bottom of image pyramid.
+			else {
+																			cout << "\nsum_rho_sq > old_sum_rho_sq = "<< old_sum_rho_sq;
+				if(factor<-1.0f){																										// End amplified steps
+					factor = -1.0f;
+																			cout << ",  factor -2.0f -> -1.0f";
+				}else {
+					layer --;																											// Step down to lower layer of image pyramid
+																			cout << "\nlayer = "	<<	layer;
+					old_sum_rho_sq			=	FLT_MAX-1;																				// Re-set old_sum_rho_sq for new layer
+				}
+																																		PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_pose, );
+				runcl.update_k2k_buf(		old_k2k,		old_pose);																	// Re-set to previous pose.
+																			cout << endl << flush;
+			}
 		}else{
-			*prediction = e;
-			*optimum 	= d;
-			// *stepsize 	/=2;
-		}
+			old_sum_rho_sq			=	sum_rho_sq;
+			old_pose				=	newPose;
+			old_k2k					=	newK2K;
+
+			float		num_pixels	=	runcl.se3_rho_result.SE3_incr_arry[1];																		// TO DO move numpixels to SE3_incr.w   & reduce SE3_incr_map_mem from float8 tro float4
+			Matx16d		SE3_incr;	for (int i=0;	i<6; i++){	SE3_incr.operator()(i)	=	runcl.se3_rho_result.SE3_incr_arry[i*2];  };
+																																		if( verbosity>local_verbosity_threshold ){
+																																			cout << "\nDynamic_slam::estimate_tracking() chk_4: ,  ###########################"<<
+																																			"\n sum_rho = "			<< sum_rho		<<
+																																			",	sum_rho_sq	= "		<< sum_rho_sq	<<
+																																			",	num_pixels = "		<< num_pixels	<< endl<<flush;
+																																			PRINT_MATX16F( SE3_incr, );
+																																		}
+			Matx44f		pose		=	runcl.ReadOutput_44f(	runcl.pose_buf );
+			Matx44f		invK		=	runcl.ReadOutput_44f(	runcl.inv_K_buf);
+			Matx44f		K			=	runcl.ReadOutput_44f(	runcl.K_buf	 );
+																																		if( verbosity>local_verbosity_threshold ){
+																																			PRINT_MATX44F( pose,	from pose_buf );	PRINT_MATX16F( PToLie(pose),);
+																																			PRINT_MATX44F( invK,	);
+																																			PRINT_MATX44F( K,		);
+																																			PRINT_MATX44F( K * invK,		);
+																																			PRINT_MATX44F( invK * K,		);
+																																		}
+			Matx66d	invH			=	runcl.current_frames[ runcl.current_frames_idx[0] ].invHessian[layer];
+			Matx16d pose_update_cpu	=	SE3_incr * invH;	// Matx_16fmul66f( SE3_incr, invH);  //										// Double precision is required
+																																		if( verbosity>local_verbosity_threshold ){
+																																			cout << "\nSE3_incr="			<<SE3_incr			<<endl<<flush;
+																																			cout << "\ninvH="				<<invH				<<endl<<flush;
+																																			cout << "\npose_update_cpu="	<<pose_update_cpu	<<endl<<flush;
+																																			PRINT_MATX66F( invH, );
+																																			PRINT_MATX16F( pose_update_cpu, );
+																																			Matx44f	pose_old	= runcl.ReadOutput_44f( runcl.pose_buf );	PRINT_MATX44F( pose_old, );
+																																			Matx44f	k2k_old		= runcl.ReadOutput_44f( runcl.k2kbuf);		PRINT_MATX44F( k2k_old,	);
+																																		}
+			pose_update_cpu			=	factor *  pose_update_cpu.mul( deltas_matx[layer] );/*(-2.0f)*/ /*  * 0.5f; */  				//NB matx.mul(  matx ) => elementwise multiplication.
+																																		if( verbosity>local_verbosity_threshold-3 ){PRINT_MATX16F( pose_update_cpu, ); }
+			newPose					=	LieToP_Matx( pose_update_cpu )  *  pose;
+			newK2K					=	K  *  newPose  * invK ;
+
+			runcl.update_k2k_buf(		newK2K,		newPose);
+																																		if( verbosity>local_verbosity_threshold ){
+																																			cout << "\nDynamic_slam::estimate_tracking() chk_5: ,  layer = "<<layer<<"##########"<<flush;
+																																			PRINT_MATX16F( deltas_matx[layer], );							PRINT_MATX16F( pose_update_cpu, );
+																																			PRINT_MATX16F( PToLie( LieToP_Matx(pose_update_cpu).inv() ), );
+																																			PRINT_MATX44F( newPose,	);										PRINT_MATX16F( PToLie( newPose ), );
+																																			PRINT_MATX44F( newK2K,			);
+																																			Matx44f	pose_now	= runcl.ReadOutput_44f( runcl.pose_buf );	PRINT_MATX44F( pose_now, );
+																																			Matx44f	k2k_now		= runcl.ReadOutput_44f( runcl.k2kbuf);		PRINT_MATX44F( k2k_now,	);
+																																		}
+			if( SE_iter-(iter/10) < layer) {
+				layer --;																											// Step down to lower layer of image pyramid
+				cout << "\n( SE_iter-(iter/10) < layer),  layer = "	<<	layer <<endl<<flush;
+				old_sum_rho_sq			=	FLT_MAX-1;
+			}
+		}auto step_1 = high_resolution_clock::now();																					if( verbosity>local_verbosity_threshold-3){
+																																			cout << "\nDynamic_slam::estimate_tracking() loop finished  ###########################"\
+																																			<<"Tracking loop time = "<<  duration_cast<microseconds>(step_1 - step_0).count()
+																																			<<" microseconds,  layer="<<layer<<endl<<flush;
+																																		}
 	}
-																																			if(verbosity>local_verbosity_threshold) {
-																																				cout << "\n Dynamic_slam::compute_optimum: "
-																																				<< ", \na=" << a
-																																				<< ", \tb=" << b
-																																				<< ", \tc=" << c
-																																				<< ", \n(d,e)=("<<d<<","<<e<<")"<<a*d*d + b*d + c
-																																				<< ", \n(f,g)=("<<f<<","<<g<<")"<<a*f*f + b*f + c
-																																				<< ", \n(h,i)=("<<h<<","<<i<<")"<<a*h*h + b*h + c
-																																				<< ", \nprediction="<<*prediction
-																																				<< ", \toptimum="<<*optimum
-																																				<< ", \tstepsize="<<*stepsize
-																																				<< ", \tlayer="<<layer
-																																				<< endl << flush;
-																																			}
-																																		float prediction_ = *prediction * 0.999f; // prevents rounding error from triggering error.
-																																		if( e<prediction_ || g<prediction_ || i<prediction_ ) {
-																																			cout <<"\n logic error: prediction > sample." << flush; runcl.exit_(1); }
+
+	Matx44f pose_temp 					= runcl.update_pose_bufs_cur_frames( );											// NB these two lines are req because nextFrame() calls  runcl.set_cam_bufs(..), using frame_data.
+	frame_data.back().frame_data.pose 	= pose_temp ;
+
+	float16arry_To_Matx44f(	 &runcl.current_frames[	runcl.current_frames_idx[0]	].k2k_0to1_est[0]	, frame_data.back().frame_data.K2K );
+																																		if(verbosity>local_verbosity_threshold) {
+																																			cout << "\fDynamic_slam::tracking() finished"<< flush;
+																																			PRINT_MATX44F(frame_data.back().frame_data.pose,);
+																																			PRINT_MATX44F(frame_data.back().frame_data.K2K, );
+																																		}
 }
-*/
+
+
+
+
+

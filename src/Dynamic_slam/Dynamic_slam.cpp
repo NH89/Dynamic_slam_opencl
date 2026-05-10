@@ -8,7 +8,7 @@ using namespace std;
 
 Dynamic_slam::~Dynamic_slam(){ runcl.~RunCL(); };
 
-Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map verbosity_mp_
+Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {
 	obj = obj_;																																// NB save obj_ to class member obj, so that it persists within this Dynamic_slam object.
 	verbosity 							= obj["verbosity"].asInt();
 	int local_verbosity_threshold 		= V_DYNAMIC_SLAM_DYNAMIC_SLAM;																		if(verbosity>local_verbosity_threshold) cout << "\f Dynamic_slam::Dynamic_slam_chk 0\n" << flush;
@@ -28,7 +28,6 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 
 	SE3_start_layer 					= obj["SE3_start_layer"].asUInt();
 	SE3_stop_layer 						= obj["SE3_stop_layer"].asUInt();
-	//SE_iter_per_layer 				= obj["SE_iter_per_layer"].asUInt();
 	SE_iter 							= obj["SE_iter"].asUInt();
 
 	stringstream  ss0;
@@ -54,21 +53,24 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {  //, int_map
 																																			}
 	runcl.initialize_RunCL( imread( png[ runcl.dataset_frame_num ].string() ) );															// Set image params, ref for dimensions and data type. ########################################################################
 
-	initialize_camera_vec();				// Calls runcl.precomp_param_maps, depends on deltas.
+	initialize_camera_vec();
+	precompute_SE3_buffers();
+	getFrame();
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::Dynamic_slam_ finished "
 																																				<< "#####################################################################################\f" << flush;
 																																			}
 }
 
+
 void Dynamic_slam::initialize_camera_intrinsic_matrix(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_INITIALIZE_CAMERA;
 																																			if (verbosity>local_verbosity_threshold) { cout << "\fDynamic_slam::initialize_camera_vec_chk 0:" <<flush;}
-	cv::Matx44f k 					= Matx44f::eye();;												// NB In DTAM_opencl, "cameraMatrix" found by convertAhandPovRay, called by fileLoader
+	cv::Matx44f k 					= Matx44f::eye();;																						// NB In DTAM_opencl, "cameraMatrix" found by convertAhandPovRay, called by fileLoader
 
 		if(use_conf_camera_matx==true){
-			for (int i=0; i<9; i++){ k.operator()(i/3,i%3) = obj["cameraMatrix"][i].asFloat(); }												// 3x3 Camera matrix from conf file.
+			for (int i=0; i<9; i++){ k.operator()(i/3,i%3) = obj["cameraMatrix"][i].asFloat(); }											// 3x3 Camera matrix from conf file.
 		}else{
-			for (int i=0; i<9; i++){ k.operator()(i/3,i%3) = 0.0f;}																				// 3x3 Default naive camera matrix.
+			for (int i=0; i<9; i++){ k.operator()(i/3,i%3) = 0.0f;}																			// 3x3 Default naive camera matrix.
 			f	= 	2*min( runcl.baseImage_height, runcl.baseImage_width);
 			 k.operator()(0,0) = f;
 			 k.operator()(1,1) = f;
@@ -79,62 +81,28 @@ void Dynamic_slam::initialize_camera_intrinsic_matrix(){
 	initial_K = k;																															if (verbosity>local_verbosity_threshold){ PRINT_MATX44F( initial_K , ); }
 }
 
-void Dynamic_slam::generate_deltas(){	// Principle : delta for each parameter causes maximum 1 pixel of warp in the full size image.
-										// i.e. when computing J = (d_warp/d_param) * img_grad, only the difference betwen neigbouring pixels counts.
-										// NB images should be blurred to eliminate noise and bilinear interpolation artefacts.
-	int local_verbosity_threshold = V_DYNAMIC_GENERATE_DELTAS;
-																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::generate_deltas()_chk 0:"<<flush;}
-	f								= fmaxf(	frame_data.back().frame_data.K(0,0),	frame_data.back().frame_data.K(1,1)	);	//(initial_K.operator()(0,0),	initial_K.operator()(1,1)	);							// NB [0]&[4] are u,v focal length
-	float min_depth					= obj["min_depth"].asFloat();
-
-	for (int layer=0; layer<max_mipmap_layers; layer++){
-		float factor				= 1.0f; //pow(2,layer)
-		delta[layer]				= factor ;
-		delta_theta[layer]			= factor * 1/f;
-		cos_theta[layer]			= cos(delta_theta[layer]);
-		sin_theta[layer]			= sin(delta_theta[layer]);
-		delta_depth[layer]			= factor * 	f * 2.0f 	/ ( min_depth * 	fmaxf( 	frame_data.back().frame_data.K(0,2),	frame_data.back().frame_data.K(1,2)		)	);//(obj["cameraMatrix"][2].asFloat(),	obj["cameraMatrix"][5].asFloat() )  );	// NB [2]&[5] are image sensor size
-
-		deltas_matx[layer]			= { delta_theta[layer], delta_theta[layer], delta_theta[layer], delta[layer], delta[layer], delta[layer] };
-
-																																			if (verbosity>local_verbosity_threshold) { cout<<endl
-																																				<<"\nlayer			= "<<layer
-																																				<<"\nf				= "<<f
-																																				<<"\nmin_depth		= "<<min_depth
-																																				<<"\ndelta			= "<<delta[layer]
-																																				<<"\ndelta_theta	= "<<delta_theta[layer]
-																																				<<"\ncos_theta		= "<<cos_theta[layer]
-																																				<<"\nsin_theta		= "<<sin_theta[layer]
-																																				<<"\ndelta_depth	= "<<delta_depth[layer]
-																																				<<"\ndeltas_matx	= "<<deltas_matx[layer]
-																																				<<"\nDynamic_slam::generate_deltas()_finished"<<flush;
-																																			}
-	}
-}
 
 void Dynamic_slam::initialize_camera_vec(){
 	const int local_verbosity_threshold = V_DYNAMIC_SLAM_INITIALIZE_CAMERA;
 																																			if (verbosity>local_verbosity_threshold) { cout << "\fDynamic_slam::initialize_camera_vec_chk 0:" <<flush;
 																																				cout<<"\n frame_data.size() = "<<frame_data.size()<<flush;
 																																			}
-	initialize_camera_intrinsic_matrix();	// depends on runcl.baseImage
-	R 								= cv::Mat::eye(  3,3 , CV_32FC1);																			// intialize ground truth extrinsic data, NB Mat (int rows, int cols, int type)
+	initialize_camera_intrinsic_matrix();																									// depends on runcl.baseImage
+	R 								= cv::Mat::eye(  3,3 , CV_32FC1);																		// intialize ground truth extrinsic data, NB Mat (int rows, int cols, int type)
 	T 								= cv::Mat::zeros(3,1 , CV_32FC1);
 	frame_datum 			datum 	= {};																									// default initialization, to values in header, or zero if not set in header.
-	datum.keyframe_index			= 0 ;								// Expects that this frame will be used for new vector of keyframes.
+	datum.keyframe_index			= 0 ;																									// Expects that this frame will be used for new vector of keyframes.
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 1:" <<flush;
 																																				cout << "\n\n datum.keyframe_index = "<< datum.keyframe_index << flush;
 																																				PRINT_MATX44F( initial_K ,  );
 																																			}
-	// datum.frame_data.K 				= initial_K;
-	// cv::Matx44f inv_k				= generate_invK_( initial_K );
-	// datum.frame_data.inv_K 			= inv_k;																								// Current frame must be set as the new keyframe.
-	frame_data.push_back( 	datum );																											// pushback a pose_datum, ready for getFrameData_vec() to write to.
+																																			// Current frame must be set as the new keyframe.
+	frame_data.push_back( 	datum );																										// pushback a pose_datum, ready for getFrameData_vec() to write to.
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 2:" <<flush;
 																																				//PRINT_MATX44F( inv_k, initial_K ); PRINT_MATX44F( initial_K*inv_k, );
 																																				PRINT_MATX44F(frame_data.back().frame_data.prev_pose2pose,);  // gets corrupted by getFrameData_vec()
 																																			}
-	if(GT_available==true){									getFrameData_vec( datum );		//}														// Sets frame_data.back().frame_data_GT
+	if(GT_available==true){									getFrameData_vec( datum );		//}												// Sets frame_data.back().frame_data_GT
 																																			// We use orthographic matrix, then convert to perspectiveby dividing by depth.
 																																			// See notes in convertTransforms.cpp
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nDynamic_slam::initialize_camera_vec_chk 3:" <<flush;
@@ -181,14 +149,7 @@ void Dynamic_slam::initialize_camera_vec(){
 																																				vector<frame_datum>::iterator frame_minus_two			=	frame_minus_one;
 																																				frame_minus_two --;
 																																				PRINT_MATX44F( frame_minus_two->frame_data.inv_pose, );
-
 																																			}
-	generate_deltas();																														// depends on f &=> camera_intrinsic_matrix
-	generate_SE3_k2k_vec( SE3_k2k );																										// fills float[96] ie 6xfloat[16] from conf.json intrinsic camera matrix + SE3 increments.
-	runcl.precomp_param_maps ( SE3_k2k );																									// GPU computes J(u,v/SE3) Jacobian of optical flow wrt SE3.
-	getFrame();
-	// runcl.dataset_frame_num++;
-	// runcl.frame_count++;
 																																			if (verbosity>local_verbosity_threshold){ cout << "\nDynamic_slam::initialize_camera_vec Finished:"
 																																				<<"##############################################################################\f" <<flush;
 																																			}
@@ -226,47 +187,20 @@ int Dynamic_slam::nextFrame() {
 																																			// NB new frame_data element was a copy of the previous one, so identity for first step, and constant vel thereafter.
 	runcl.set_cam_bufs(  frame_data.back().frame_data.K ,  frame_data.back().frame_data.inv_K,  frame_data.back().frame_data.pose,  frame_data.back().frame_data.K2K  );
 
-																						auto step_1 = high_resolution_clock::now();			// updates pose2pose for next frame in cost volume.
-																																			// if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 1, Pose error after getFrameData_vec():" << flush;
-																																			// 	report_GT_pose_error();
-																																			// 	//display_frame_resluts();
-																																			// }
-																						auto step_2 = high_resolution_clock::now();			// Loads GT depth of the new frame. NB depends on image.size from getFrame().
+																						auto step_1 = high_resolution_clock::now();
 
-																						auto step_3 = high_resolution_clock::now();			// use_GT_pose();
-																																			// if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 2, Pose error after use_GT_pose:" << flush;
-																																			// 	report_GT_pose_error();
-																																			// 	//display_frame_resluts();
-																																			// }
-	getFrame();																			auto step_4 = high_resolution_clock::now();
-/*	if(obj["Artif_pose_err_bool"].asBool() == true ){ 	artificial_pose_error_vec();} */	auto step_5 = high_resolution_clock::now();
-
-	//estimateSE3(); // original tracking
-																																			if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 3, Pose error after Artif_pose_err:" << flush;
+	getFrame();																			auto step_2 = high_resolution_clock::now();			if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 3, Pose error after Artif_pose_err:" << flush;
 																																				report_GT_pose_error();
-																																				//display_frame_resluts();
 																																			}
-//	patch_slam();		// new tracking prototype.
-	estimateSLAM();		// kernel basedtracking - no data offload. nor CPU computing.
-																						auto step_6 = high_resolution_clock::now();			// own thread ? num iter ?
+	estimate_tracking();																auto step_3 = high_resolution_clock::now();
 
-	//estimateCalibration(); 																												// own thread, one iter.
-																																			if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 4, Pose error after tracking:" << flush;
-																																				report_GT_pose_error();
-																																				//display_frame_resluts();
-																																			}
-	////////////////////////////////// Parallax depth mapping
-																						auto step_7 = high_resolution_clock::now();
-// TO DO replace with patch_slam and multi-frame depth+motion+accel maps,  together with vel, accel, jolt of camera,   and later reflectance & illum etc...
+	estimate_depth();																	auto step_4 = high_resolution_clock::now();			// own thread ? num iter ?
 
-																						auto step_8 = high_resolution_clock::now();			// Update cost vol with the new frame, and repeat optimization of the depth map.
-																																			// NB Cost vol needs to be initialized on a particular keyframe.
-																																			// A previous depth map can be transfered, and the updated depth map after each frame, can be used to track the next frame.
+	estimate_calibration();																auto step_5 = high_resolution_clock::now();
+
 																						if(verbosity>local_verbosity_threshold-1) {
-																							getNextFrameProfile(step_0, step_1, step_2, step_3, step_4, step_5, step_6, step_7, step_8);
+																							getNextFrameProfile(step_0, step_1, step_2, step_3, step_4, step_5 );
 																						}
-	// runcl.dataset_frame_num++;
-	// runcl.frame_count++;
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame Finished "
 																																				<<"##################################################################################\f" << flush;
 																																			}
@@ -304,10 +238,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 																																			// load a basic image in CV_8UC3, then convert on GPU to 'half'
 	runcl.cvt_color_space( );
 
-	runcl.build_img_pyramid( "imgmem" );		// RunCL_patch_image_tracking.cpp  way to build pyramid, with additional blur layers at apex
-
-	// runcl.current_frames[	runcl.current_frames_idx[0] ].dataset_frame_num		=	runcl.dataset_frame_num;
-	// runcl.current_frames[	runcl.current_frames_idx[0] ].frame_count			=	runcl.frame_count;
+	runcl.build_img_pyramid( "imgmem" );																									// RunCL_patch_image_tracking.cpp  way to build pyramid, with additional blur layers at apex
 
 	cl_int 			status;
 	cl_event 		writeEvt;
@@ -340,44 +271,3 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 																																				}
 																																			}
 }
-
-
-//////
-
-void Dynamic_slam::estimateCalibration(){
-	//int local_verbosity_threshold = V_DYNAMIC_SLAM_ESTIMATECALIBRATION;//verbosity_mp["Dynamic_slam::estimateCalibration"];
-// # Get 1st & 2nd order gradients wrt calibration parameters.
-//
-
-
-// # Take one dammped least squares step of calibration.
-//
-
-}
-
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// ## Regularize Maps : AbsDepth, GradDepth, SurfNormal, RelVel,
-void Dynamic_slam::SpatialCostFns(){
-	//int local_verbosity_threshold = V_DYNAMIC_SLAM_SPATIALCOSTFNS;//verbosity_mp["Dynamic_slam::SpatialCostFns"];
-// # Spatial cost functions
-// see CostVol::updateQD(..), RunCL::updateQD(..) & __kernel void UpdateQD(..)
-
-}
-
-void Dynamic_slam::ParsimonyCostFns(){
-	//int local_verbosity_threshold = V_DYNAMIC_SLAM_PARSIMONYCOSTFNS;//verbosity_mp["Dynamic_slam::ParsimonyCostFns"];
-// # Parsimony cost functions : NB Bin sort pixels to find non-spatial neighbours
-// see SIFS for priors & Morphogenesis for BinSort
-
-}
-
-void Dynamic_slam::ExhaustiveSearch(){
-	//int local_verbosity_threshold = V_DYNAMIC_SLAM_EXHAUSTIVESEARCH;//verbosity_mp["Dynamic_slam::ExhaustiveSearch"];
-// # Update A : exhaustive search on cost vol with cost fns -> update maps.
-// see CostVol::updateA(..), RunCL::updateA(..) & __kernel void UpdateA2(..)
-
-}
-
-

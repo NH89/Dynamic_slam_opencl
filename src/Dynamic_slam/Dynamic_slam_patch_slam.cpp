@@ -5,150 +5,6 @@
 using namespace cv;
 using namespace std;
 
-void Dynamic_slam::estimateSLAM(){																										// Adaptive step size LM tracking and halting
-	string fname = "Dynamic_slam::estimateSLAM()";
-	int 	local_verbosity_threshold 		= V_DYNAMIC_SLAM_ESTIMATE_SLAM;//verbosity_mp["Dynamic_slam::estimateSE3"];
-																																		if(verbosity>local_verbosity_threshold) {
-																																			cout << "\fDynamic_slam::estimate_SLAM() chk_0"
-																																			<<"  ##############################################################"<< flush;
-																																		}
-
-
-	estimate_tracking();																									cout<<"\nDynamic_slam::estimateSLAM() chk_0.1"<<flush;
-	Matx44f pose_temp 	= runcl.update_pose_bufs_cur_frames( );																cout<<"\nDynamic_slam::estimateSLAM() chk_0.2"<<flush;				// NB these two lines are req because nextFrame() calls  runcl.set_cam_bufs(..), using frame_data.
-	frame_data.back().frame_data.pose 	= pose_temp ;																		cout<<"\nDynamic_slam::estimateSLAM() chk_0.3"<<flush;
-
-	// for( uint frame_index=0; frame_index<num_current_frames; frame_index++){													cout<<"\nDynamic_slam::estimateSLAM() chk_0.5 frame_index = "<<frame_index<<endl<<flush;
-	// 	uint layer_ = 0;
-	// 	runcl.rho_sq( out_block_size, 10+frame_index, frame_index, layer_, runcl.cur_frames_k2kbuf );	//iter, frame_idx, layer, cl_mem k2k_buf	);
-	// }
-	float16arry_To_Matx44f(	 &runcl.current_frames[	runcl.current_frames_idx[0]	].k2k_0to1_est[0]	, frame_data.back().frame_data.K2K );
-																																		if(verbosity>local_verbosity_threshold) {
-																																			cout << "\fDynamic_slam::estimate_SLAM() chk_1"<< flush;
-																																			PRINT_MATX44F(frame_data.back().frame_data.pose,);
-																																			PRINT_MATX44F(frame_data.back().frame_data.K2K, );
-																																		}
-	estimate_depth();
-																																		if( verbosity>local_verbosity_threshold ){
-																																			cout << "\nDynamic_slam::estimate_SLAM() finished  ###########################"<<flush;
-																																		}
-}
-
-void Dynamic_slam::estimate_tracking(){
-	string fname = "Dynamic_slam::estimate_tracking()";
-	int 	local_verbosity_threshold 		= V_DYNAMIC_SLAM_ESTIMATE_TRACKING;//verbosity_mp["Dynamic_slam::estimateSE3"];
-																																		if(verbosity>local_verbosity_threshold) {
-																																			cout << "\fDynamic_slam::estimate_tracking() chk_0"
-																																			<<"  ##############################################################"<< flush;
-																																		}
-	int		layer 				= SE3_start_layer;
-	uint 	frame_idx			= 1;
-	uint 	out_block_size 		= 4;
-	float	old_sum_rho_sq		= FLT_MAX-1;
-	float	factor				= -2.0f;
-	Matx44f	old_pose			= Matx44f::eye();
-	Matx44f	old_k2k				= Matx44f::eye();
-	Matx44f newPose				= runcl.ReadOutput_44f( runcl.pose_buf );
-	Matx44f newK2K				= runcl.ReadOutput_44f( runcl.k2kbuf, cl_flt16_size ); 													// offset = current_frames_idx * cl_flt16_size
-																																		//for (uint out_block_size = 4/*32*/; out_block_size > 2; out_block_size /=2){
-	for (uint iter = 0; iter<SE_iter; iter++){
-		auto step_0 = high_resolution_clock::now();
-																																		if(verbosity>local_verbosity_threshold) {
-																																			cout << "\nDynamic_slam::estimate_tracking() chk_1: layer="<<layer
-																																			<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
-																																			uint	out_block_size		= 2;
-																																			uint	layer				= 0;
-																																			runcl.rho_sq( out_block_size, iter, frame_idx, layer, runcl.k2kbuf	);	// For debugging, get a larger, finer Rho map
-																																			PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_pose, );
-																																		}
-		runcl.rho_sq( 			out_block_size, iter, frame_idx,  	(uint)layer,  runcl.k2kbuf );
-		runcl.reduce_patch_Rho( out_block_size, iter, 	(uint)layer );
-		runcl.update_k2k_cpu( 							(uint)layer );																	// frame_data_GT.keyframe2pose for comparision only.
-		float		sum_rho		=	runcl.se3_rho_result.Rho.x;																			// currently .x colour channel only.
-		float		sum_rho_sq	=	runcl.se3_rho_result.Rho.y;
-		if( isnan(sum_rho_sq) ){
-																			cout << "\nisnan(sum_rho_sq)" <<flush;
-			break;
-		}else if(sum_rho_sq > old_sum_rho_sq     ){																						// Rho, photometric error, got worse not better
-			if(layer<=0) {break;}																										// Reached bottom of image pyramid.
-			else {
-																			cout << "\nsum_rho_sq > old_sum_rho_sq = "<< old_sum_rho_sq;
-				if(factor<-1.0f){																										// End amplified steps
-					factor = -1.0f;
-																			cout << ",  factor -2.0f -> -1.0f";
-				}else {
-					layer --;																											// Step down to lower layer of image pyramid
-																			cout << "\nlayer = "	<<	layer;
-					old_sum_rho_sq			=	FLT_MAX-1;																				// Re-set old_sum_rho_sq for new layer
-				}
-																																		PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_pose, );
-				runcl.update_k2k_buf(		old_k2k,		old_pose);																	// Re-set to previous pose.
-																			cout << endl << flush;
-			}
-		}else{
-			old_sum_rho_sq			=	sum_rho_sq;
-			old_pose				=	newPose;
-			old_k2k					=	newK2K;
-
-			float		num_pixels	=	runcl.se3_rho_result.SE3_incr_arry[1];																		// TO DO move numpixels to SE3_incr.w   & reduce SE3_incr_map_mem from float8 tro float4
-			Matx16d		SE3_incr;	for (int i=0;	i<6; i++){	SE3_incr.operator()(i)	=	runcl.se3_rho_result.SE3_incr_arry[i*2];  };
-																																		if( verbosity>local_verbosity_threshold ){
-																																			cout << "\nDynamic_slam::estimate_tracking() chk_4: ,  ###########################"<<
-																																			"\n sum_rho = "			<< sum_rho		<<
-																																			",	sum_rho_sq	= "		<< sum_rho_sq	<<
-																																			",	num_pixels = "		<< num_pixels	<< endl<<flush;
-																																			PRINT_MATX16F( SE3_incr, );
-																																		}
-			Matx44f		pose		=	runcl.ReadOutput_44f(	runcl.pose_buf );
-			Matx44f		invK		=	runcl.ReadOutput_44f(	runcl.inv_K_buf);
-			Matx44f		K			=	runcl.ReadOutput_44f(	runcl.K_buf	 );
-																																		if( verbosity>local_verbosity_threshold ){
-																																			PRINT_MATX44F( pose,	from pose_buf );	PRINT_MATX16F( PToLie(pose),);
-																																			PRINT_MATX44F( invK,	);
-																																			PRINT_MATX44F( K,		);
-																																			PRINT_MATX44F( K * invK,		);
-																																			PRINT_MATX44F( invK * K,		);
-																																		}
-			Matx66d	invH			=	runcl.current_frames[ runcl.current_frames_idx[0] ].invHessian[layer];
-			Matx16d pose_update_cpu	=	SE3_incr * invH;	// Matx_16fmul66f( SE3_incr, invH);  //										// Double precision is required
-																																		if( verbosity>local_verbosity_threshold ){
-																																			cout << "\nSE3_incr="			<<SE3_incr			<<endl<<flush;
-																																			cout << "\ninvH="				<<invH				<<endl<<flush;
-																																			cout << "\npose_update_cpu="	<<pose_update_cpu	<<endl<<flush;
-																																			PRINT_MATX66F( invH, );
-																																			PRINT_MATX16F( pose_update_cpu, );
-																																			Matx44f	pose_old	= runcl.ReadOutput_44f( runcl.pose_buf );	PRINT_MATX44F( pose_old, );
-																																			Matx44f	k2k_old		= runcl.ReadOutput_44f( runcl.k2kbuf);		PRINT_MATX44F( k2k_old,	);
-																																		}
-			pose_update_cpu			=	factor *  pose_update_cpu.mul( deltas_matx[layer] );/*(-2.0f)*/ /*  * 0.5f; */  				//NB matx.mul(  matx ) => elementwise multiplication.
-																																		if( verbosity>local_verbosity_threshold-3 ){PRINT_MATX16F( pose_update_cpu, ); }
-			newPose					=	LieToP_Matx( pose_update_cpu )  *  pose;
-			newK2K					=	K  *  newPose  * invK ;
-
-			runcl.update_k2k_buf(		newK2K,		newPose);
-																																		if( verbosity>local_verbosity_threshold ){
-																																			cout << "\nDynamic_slam::estimate_tracking() chk_5: ,  layer = "<<layer<<"##########"<<flush;
-																																			PRINT_MATX16F( deltas_matx[layer], );							PRINT_MATX16F( pose_update_cpu, );
-																																			PRINT_MATX16F( PToLie( LieToP_Matx(pose_update_cpu).inv() ), );
-																																			PRINT_MATX44F( newPose,	);										PRINT_MATX16F( PToLie( newPose ), );
-																																			PRINT_MATX44F( newK2K,			);
-																																			Matx44f	pose_now	= runcl.ReadOutput_44f( runcl.pose_buf );	PRINT_MATX44F( pose_now, );
-																																			Matx44f	k2k_now		= runcl.ReadOutput_44f( runcl.k2kbuf);		PRINT_MATX44F( k2k_now,	);
-																																		}
-			if( SE_iter-(iter/10) < layer) {
-				layer --;																											// Step down to lower layer of image pyramid
-				cout << "\n( SE_iter-(iter/10) < layer),  layer = "	<<	layer <<endl<<flush;
-				old_sum_rho_sq			=	FLT_MAX-1;
-			}
-		}auto step_1 = high_resolution_clock::now();																					if( verbosity>local_verbosity_threshold-3){
-																																			cout << "\nDynamic_slam::estimate_tracking() loop finished  ###########################"\
-																																			<<"Tracking loop time = "<<  duration_cast<microseconds>(step_1 - step_0).count()
-																																			<<" microseconds,  layer="<<layer<<endl<<flush;
-																																		}
-	}
-}
-
-
 void Dynamic_slam::estimate_depth(){
 	string fname = "Dynamic_slam::estimate_depth()";
 	int 	local_verbosity_threshold 		= V_DYNAMIC_SLAM_ESTIMATE_DEPTH;//verbosity_mp["Dynamic_slam::estimateSE3"];
@@ -206,4 +62,29 @@ void Dynamic_slam::estimate_depth(){
 	// copy depth to tracking depth map ### TODO
 	uint depth_layer = 0;																													// i.e. layer of depth map used for tracking. Currently has to be 0.
 	if(	initialize_tracking_from_GT_depth == false){	runcl.use_inferred_depthmap( depth_layer );	}
+}
+
+
+
+
+// ## Regularize Maps : AbsDepth, GradDepth, SurfNormal, RelVel,
+void Dynamic_slam::SpatialCostFns(){
+	//int local_verbosity_threshold = V_DYNAMIC_SLAM_SPATIALCOSTFNS;//verbosity_mp["Dynamic_slam::SpatialCostFns"];
+// # Spatial cost functions
+// see CostVol::updateQD(..), RunCL::updateQD(..) & __kernel void UpdateQD(..)
+
+}
+
+void Dynamic_slam::ParsimonyCostFns(){
+	//int local_verbosity_threshold = V_DYNAMIC_SLAM_PARSIMONYCOSTFNS;//verbosity_mp["Dynamic_slam::ParsimonyCostFns"];
+// # Parsimony cost functions : NB Bin sort pixels to find non-spatial neighbours
+// see SIFS for priors & Morphogenesis for BinSort
+
+}
+
+void Dynamic_slam::ExhaustiveSearch(){
+	//int local_verbosity_threshold = V_DYNAMIC_SLAM_EXHAUSTIVESEARCH;//verbosity_mp["Dynamic_slam::ExhaustiveSearch"];
+// # Update A : exhaustive search on cost vol with cost fns -> update maps.
+// see CostVol::updateA(..), RunCL::updateA(..) & __kernel void UpdateA2(..)
+
 }
