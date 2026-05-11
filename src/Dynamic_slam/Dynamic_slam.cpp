@@ -238,7 +238,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 																																			// load a basic image in CV_8UC3, then convert on GPU to 'half'
 	runcl.cvt_color_space( );
 
-	runcl.build_img_pyramid( "imgmem" );																									// RunCL_patch_image_tracking.cpp  way to build pyramid, with additional blur layers at apex
+	runcl.build_img_pyramid( "imgmem" );		// RunCL_patch_image_tracking.cpp  way to build pyramid, with additional blur layers at apex
 
 	cl_int 			status;
 	cl_event 		writeEvt;
@@ -254,8 +254,8 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 																																			}
 	for(int layer=runcl.mm_stop-1; layer>=0; layer-- ){
 																																			if(verbosity>local_verbosity_threshold){ cout<<"\nlayer = "<<layer<<flush; }
-		runcl.patch_img_gradients(	layer);
-		runcl.patch_hessian_reduce(	layer);
+		runcl.patch_img_gradients(		layer);
+		runcl.patch_SE3_hessian_reduce(	layer);
 	}
 	// Will need to decide which layers and ST3 patch sizes to compute Hessians for, then store them in a buffer on the GPU.
 																																			// # Get 1st & 2nd order image gradients of MipMap

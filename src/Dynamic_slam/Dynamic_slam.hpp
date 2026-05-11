@@ -159,9 +159,7 @@ class Dynamic_slam
     void precompute_cam_matrix_and_lens_distortion_buffers();
     void generate_camera_matrix_k2k_vec( float _SE3_k2k[  max_mipmap_layers* num_camera_matrix_DoF *16  ] );
     void estimate_camera_matrix();
-    // To add :
-    // lens distortion...
-
+	void estimate_lens_distortion();
 
     ///////////////////////////////////// Dynamic_slam_results.cpp
     void report_GT_pose_error();

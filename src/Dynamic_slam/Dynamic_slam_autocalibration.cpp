@@ -6,17 +6,15 @@ using namespace cv;
 using namespace std;
 
 void Dynamic_slam::estimate_calibration(){
-	//int local_verbosity_threshold = V_DYNAMIC_SLAM_ESTIMATECALIBRATION;//verbosity_mp["Dynamic_slam::estimateCalibration"];
+	string fname = "Dynamic_slam::estimate_calibration(()";
+	int 	local_verbosity_threshold 		= V_DYNAMIC_SLAM_ESTIMATE_CALIBRATION;//verbosity_mp["Dynamic_slam::estimateSE3"];
+																																		if(verbosity>local_verbosity_threshold) {
+																																			cout << "\fDynamic_slam::estimate_calibration(() chk_0"
+																																			<<"  ##############################################################"<< flush;
+																																		}
 	precompute_cam_matrix_and_lens_distortion_buffers();
-
-
-// # Get 1st & 2nd order gradients wrt calibration parameters.
-//
-
-
-// # Take one dammped least squares step of calibration.
-//
-
+	estimate_camera_matrix();
+	estimate_lens_distortion();
 }
 
 void Dynamic_slam::precompute_cam_matrix_and_lens_distortion_buffers(){			// needs to be run _after_ computing the SE3 transform,  if the aim is to find the actual values of K, rather than the change in K between frames.
@@ -73,10 +71,10 @@ void Dynamic_slam::generate_camera_matrix_k2k_vec( float _camera_matrix_k2k[  ma
 }
 
 void Dynamic_slam::estimate_camera_matrix(){
-	string fname = "Dynamic_slam::estimate_tracking()";
+	string fname = "Dynamic_slam::_camera_matrix()";
 	int 	local_verbosity_threshold 		= V_DYNAMIC_SLAM_ESTIMATE_TRACKING;//verbosity_mp["Dynamic_slam::estimateSE3"];
 																																		if(verbosity>local_verbosity_threshold) {
-																																			cout << "\fDynamic_slam::estimate_tracking() chk_0"
+																																			cout << "\fDynamic_slam::_camera_matrix() chk_0"
 																																			<<"  ##############################################################"<< flush;
 																																		}
 	int		layer 				= SE3_start_layer;
@@ -92,7 +90,7 @@ void Dynamic_slam::estimate_camera_matrix(){
 	for (uint iter = 0; iter<SE_iter; iter++){
 		auto step_0 = high_resolution_clock::now();
 																																		if(verbosity>local_verbosity_threshold) {
-																																			cout << "\nDynamic_slam::estimate_tracking() chk_1: layer="<<layer
+																																			cout << "\nDynamic_slam::_camera_matrix() chk_1: layer="<<layer
 																																			<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
 																																			uint	out_block_size		= 2;
 																																			uint	layer				= 0;
@@ -131,7 +129,7 @@ void Dynamic_slam::estimate_camera_matrix(){
 			float		num_pixels	=	runcl.se3_rho_result.SE3_incr_arry[1];																		// TO DO move numpixels to SE3_incr.w   & reduce SE3_incr_map_mem from float8 tro float4
 			Matx16d		SE3_incr;	for (int i=0;	i<6; i++){	SE3_incr.operator()(i)	=	runcl.se3_rho_result.SE3_incr_arry[i*2];  };
 																																		if( verbosity>local_verbosity_threshold ){
-																																			cout << "\nDynamic_slam::estimate_tracking() chk_4: ,  ###########################"<<
+																																			cout << "\nDynamic_slam::_camera_matrix() chk_4: ,  ###########################"<<
 																																			"\n sum_rho = "			<< sum_rho		<<
 																																			",	sum_rho_sq	= "		<< sum_rho_sq	<<
 																																			",	num_pixels = "		<< num_pixels	<< endl<<flush;
@@ -165,7 +163,7 @@ void Dynamic_slam::estimate_camera_matrix(){
 
 			runcl.update_k2k_buf(		newK2K,		newPose);
 																																		if( verbosity>local_verbosity_threshold ){
-																																			cout << "\nDynamic_slam::estimate_tracking() chk_5: ,  layer = "<<layer<<"##########"<<flush;
+																																			cout << "\nDynamic_slam::_camera_matrix() chk_5: ,  layer = "<<layer<<"##########"<<flush;
 																																			PRINT_MATX16F( deltas_matx[layer], );							PRINT_MATX16F( pose_update_cpu, );
 																																			PRINT_MATX16F( PToLie( LieToP_Matx(pose_update_cpu).inv() ), );
 																																			PRINT_MATX44F( newPose,	);										PRINT_MATX16F( PToLie( newPose ), );
@@ -179,7 +177,7 @@ void Dynamic_slam::estimate_camera_matrix(){
 				old_sum_rho_sq			=	FLT_MAX-1;
 			}
 		}auto step_1 = high_resolution_clock::now();																					if( verbosity>local_verbosity_threshold-3){
-																																			cout << "\nDynamic_slam::estimate_tracking() loop finished  ###########################"\
+																																			cout << "\nDynamic_slam::_camera_matrix() loop finished  ###########################"\
 																																			<<"Tracking loop time = "<<  duration_cast<microseconds>(step_1 - step_0).count()
 																																			<<" microseconds,  layer="<<layer<<endl<<flush;
 																																		}
@@ -190,8 +188,15 @@ void Dynamic_slam::estimate_camera_matrix(){
 
 	float16arry_To_Matx44f(	 &runcl.current_frames[	runcl.current_frames_idx[0]	].k2k_0to1_est[0]	, frame_data.back().frame_data.K2K );
 																																		if(verbosity>local_verbosity_threshold) {
-																																			cout << "\fDynamic_slam::tracking() finished"<< flush;
+																																			cout << "\fDynamic_slam::_camera_matrix() finished"<< flush;
 																																			PRINT_MATX44F(frame_data.back().frame_data.pose,);
 																																			PRINT_MATX44F(frame_data.back().frame_data.K2K, );
 																																		}
+}
+
+
+void Dynamic_slam::estimate_lens_distortion(){
+
+
+
 }

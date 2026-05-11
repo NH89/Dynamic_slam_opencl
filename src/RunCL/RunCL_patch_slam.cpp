@@ -234,25 +234,6 @@ void RunCL::patch_img_gradients_set_params(){	// Uses patch lookup table		// cal
 																																	cout <<"\tpatch_img_gradients_workgroup_size["<<layer_<<"] = "<<patch_img_gradients_workgroup_size[layer_]<<flush;
 																																}
 	}
-	//Inputs:
-	//__private
-	//_clSetKernelArg( kernel,	0, sizeof(int), 		&layer,							fname );								// __private	uint		layer,					//0
-	_clSetKernelArg( kernel,	2, sizeof(int), 		&out_block_size,				fname );								// __private	uint		out_block_size,			//2
-	//__constant
-	_clSetKernelArg( kernel,	5, sizeof( cl_mem), 	&mipmap_buf,					fname);									// __constant	uint8*		mipmap_params,			//5
-	_clSetKernelArg( kernel,	6, sizeof( cl_mem), 	&uint_param_buf,				fname);									// __constant	uint*		uint_params,			//6
-	_clSetKernelArg( kernel,	7, sizeof( cl_mem), 	&SE3_map_mem,					fname);									// __constant 	float2*		SE3_map,				//7
-	//__global
-	_clSetKernelArg( kernel,	8, sizeof( cl_mem), 	&patch_lookup_table_buf,		fname);									// __global 	float4*		lookup_table,			//8
-	//Outputs:
-	//__global
-	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&img_grad_mem,					fname);									// __global 	float2*		img_grad_uv,			//11
-	_clSetKernelArg( kernel,	12, sizeof( cl_mem), 	&SE3_grad_map_mem,				fname);									// __global 	float8*		SE3_grad_map,			//12	// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
-	_clSetKernelArg( kernel,	13, sizeof( cl_mem), 	&SE3_hessian_map_mem,			fname);									// __global 	float4*		SE3_Hessian_pinv_map,	//13	// HSV (6x6) matrix so 36*float8
-
-	_clSetKernelArg( kernel,	15, sizeof( cl_mem), 	&ST3_img_grad_mem,				fname);									// __global 	float4*		HSV_grad				//15
-	//_clSetKernelArg( kernel,	14, sizeof( cl_mem), 	&HSV_grad_mem,					fname);									// __global 	float8*		HSV_grad				//10
-
 	// For the SE3 Hessian patches, and their reduction.	/////////////
 																																if( verbosity>local_verbosity_threshold+1 ) {
 																																	cout<<"\nvoid RunCL::patch_img_gradients_set_params(  ):  mm_start="<<mm_start<<"   mm_stop="<<mm_stop<<flush;
@@ -336,17 +317,30 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 																																}
 	cl_event		ev;
 	cl_int			res, status;
-
+	//Inputs:
+	//__private
 	_clSetKernelArg( kernel,	0, sizeof(int),			&layer,							fname);									// __private	uint		layer,						//0
 	_clSetKernelArg( kernel,	1, sizeof(int),			&lookup_table_offset_uint,		fname);									// __private	uint		lookup_table_offset_uint,	//1
-
+	_clSetKernelArg( kernel,	2, sizeof(int), 		&out_block_size,				fname );								// __private	uint		out_block_size,				//2
 	_clSetKernelArg( kernel,	3, sizeof(cl_uint3),	&SE3_hessian_offset,			fname);									// __private	uint		SE3_hessian_offset,			//2
 	_clSetKernelArg( kernel,	4, sizeof(cl_uint3),	&ST3_out_offset,				fname);									// __private	uint		SE3_hessian_offset,			//3
-
+	//__constant
+	_clSetKernelArg( kernel,	5, sizeof( cl_mem), 	&mipmap_buf,					fname);									// __constant	uint8*		mipmap_params,			//5
+	_clSetKernelArg( kernel,	6, sizeof( cl_mem), 	&uint_param_buf,				fname);									// __constant	uint*		uint_params,			//6
+	_clSetKernelArg( kernel,	7, sizeof( cl_mem), 	&SE3_map_mem,					fname);									// __constant 	float2*		SE3_map,				//7
+	//__global
+	_clSetKernelArg( kernel,	8, sizeof( cl_mem), 	&patch_lookup_table_buf,		fname);									// __global 	float4*		lookup_table,			//8
 	_clSetKernelArg( kernel,	9, sizeof( cl_mem),		&imgmem_,						fname);									// __global 	float4*		img,						//9		//	"current_frames[idx].img_buf	= imgmem[idx];", NB changes every new frame.
 	_clSetKernelArg( kernel,	10, sizeof(cl_mem), 	&depth_mem,						fname);									// __global		float2* 	depth_map,					//10	// current frame depth, now stored as inv_depth
-
+	//Outputs:
+	//__global
+	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&img_grad_mem,					fname);									// __global 	float2*		img_grad_uv,			//11
+	_clSetKernelArg( kernel,	12, sizeof( cl_mem), 	&SE3_grad_map_mem,				fname);									// __global 	float8*		SE3_grad_map,			//12	// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
+	_clSetKernelArg( kernel,	13, sizeof( cl_mem), 	&SE3_hessian_map_mem,			fname);									// __global 	float4*		SE3_Hessian_pinv_map,	//13	// HSV (6x6) matrix so 36*float8
+	//__local
 	_clSetKernelArg( kernel,	14,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,				//13	// local_Hessian[ sizeof(float4) *6*6 *local_size]
+	//__global
+	_clSetKernelArg( kernel,	15, sizeof( cl_mem), 	&ST3_img_grad_mem,				fname);									// __global 	float4*		HSV_grad				//15
 
 	res 	= clEnqueueNDRangeKernel(m_queue,		kernel, 1, 0, &threads_to_launch, &local_work_size_, 0, NULL, &ev);
 																	if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
@@ -464,7 +458,7 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 }
 
 
-void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic_slam::getFrame
+void  RunCL::patch_SE3_hessian_reduce (uint layer){														// called by Dynamic_slam::getFrame
 	string 		fname	= "RunCL::patch_hessian_reduce()";
 	int local_verbosity_threshold = V_RUNCL_PATCH_IMG_GRADIENTS;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_hessian_reduce()_chk1 layer="<<layer<<" #############################################################"<<flush;}
 	cl_kernel	kernel	= patch_hessian_reduce_kernel;
@@ -502,7 +496,6 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 	status	= clWaitForEvents (1, &ev);					if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_hessian_reduce( ),  clWaitForEventsh(1, &ev) = "<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 	status	= clFinish(m_queue);						if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_hessian_reduce( ),  clFinish(m_queue) status = "<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 
-	Matx16f		Jacobian;
 	Matx66f		Hessian;
 	Mat			hessian_Mat(	(num_SE3_DoF+1),	num_SE3_DoF,	CV_32FC4);
 	size_t		data_size	=	(num_SE3_DoF+1) *	num_SE3_DoF *	sizeof(cl_float4);
@@ -513,50 +506,27 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 																																	cout<<"\noffset="<<offset<<flush;
 																																	cout<<"\nhessian_Mat = \n"<<hessian_Mat<<flush;
 																																}
-	Mat J									= Mat( hessian_Mat, Rect(0,0,6,1)	);
-
-	for(int row=0; row<1; row++){																								// per_pixel division currently done in kernel, TO DO which is better ?
-		for(int col=0; col<num_SE3_DoF; col++){
-			Jacobian.operator()(row,col)	= J.at<cl_float4>( row,col ).x;														// NB choose colour channel of Jacobian
-		}
-	}
-
 	for(int row=0; row<num_SE3_DoF; row++){																						// per_pixel division currently done in kernel, TO DO which is better ?
 		for(int col=0; col<num_SE3_DoF; col++){
-			Hessian.operator()(row,col)		= hessian_Mat.at<cl_float4>( row+1,col ).x; 										// NB choose colour channel of Hessian
+			Hessian.operator()(row,col)							= hessian_Mat.at<cl_float4>( row+1,col ).x; 					// NB choose colour channel of Hessian
 		}
 	}
-	current_frames[ current_frames_idx[0] ].Jacobian[layer]			= Jacobian;
 
 	//  Eigen pseudo-inverse
 	Eigen::MatrixXd GN_H(6,6);																									// TO DO replace Eigen with a kernel for 6x6 matrix pseudo-inverse or inverse.
 	for (int i=0;i<6;i++){																										// Hard code efficient computation of 6x6 inversion, & Det.
 		for (int j=0;j<6;j++){
-			GN_H(i,j) 						= Hessian.operator()(i,j);	// GN_Hessian.operator()(i,j);
+			GN_H(i,j) 											= Hessian.operator()(i,j);	// GN_Hessian.operator()(i,j);
 		}
 	}
-	Eigen::MatrixXd pinv 					= GN_H.completeOrthogonalDecomposition().pseudoInverse();
+	Eigen::MatrixXd pinv 										= GN_H.completeOrthogonalDecomposition().pseudoInverse();
 	Matx66f pinv_H;
 	for (int i=0;i<6;i++){
 		for (int j=0;j<6;j++){
-			pinv_H.operator()(i,j)			= pinv(i,j) ;
+			pinv_H.operator()(i,j)								= pinv(i,j);
 		}
 	}
-	current_frames[ current_frames_idx[0] ].invHessian[layer]		= pinv_H;
-
-	////Prove inv = pinv when invertible. NB pinv is numerically safer.
-	typedef Eigen::Matrix<double,6,6> Matrix6x6d;
-	Matrix6x6d GN_H2;
-
-	for (int i=0;i<6;i++){
-		for (int j=0;j<6;j++){
-			GN_H2(i,j) 						= Hessian.operator()(i,j);
-		}
-	}
-
-	Eigen::FullPivLU<Matrix6x6d> lu_GN_H2(GN_H2);
-	bool invertible							= lu_GN_H2.isInvertible();
-	Matrix6x6d 			inv 				= lu_GN_H2.inverse();
+	current_frames[ current_frames_idx[0] ].invHessian[layer]	= pinv_H;
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_hessian_reduce()_chk3 ."<<flush;	// Save buffers to file ###########
 																																	stringstream ss;
 																																	ss << "patch_hessian_reduce__frame_num="<<current_frames[ current_frames_idx[0] ].dataset_frame_num<<"_layer="<<layer<<"_";
@@ -583,14 +553,26 @@ void  RunCL::patch_hessian_reduce(uint layer){														// called by Dynamic
 																																	//////////
 																																	tiff 			= old_tiff;
 																																}
-																																if( verbosity>local_verbosity_threshold) {
+																																if( verbosity>local_verbosity_threshold+1) {
+																																	////Prove inv = pinv when invertible. NB pinv is numerically safer.
+																																	typedef Eigen::Matrix<double,6,6> Matrix6x6d;
+																																	Matrix6x6d GN_H2;
+
+																																	for (int i=0;i<6;i++){
+																																		for (int j=0;j<6;j++){
+																																			GN_H2(i,j) 						= Hessian.operator()(i,j);
+																																		}
+																																	}
+																																	Eigen::FullPivLU<Matrix6x6d> lu_GN_H2(GN_H2);
+																																	bool invertible							= lu_GN_H2.isInvertible();
+																																	Matrix6x6d 			inv 				= lu_GN_H2.inverse();
+																																	/////////////////////////////////////////////////////////////////////////
 																																	const auto old_precision{ cout.precision() };
 																																	cout << setprecision(15);
-																																	cout <<"\nJacobian \n"				<< current_frames[ current_frames_idx[0] ].Jacobian[layer]		<< endl << endl <<flush;
 																																	cout <<"\nEigen GN_H \n" 			<< GN_H															<< endl << endl <<flush;
 																																	cout <<"\nEigen pinv \n" 			<< pinv															<< endl << endl <<flush;
 
-																																	cout <<"\nEigen FullPivLU GN_H2 \n" << GN_H2															<< endl << endl <<flush;
+																																	cout <<"\nEigen FullPivLU GN_H2 \n" << GN_H2														<< endl << endl <<flush;
 																																	cout <<"\nEigen FullPivLU isInvertible = "<< invertible <<endl<<flush;
 																																	cout <<"\nEigen FullPivLU inv \n" 	<< inv															<< endl << endl <<flush;
 
