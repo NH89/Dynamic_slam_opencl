@@ -82,9 +82,12 @@ void Dynamic_slam::estimate_camera_matrix(){
 	uint 	out_block_size 		= 4;
 	float	old_sum_rho_sq		= FLT_MAX-1;
 	float	factor				= -2.0f;
-	Matx44f	old_pose			= Matx44f::eye();
+	Matx44f	old_k				= Matx44f::eye();
+	Matx44f	old_inv_k			= Matx44f::eye();
 	Matx44f	old_k2k				= Matx44f::eye();
-	Matx44f newPose				= runcl.ReadOutput_44f( runcl.pose_buf );
+
+	Matx44f new_k				= runcl.ReadOutput_44f( runcl.K_buf );
+	Matx44f new_inv_k			= runcl.ReadOutput_44f( runcl.inv_K_buf );
 	Matx44f newK2K				= runcl.ReadOutput_44f( runcl.k2kbuf, cl_flt16_size ); 													// offset = current_frames_idx * cl_flt16_size
 																																		//for (uint out_block_size = 4/*32*/; out_block_size > 2; out_block_size /=2){
 	for (uint iter = 0; iter<SE_iter; iter++){
@@ -94,14 +97,15 @@ void Dynamic_slam::estimate_camera_matrix(){
 																																			<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
 																																			uint	out_block_size		= 2;
 																																			uint	layer				= 0;
-																																			runcl.rho_sq( out_block_size, iter, frame_idx, layer, runcl.k2kbuf	);	// For debugging, get a larger, finer Rho map
-																																			PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_pose, );
+																																			runcl.rho_sq( out_block_size, iter, frame_idx, layer, runcl.k2kbuf, num_camera_matrix_DoF );// For debugging, get a larger, finer Rho map
+																																			PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_k, );
 																																		}
-		runcl.rho_sq( 			out_block_size, iter, frame_idx,  	(uint)layer,  runcl.k2kbuf );
-		runcl.reduce_patch_Rho( out_block_size, iter, 	(uint)layer );
-		runcl.update_k2k_cpu( 							(uint)layer );																	// frame_data_GT.keyframe2pose for comparision only.
-		float		sum_rho		=	runcl.se3_rho_result.Rho.x;																			// currently .x colour channel only.
-		float		sum_rho_sq	=	runcl.se3_rho_result.Rho.y;
+		runcl.rho_sq( 			out_block_size, iter, frame_idx,	(uint)layer,  runcl.k2kbuf,	num_camera_matrix_DoF );
+		runcl.reduce_patch_Rho( out_block_size, iter, 				(uint)layer,				num_camera_matrix_DoF );
+		runcl.get_rho_result(	runcl.camera_matrix_result,			(uint)layer,				num_camera_matrix_DoF );
+
+		float		sum_rho		=	runcl.camera_matrix_result.Rho.x;																			// currently .x colour channel only.
+		float		sum_rho_sq	=	runcl.camera_matrix_result.Rho.y;
 		if( isnan(sum_rho_sq) ){
 																			cout << "\nisnan(sum_rho_sq)" <<flush;
 			break;
@@ -110,30 +114,32 @@ void Dynamic_slam::estimate_camera_matrix(){
 			else {
 																			cout << "\nsum_rho_sq > old_sum_rho_sq = "<< old_sum_rho_sq;
 				if(factor<-1.0f){																										// End amplified steps
-					factor = -1.0f;
+					factor 			=	-1.0f;
 																			cout << ",  factor -2.0f -> -1.0f";
 				}else {
-					layer --;																											// Step down to lower layer of image pyramid
+					layer--;																											// Step down to lower layer of image pyramid
 																			cout << "\nlayer = "	<<	layer;
-					old_sum_rho_sq			=	FLT_MAX-1;																				// Re-set old_sum_rho_sq for new layer
+					old_sum_rho_sq	=	FLT_MAX-1;																						// Re-set old_sum_rho_sq for new layer
 				}
-																																		PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_pose, );
-				runcl.update_k2k_buf(		old_k2k,		old_pose);																	// Re-set to previous pose.
+																																		PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_k, ); PRINT_MATX44F( old_inv_k, );
+// ### TODO				runcl.update_k2k_buf(	old_k2k,	old_k, old_inv_k);																	// Re-set to previous k, camera matrix
 																			cout << endl << flush;
 			}
 		}else{
 			old_sum_rho_sq			=	sum_rho_sq;
-			old_pose				=	newPose;
+																			//old_pose				=	newPose;
+			old_k					=	new_k;
+			old_inv_k				=	new_inv_k;
 			old_k2k					=	newK2K;
 
-			float		num_pixels	=	runcl.se3_rho_result.SE3_incr_arry[1];																		// TO DO move numpixels to SE3_incr.w   & reduce SE3_incr_map_mem from float8 tro float4
-			Matx16d		SE3_incr;	for (int i=0;	i<6; i++){	SE3_incr.operator()(i)	=	runcl.se3_rho_result.SE3_incr_arry[i*2];  };
+			float		num_pixels	=	runcl.camera_matrix_result.param_incr_arry[1];													// TO DO move numpixels to SE3_incr.w   & reduce SE3_incr_map_mem from float8 tro float4
+			Matx15d		camera_matrix_incr;	for (int i=0;	i<num_camera_matrix_DoF; i++){ camera_matrix_incr.operator()(i)	=	runcl.camera_matrix_result.param_incr_arry[i*2];  };
 																																		if( verbosity>local_verbosity_threshold ){
 																																			cout << "\nDynamic_slam::_camera_matrix() chk_4: ,  ###########################"<<
 																																			"\n sum_rho = "			<< sum_rho		<<
 																																			",	sum_rho_sq	= "		<< sum_rho_sq	<<
 																																			",	num_pixels = "		<< num_pixels	<< endl<<flush;
-																																			PRINT_MATX16F( SE3_incr, );
+																																			PRINT_MATX15D( camera_matrix_incr, );
 																																		}
 			Matx44f		pose		=	runcl.ReadOutput_44f(	runcl.pose_buf );
 			Matx44f		invK		=	runcl.ReadOutput_44f(	runcl.inv_K_buf);
@@ -145,29 +151,39 @@ void Dynamic_slam::estimate_camera_matrix(){
 																																			PRINT_MATX44F( K * invK,		);
 																																			PRINT_MATX44F( invK * K,		);
 																																		}
-			Matx66d	invH			=	runcl.current_frames[ runcl.current_frames_idx[0] ].invHessian[layer];
-			Matx16d pose_update_cpu	=	SE3_incr * invH;	// Matx_16fmul66f( SE3_incr, invH);  //										// Double precision is required
+			Matx55d	invH			=	runcl.current_frames[ runcl.current_frames_idx[0] ].inv_camera_matrix_Hessian[layer];
+			Matx15d param_update	=	camera_matrix_incr * invH;																		// Double precision is required
 																																		if( verbosity>local_verbosity_threshold ){
-																																			cout << "\nSE3_incr="			<<SE3_incr			<<endl<<flush;
-																																			cout << "\ninvH="				<<invH				<<endl<<flush;
-																																			cout << "\npose_update_cpu="	<<pose_update_cpu	<<endl<<flush;
-																																			PRINT_MATX66F( invH, );
-																																			PRINT_MATX16F( pose_update_cpu, );
-																																			Matx44f	pose_old	= runcl.ReadOutput_44f( runcl.pose_buf );	PRINT_MATX44F( pose_old, );
+																																			cout << "\ncamera_matrix_incr="			<<camera_matrix_incr	<<endl<<flush;
+																																			cout << "\ninv_camera_matrix_Hessian="	<<invH					<<endl<<flush;
+																																			cout << "\nparam_update="				<<param_update			<<endl<<flush;
+																																			PRINT_MATX55D( invH, );
+																																			PRINT_MATX15D( param_update, );
+																																			Matx44f	pose_k		= runcl.ReadOutput_44f( runcl.K_buf );		PRINT_MATX44F( pose_k, );
 																																			Matx44f	k2k_old		= runcl.ReadOutput_44f( runcl.k2kbuf);		PRINT_MATX44F( k2k_old,	);
 																																		}
-			pose_update_cpu			=	factor *  pose_update_cpu.mul( deltas_matx[layer] );/*(-2.0f)*/ /*  * 0.5f; */  				//NB matx.mul(  matx ) => elementwise multiplication.
-																																		if( verbosity>local_verbosity_threshold-3 ){PRINT_MATX16F( pose_update_cpu, ); }
-			newPose					=	LieToP_Matx( pose_update_cpu )  *  pose;
-			newK2K					=	K  *  newPose  * invK ;
+			param_update			=	factor *  param_update;	//.mul( deltas_matx[layer] );/*(-2.0f)*/ /*  * 0.5f; */  				//NB matx.mul(  matx ) => elementwise multiplication.
+																																		if( verbosity>local_verbosity_threshold-3 ){PRINT_MATX15D( param_update, ); }
+			new_k(0,0)				+= param_update(0,0);	// f
+			new_k(1,1)				+= param_update(0,0);
 
-			runcl.update_k2k_buf(		newK2K,		newPose);
+			new_k(0,0)				+= param_update(0,1);	// fx:fy
+			new_k(1,1)				-= param_update(0,1);
+
+			new_k(0,2)				+= param_update(0,2);	// cx
+			new_k(1,2)				+= param_update(0,3);	// cy
+
+			new_k(0,1)				+= param_update(0,4);	// skew
+
+			new_inv_k				= generate_invK_( new_k );
+			newK2K					= new_k  *  pose  * invK ;
+
+			runcl.update_k_buf(		newK2K,		new_k, new_inv_k);
 																																		if( verbosity>local_verbosity_threshold ){
 																																			cout << "\nDynamic_slam::_camera_matrix() chk_5: ,  layer = "<<layer<<"##########"<<flush;
-																																			PRINT_MATX16F( deltas_matx[layer], );							PRINT_MATX16F( pose_update_cpu, );
-																																			PRINT_MATX16F( PToLie( LieToP_Matx(pose_update_cpu).inv() ), );
-																																			PRINT_MATX44F( newPose,	);										PRINT_MATX16F( PToLie( newPose ), );
-																																			PRINT_MATX44F( newK2K,			);
+																																			PRINT_MATX15D( param_update, );
+																																			PRINT_MATX44F( new_k,		 );
+																																			PRINT_MATX44F( newK2K,		 );
 																																			Matx44f	pose_now	= runcl.ReadOutput_44f( runcl.pose_buf );	PRINT_MATX44F( pose_now, );
 																																			Matx44f	k2k_now		= runcl.ReadOutput_44f( runcl.k2kbuf);		PRINT_MATX44F( k2k_now,	);
 																																		}
@@ -178,7 +194,7 @@ void Dynamic_slam::estimate_camera_matrix(){
 			}
 		}auto step_1 = high_resolution_clock::now();																					if( verbosity>local_verbosity_threshold-3){
 																																			cout << "\nDynamic_slam::_camera_matrix() loop finished  ###########################"\
-																																			<<"Tracking loop time = "<<  duration_cast<microseconds>(step_1 - step_0).count()
+																																			<<"K Calibration loop time = "<<  duration_cast<microseconds>(step_1 - step_0).count()
 																																			<<" microseconds,  layer="<<layer<<endl<<flush;
 																																		}
 	}

@@ -94,7 +94,7 @@ void RunCL::initialize_current_frame( int idx ){
 				current_frames[idx].k2k_0to1_est[i]		= identity_flt16[i];
 			}
 			for(uint i=0; i<max_mipmap_layers; i++){
-				current_frames[idx].invHessian[i]		= Matx66f::eye();
+				current_frames[idx].inv_SE3_Hessian[i]		= Matx66f::eye();
 			}
 	}
 
@@ -120,7 +120,7 @@ void RunCL::initialize_new_frame(){
 		current_frames[idx].k2k_0to1_est[i]	= identity_flt16[i];
 	}
 	for(uint i=0; i<max_mipmap_layers; i++){
-		current_frames[idx].invHessian[i]	= Matx66f::eye();
+		current_frames[idx].inv_SE3_Hessian[i]	= Matx66f::eye();
 	}
 
 	current_frames[ idx ].dataset_frame_num		= current_frames[ idx2 ].dataset_frame_num + 1;

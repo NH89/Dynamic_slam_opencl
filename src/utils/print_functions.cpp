@@ -13,21 +13,22 @@ void print_matx33f(cv::Matx33f matx){
     cout<<flush;
 }
 
-void print_matx44_32f(cv::Matx44f matx){
-     for(int row=0;row<3;row++){
-         cout<<"  \n";
-         for(int col=0; col<3;col++){
-             cout << setw(9) << matx.operator()(row,col) << ", \t\t";
-         }
-    }
-    cout<<flush;
-}
-
 void print_matx44f(cv::Matx44f matx){
     cout << fixed << setprecision( PRECISION ) ;
     for(int row=0;row<4;row++){
          cout<<"  \n";
          for(int col=0; col<4;col++){
+             cout << setw(9)<< matx.operator()(row,col) << ", \t\t";
+         }
+    }
+    cout<<endl<<flush;
+}
+
+void print_matx55d(Matx55d matx){
+    cout << fixed << setprecision( PRECISION ) ;
+    for(int row=0;row<5;row++){
+         cout<<"  \n";
+         for(int col=0; col<5;col++){
              cout << setw(9)<< matx.operator()(row,col) << ", \t\t";
          }
     }
@@ -61,6 +62,8 @@ void print_matx16f(cv::Matx16f matx){
     cout<<flush;
 }
 
+
+
 void print_matx13f(cv::Matx13f matx){
     cout<<"  \n";
     for(int col=0; col<3;col++){
@@ -76,6 +79,15 @@ void print_matx31f(cv::Matx31f matx){
          }
     cout<<flush;
 }
+
+void print_matx15d(Matx15d matx){
+    cout<<"  \n";
+    for(int col=0; col<5;col++){
+         cout << matx.operator()(0,col) << ", \t\t";
+         }
+    cout<<flush;
+}
+
 
 //cout << "\nT = "<<T.operator()(0)<<", "<<T.operator()(1)<<", "<<T.operator()(2)<<endl<<flush;
 

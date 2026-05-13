@@ -1,9 +1,62 @@
 #include "RunCL.hpp"
+// rho_sq(..) -> rho, rho sq, params_incr for use with paras_inv_H in LK optimizarion.		Uses: SE3_tracking, camera_matrix, lens_distortion.  Possibly ST3 patches for depth, rel_vel, rel_accel.
 
 // patch kernels, but not using look up table /////////////////////////////////////////////////////////////////////////////////////////
+void RunCL::rho_sq_set_params( uint out_block_size ){
+																	// Needs 16 elements of local mem per 32x32 patch, to pass data between threads in recursive square reduction.
+																	// Needs 32 elem array of private mem per thread.
+																	// Writes answer to SE3_rho_map_mem, BUT as float2
+	string fname					= "RunCL::rho_sqset_params( ..)";
+	int local_verbosity_threshold	= V_RUNCL_RHO_SQ;
+	cl_kernel	kernel 				= rho_sq_kernel;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sqset_params( ..)_chk0 .##################################################################"<<flush;
+																																				cout<<endl<<endl <<",  out_block_size="	<<out_block_size << flush;
+																																			}
+																														if (fmod(device_work_size_multiple, patch_size)!=0)   {
+																															cerr <<"\nRunCL::rho_sqset_params( ..)  Error: fmod(device_work_size_multiple, patch_size) != 0 \n"<<flush;
+																															exit_(0);
+																														}
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sqset_params( ..)_chk_1 "<<flush;}
 
+	cl_int k_wg_info =  clGetKernelWorkGroupInfo(
+							kernel,											//cl_kernel kernel,
+							deviceId,										//cl_device_id device,
+							CL_KERNEL_WORK_GROUP_SIZE,						//cl_kernel_work_group_info param_name,
+							sizeof(rho_sq_params.kernel_workgroup_size),	//size_t param_value_size,
+							&rho_sq_params.kernel_workgroup_size,			//void* param_value,
+							NULL											//size_t* param_value_size_ret
+						);																								if( k_wg_info!=CL_SUCCESS){ 	cerr<<"\nRunCL::rho_sqset_params() ( k_wg_info!=CL_SUCCESS)"		<<k_wg_info<<" = "<<checkerror(k_wg_info)			<<endl<<flush;	exit_(1); }
 
-void RunCL::rho_sq( uint out_block_size, uint iter, uint frame_idx, uint layer, cl_mem k2k_buf  ){	// To be launched with 1 thread per col for 32x32 patches, and an integer multiple of 32 threads.
+	cl_int device_info_1 = clGetDeviceInfo(
+							deviceId,										//cl_device_id device,
+							CL_DEVICE_MAX_WORK_ITEM_SIZES,					//cl_device_info param_name,
+							sizeof(rho_sq_params.device_max_workitem_sizes),//size_t param_value_size,
+							rho_sq_params.device_max_workitem_sizes,		//void* param_value,
+							NULL											//size_t* param_value_size_ret
+	);																													if( device_info_1!=CL_SUCCESS){ cerr<<"\nRunCL::rho_sqset_params() ( device_info_1!=CL_SUCCESS)"	<<device_info_1<<" = "<<checkerror(device_info_1)	<<endl<<flush;	exit_(1); }
+
+	cl_int device_info_2 = clGetDeviceInfo(
+							deviceId,										//cl_device_id device,
+							CL_DEVICE_MAX_COMPUTE_UNITS,					//cl_device_info param_name,
+							sizeof(rho_sq_params.device_max_compute_units),	//size_t param_value_size,
+							&rho_sq_params.device_max_compute_units,		//void* param_value,
+							NULL											//size_t* param_value_size_ret
+	);																													if( device_info_2!=CL_SUCCESS){ cerr<<"\nRunCL::rho_sqset_params() ( device_info_2!=CL_SUCCESS)"	<<device_info_2<<" = "<<checkerror(device_info_2)	<<endl<<flush;	exit_(1); }
+	rho_sq_params.max_workgroup_size	= min(rho_sq_params.kernel_workgroup_size, rho_sq_params.device_max_workitem_sizes[0] );
+
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sqset_params( ..)_chk_2 "<<flush;
+																																				cout << "\n"
+																																					<<",  device_max_compute_units="				<<device_max_compute_units
+																																					//<<",  max_workgroup_size="					<<max_workgroup_size
+																																					//<<",  kernel_workgroup_size="					<<kernel_workgroup_size
+																																					<<",  device_max_workitem_sizes[0,1,2]={"		<<device_max_workitem_sizes[0]<<",  "
+																																																	<<device_max_workitem_sizes[1]<<",  "
+																																																	<<device_max_workitem_sizes[2]<<"}"
+																																					<< flush;
+																																			}
+}
+
+void RunCL::rho_sq( uint out_block_size, uint iter, uint frame_idx, uint layer, cl_mem k2k_buf, uint num_DoF ){	// To be launched with 1 thread per col for 32x32 patches, and an integer multiple of 32 threads.
 																	// Needs 16 elements of local mem per 32x32 patch, to pass data between threads in recursive square reduction.
 																	// Needs 32 elem array of private mem per thread.
 																	// Writes answer to SE3_rho_map_mem, BUT as float2
@@ -25,13 +78,7 @@ void RunCL::rho_sq( uint out_block_size, uint iter, uint frame_idx, uint layer, 
 																																				float k2kbuf_ary[16];
 																																				ReadOutput( (uchar*)k2kbuf_ary, k2kbuf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
 																																				PRINT_FLOAT_16(k2kbuf_ary, gpu buf);
-																																			}
 
-																														if (fmod(device_work_size_multiple, patch_size)!=0)   {
-																															cerr <<"\nRunCL::rho_sq( ..)  Error: fmod(device_work_size_multiple, patch_size) != 0 \n"<<flush;
-																															exit_(0);
-																														}
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\nRunCL::rho_sq( ..)_chk0.5"<<flush;
 																																				for (uint i=0; i<5 ;i++){
 																																					cout<<"\n\n## current_frames[ current_frames_idx["<<i<<"] ].frame_num = "<< current_frames[ current_frames_idx[i] ].dataset_frame_num << flush;
 																																					PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].pose,		);
@@ -39,48 +86,10 @@ void RunCL::rho_sq( uint out_block_size, uint iter, uint frame_idx, uint layer, 
 																																					PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].k2k_0to1_est,	);
 																																				}
 																																			}
+ 	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, 	&zero_flt, sizeof( float), 0, 			  2*mm_size_bytes_C1, 	fname);				//_clEnqueueWriteBuffer( uload_queue, k2kbuf, CL_FALSE, 0, local_num_samples*16*sizeof( float), k2k_3_16_[start_sample_idx], fname);
+// //	_clEnqueueFillBuffer( uload_queue, SE3_weight_map_mem, 	&zero, sizeof( float), 0, num_SE3_DoF*2*mm_size_bytes_C1, 	fname);
+ 	_clEnqueueFillBuffer( uload_queue, SE3_incr_map_mem, 	&zero_flt, sizeof( float), 0, 			  2*mm_size_bytes_C1, 	fname);
 
-	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, 	&zero_flt, sizeof( float), 0, 			  2*mm_size_bytes_C1, 	fname);				//_clEnqueueWriteBuffer( uload_queue, k2kbuf, CL_FALSE, 0, local_num_samples*16*sizeof( float), k2k_3_16_[start_sample_idx], fname);
-//	_clEnqueueFillBuffer( uload_queue, SE3_weight_map_mem, 	&zero, sizeof( float), 0, num_SE3_DoF*2*mm_size_bytes_C1, 	fname);
-	_clEnqueueFillBuffer( uload_queue, SE3_incr_map_mem, 	&zero_flt, sizeof( float), 0, 			  2*mm_size_bytes_C1, 	fname);
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_1 "<<flush;}
-	size_t kernel_workgroup_size;
-	cl_int k_wg_info =  clGetKernelWorkGroupInfo(
-							kernel,								//cl_kernel kernel,
-							deviceId,							//cl_device_id device,
-							CL_KERNEL_WORK_GROUP_SIZE,			//cl_kernel_work_group_info param_name,
-							sizeof(kernel_workgroup_size),		//size_t param_value_size,
-							&kernel_workgroup_size,				//void* param_value,
-							NULL								//size_t* param_value_size_ret
-						);																										if( k_wg_info!=CL_SUCCESS){ 	cerr<<"\nRunCL::rho_sq() ( k_wg_info!=CL_SUCCESS)"		<<k_wg_info<<" = "<<checkerror(k_wg_info)			<<endl<<flush;	exit_(1); }
-	size_t  device_max_workitem_sizes[3];
-	cl_int device_info_1 = clGetDeviceInfo(
-							deviceId,							//cl_device_id device,
-							CL_DEVICE_MAX_WORK_ITEM_SIZES,		//cl_device_info param_name,
-							sizeof(device_max_workitem_sizes),	//size_t param_value_size,
-							device_max_workitem_sizes,			//void* param_value,
-							NULL								//size_t* param_value_size_ret
-	);																															if( device_info_1!=CL_SUCCESS){ cerr<<"\nRunCL::rho_sq() ( device_info_1!=CL_SUCCESS)"	<<device_info_1<<" = "<<checkerror(device_info_1)	<<endl<<flush;	exit_(1); }
-	cl_uint device_max_compute_units;
-	cl_int device_info_2 = clGetDeviceInfo(
-							deviceId,							//cl_device_id device,
-							CL_DEVICE_MAX_COMPUTE_UNITS,		//cl_device_info param_name,
-							sizeof(device_max_compute_units),	//size_t param_value_size,
-							&device_max_compute_units,			//void* param_value,
-							NULL								//size_t* param_value_size_ret
-	);																															if( device_info_2!=CL_SUCCESS){ cerr<<"\nRunCL::rho_sq() ( device_info_2!=CL_SUCCESS)"	<<device_info_2<<" = "<<checkerror(device_info_2)	<<endl<<flush;	exit_(1); }
-	size_t	max_workgroup_size	= min(kernel_workgroup_size, device_max_workitem_sizes[0] );
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_2 "<<flush;
-																																				// cout << "\n"
-																																				// 	<<",  device_max_compute_units="				<<device_max_compute_units
-																																				// 	<<",  max_workgroup_size="						<<max_workgroup_size
-																																				// 	<<",  kernel_workgroup_size="					<<kernel_workgroup_size
-																																				// 	<<",  device_max_workitem_sizes[0,1,2]={"		<<device_max_workitem_sizes[0]<<",  "
-																																				// 													<<device_max_workitem_sizes[1]<<",  "
-																																				// 													<<device_max_workitem_sizes[2]<<"}"
-																																				// 	<< flush;
-																																			}
-	//uint				reduction 					= layer;
 	uint				read_rows					= MipMap[layer * 8 + MiM_READ_ROWS] ;
 	uint				read_cols					= MipMap[layer * 8 + MiM_READ_COLS] ;
 	uint				rows_blocks					= ceil( (float)  read_rows / patch_size );
@@ -89,7 +98,7 @@ void RunCL::rho_sq( uint out_block_size, uint iter, uint frame_idx, uint layer, 
 	uint				patches_required			= cols_blocks  * rows_blocks;
 
 	uint				patches_per_compute_uint	= ceil( (float)patches_required / device_max_compute_units );
-	uint				blocks_per_k_wg_size		= max_workgroup_size			/ device_work_size_multiple;
+	uint				blocks_per_k_wg_size		= rho_sq_params.max_workgroup_size			/ device_work_size_multiple;
 						patches_per_compute_uint	= min( patches_per_compute_uint,  blocks_per_k_wg_size );
 
 	uint				blocks_required				= ceil( (float)patches_required / patches_per_compute_uint );
@@ -122,7 +131,7 @@ void RunCL::rho_sq( uint out_block_size, uint iter, uint frame_idx, uint layer, 
 	_clSetKernelArg( kernel, 1, sizeof( uint),									&layer,	 												fname);		//__private		uint 		layer,					//0
 	_clSetKernelArg( kernel, 2, sizeof( uint),									&cols_per_row,											fname);		//__private		uint 		cols_per_row,			//1
 	_clSetKernelArg( kernel, 3, sizeof( uint),									&out_block_size,										fname);		//__private		uint 		out_block_size,			//2
-//	_clSetKernelArg( kernel, 3, sizeof( cl_float2),								&delta_SE3,												fname);		//__private		float2		delta_SE3,				//3
+	_clSetKernelArg( kernel, 4, sizeof( uint),									&num_DoF,												fname);		//__private		float2		delta_SE3,				//3
 
 	_clSetKernelArg( kernel, 4, sizeof( cl_mem), 								&mipmap_buf,											fname);		//__constant	uint8*		mipmap_params,			//3
 	_clSetKernelArg( kernel, 5, sizeof( cl_mem), 								&uint_param_buf,										fname);		//__constant	uint*		uint_params,			//4
@@ -192,7 +201,7 @@ void RunCL::rho_sq( uint out_block_size, uint iter, uint frame_idx, uint layer, 
 																																			}
 }
 
-void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer )									// NB good for images upto 640x480 layer zero, above that need a patch kernel approach to ensure each DoF fits in 1 workgroup. see device_work_size_multiple
+void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer, uint num_DoF )									// NB good for images upto 640x480 layer zero, above that need a patch kernel approach to ensure each DoF fits in 1 workgroup. see device_work_size_multiple
 {
 	string fname = "RunCL::reduce_patch_Rho( ..)";
 	int local_verbosity_threshold = V_RUNCL_REDUCE_PATCH_RHO;
@@ -217,10 +226,10 @@ void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer )					
 																																			<<"   log2((float)cols_blocks) = "		<<log2((float)cols_blocks)
 																																			<<"   threads_per_DoF = "				<<threads_per_DoF
 																																			<<"   _device_work_size_multiple = "	<<device_work_size_multiple
-																																			<<"   * SE3_DoF = "						<<num_SE3_DoF
+																																			<<"   * SE3_DoF = "						<<num_DoF
 																																			<<") / DoF_per_workgroup = "			<<DoF_per_workgroup <<flush;
 																																		}
-	size_t			threads_required	= ceil((device_work_size_multiple * num_SE3_DoF ) / DoF_per_workgroup);	// NB device_work_size_multiple is usually a poer of 2, DoF_per_workgroup will also be a power of 2.
+	size_t			threads_required	= ceil((device_work_size_multiple * num_DoF ) / DoF_per_workgroup);	// NB device_work_size_multiple is usually a poer of 2, DoF_per_workgroup will also be a power of 2.
 	uint 			workgroups_required	= ceil( (float)threads_required / device_work_size_multiple );
 	size_t			threads_to_launch	= workgroups_required  *  device_work_size_multiple;
 
@@ -253,7 +262,7 @@ void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer )					
 	_clSetKernelArg( kernel,  7, ( local_work_size/2 )*sizeof( cl_float2),	NULL, 						fname);							//__local	float2*		local_Rho_,				//7		// used for sum-reduce. Need to be [groupsize/2], set in host fn.
 	_clSetKernelArg( kernel,  8, ( local_work_size/2 )*sizeof( cl_float2),	NULL, 						fname);							//__local	float2*		local_SE3_incr_map_,	//8
 
-	cl_command_queue 	queue_to_call		= m_queue;
+	cl_command_queue	queue_to_call		= m_queue;
 	cl_int				res, status;
 	cl_event			ev;
 																									//auto step_0 = high_resolution_clock::now();
@@ -308,9 +317,37 @@ void RunCL::update_k2k_cpu( uint layer ){
 																																		Matx44f pose_update_gt			=	pose.inv() * pose_gt;										/* PRINT_MATX44F( pose_update_gt, );*/		PRINT_MATX16F( PToLie(pose_update_gt),);
 																																	}
 	ReadOutput( (uchar*)&se3_rho_result.Rho,				SE3_rho_map_mem, 	sizeof(cl_float2),		32*sizeof(cl_float2)	);
-	ReadOutput(	(uchar*)se3_rho_result.SE3_incr_arry,		SE3_incr_map_mem,	6*sizeof(cl_float2),	32*sizeof(cl_float2)	);
+	ReadOutput(	(uchar*)se3_rho_result.param_incr_arry,		SE3_incr_map_mem,	6*sizeof(cl_float2),	32*sizeof(cl_float2)	);
 																																	if( verbosity>local_verbosity_threshold) { cout<<"\n\nRunCL::update_k2k_cpu( ..)_finished ###############################"<< flush; }
 }
+
+void RunCL::get_rho_result ( uint layer, uint num_DoF, Rho_result rho_result ){
+	constexpr int		local_verbosity_threshold	= V_RUNCL_UPDATE_K2K;
+																																	if( verbosity>local_verbosity_threshold-3) { cout<<"\n\nRunCL::update_k2k_cpu( ..)_chk_0 . ################################"<< flush;
+																																		cout << "\nlayer = "	<< layer 	<<endl<<flush;
+																																		Matx44f	current_frame_pose_gt	=	current_frames[ current_frames_idx[0] ].pose_gt;			//PRINT_MATX44F( current_frame_pose_gt, );
+																																		Matx44f	previous_frame_pose_gt	=	current_frames[ current_frames_idx[1] ].pose_gt;			//PRINT_MATX44F( previous_frame_pose_gt, );
+
+																																		Matx44f pose_gt					=	previous_frame_pose_gt	*	current_frame_pose_gt.inv();	//PRINT_MATX44F( pose_gt, );
+																																		//Matx16f pose_gt_algebra			=	PToLie( pose_gt );											//PRINT_MATX16F( pose_gt_algebra, );
+
+																																		Matx44f	pose					=	ReadOutput_44f( 					pose_buf );				//PRINT_MATX44F( pose,	from pose_buf );	PRINT_MATX16F( PToLie(pose),);
+																																		Matx44f pose_update_gt			=	pose.inv() * pose_gt;										/* PRINT_MATX44F( pose_update_gt, );*/		PRINT_MATX16F( PToLie(pose_update_gt),);
+																																	}
+	ReadOutput( (uchar*)&rho_result.Rho,				SE3_rho_map_mem, 	sizeof(cl_float2),			32*sizeof(cl_float2)	);
+	ReadOutput(	(uchar*)rho_result.param_incr_arry,		SE3_incr_map_mem,	num_DoF*sizeof(cl_float2),	32*sizeof(cl_float2)	);
+																																	if( verbosity>local_verbosity_threshold) { cout<<"\n\nRunCL::update_k2k_cpu( ..)_finished ###############################"<< flush; }
+}
+
+
+
+
+
+
+
+
+
+
 
 
 void RunCL::update_k2k( uint layer, float delta_theta, float delta, Matx44f GT_pose )		// To be GPU kernel to iteratively update model..... to be written.

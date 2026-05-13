@@ -80,6 +80,7 @@ add_executable(Dynamic_slam
          src/Dynamic_slam/testing/Dynamic_slam_results.cpp
 
          src/kernels/kernels__macros.h
+         src/RunCL/RunCL_typedefs.hpp
          src/RunCL/RunCL.hpp
          src/RunCL/RunCL.cpp
          src/RunCL/RunCL_current_frames.cpp

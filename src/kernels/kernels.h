@@ -21,8 +21,11 @@ __constant float4 max_0_f4				= { MAXFLOAT, MAXFLOAT, MAXFLOAT, 0.0f };
 __constant float  const_sqrt_flt_min	= 0x1.0p-63f;										// 2^(-63) is sqrt of FLT_MIN = 2^(-126)
 
 __constant uint block_size				= BLOCK_SIZE;										// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
+__constant uint max_num_DoF				= MAX_NUM_DOF;
 __constant uint num_SE3_DoF				= NUM_SE3_DOF;
 __constant uint num_ST3_DoF				= NUM_ST3_DOF;
+
+__constant uint num_cam_matx_DoF		= NUM_CAMERA_MATRIX_DOF;
 
 __constant uint num_current_frames		= NUM_CURR_FRAMES;									// 1,2,4,8,16,32,64 // variable select window of 4 frames.
 

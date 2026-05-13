@@ -526,7 +526,7 @@ void  RunCL::patch_SE3_hessian_reduce (uint layer){														// called by Dy
 			pinv_H.operator()(i,j)								= pinv(i,j);
 		}
 	}
-	current_frames[ current_frames_idx[0] ].invHessian[layer]	= pinv_H;
+	current_frames[ current_frames_idx[0] ].inv_SE3_Hessian[layer]	= pinv_H;
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_hessian_reduce()_chk3 ."<<flush;	// Save buffers to file ###########
 																																	stringstream ss;
 																																	ss << "patch_hessian_reduce__frame_num="<<current_frames[ current_frames_idx[0] ].dataset_frame_num<<"_layer="<<layer<<"_";

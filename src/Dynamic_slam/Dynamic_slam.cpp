@@ -265,7 +265,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 																																				<<"###########################################################################\n" << flush;
 
 																																				for(int layer=0; layer<max_mipmap_layers; layer++){
-																																					Matx66f	invH	=	runcl.current_frames[ runcl.current_frames_idx[0] ].invHessian[layer];
+																																					Matx66f	invH	=	runcl.current_frames[ runcl.current_frames_idx[0] ].inv_SE3_Hessian[layer];
 																																					cout<<"\nlayer = "<<layer<<"  ";
 																																					PRINT_MATX66F( invH, );
 																																				}

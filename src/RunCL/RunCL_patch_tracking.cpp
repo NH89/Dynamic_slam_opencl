@@ -78,6 +78,34 @@ void RunCL::update_k2k_buf( 	Matx44f k2k, 	Matx44f pose ){
 	update_k2k_buf( k2k_array, pose_array);
 }
 
+void RunCL::update_k_buf( float k2k_array[16],		float k_arry[16],	float inv_k_arry[16]  ) {
+	string fname = "RunCL::update_k2k_buf( ..)";
+	int local_verbosity_threshold = V_RUNCL_UPDATE_K2K_BUF;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k_buf( ..)_chk0 .##################################################################"<<flush;
+																																				PRINT_FLOAT_16( k2k_array, );
+																																				PRINT_FLOAT_16( k_arry, );
+																																				PRINT_FLOAT_16( inv_k_arry, );
+																																				PRINT_MATX44F( current_frames[ current_frames_idx[0] ].K,  );
+																																			}
+	_clEnqueueWriteBuffer( uload_queue, 	k2kbuf,		CL_FALSE, cl_flt16_size, 16*sizeof( float), k2k_array,  	fname);
+	_clEnqueueWriteBuffer( uload_queue, 	K_buf,		CL_FALSE, 0, 			 16*sizeof( float), k_arry, 		fname);
+	_clEnqueueWriteBuffer( uload_queue, 	inv_K_buf,	CL_FALSE, 0, 			 16*sizeof( float), k_arry, 		fname);
+
+	for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].k2k_0to1_est[i]		=	k2k_array[i];	}
+	for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].K(i/4, i%4)			=	k_arry[i];		}
+	for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].inv_K(i/4, i%4)		=	inv_k_arry[i];	}
+}
+
+void RunCL::update_k_buf( 	Matx44f k2k, 	Matx44f k,	Matx44f inv_k ){
+	float 	k2k_array[16], 	k_array[16],	inv_k_array[16];
+	Matx44f_To_float16arry(	k2k,	k2k_array );
+	Matx44f_To_float16arry( k,		k_array );
+	Matx44f_To_float16arry( inv_k,	inv_k_array );
+
+
+	update_k_buf( k2k_array, k_array, inv_k_array);
+}
+
 
 // new functions ////////////////////////////////////////////////
 

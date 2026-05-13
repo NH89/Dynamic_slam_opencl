@@ -532,6 +532,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	initialize_patch_depthmap_offset();
 	initialize_patch_params();
 	compute_patch_lookup_table();
+	rho_sq_set_params(		out_block_size);
 																																			if(verbosity>local_verbosity_threshold){ cout <<"\nRunCL::initialize_RunCL_chk finished -0.5 ############################################################\n"<<flush;
 																																				for(uint layer = 0; layer <= mm_stop; layer++) {
 																																					cout <<"\npatch_local_work_size["<<layer<<"] = "<<patch_local_work_size[layer]<< flush;

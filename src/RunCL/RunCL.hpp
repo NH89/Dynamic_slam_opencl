@@ -47,6 +47,7 @@ constexpr uint tracking_num_samples 		= TRACKING_NUM_SAMPLES +1;				// One more 
 constexpr uint tracking_tot_samples 		= TRACKING_TOT_SAMPLES;
 constexpr uint max_mipmap_layers 			= MAX_MIPMAP_LAYERS;					// Determines max image size, for img pyr apex < 10x10. 10k=>10, 8k=>9, 4k=>8, 2k=>7, SD(640x480)=>6 (2^6=64).
 																					// Insufficient layers would reduce tracking robustness, due to more pixels in apex of image pyramid.
+constexpr uint max_num_DoF					= MAX_NUM_DOF;
 constexpr uint num_SE3_DoF					= NUM_SE3_DOF;
 constexpr uint num_camera_matrix_DoF		= NUM_CAMERA_MATRIX_DOF;
 constexpr uint num_lens_distortion_DoF		= NUM_LENS_DISTOTION_DOF;
@@ -67,6 +68,9 @@ constexpr uint	patch_size					= 32;	// Set global patch size from device paramet
 constexpr size_t cl_flt16_size				= sizeof(cl_float16);
 
 constexpr size_t	num_depth_steps			= NUM_DEPTH_STEPS;
+
+
+
 
 using namespace std;
 class RunCL
@@ -136,8 +140,9 @@ public:
 		float			k2k_0to1_est[16]					=  FLOAT_16_EYE;		// Reprojection matrix to the current img. Estimated, then fitted for each new frame, also with updates of camera inrinsic mattix.
 		float			k2k[		num_current_frames][16]	= {FLOAT_16_EYE};
 
-		//Matx16f			Jacobian[	max_mipmap_layers]		= { Matx16f::zeros() };
-		Matx66f			invHessian[	max_mipmap_layers]		= { Matx66f::eye() };
+		Matx66f			inv_SE3_Hessian[			max_mipmap_layers]	= { Matx66f::eye() };
+		Matx55d			inv_camera_matrix_Hessian[	max_mipmap_layers]	= { Matx55d::eye() };
+		Matx55d			inv_lens_distortion_Hessian[max_mipmap_layers]	= { Matx55d::eye() };
 	};
 	std::array<	frame, 				num_current_frames	> 	current_frames;			// Needs to be initialized after the buffers are created.
 	uint	current_frames_idx[		num_current_frames]		= {4,3,2,1,0};			// NB always access via:    current_frames[  current_frames_idx[ idx ]].img_buf   or   runcl.current_frames[ runcl.current_frames_idx[0] ].img_buf...
@@ -336,22 +341,34 @@ public:
 
 
 	// 1st gen,  Patch based kernels /////////////////////////////
-	void rho_sq( 						uint out_block_size, uint iter, uint frame_idx, uint layer, cl_mem k2k_buf);
-	void reduce_patch_Rho ( 			uint out_block_size, uint iter, uint layer );
+	struct Rho_sq_params{
+		size_t		kernel_workgroup_size;
+		size_t		device_max_workitem_sizes[3];
+		cl_uint		device_max_compute_units;
+		size_t		max_workgroup_size;
+	} rho_sq_params;
 
-	struct rho_result{
-      cl_float2	Rho						= {{0}};
-      float		SE3_incr_arry[6*2]		= {0};
-      float		Hessian[6*6]			= {0};
-    } se3_rho_result;
+	struct Rho_result {
+		cl_float2	Rho										= {{0}};
+		float		param_incr_arry[	max_num_DoF*2]		=  {0};
+	} se3_rho_result, camera_matrix_result, lens_distortion_result;
+
+	void rho_sq_set_params( 			uint out_block_size);
+	void rho_sq( 						uint out_block_size, uint iter, uint frame_idx, uint layer, cl_mem k2k_buf, uint num_DoF);
+	void reduce_patch_Rho ( 			uint out_block_size, uint iter, 				uint layer,					uint num_DoF);
+	void get_rho_result( 				Rho_result rho_result, 							uint layer,					uint num_DoF);
 
 	void update_k2k_cpu( 				uint layer );
 	void update_k2k( 					uint layer, float delta_theta, float delta, Matx44f GT_pose );
 
 
 	/////////////////////////////////////// RunCL_tracking.cpp
-	void update_k2k_buf(				float k2k_3_16_[16], 	float pose_arry[16]  );
-	void update_k2k_buf( 				Matx44f k2k, Matx44f pose );
+	void update_k2k_buf(				float 	k2k_3_16_[16],	float pose_arry[16]	);
+	void update_k2k_buf( 				Matx44f k2k,			Matx44f pose		);
+
+	void update_k_buf(					float 	k2k_array[16],	float k_arry[16],	float inv_k_arry[16] );
+	void update_k_buf( 					Matx44f k2k,			Matx44f k,			Matx44f inv_k		 );
+
 
 	void SpatialCostFns();																												// SIRFS cost functions
 	void ParsimonyCostFns();

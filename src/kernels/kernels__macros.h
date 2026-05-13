@@ -58,8 +58,10 @@
 
 #define TRACKING_TOT_SAMPLES		4
 #define MAX_MIPMAP_LAYERS			10//8							// Determines max image size, for img pyr apex < 10x10. 10k=>10, 8k=>9, 4k=>8, 2k=>7, SD(640x480)=>6 (2^6=64)
+#define MAX_NUM_DOF					6
 #define NUM_SE3_DOF					6
 #define NUM_ST3_DOF					3
+
 #define NUM_CAMERA_MATRIX_DOF		5
 #define NUM_LENS_DISTOTION_DOF		4	// ? how many ?
 

@@ -203,12 +203,13 @@ void Dynamic_slam::estimate_tracking(){
 																																			<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
 																																			uint	out_block_size		= 2;
 																																			uint	layer				= 0;
-																																			runcl.rho_sq( out_block_size, iter, frame_idx, layer, runcl.k2kbuf	);	// For debugging, get a larger, finer Rho map
+																																			runcl.rho_sq( out_block_size, iter, frame_idx, layer, runcl.k2kbuf, num_SE3_DoF	);// For debugging, get a larger, finer Rho map
 																																			PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_pose, );
 																																		}
-		runcl.rho_sq( 			out_block_size, iter, frame_idx,  	(uint)layer,  runcl.k2kbuf );
-		runcl.reduce_patch_Rho( out_block_size, iter, 	(uint)layer );
-		runcl.update_k2k_cpu( 							(uint)layer );																	// frame_data_GT.keyframe2pose for comparision only.
+		runcl.rho_sq( 			out_block_size, iter, 	frame_idx,	(uint)layer,  runcl.k2kbuf,	num_SE3_DoF);
+		runcl.reduce_patch_Rho( out_block_size, iter, 				(uint)layer,				num_SE3_DoF);
+		runcl.get_rho_result(	runcl.se3_rho_result,				(uint)layer,				num_SE3_DoF);
+		//runcl.update_k2k_cpu( 									(uint)layer );														// frame_data_GT.keyframe2pose for comparision only.
 		float		sum_rho		=	runcl.se3_rho_result.Rho.x;																			// currently .x colour channel only.
 		float		sum_rho_sq	=	runcl.se3_rho_result.Rho.y;
 		if( isnan(sum_rho_sq) ){
@@ -235,8 +236,8 @@ void Dynamic_slam::estimate_tracking(){
 			old_pose				=	newPose;
 			old_k2k					=	newK2K;
 
-			float		num_pixels	=	runcl.se3_rho_result.SE3_incr_arry[1];																		// TO DO move numpixels to SE3_incr.w   & reduce SE3_incr_map_mem from float8 tro float4
-			Matx16d		SE3_incr;	for (int i=0;	i<6; i++){	SE3_incr.operator()(i)	=	runcl.se3_rho_result.SE3_incr_arry[i*2];  };
+			float		num_pixels	=	runcl.se3_rho_result.param_incr_arry[1];																		// TO DO move numpixels to SE3_incr.w   & reduce SE3_incr_map_mem from float8 tro float4
+			Matx16d		SE3_incr;	for (int i=0;	i<6; i++){	SE3_incr.operator()(i)	=	runcl.se3_rho_result.param_incr_arry[i*2];  };
 																																		if( verbosity>local_verbosity_threshold ){
 																																			cout << "\nDynamic_slam::estimate_tracking() chk_4: ,  ###########################"<<
 																																			"\n sum_rho = "			<< sum_rho		<<
@@ -254,7 +255,7 @@ void Dynamic_slam::estimate_tracking(){
 																																			PRINT_MATX44F( K * invK,		);
 																																			PRINT_MATX44F( invK * K,		);
 																																		}
-			Matx66d	invH			=	runcl.current_frames[ runcl.current_frames_idx[0] ].invHessian[layer];
+			Matx66d	invH			=	runcl.current_frames[ runcl.current_frames_idx[0] ].inv_SE3_Hessian[layer];
 			Matx16d pose_update_cpu	=	SE3_incr * invH;	// Matx_16fmul66f( SE3_incr, invH);  //										// Double precision is required
 																																		if( verbosity>local_verbosity_threshold ){
 																																			cout << "\nSE3_incr="			<<SE3_incr			<<endl<<flush;
