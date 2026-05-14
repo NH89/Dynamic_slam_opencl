@@ -39,7 +39,7 @@
 
 
 
-	#define V_DYNAMIC_GENERATE_DELTAS					1
+	#define V_DYNAMIC_GENERATE_DELTAS					-1
 
 
 
@@ -55,19 +55,25 @@
 	#define	V_DYNAMIC_SLAM_EXHAUSTIVESEARCH				0
 	#define	V_DYNAMIC_SLAM_GETRESULT					1
 
+	//////////////////////////////// DYNAMIC_SLAM_AUTOCALIBRATION.CPP
+	#define V_DYNAMIC_SLAM_ESTIMATE_CALIBRATION			-2
+	#define V_DYNAMIC_SLAM_PRECOMPUTE_CAM_LENS_BUFFERS	-2
+	#define V_DYNAMIC_SLAM_GENERATE_CAMERA_MATRIX_K2K	-2
+	#define V_DYNAMIC_SLAM_ESTIMATE_CAMERA_MATRIX		-2
+
+
     /////////////////////////////////////// DYNAMIC_SLAM_TRACKING.CPP
 	#define	V_DYNAMIC_SLAM_ARTIFICIAL_POSE_ERROR		1
 	#define	V_DYNAMIC_SLAM_PREDICTFRAME					1
 	#define	V_DYNAMIC_SLAM_GENERATE_INVK_				1
-	#define	V_DYNAMIC_SLAM_GENERATE_SE3_K2K				1
+	#define	V_DYNAMIC_SLAM_GENERATE_SE3_K2K				-1
 	#define	V_DYNAMIC_SLAM_UPDATE_K2K					2
 	#define	V_DYNAMIC_SLAM_COMPUTE_OPTIMUM				2
 
 
 	#define	V_DYNAMIC_SLAM_ESTIMATE_SLAM				-2
-	#define V_DYNAMIC_SLAM_ESTIMATE_TRACKING			2
+	#define V_DYNAMIC_SLAM_ESTIMATE_TRACKING			-2
 	#define V_DYNAMIC_SLAM_ESTIMATE_DEPTH				2
-	#define V_DYNAMIC_SLAM_ESTIMATE_CALIBRATION		-2
 
 
 
@@ -94,8 +100,8 @@
 	#define	V_RUNCL_CONVERTTOSTRING						0
 	#define	V_RUNCL_INITIALIZE_FP32_PARAMS				0
 	#define V_RUNCL_INITIALIZE_PATCH_DEPTH_MAP_OFFSET	1
-	#define	V_RUNCL_INITIALIZE_RUNCL					1
-	#define	V_RUNCL_MIPMAP_CALL_KERNEL					1
+	#define	V_RUNCL_INITIALIZE_RUNCL					-1
+	#define	V_RUNCL_MIPMAP_CALL_KERNEL					-1
 	#define V_RUNCL_LAYER_CALL_KERNEL					1
 
 	#define V_RUNCL__CL_ENQUEUE_ND_RANGE_KERNEL			1
@@ -115,7 +121,7 @@
 
 	/////////////////////////////////////// RUNCL_DOWNLOADANDSAVE.CPP
 	#define	V_RUNCL_CREATEFOLDERS						2
-	#define	V_RUNCL_READOUTPUT							2
+	#define	V_RUNCL_READOUTPUT							-2
 	#define	V_RUNCL_SAVECOSTVOLS						2
 	#define	V_RUNCL_STORE_KEYFRAME						2
 	#define	V_RUNCL_SAVE_VTK							2
@@ -168,7 +174,8 @@
 	/////////////////////////////////////// RUNCL_PATCH_SLAM.CPP
 	#define V_RUNCL_INITIALIZE_PATCH_PARAMS				1
 	#define	V_RUNCL_COMPUTE_PATCH_LOOKUP_TABLE			2
-	#define	V_RUNCL_PATCH_IMG_GRADIENTS					2
+	#define	V_RUNCL_PATCH_IMG_GRADIENTS					-2
+	#define V_RUNCL_PATCH_SE3_HESSIAN_REDUCE			-2
 
 	/////////////////////////////////////// RUNCL_PATCH_TRACKING.CPP
 	#define V_RUNCL_REDUCE_IMG							2
@@ -176,17 +183,17 @@
 
 
 	/////////////////////////////////////// RUNCL_SETUP_KEYFRAME.CPP
-	#define	V_RUNCL_ESTIMATECALIBRATION					1
+	#define	V_RUNCL_ESTIMATECALIBRATION					-1
 
 
 	/////////////////////////////////////// RUNCL_TRACKING.CPP
-	#define	V_RUNCL_PRECOM_PARAM_MAPS					1
+	#define	V_RUNCL_PRECOM_PARAM_MAPS					-1
 
 
 	#define	V_RUNCL_UPDATE_K2K_BUF						2
-	#define	V_RUNCL_RHO_SQ								2 //
-	#define	V_RUNCL_REDUCE_PATCH_RHO					2
-	#define	V_RUNCL_UPDATE_K2K							2
+	#define	V_RUNCL_RHO_SQ								-2 //
+	#define	V_RUNCL_REDUCE_PATCH_RHO					-2
+	#define	V_RUNCL_UPDATE_K2K							-2
 
 	#define	V_RELATIVEVEL_MAP							1
 

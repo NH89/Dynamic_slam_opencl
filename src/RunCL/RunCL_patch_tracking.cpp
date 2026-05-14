@@ -2,15 +2,23 @@
 
 // old functions
 
-void RunCL::precomp_param_maps ( float SE3_k2k[  max_mipmap_layers*num_SE3_DoF*16  ],  cl_mem map_mem, uint num_vars){ //  Compute maps of pixel motion for each SE3 DoF, and camera params // Derived from RunCL::mipmap
+void RunCL::precomp_param_maps ( float SE3_k2k[  max_mipmap_layers*num_SE3_DoF*16  ],  cl_mem map_mem, uint num_vars, string calling_fn){ //  Compute maps of pixel motion for each SE3 DoF, and camera params // Derived from RunCL::mipmap
 	string fname = "RunCL::precom_param_maps( ..)";
 	int local_verbosity_threshold = V_RUNCL_PRECOM_PARAM_MAPS;
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::precom_param_maps( float SE3_k2k[6*16])_chk_0 "<<flush;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::precom_param_maps( float SE3_k2k[6*16])_chk_0 "
+																																				<<"\nnum_vars = "<<num_vars
+																																				<<"\ncalling_fn = "<<calling_fn
+																																				<<flush;
+																																				cout<<"\nprecom_param_mapschk 0.5, SE3_k2k = \n"
+																																					<<SE3_k2k[0]<<", "<<SE3_k2k[1]<<", "<<SE3_k2k[2]<<", "<<SE3_k2k[3]<<", \n"
+																																					<<SE3_k2k[4]<<", "<<SE3_k2k[5]<<", "<<SE3_k2k[6]<<", "<<SE3_k2k[7]<<", \n"
+																																					<<SE3_k2k[8]<<", "<<SE3_k2k[9]<<", "<<SE3_k2k[10]<<", "<<SE3_k2k[11]<<flush;
+
 																																				for(int mipmap_layer=0; mipmap_layer< max_mipmap_layers; mipmap_layer++){
 																																					cout<<"\n########################################################################\n"<<flush;
-																																					for(int se3=0; se3<num_SE3_DoF; se3++){
+																																					for(int se3=0; se3<num_vars; se3++){
 																																						cout<<"\n######\n mipmap_layer="<<mipmap_layer<<"   se3="<<se3<<"\n"<<flush;
-																																						PRINT_FLOAT_16( &SE3_k2k[  max_mipmap_layers*num_SE3_DoF*16  ], )
+																																						PRINT_FLOAT_16( &SE3_k2k[  mipmap_layer*se3*16  ], )
 																																					}
 																																				}
 																																			}
@@ -28,21 +36,24 @@ void RunCL::precomp_param_maps ( float SE3_k2k[  max_mipmap_layers*num_SE3_DoF*1
 
 	//      __private	 uint layer, set in mipmap_call_kernel( ..) below                                                                      __private	 uint	 layer,			//0
 
-	_clSetKernelArg( comp_param_maps_kernel, 1, sizeof( float),		&inv_depth,	 fname);														//__private	float 	inv_depth,		//1
-	_clSetKernelArg( comp_param_maps_kernel, 2, sizeof( uint),		&num_vars,	 fname);														//__private	uint,	num_vars		//2
+	_clSetKernelArg( comp_param_maps_kernel, 1, sizeof( float),		&inv_depth,	 		fname);												//__private	float 	inv_depth,		//1
+	_clSetKernelArg( comp_param_maps_kernel, 2, sizeof( uint),		&num_vars,	 		fname);												//__private	uint,	num_vars		//2
 
-	_clSetKernelArg( comp_param_maps_kernel, 3, sizeof( cl_mem),	&mipmap_buf, fname);														//__constant uint*	mipmap_params,	//3
-	_clSetKernelArg( comp_param_maps_kernel, 4, sizeof( cl_mem), 	&uint_param_buf, fname);													//__global 	uint*	uint_params		//4
-	_clSetKernelArg( comp_param_maps_kernel, 5, sizeof( cl_mem), 	&SE3_k2kbuf, fname);														//__global 	float* 	k2k,			//5
-	_clSetKernelArg( comp_param_maps_kernel, 6, sizeof( cl_mem), 	&SE3_map_mem, fname);														//__global 	float* 	SE3_map,		//6
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\nRunCL::precom_param_maps( float SO3_k2k[6*16])_chk_1 "<<flush;}
+	_clSetKernelArg( comp_param_maps_kernel, 3, sizeof( cl_mem),	&mipmap_buf, 		fname);												//__constant uint*	mipmap_params,	//3
+	_clSetKernelArg( comp_param_maps_kernel, 4, sizeof( cl_mem), 	&uint_param_buf,	fname);												//__global 	uint*	uint_params		//4
+	_clSetKernelArg( comp_param_maps_kernel, 5, sizeof( cl_mem), 	&SE3_k2kbuf, 		fname);												//__global 	float* 	k2k,			//5
+	_clSetKernelArg( comp_param_maps_kernel, 6, sizeof( cl_mem), 	&map_mem, 			fname);												//__global 	float* 	SE3_map,		//6
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\nRunCL::precom_param_maps( float SO3_k2k[6*16])_chk_1 "
+																																				<<"\nnum_vars = "<<num_vars
+																																				<<"\ncalling_fn = "<<calling_fn
+																																				<<flush;}
 	// SE3_map_mem, k_map_mem, dist_map_mem;
 	mipmap_call_kernel( comp_param_maps_kernel, m_queue );
 																																			if( verbosity>local_verbosity_threshold) {
 																																				cout<<"\n\nRunCL::precom_param_maps( float SO3_k2k[6*16])_output "<<flush;
-																																				stringstream ss;	ss << dataset_frame_num << "_SE3_map";
+																																				stringstream ss;	ss << dataset_frame_num << "_SE3_map_"<<calling_fn;
 																																				float max_range = 0.0f;		// i.e. find max value, and map 0.0->0.5.
-																																				DownloadAndSave_2Channel_volume( SE3_map_mem, ss.str( ), paths.at( "SE3_map_mem"), mm_size_bytes_C1*2, mm_Image_size, CV_32FC2, false, max_range, num_SE3_DoF );
+																																				DownloadAndSave_2Channel_volume( map_mem, ss.str( ), paths.at( "SE3_map_mem"), mm_size_bytes_C1*2, mm_Image_size, CV_32FC2, false, max_range, num_vars );
 
 																																				cout<<"\nRunCL::precom_param_maps( float SE3_k2k[6*16])_chk.. Finished "<<flush;
 																																			}

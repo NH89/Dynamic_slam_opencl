@@ -109,7 +109,7 @@ public:
 
 	cl_mem				fp32_param_buf, uint_param_buf, mipmap_buf, img_stats_buf;
 	cl_mem				SE3_map_mem, SE3_rho_map_mem, SE3_weight_map_mem;
-	cl_mem				camera_matrix_map_mem;
+	cl_mem				camera_matrix_map_mem, lens_distortion_map_mem;
 	cl_mem				pix_sum_mem, var_sum_mem;
 	cl_mem				HSV_grad_mem, ST3_img_grad_mem;
 
@@ -285,7 +285,7 @@ public:
 
 	////////////////////////////////////// RunCL_load_image.cpp
 
-	void precomp_param_maps (				float SE3_k2k[max_mipmap_layers*num_SE3_DoF*16], cl_mem map_mem, uint num_vars);		// Image loading & preparation
+	void precomp_param_maps (				float SE3_k2k[max_mipmap_layers*num_SE3_DoF*16], cl_mem map_mem, uint num_vars, string calling_fn);		// Image loading & preparation
 	void update_tracking_depthmap(			cl_mem depthmap_);
 	void use_inferred_depthmap();
 	void loadFrame(							cv::Mat image);
@@ -354,9 +354,9 @@ public:
 	} se3_rho_result, camera_matrix_result, lens_distortion_result;
 
 	void rho_sq_set_params( 			uint out_block_size);
-	void rho_sq( 						uint out_block_size, uint iter, uint frame_idx, uint layer, cl_mem k2k_buf, uint num_DoF);
+	void rho_sq( 						uint out_block_size, uint iter, uint frame_idx, uint layer, cl_mem k2k_buf, uint num_DoF, string calling_fn);
 	void reduce_patch_Rho ( 			uint out_block_size, uint iter, 				uint layer,					uint num_DoF);
-	void get_rho_result( 				Rho_result rho_result, 							uint layer,					uint num_DoF);
+	void get_rho_result( 				Rho_result &rho_result, 							uint layer,					uint num_DoF);
 
 	void update_k2k_cpu( 				uint layer );
 	void update_k2k( 					uint layer, float delta_theta, float delta, Matx44f GT_pose );

@@ -18,24 +18,24 @@ void Dynamic_slam::estimate_calibration(){
 }
 
 void Dynamic_slam::precompute_cam_matrix_and_lens_distortion_buffers(){			// needs to be run _after_ computing the SE3 transform,  if the aim is to find the actual values of K, rather than the change in K between frames.
-	const int local_verbosity_threshold = V_DYNAMIC_SLAM_PRECOMPUTE_BUFFERS;
+	string fname = "precompute_cam_lens_buffers";
+	const int local_verbosity_threshold = V_DYNAMIC_SLAM_PRECOMPUTE_CAM_LENS_BUFFERS;
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nprecompute_cam_matrix_and_lens_distortion_buffers_chk 0:" <<flush;
 																																				cout<<"\n frame_data.size() = "<<frame_data.size()<<flush;
 																																			}
 	// Camera intrinsic matrix
 	float camera_matrix_k2k[  max_mipmap_layers* num_camera_matrix_DoF *16  ];
 	generate_camera_matrix_k2k_vec( camera_matrix_k2k );
-	runcl.precomp_param_maps ( camera_matrix_k2k,	runcl.camera_matrix_map_mem,	num_camera_matrix_DoF );
+	runcl.precomp_param_maps ( camera_matrix_k2k,	runcl.camera_matrix_map_mem,	num_camera_matrix_DoF, fname );
 
-	// Lens distortion parameters
-
-
-
+	// Lens distortion parameters	### TODO
+	//generate_lens_distortion_vec(..);
+	//runcl.precomp_lens_distortion_maps(  lens_distortion_map_mem... k2k..);	// use existing k2k, with lens distortion increments.
 }
 
 void Dynamic_slam::generate_camera_matrix_k2k_vec( float _camera_matrix_k2k[  max_mipmap_layers* num_camera_matrix_DoF *16  ] ) {			// Generates a set of 5 "k2k" to be used to compute the camera_matrix maps for the current camera frame_to_frame transpose.
-	int local_verbosity_threshold = V_DYNAMIC_SLAM_GENERATE_SE3_K2K;//verbosity_mp["Dynamic_slam::generate_SE3_k2k"];// -2;
-																																			if(verbosity>local_verbosity_threshold) cout << "\nDynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[6*16] ) chk_0" << endl << flush;
+	int local_verbosity_threshold = V_DYNAMIC_SLAM_GENERATE_CAMERA_MATRIX_K2K;//verbosity_mp["Dynamic_slam::generate_SE3_k2k"];// -2;
+																																			if(verbosity>local_verbosity_threshold) cout << "\nDynamic_slam::generate_camera_matrix_k2k_vec( float _SE3_k2k[6*16] ) chk_0" << endl << flush;
 	cv::Matx44f d_k[	num_camera_matrix_DoF];
 	cv::Matx44f d_inv_k[num_camera_matrix_DoF];
 	cv::Matx44f cam2cam[num_camera_matrix_DoF];
@@ -57,7 +57,13 @@ void Dynamic_slam::generate_camera_matrix_k2k_vec( float _camera_matrix_k2k[  ma
 		for (int i=0; i<num_camera_matrix_DoF; i++) {
 
 			cam2cam[i] 			= d_k[i]  * frame_data.back().frame_data.pose  *  d_inv_k[i];
-
+																																			if(verbosity>local_verbosity_threshold){
+																																				cout<<"\n########################### i="<<i<<flush;
+																																				PRINT_MATX44F( d_k[i], );
+																																				PRINT_MATX44F( d_inv_k[i], );
+																																				PRINT_MATX44F( frame_data.back().frame_data.pose, );
+																																				PRINT_MATX44F( cam2cam[i], );
+																																			}
 			for (uint row=0; row<4; row++) {
 				for (uint col=0; col<4; col++){
 					_camera_matrix_k2k[ ((layer * num_camera_matrix_DoF) + i)*16 + row*4 + col]		= cam2cam[i].operator()(row,col);
@@ -72,7 +78,8 @@ void Dynamic_slam::generate_camera_matrix_k2k_vec( float _camera_matrix_k2k[  ma
 
 void Dynamic_slam::estimate_camera_matrix(){
 	string fname = "Dynamic_slam::_camera_matrix()";
-	int 	local_verbosity_threshold 		= V_DYNAMIC_SLAM_ESTIMATE_TRACKING;//verbosity_mp["Dynamic_slam::estimateSE3"];
+	string fname_short = "est_cam";
+	int 	local_verbosity_threshold 		= V_DYNAMIC_SLAM_ESTIMATE_CAMERA_MATRIX;//verbosity_mp["Dynamic_slam::estimateSE3"];
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\fDynamic_slam::_camera_matrix() chk_0"
 																																			<<"  ##############################################################"<< flush;
@@ -97,31 +104,26 @@ void Dynamic_slam::estimate_camera_matrix(){
 																																			<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
 																																			uint	out_block_size		= 2;
 																																			uint	layer				= 0;
-																																			runcl.rho_sq( out_block_size, iter, frame_idx, layer, runcl.k2kbuf, num_camera_matrix_DoF );// For debugging, get a larger, finer Rho map
+																																			runcl.rho_sq( out_block_size, iter, frame_idx, layer, runcl.k2kbuf, num_camera_matrix_DoF, fname_short );// For debugging, get a larger, finer Rho map
 																																			PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_k, );
 																																		}
-		runcl.rho_sq( 			out_block_size, iter, frame_idx,	(uint)layer,  runcl.k2kbuf,	num_camera_matrix_DoF );
-		runcl.reduce_patch_Rho( out_block_size, iter, 				(uint)layer,				num_camera_matrix_DoF );
-		runcl.get_rho_result(	runcl.camera_matrix_result,			(uint)layer,				num_camera_matrix_DoF );
+		runcl.rho_sq( 				out_block_size, iter, frame_idx,	(uint)layer,  runcl.k2kbuf,	num_camera_matrix_DoF, fname_short );
+		runcl.reduce_patch_Rho( 	out_block_size, iter, 				(uint)layer,				num_camera_matrix_DoF );
+		runcl.get_rho_result(		runcl.camera_matrix_result,			(uint)layer,				num_camera_matrix_DoF );
 
-		float		sum_rho		=	runcl.camera_matrix_result.Rho.x;																			// currently .x colour channel only.
-		float		sum_rho_sq	=	runcl.camera_matrix_result.Rho.y;
-		if( isnan(sum_rho_sq) ){
-																			cout << "\nisnan(sum_rho_sq)" <<flush;
+		float		sum_rho			=	runcl.camera_matrix_result.Rho.x;																// currently .x colour channel only.
+		float		sum_rho_sq		=	runcl.camera_matrix_result.Rho.y;
+		if( isnan(sum_rho_sq) ){											cout << "\nisnan(sum_rho_sq)" <<flush;
 			break;
-		}else if(sum_rho_sq > old_sum_rho_sq     ){																						// Rho, photometric error, got worse not better
+		}else if(sum_rho_sq > old_sum_rho_sq){																							// Rho, photometric error, got worse not better
 			if(layer<=0) {break;}																										// Reached bottom of image pyramid.
-			else {
-																			cout << "\nsum_rho_sq > old_sum_rho_sq = "<< old_sum_rho_sq;
+			else {															cout << "\nsum_rho_sq > old_sum_rho_sq = "<< old_sum_rho_sq;
 				if(factor<-1.0f){																										// End amplified steps
-					factor 			=	-1.0f;
-																			cout << ",  factor -2.0f -> -1.0f";
+					factor 			=	-1.0f;								cout << ",  factor -2.0f -> -1.0f";
 				}else {
-					layer--;																											// Step down to lower layer of image pyramid
-																			cout << "\nlayer = "	<<	layer;
+					layer--;												cout << "\nlayer = "	<<	layer;
 					old_sum_rho_sq	=	FLT_MAX-1;																						// Re-set old_sum_rho_sq for new layer
-				}
-																																		PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_k, ); PRINT_MATX44F( old_inv_k, );
+				}																														PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_k, ); PRINT_MATX44F( old_inv_k, );
 // ### TODO				runcl.update_k2k_buf(	old_k2k,	old_k, old_inv_k);																	// Re-set to previous k, camera matrix
 																			cout << endl << flush;
 			}

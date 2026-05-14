@@ -211,30 +211,30 @@ __kernel void Rho_sq(								// To be launched with 1 thread per col for 32x32 p
 			}
 			barrier(CLK_LOCAL_MEM_FENCE );
 		}
-/*		// Save intermediate size ST3 patches for depth map updates, //////////			// TODO ST3 Depth, vel, accel ? Vary output level.
-// 		if (step==out_block_size/2){																																							// save ST3 map at out_block_size, to use for updating depth_map and rel_vel_map
-// 			uint frame_offset 		= write_index + past_frame_idx * 100 + 25 ;			// NB 100 works for current img size . // stacks frame ST3 maps in adjacent columns..
-// 			uint write_block_row	= 0;
-// 			if( fmod((float)lid,out_block_size) == 0 ){																																			// selects columns i.e. threads within the workgroup
-// 				for (uint block_row=0; block_row < block_size ; block_row += step*2, write_block_row++){
-// //					if( confidence_pvt_arr[block_row] > 1>>5  ){																																// if sum confidence is too low, no result.
-// 																						uint offset_1 				= frame_offset		+ write_block_row*mm_cols;
-//
-// 																						Rho_[			offset_1]	= rho_pvt_arr[		block_row ];// / confidence_pvt_arr[block_row];
-//
-// // 					if(block_row==10 && group_id==0 ){printf("\n__kernel void Rho_sq_2, global_id_u=%u,	block_row=%u,	group_id=%u,		rho_pvt_arr[ block_row ]=(%f, %f ) ", \
-// // 					global_id_u, block_row, group_id,	rho_pvt_arr[block_row].x, rho_pvt_arr[block_row].y ); }
-//
-// 						for (uint param_dim=3; param_dim<num_DoF; param_dim++) {																															// select only ST3
-// 																						uint offset_2 				= offset_1			+ (param_dim-3)*( 4+ (read_rows_/out_block_size) )*mm_cols;
-// 																						uint offset_3 				= block_row			+ param_dim*block_size;									// NB read_rows_/out_block_size = writre_rows
-// 																						SE3_incr_map_[	offset_2 ]	= SE3_incr_pvt_arr[	offset_3 ];//	/ confidence_pvt_arr[block_row];
-// 						}
-// //					}
-// 				}
-// 			}
-// 		}//////////////////////////////////////////////////////////////////////
-*/
+		// Save intermediate size ST3 patches for depth map updates, //////////			// TODO ST3 Depth, vel, accel ? Vary output level.
+		if (layer==0 && step==out_block_size/2){		// currently only for layer zero for debugging																																					// save ST3 map at out_block_size, to use for updating depth_map and rel_vel_map
+			uint frame_offset 		= write_index + past_frame_idx * 100 + 25 ;			// NB 100 works for current img size . // stacks frame ST3 maps in adjacent columns..
+			uint write_block_row	= 0;
+			if( fmod((float)lid,out_block_size) == 0 ){																																			// selects columns i.e. threads within the workgroup
+				for (uint block_row=0; block_row < block_size ; block_row += step*2, write_block_row++){
+//					if( confidence_pvt_arr[block_row] > 1>>5  ){																																// if sum confidence is too low, no result.
+																						uint offset_1 				= frame_offset		+ write_block_row*mm_cols;
+
+																						Rho_[			offset_1]	= rho_pvt_arr[		block_row ];// / confidence_pvt_arr[block_row];
+
+// 					if(block_row==10 && group_id==0 ){printf("\n__kernel void Rho_sq_2, global_id_u=%u,	block_row=%u,	group_id=%u,		rho_pvt_arr[ block_row ]=(%f, %f ) ", \
+// 					global_id_u, block_row, group_id,	rho_pvt_arr[block_row].x, rho_pvt_arr[block_row].y ); }
+
+						for (uint param_dim=3; param_dim<num_DoF; param_dim++) {																															// select only ST3
+																						uint offset_2 				= offset_1			+ (param_dim-3)*( 4+ (read_rows_/out_block_size) )*mm_cols;
+																						uint offset_3 				= block_row			+ param_dim*block_size;									// NB read_rows_/out_block_size = writre_rows
+																						param_incr_map_[offset_2 ]	= param_incr_pvt_arr[	offset_3 ];//	/ confidence_pvt_arr[block_row];
+						}
+//					}
+				}
+			}
+		}//////////////////////////////////////////////////////////////////////
+
 	}
 	/// Save maximally reduced SE3 32x32 patches for pose updates ////////////////////																											// Writes dense blocks. Reduces required transfer to host.
 	uint write_block_row			=  0;

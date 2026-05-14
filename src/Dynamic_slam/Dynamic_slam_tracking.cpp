@@ -6,6 +6,7 @@ using namespace cv;
 using namespace std;
 
 void Dynamic_slam::precompute_SE3_buffers(){	// For Lucas-Kanade inverse compositional optimization of (1) tracking (2) camera calibration, (3) lens distortion.
+	string fname = "precompute_SE3_buffers()";
 	const int local_verbosity_threshold = V_DYNAMIC_SLAM_PRECOMPUTE_BUFFERS;
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nprecompute_SE3_buffers_chk 0:" <<flush;
 																																				cout<<"\n frame_data.size() = "<<frame_data.size()<<flush;
@@ -13,7 +14,12 @@ void Dynamic_slam::precompute_SE3_buffers(){	// For Lucas-Kanade inverse composi
 	// SE3 tracking
 	generate_SE3_deltas();																													// depends on f &=> camera_intrinsic_matrix
 	generate_SE3_k2k_vec( SE3_k2k );																										// fills float[96] ie 6xfloat[16] from conf.json intrinsic camera matrix + SE3 increments.
-	runcl.precomp_param_maps ( SE3_k2k, 	runcl.SE3_map_mem,	num_SE3_DoF );																									// GPU computes J(u,v/SE3) Jacobian of optical flow wrt SE3.
+	cout<<"\nprecompute_SE3_buffers_chk 1, SE3_k2k = \n"
+						<<SE3_k2k[0]<<", "<<SE3_k2k[1]<<", "<<SE3_k2k[2]<<", "<<SE3_k2k[3]<<", \n"
+						<<SE3_k2k[4]<<", "<<SE3_k2k[5]<<", "<<SE3_k2k[6]<<", "<<SE3_k2k[7]<<", \n"
+						<<SE3_k2k[8]<<", "<<SE3_k2k[9]<<", "<<SE3_k2k[10]<<", "<<SE3_k2k[11]<<flush;
+
+	runcl.precomp_param_maps ( SE3_k2k, 	runcl.SE3_map_mem,	num_SE3_DoF, fname );														// GPU computes J(u,v/SE3) Jacobian of optical flow wrt SE3.
 
 }
 
@@ -181,6 +187,7 @@ void Dynamic_slam::generate_SE3_k2k_vec( float _SE3_k2k[  max_mipmap_layers* num
 
 void Dynamic_slam::estimate_tracking(){
 	string fname = "Dynamic_slam::estimate_tracking()";
+	string fname_short = "est_tracking()";
 	int 	local_verbosity_threshold 		= V_DYNAMIC_SLAM_ESTIMATE_TRACKING;//verbosity_mp["Dynamic_slam::estimateSE3"];
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\fDynamic_slam::estimate_tracking() chk_0"
@@ -203,10 +210,10 @@ void Dynamic_slam::estimate_tracking(){
 																																			<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
 																																			uint	out_block_size		= 2;
 																																			uint	layer				= 0;
-																																			runcl.rho_sq( out_block_size, iter, frame_idx, layer, runcl.k2kbuf, num_SE3_DoF	);// For debugging, get a larger, finer Rho map
+																																			runcl.rho_sq( out_block_size, iter, frame_idx, layer, runcl.k2kbuf, num_SE3_DoF, fname_short	);// For debugging, get a larger, finer Rho map
 																																			PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_pose, );
 																																		}
-		runcl.rho_sq( 			out_block_size, iter, 	frame_idx,	(uint)layer,  runcl.k2kbuf,	num_SE3_DoF);
+		runcl.rho_sq( 			out_block_size, iter, 	frame_idx,	(uint)layer,  runcl.k2kbuf,	num_SE3_DoF, fname_short);
 		runcl.reduce_patch_Rho( out_block_size, iter, 				(uint)layer,				num_SE3_DoF);
 		runcl.get_rho_result(	runcl.se3_rho_result,				(uint)layer,				num_SE3_DoF);
 		//runcl.update_k2k_cpu( 									(uint)layer );														// frame_data_GT.keyframe2pose for comparision only.

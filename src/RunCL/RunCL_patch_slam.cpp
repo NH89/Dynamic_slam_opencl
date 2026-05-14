@@ -460,7 +460,7 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 
 void  RunCL::patch_SE3_hessian_reduce (uint layer){														// called by Dynamic_slam::getFrame
 	string 		fname	= "RunCL::patch_hessian_reduce()";
-	int local_verbosity_threshold = V_RUNCL_PATCH_IMG_GRADIENTS;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_hessian_reduce()_chk1 layer="<<layer<<" #############################################################"<<flush;}
+	int local_verbosity_threshold = V_RUNCL_PATCH_SE3_HESSIAN_REDUCE;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_hessian_reduce()_chk1 layer="<<layer<<" #############################################################"<<flush;}
 	cl_kernel	kernel	= patch_hessian_reduce_kernel;
 
 	uint	cols		=		patch_hessian_cols[ layer];
