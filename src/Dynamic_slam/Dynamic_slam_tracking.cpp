@@ -14,13 +14,13 @@ void Dynamic_slam::precompute_SE3_buffers(){	// For Lucas-Kanade inverse composi
 	// SE3 tracking
 	generate_SE3_deltas();																													// depends on f &=> camera_intrinsic_matrix
 	generate_SE3_k2k_vec( SE3_k2k );																										// fills float[96] ie 6xfloat[16] from conf.json intrinsic camera matrix + SE3 increments.
-	cout<<"\nprecompute_SE3_buffers_chk 1, SE3_k2k = \n"
-						<<SE3_k2k[0]<<", "<<SE3_k2k[1]<<", "<<SE3_k2k[2]<<", "<<SE3_k2k[3]<<", \n"
-						<<SE3_k2k[4]<<", "<<SE3_k2k[5]<<", "<<SE3_k2k[6]<<", "<<SE3_k2k[7]<<", \n"
-						<<SE3_k2k[8]<<", "<<SE3_k2k[9]<<", "<<SE3_k2k[10]<<", "<<SE3_k2k[11]<<flush;
-
-	runcl.precomp_param_maps ( SE3_k2k, 	runcl.SE3_map_mem,	num_SE3_DoF, fname );														// GPU computes J(u,v/SE3) Jacobian of optical flow wrt SE3.
-
+/*
+	// cout<<"\nprecompute_SE3_buffers_chk 1, SE3_k2k = \n"
+	// 					<<SE3_k2k[0]<<", "<<SE3_k2k[1]<<", "<<SE3_k2k[2]<<", "<<SE3_k2k[3]<<", \n"
+	// 					<<SE3_k2k[4]<<", "<<SE3_k2k[5]<<", "<<SE3_k2k[6]<<", "<<SE3_k2k[7]<<", \n"
+	// 					<<SE3_k2k[8]<<", "<<SE3_k2k[9]<<", "<<SE3_k2k[10]<<", "<<SE3_k2k[11]<<flush;
+*/
+	runcl.precomp_SE3_param_maps ( SE3_k2k, 	runcl.SE3_map_mem,	num_SE3_DoF, fname );														// GPU computes J(u,v/SE3) Jacobian of optical flow wrt SE3.
 }
 
 void Dynamic_slam::generate_SE3_deltas(){	// Principle : delta for each parameter causes maximum 1 pixel of warp in the full size image.

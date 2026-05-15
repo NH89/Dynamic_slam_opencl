@@ -93,7 +93,7 @@ public:
 	// old kernels
 	cl_kernel			convert_depth_kernel;
 	cl_kernel			cvt_color_space_kernel, cvt_color_space_linear_kernel;
-	cl_kernel 			mipmap_float_kernel,  comp_param_maps_kernel;
+	cl_kernel 			mipmap_float_kernel,  comp_SE3_param_maps_kernel, comp_cam_and_lens_maps_kernel;
 	// 1st gen patch kernels ?
 	cl_kernel			rho_sq_kernel, reduce_patch_Rho_kernel, update_k2k_kernel;	// TO DO declare, create, release kernel in Run_cl.h etc.
 	// RunCL_patchslam.cpp
@@ -285,7 +285,8 @@ public:
 
 	////////////////////////////////////// RunCL_load_image.cpp
 
-	void precomp_param_maps (				float SE3_k2k[max_mipmap_layers*num_SE3_DoF*16], cl_mem map_mem, uint num_vars, string calling_fn);		// Image loading & preparation
+	void precomp_SE3_param_maps (			float SE3_k2k[max_mipmap_layers*num_SE3_DoF*16], cl_mem map_mem, uint num_vars, string calling_fn);		// Image loading & preparation
+	void precomp_cam_and_lens_maps ( 		cl_float16 SE3_k2k[max_mipmap_layers*num_SE3_DoF], cl_mem map_mem, uint num_vars, string calling_fn);
 	void update_tracking_depthmap(			cl_mem depthmap_);
 	void use_inferred_depthmap();
 	void loadFrame(							cv::Mat image);

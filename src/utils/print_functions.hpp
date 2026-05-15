@@ -3,6 +3,8 @@
 
 #include "../RunCL/RunCL_typedefs.hpp"
 
+#include <CL/opencl.hpp>
+
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
@@ -40,6 +42,10 @@
 
 #define PRINT_FLOAT_16(a,txt) std::cout << "\n\n" << #txt <<" "<< #a << " = " << std::flush ; print_float_16(a);
 
+
+#define PRINT_CL_FLOAT16(a,txt) std::cout << "\n\n" << #txt <<" "<< #a << " = " << std::flush ; print_cl_float16(a);
+
+
 #define PRINT_MAT44F(a,txt) std::cout << "\n\n" << #txt <<" "<< #a << " = " << std::flush ; print_matf(a, 4, 4);
 
 #define PRINT_MAT33F(a,txt) std::cout << "\n\n" << #txt <<" "<< #a << " = " << std::flush ; print_matf(a, 3, 3);
@@ -70,6 +76,8 @@ void print_matx15d(Matx15d matx);		// NB own typedef
 void print_float_9(float float_9[9]);
 
 void print_float_16(float float_16[16]);
+
+void print_cl_float16(cl_float16 flt16);
 
 void print_json_float_9(Json::Value obj, std::string name);
 

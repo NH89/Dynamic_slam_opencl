@@ -159,6 +159,28 @@ void float16arry_To_Matx44f( float arry[16], Matx44f &matx ){
 }
 
 
+void Matx44f_To_cl_float16(Matx44f matx, cl_float16 &flt16 ){
+    flt16.s0 = matx(0,0);
+    flt16.s1 = matx(0,1);
+    flt16.s2 = matx(0,2);
+    flt16.s3 = matx(0,3);
+    flt16.s4 = matx(1,0);
+    flt16.s5 = matx(1,1);
+    flt16.s6 = matx(1,2);
+    flt16.s7 = matx(1,3);
+    flt16.s8 = matx(2,0);
+    flt16.s9 = matx(2,1);
+    flt16.sa = matx(2,2);
+    flt16.sb = matx(2,3);
+    flt16.sc = matx(3,0);
+    flt16.sd = matx(3,1);
+    flt16.se = matx(3,2);
+    flt16.sf = matx(3,3);
+}
+
+
+
+
 cv::Matx44f getPose( Mat R, Mat T ){																							// Mat R, Mat T, Matx44f& pose  // NB Matx::operator()() does not copy, but creates a submatrix. => would be updated when R & T are updated.
 																																			if(V_CONVERT_TRANSFORMS<1) { cout << "\n getPose chk_0"<<flush;}
 	cv::Matx44f pose;

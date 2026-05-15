@@ -6,6 +6,8 @@
 #include <opencv2/imgproc/imgproc_c.h> // req for types e.g. CV_BGR2GRAY
 #include <opencv2/calib3d/calib3d.hpp>
 
+#include <CL/opencl.hpp>
+
 #include "print_functions.hpp"
 #include "verbosity.hpp"
 
@@ -56,6 +58,8 @@ double median(const Mat& M);
 void Matx44f_To_float16arry(Matx44f matx, float arry[16]);
 
 void float16arry_To_Matx44f ( float arry[16], cv::Matx44f& matx );
+
+void Matx44f_To_cl_float16(Matx44f matx, cl_float16 &flt16 );
 
 cv::Matx44f getPose(Mat R, Mat T/*, int verbosity*/);
 

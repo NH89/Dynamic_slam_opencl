@@ -122,6 +122,34 @@ void print_float_16(float float_16[16]){
     cout<<flush;
 }
 
+
+void print_cl_float16(cl_float16 flt16){
+	cout << fixed << setprecision( PRECISION ) ;
+	cout << "\n"
+	<< flt16.s0		<< ", "
+	<< flt16.s1		<< ", "
+	<< flt16.s2		<< ", "
+	<< flt16.s3		<< ", "
+	<< "\n"
+	<< flt16.s4		<< ", "
+	<< flt16.s5		<< ", "
+	<< flt16.s6		<< ", "
+	<< flt16.s7		<< ", "
+	<< "\n"
+	<< flt16.s8		<< ", "
+	<< flt16.s9		<< ", "
+	<< flt16.sa		<< ", "
+	<< flt16.sb		<< ", "
+	<< "\n"
+	<< flt16.sc		<< ", "
+	<< flt16.sd		<< ", "
+	<< flt16.se		<< ", "
+	<< flt16.sf		<< ", "
+	<<flush;
+}
+
+
+
 void print_json_float_9(Json::Value obj, std::string name){
     cout << fixed << setprecision( PRECISION ) ;
     cout << "\n\nobj["<<name<<"] ="<<flush;

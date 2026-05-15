@@ -116,8 +116,9 @@ void Dynamic_slam::initialize_camera_vec(){
 		if(		 use_artif_pose_error==true){				set_artif_pose_error();	}
 		else if( use_GT_pose		 ==true){				use_GT_pose_vec();		}
 	}
+	inv_initial_K											= generate_invK_( initial_K );
 	frame_data.back().frame_data.K							= initial_K;
-	frame_data.back().frame_data.inv_K						= generate_invK_( initial_K );
+	frame_data.back().frame_data.inv_K						= inv_initial_K;
 																																			if(verbosity>local_verbosity_threshold){
 																																				cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"
 																																					<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
@@ -260,7 +261,6 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 	// Will need to decide which layers and ST3 patch sizes to compute Hessians for, then store them in a buffer on the GPU.
 																																			// # Get 1st & 2nd order image gradients of MipMap
 																																			// see CostVol::cacheGValues(), RunCL::cacheGValue2 & __kernel void CacheG3
-
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::getFrame_chk 2  Finished "
 																																				<<"###########################################################################\n" << flush;
 

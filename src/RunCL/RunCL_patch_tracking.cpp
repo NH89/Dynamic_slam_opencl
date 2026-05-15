@@ -2,18 +2,13 @@
 
 // old functions
 
-void RunCL::precomp_param_maps ( float SE3_k2k[  max_mipmap_layers*num_SE3_DoF*16  ],  cl_mem map_mem, uint num_vars, string calling_fn){ //  Compute maps of pixel motion for each SE3 DoF, and camera params // Derived from RunCL::mipmap
-	string fname = "RunCL::precom_param_maps( ..)";
+void RunCL::precomp_SE3_param_maps ( float SE3_k2k[  max_mipmap_layers*num_SE3_DoF*16  ],  cl_mem map_mem, uint num_vars, string calling_fn){ //  Compute maps of pixel motion for each SE3 DoF, and camera params // Derived from RunCL::mipmap
+	string fname = "RunCL::precomp_SE3_param_maps(..)";
 	int local_verbosity_threshold = V_RUNCL_PRECOM_PARAM_MAPS;
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::precom_param_maps( float SE3_k2k[6*16])_chk_0 "
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::precomp_SE3_param_maps(..)_chk_0 "
 																																				<<"\nnum_vars = "<<num_vars
 																																				<<"\ncalling_fn = "<<calling_fn
 																																				<<flush;
-																																				cout<<"\nprecom_param_mapschk 0.5, SE3_k2k = \n"
-																																					<<SE3_k2k[0]<<", "<<SE3_k2k[1]<<", "<<SE3_k2k[2]<<", "<<SE3_k2k[3]<<", \n"
-																																					<<SE3_k2k[4]<<", "<<SE3_k2k[5]<<", "<<SE3_k2k[6]<<", "<<SE3_k2k[7]<<", \n"
-																																					<<SE3_k2k[8]<<", "<<SE3_k2k[9]<<", "<<SE3_k2k[10]<<", "<<SE3_k2k[11]<<flush;
-
 																																				for(int mipmap_layer=0; mipmap_layer< max_mipmap_layers; mipmap_layer++){
 																																					cout<<"\n########################################################################\n"<<flush;
 																																					for(int se3=0; se3<num_vars; se3++){
@@ -22,42 +17,80 @@ void RunCL::precomp_param_maps ( float SE3_k2k[  max_mipmap_layers*num_SE3_DoF*1
 																																					}
 																																				}
 																																			}
-	// cv::Mat depth		= cv::Mat::ones ( mm_height, mm_width, CV_32FC1);																	// NB must recompute translation maps at run time. NB parallax motion is proportional to inv depth.
-	// float mid_depth 	= ( fp32_params[MAX_INV_DEPTH] + fp32_params[MIN_INV_DEPTH])/2.0;                                                   // TO DO fix : depthmap not used as a kernel arg. NB want to match scale of depth range, but ? parallax may vary.
-	// depth 				*= mid_depth;
-	//_clEnqueueWriteBuffer( uload_queue, depth_mem_temp,	CL_FALSE, 0, mm_size_bytes_C1,	 								depth.data,		fname);
-
-	// float fx			= current_frames[ current_frames_idx[0] ].K(0,0);
-	// float fy			= current_frames[ current_frames_idx[0] ].K(1,1);
+	cl_kernel	kernel	= comp_SE3_param_maps_kernel;
 	float inv_depth		= 1; //(fx + fy)/2.0f;																									// sets inverse relative depth = focal_length
 																																				// Makes 1 pixel ST3 and SE3 easy to set.
 																																				// NB must convert GT depth <=> relative depth.
 	_clEnqueueWriteBuffer( uload_queue, SE3_k2kbuf,		CL_FALSE, 0, max_mipmap_layers*num_SE3_DoF*16*sizeof( float), 	SE3_k2k,		fname);
 
-	//      __private	 uint layer, set in mipmap_call_kernel( ..) below                                                                      __private	 uint	 layer,			//0
+	//      __private	 uint layer, set in mipmap_call_kernel( ..) below                                                                      __private	 uint	 layer,		//0
+	_clSetKernelArg( kernel, 1, sizeof( float),		&inv_depth,	 		fname);												//__private	float 	inv_depth,		//1
+	_clSetKernelArg( kernel, 2, sizeof( uint),		&num_vars,	 		fname);												//__private	uint,	num_vars		//2
 
-	_clSetKernelArg( comp_param_maps_kernel, 1, sizeof( float),		&inv_depth,	 		fname);												//__private	float 	inv_depth,		//1
-	_clSetKernelArg( comp_param_maps_kernel, 2, sizeof( uint),		&num_vars,	 		fname);												//__private	uint,	num_vars		//2
-
-	_clSetKernelArg( comp_param_maps_kernel, 3, sizeof( cl_mem),	&mipmap_buf, 		fname);												//__constant uint*	mipmap_params,	//3
-	_clSetKernelArg( comp_param_maps_kernel, 4, sizeof( cl_mem), 	&uint_param_buf,	fname);												//__global 	uint*	uint_params		//4
-	_clSetKernelArg( comp_param_maps_kernel, 5, sizeof( cl_mem), 	&SE3_k2kbuf, 		fname);												//__global 	float* 	k2k,			//5
-	_clSetKernelArg( comp_param_maps_kernel, 6, sizeof( cl_mem), 	&map_mem, 			fname);												//__global 	float* 	SE3_map,		//6
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\nRunCL::precom_param_maps( float SO3_k2k[6*16])_chk_1 "
+	_clSetKernelArg( kernel, 3, sizeof( cl_mem),	&mipmap_buf, 		fname);												//__constant uint*	mipmap_params,	//3
+	_clSetKernelArg( kernel, 4, sizeof( cl_mem), 	&uint_param_buf,	fname);												//__global 	uint*	uint_params		//4
+	_clSetKernelArg( kernel, 5, sizeof( cl_mem), 	&SE3_k2kbuf, 		fname);												//__global 	float* 	k2k,			//5
+	_clSetKernelArg( kernel, 6, sizeof( cl_mem), 	&map_mem, 			fname);												//__global 	float* 	SE3_map,		//6
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\nRunCL::precomp_SE3_param_maps(..)_chk_1 "
 																																				<<"\nnum_vars = "<<num_vars
 																																				<<"\ncalling_fn = "<<calling_fn
 																																				<<flush;}
 	// SE3_map_mem, k_map_mem, dist_map_mem;
-	mipmap_call_kernel( comp_param_maps_kernel, m_queue );
+	mipmap_call_kernel( kernel, m_queue );
 																																			if( verbosity>local_verbosity_threshold) {
-																																				cout<<"\n\nRunCL::precom_param_maps( float SO3_k2k[6*16])_output "<<flush;
+																																				cout<<"\n\nRunCL::precomp_SE3_param_maps(..)_output "<<flush;
 																																				stringstream ss;	ss << dataset_frame_num << "_SE3_map_"<<calling_fn;
 																																				float max_range = 0.0f;		// i.e. find max value, and map 0.0->0.5.
 																																				DownloadAndSave_2Channel_volume( map_mem, ss.str( ), paths.at( "SE3_map_mem"), mm_size_bytes_C1*2, mm_Image_size, CV_32FC2, false, max_range, num_vars );
 
-																																				cout<<"\nRunCL::precom_param_maps( float SE3_k2k[6*16])_chk.. Finished "<<flush;
+																																				cout<<"\nRunCL::precomp_SE3_param_maps(..)_chk.. Finished "<<flush;
 																																			}
 }
+
+
+void RunCL::precomp_cam_and_lens_maps ( cl_float16 SE3_k2k[  max_mipmap_layers*(num_camera_matrix_DoF +1)  ],  cl_mem map_mem, uint num_vars, string calling_fn){ //  Compute maps of pixel motion for each DoF of camera intrinsic matrix, or lens distortion // Derived from RunCL::mipmap
+	string fname = "RunCL::precomp_cam_and_lens_maps(..)";
+	int local_verbosity_threshold = V_RUNCL_PRECOM_PARAM_MAPS;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::precomp_cam_and_lens_maps(..)_chk_0 "
+																																				<<"\nnum_vars = "<<num_vars
+																																				<<"\ncalling_fn = "<<calling_fn
+																																				<<flush;
+																																				for(int mipmap_layer=0; mipmap_layer< max_mipmap_layers; mipmap_layer++){
+																																					cout<<"\n########################################################################\n"<<flush;
+																																					for(int param=0; param<=num_vars; param++){
+																																						cout<<"\n######\n mipmap_layer="<<mipmap_layer<<"   se3="<<param<<"\n"<<flush;
+																																						PRINT_CL_FLOAT16( SE3_k2k[  mipmap_layer*(num_camera_matrix_DoF +1)  + param  ], )
+																																					}
+																																				}
+																																			}
+	cl_kernel	kernel	= comp_cam_and_lens_maps_kernel;
+	float inv_depth		= 1;
+	_clEnqueueWriteBuffer( uload_queue, SE3_k2kbuf,		CL_FALSE, 0, max_mipmap_layers*(num_camera_matrix_DoF +1)*sizeof(cl_float16), 	SE3_k2k,		fname);
+
+	//      __private	 uint layer, set in mipmap_call_kernel( ..) below                                                                      __private	 uint	 layer,		//0
+	_clSetKernelArg( kernel, 1, sizeof( float),		&inv_depth,	 		fname);												//__private	float 	inv_depth,		//1
+	_clSetKernelArg( kernel, 2, sizeof( uint),		&num_vars,	 		fname);												//__private	uint,	num_vars		//2
+
+	_clSetKernelArg( kernel, 3, sizeof( cl_mem),	&mipmap_buf, 		fname);												//__constant uint*	mipmap_params,	//3
+	_clSetKernelArg( kernel, 4, sizeof( cl_mem), 	&uint_param_buf,	fname);												//__global 	uint*	uint_params		//4
+	_clSetKernelArg( kernel, 5, sizeof( cl_mem), 	&SE3_k2kbuf, 		fname);												//__global 	float* 	k2k,			//5
+	_clSetKernelArg( kernel, 6, sizeof( cl_mem), 	&map_mem, 			fname);												//__global 	float* 	SE3_map,		//6
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\nRunCL::precomp_cam_and_lens_maps(..)_chk_1 "
+																																				<<"\nnum_vars = "<<num_vars
+																																				<<"\ncalling_fn = "<<calling_fn
+																																				<<flush;}
+	// SE3_map_mem, k_map_mem, dist_map_mem;
+	mipmap_call_kernel( kernel, m_queue );
+																																			if( verbosity>local_verbosity_threshold) {
+																																				cout<<"\n\nRunCL::precomp_cam_and_lens_maps(..)_output "<<flush;
+																																				stringstream ss;	ss << dataset_frame_num << "_param_map_"<<calling_fn;
+																																				float max_range = 0.0f;		// i.e. find max value, and map 0.0->0.5.
+																																				DownloadAndSave_2Channel_volume( map_mem, ss.str( ), paths.at( "SE3_map_mem"), mm_size_bytes_C1*2, mm_Image_size, CV_32FC2, false, max_range, num_vars );
+
+																																				cout<<"\nRunCL::precomp_cam_and_lens_maps(..)_chk.. Finished "<<flush;
+																																			}
+}
+
 
 void RunCL::update_tracking_depthmap(cl_mem depthmap_){
 	string fname = "RunCL::update_tracking_depthmap(cl_mem depthmap_)";

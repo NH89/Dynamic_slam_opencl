@@ -49,7 +49,7 @@ class Dynamic_slam
     std::vector<fs::path>   depth;
 
     // camera & pose params
-    cv::Matx44f initial_K;
+    cv::Matx44f initial_K, inv_initial_K;
 	float f;								//= fmaxf(	obj["cameraMatrix"][0].asFloat(),	obj["cameraMatrix"][4].asFloat()	);	// focal length in pixels.
 	float delta[max_mipmap_layers];			//= obj["min_depth"].asFloat() /f ;														// ST3_delta * (Translation to cause 1 pixel of parallax at min_depth)
 	float delta_theta[max_mipmap_layers];	//= 1/f																					// SO3_delta_theta * (Rotation to cause 1 pixel of rotation flow)
@@ -157,7 +157,8 @@ class Dynamic_slam
     //////////////////////////////////// Dynamic_slam_autocalibration.cpp
     void estimate_calibration();
     void precompute_cam_matrix_and_lens_distortion_buffers();
-    void generate_camera_matrix_k2k_vec( float _SE3_k2k[  max_mipmap_layers* num_camera_matrix_DoF *16  ] );
+    //void generate_camera_matrix_k2k_vec( float _SE3_k2k[  max_mipmap_layers* num_camera_matrix_DoF *16  ] );
+    void generate_camera_matrix_k2k_vec( cl_float16 _camera_matrix_k2k[  max_mipmap_layers* (num_camera_matrix_DoF +1)  ] );
     void estimate_camera_matrix();
 	void estimate_lens_distortion();
 

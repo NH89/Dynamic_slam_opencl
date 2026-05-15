@@ -13,8 +13,8 @@ void Dynamic_slam::estimate_calibration(){
 																																			<<"  ##############################################################"<< flush;
 																																		}
 	precompute_cam_matrix_and_lens_distortion_buffers();
-	estimate_camera_matrix();
-	estimate_lens_distortion();
+//	estimate_camera_matrix();
+//	estimate_lens_distortion();
 }
 
 void Dynamic_slam::precompute_cam_matrix_and_lens_distortion_buffers(){			// needs to be run _after_ computing the SE3 transform,  if the aim is to find the actual values of K, rather than the change in K between frames.
@@ -24,25 +24,28 @@ void Dynamic_slam::precompute_cam_matrix_and_lens_distortion_buffers(){			// nee
 																																				cout<<"\n frame_data.size() = "<<frame_data.size()<<flush;
 																																			}
 	// Camera intrinsic matrix
-	float camera_matrix_k2k[  max_mipmap_layers* num_camera_matrix_DoF *16  ];
+
+	cl_float16 camera_matrix_k2k[  max_mipmap_layers* (num_camera_matrix_DoF +1)  ];
 	generate_camera_matrix_k2k_vec( camera_matrix_k2k );
-	runcl.precomp_param_maps ( camera_matrix_k2k,	runcl.camera_matrix_map_mem,	num_camera_matrix_DoF, fname );
+	runcl.precomp_cam_and_lens_maps ( camera_matrix_k2k,	runcl.camera_matrix_map_mem,	num_camera_matrix_DoF, fname );
 
 	// Lens distortion parameters	### TODO
 	//generate_lens_distortion_vec(..);
 	//runcl.precomp_lens_distortion_maps(  lens_distortion_map_mem... k2k..);	// use existing k2k, with lens distortion increments.
 }
 
-void Dynamic_slam::generate_camera_matrix_k2k_vec( float _camera_matrix_k2k[  max_mipmap_layers* num_camera_matrix_DoF *16  ] ) {			// Generates a set of 5 "k2k" to be used to compute the camera_matrix maps for the current camera frame_to_frame transpose.
+void Dynamic_slam::generate_camera_matrix_k2k_vec( cl_float16 _camera_matrix_k2k[  max_mipmap_layers* (num_camera_matrix_DoF +1)  ] ) {			// Generates a set of 5 "k2k" to be used to compute the camera_matrix maps for the current camera frame_to_frame transpose.
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_GENERATE_CAMERA_MATRIX_K2K;//verbosity_mp["Dynamic_slam::generate_SE3_k2k"];// -2;
 																																			if(verbosity>local_verbosity_threshold) cout << "\nDynamic_slam::generate_camera_matrix_k2k_vec( float _SE3_k2k[6*16] ) chk_0" << endl << flush;
-	cv::Matx44f d_k[	num_camera_matrix_DoF];
-	cv::Matx44f d_inv_k[num_camera_matrix_DoF];
-	cv::Matx44f cam2cam[num_camera_matrix_DoF];
+	cv::Matx44f d_k[	num_camera_matrix_DoF+1];
+	cv::Matx44f d_inv_k[num_camera_matrix_DoF+1];
+	cv::Matx44f cam2cam[num_camera_matrix_DoF+1];
 
 	for(int layer=0; layer<max_mipmap_layers; layer++){
 
-		for (int i=0; i<num_camera_matrix_DoF; i++) {			d_k[i] = initial_K;	}	// start by copying initial estimate of camera matrix.  TODO ? Could change to current camera matrix - chk if pixel motion maps are different.
+		//cam2cam[num_camera_matrix_DoF] 			= initial_K  * frame_data.back().frame_data.pose  *  inv_initial_K;							// Store current k2k in last Matx44f of the array. // ### TODO use the true current k & inv_k.
+
+		for (int i=0; i<=num_camera_matrix_DoF; i++) {			d_k[i] = initial_K;	}	// start by copying initial estimate of camera matrix.  TODO ? Could change to current camera matrix - chk if pixel motion maps are different.
 
 		d_k[0].operator()(0,0)	+=	1;	// change of focal length
 		d_k[0].operator()(1,1)	+=	1;
@@ -51,12 +54,15 @@ void Dynamic_slam::generate_camera_matrix_k2k_vec( float _camera_matrix_k2k[  ma
 		d_k[2].operator()(0,2)	+=	1;	// change of image centre Cx in pixel column
 		d_k[3].operator()(1,2)	+=	1;	// change of image centre Cy in pixel row
 		d_k[4].operator()(0,1)	+=	1;	// change of image skew
+		//d_k[5]						// no change, reference k2k.
 
-		for (int i=0; i<num_camera_matrix_DoF; i++){			d_inv_k[i]		= generate_invK_( d_k[i] ); }
+		for (int i=0; i<=num_camera_matrix_DoF; i++){			d_inv_k[i]		= generate_invK_( d_k[i] ); }
 
-		for (int i=0; i<num_camera_matrix_DoF; i++) {
+		for (int i=0; i<=num_camera_matrix_DoF; i++){	// NB include  am2cam[num_camera_matrix_DoF] = ref_k2k
 
 			cam2cam[i] 			= d_k[i]  * frame_data.back().frame_data.pose  *  d_inv_k[i];
+
+			Matx44f_To_cl_float16( cam2cam[i],		_camera_matrix_k2k[ (layer * (num_camera_matrix_DoF+1)) + i] );
 																																			if(verbosity>local_verbosity_threshold){
 																																				cout<<"\n########################### i="<<i<<flush;
 																																				PRINT_MATX44F( d_k[i], );
@@ -64,11 +70,6 @@ void Dynamic_slam::generate_camera_matrix_k2k_vec( float _camera_matrix_k2k[  ma
 																																				PRINT_MATX44F( frame_data.back().frame_data.pose, );
 																																				PRINT_MATX44F( cam2cam[i], );
 																																			}
-			for (uint row=0; row<4; row++) {
-				for (uint col=0; col<4; col++){
-					_camera_matrix_k2k[ ((layer * num_camera_matrix_DoF) + i)*16 + row*4 + col]		= cam2cam[i].operator()(row,col);
-				}
-			}
 		}
 	}
 																																			if(verbosity>local_verbosity_threshold) {

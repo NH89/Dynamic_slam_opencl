@@ -190,12 +190,12 @@ void px_k2k( float16 k2k_,  float reduction,  uint v,  uint u,  float inv_depth,
 
 	*u2_flt_1		= px_out[0]/reduction;
 	*v2_flt_1		= px_out[1]/reduction;
-/*
+
 	if(print_==true){
-			printf("\n\n__device_fn px_k2k()    u_flt=%f,  u2=%f,  v_flt=%f,   v2=%f,  k2k_.s0=%f,   inv_depth_1=%f", \
-			u_flt,  *u2_flt_1,  v_flt, *v2_flt_1,  k2k_.s0,  inv_depth );
+			printf("\n\n__device_fn px_k2k()    u_flt=%f,  u2=%f,  v_flt=%f,   v2=%f,  k2k_.s0=%f,   inv_depth_1=%f,", \
+												u_flt,  *u2_flt_1,  v_flt, *v2_flt_1,  k2k_.s0,  	inv_depth );
 	}
-*/
+
 }
 
 void mat_mul44( uint lid,	__local float local_A[16],		__local float local_B[16],		__local float local_C[16] ){
