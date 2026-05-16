@@ -61,11 +61,12 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	__global	float2*		depth_map,				//10											// current frame depth, now stored as inv_depth
 
 	//Outputs:
-	__global	float2*		img_grad_uv,			//11
-	__global 	float4*		SE3_grad_map,			//12											// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
-	__global 	float4*		SE3_Hessian_map,		//13											// HSV (6x6) matrix so 36*float4. 2nd half holds Jacobian maps, req for IC-LK algorithm. Size 2xmm_pixels.
-	__local		float4*		local_Hessian,			//14											// local_Hessian_pseudo_inverse[ sizeof(float4) *6*6 *local_size]
-	__global 	float4*		ST3_img_grad			//15
+	__global	float8*		img_grad_uv,			//11
+	__global	float2*		img_edge_uv,			//12
+	__global 	float4*		SE3_grad_map,			//13											// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
+	__global 	float4*		SE3_Hessian_map,		//14											// HSV (6x6) matrix so 36*float4. 2nd half holds Jacobian maps, req for IC-LK algorithm. Size 2xmm_pixels.
+	__local		float4*		local_Hessian,			//15											// local_Hessian_pseudo_inverse[ sizeof(float4) *6*6 *local_size]
+	__global 	float4*		ST3_img_grad			//16
 ){
 	uint	global_id_uint								= get_global_id(0);
 	uint	lid											= get_local_id(0);
@@ -132,8 +133,9 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 
 		float4 gu										= { (pr.x - pl.x)/2.0f,  (pr.y - pl.y)/2.0f,  (pr.z - pl.z)/2.0f,   0.5f };		// right-left			// Signed img gradient in hsv,
 		float4 gv										= { (pd.x - pu.x)/2.0f,  (pd.y - pu.y)/2.0f,  (pd.z - pu.z)/2.0f,   0.5f };		// down -up				// in +ve (u,v) directions, origin at top left of image.
-		img_grad_uv[ read_index ]						= (float2){  ((signbit(gu.y)*2)-1) * ( fabs(gu.x)+fabs(gu.y)+fabs(gu.z) )*(1<<5),		 ((signbit(gv.y)*2)-1) * ( fabs(gv.x)+fabs(gv.y)+fabs(gv.z) )*(1<<5) }; // NB .z = value channel, used for direction.
-
+		img_grad_uv[ read_index ]						= (float8){  gu.x, gu.y, gu.z, gu.w,  gv.x, gv.y, gv.z, gv.w };
+		img_edge_uv[ read_index ]						= (float2){  ((signbit(gu.y)*2)-1) * ( fabs(gu.x)+fabs(gu.y)+fabs(gu.z) )*(1<<5),		 ((signbit(gv.y)*2)-1) * ( fabs(gv.x)+fabs(gv.y)+fabs(gv.z) )*(1<<5) }; // NB .z = value channel, used for direction.
+														// ### TODO generate DTAM g1mem, but separately in u,v and preserve sign.
 		float2	flt2_inv_depth							=  depth_map[read_index];
 		float	inv_depth								= flt2_inv_depth.x;
 		confidence_pvt_arr[row_in_block]				= 1.0f;	//flt2_inv_depth.y; ### TODO restore use of depthmap confidence

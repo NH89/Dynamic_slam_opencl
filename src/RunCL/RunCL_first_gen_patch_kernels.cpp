@@ -145,7 +145,7 @@ void RunCL::rho_sq( uint out_block_size, uint iter, uint frame_idx, uint layer, 
 	_clSetKernelArg( kernel,13, sizeof( cl_mem), 								&current_frames[current_frames_idx[4]].img_buf,			fname);		//__global		float4*		img_past_3,				//11
 																																																				// NB GT_depth loaded to depth_mem by void RunCL::loadFrameData( ..)
 	_clSetKernelArg( kernel,14, sizeof( cl_mem), 								&depth_mem,												fname);		//__global		float2* 	depth_map,				//12	// current frame depth, now stored as inv_depth
-	_clSetKernelArg( kernel,15, sizeof( cl_mem), 								&g1mem,													fname);		//__global		float8* 	g1p,					//13	// current frame g1mem
+	_clSetKernelArg( kernel,15, sizeof( cl_mem), 								&img_edge_mem,											fname);		//__global		float8* 	g1p,					//13	// current frame g1mem
 	_clSetKernelArg( kernel,16, sizeof( cl_mem), 								&SE3_grad_map_mem,										fname);		//__global 		float8*		SE3_grad_map_cur_frame,	//14
 
 	_clSetKernelArg( kernel,17, sizeof( cl_mem), 								&current_frames[current_frames_idx[0]].r_vel_buf,		fname);		//__global		float4*		img_cur,				//15	// multiple past frames.

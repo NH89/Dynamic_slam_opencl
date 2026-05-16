@@ -90,10 +90,12 @@ public:
 	cl_program			m_program;
 
 	// Kernels
+	// RunCL_autocalibration
+	cl_kernel			comp_cam_and_lens_maps_kernel, patch_cam_and_lens_Hessian_kernel;
 	// old kernels
 	cl_kernel			convert_depth_kernel;
 	cl_kernel			cvt_color_space_kernel, cvt_color_space_linear_kernel;
-	cl_kernel 			mipmap_float_kernel,  comp_SE3_param_maps_kernel, comp_cam_and_lens_maps_kernel;
+	cl_kernel 			mipmap_float_kernel,  comp_SE3_param_maps_kernel;
 	// 1st gen patch kernels ?
 	cl_kernel			rho_sq_kernel, reduce_patch_Rho_kernel, update_k2k_kernel;	// TO DO declare, create, release kernel in Run_cl.h etc.
 	// RunCL_patchslam.cpp
@@ -104,21 +106,22 @@ public:
 	cl_kernel			/*update_depth_kernel,*/ update_depth_2_kernel, regularize_depth_kernel, enlarge_layer_float_kernel, use_inferred_depthmap_kernel, use_GT_depthmap_kernel;
 
 	// GPU Buffers																	// static = same for all instances of class Dynamic_slam.
-	cl_mem				basemem, imgmem_blurred, SE3_grad_map_mem, SE3_incr_map_mem;
-	cl_mem				depth_mem_temp, depth_mem_GT;								// 'depth_mem_temp' is use to load & prepare data for depth_mem_GT and transform_depthmap
+	cl_mem				fp32_param_buf, uint_param_buf, mipmap_buf, img_stats_buf, patch_lookup_table_buf;
 
-	cl_mem				fp32_param_buf, uint_param_buf, mipmap_buf, img_stats_buf;
-	cl_mem				SE3_map_mem, SE3_rho_map_mem, SE3_weight_map_mem;
-	cl_mem				camera_matrix_map_mem, lens_distortion_map_mem;
+	cl_mem				SE3_grad_map_mem, SE3_incr_map_mem,	SE3_map_mem, SE3_rho_map_mem, SE3_weight_map_mem, SE3_hessian_map_mem, SE3_jacobian_map_mem;
+	cl_mem				depth_mem, depth_mem_temp, depth_mem_GT;					// 'depth_mem_temp' is use to load & prepare data for depth_mem_GT and transform_depthmap
+
+	cl_mem				camera_matrix_map_mem, camera_matrix_grad_map_mem, camera_matrix_hessian_map_mem;
+	cl_mem				lens_distortion_map_mem, distorsion_update_buf;
+
 	cl_mem				pix_sum_mem, var_sum_mem;
-	cl_mem				HSV_grad_mem, ST3_img_grad_mem;
+	cl_mem				HSV_grad_mem, ST3_img_grad_mem, img_grad_mem, img_edge_mem;//, g1mem;
 
-	cl_mem				patch_lookup_table_buf;
-	cl_mem				SE3_hessian_map_mem,		SE3_jacobian_map_mem;
-	cl_mem				k2kbuf, SE3_k2kbuf, cur_frames_k2kbuf, cur_frames_st3buf;
-	cl_mem				pose_buf, pose_update_buf,	distorsion_update_buf,		old_results_buf,				K_buf, inv_K_buf;
+	cl_mem				k2kbuf ;
+	cl_mem				pose_buf, pose_update_buf,		old_results_buf,	K_buf, inv_K_buf;
 
-	cl_mem 				imgmem[num_current_frames], 	velmap[num_current_frames], 	depth_mem, 	img_grad_mem,	g1mem;
+	cl_mem				basemem, imgmem_blurred;
+	cl_mem 				imgmem[num_current_frames],	velmap[num_current_frames],	SE3_k2kbuf, cur_frames_k2kbuf, cur_frames_st3buf;
 
 	// current frames
 	struct frame{
@@ -231,6 +234,12 @@ public:
 	~RunCL();
 
 
+	///////////////////////////////////// RunCL_autocalibration.cpp
+	void precomp_cam_and_lens_maps(			cl_float16 SE3_k2k[max_mipmap_layers*num_SE3_DoF], cl_mem map_mem, uint num_vars, string calling_fn);
+	void patch_cam_and_lens_Hessian(		 uint layer, cl_mem param_map_mem, cl_mem param_grad_map_mem, cl_mem param_hessian_map_mem  );
+	void patch_cam_and_lens__hessian_reduce( uint layer, cl_mem param_hessian_map_mem, Matx55d inv_Hessian);
+
+
 	///////////////////////////////////// RunCL_current_frames.cpp
 	Matx44f update_pose_bufs_cur_frames(  );
 	void initialize_current_frame( int idx);
@@ -286,7 +295,6 @@ public:
 	////////////////////////////////////// RunCL_load_image.cpp
 
 	void precomp_SE3_param_maps (			float SE3_k2k[max_mipmap_layers*num_SE3_DoF*16], cl_mem map_mem, uint num_vars, string calling_fn);		// Image loading & preparation
-	void precomp_cam_and_lens_maps ( 		cl_float16 SE3_k2k[max_mipmap_layers*num_SE3_DoF], cl_mem map_mem, uint num_vars, string calling_fn);
 	void update_tracking_depthmap(			cl_mem depthmap_);
 	void use_inferred_depthmap();
 	void loadFrame(							cv::Mat image);

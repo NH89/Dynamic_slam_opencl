@@ -13,7 +13,14 @@ void Dynamic_slam::estimate_calibration(){
 																																			<<"  ##############################################################"<< flush;
 																																		}
 	precompute_cam_matrix_and_lens_distortion_buffers();
-//	estimate_camera_matrix();
+
+	uint layer =  4 ;
+	runcl.patch_cam_and_lens_Hessian( 			layer, runcl.camera_matrix_map_mem, 		runcl.camera_matrix_grad_map_mem, 		runcl.camera_matrix_hessian_map_mem );
+	runcl.patch_cam_and_lens__hessian_reduce( 	layer, runcl.camera_matrix_hessian_map_mem, runcl.current_frames[ runcl.current_frames_idx[0] ].inv_camera_matrix_Hessian[layer] );
+	//////////
+	estimate_camera_matrix();
+
+
 //	estimate_lens_distortion();
 }
 

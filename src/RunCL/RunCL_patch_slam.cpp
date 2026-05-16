@@ -334,13 +334,15 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 	_clSetKernelArg( kernel,	10, sizeof(cl_mem), 	&depth_mem,						fname);									// __global		float2* 	depth_map,					//10	// current frame depth, now stored as inv_depth
 	//Outputs:
 	//__global
-	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&img_grad_mem,					fname);									// __global 	float2*		img_grad_uv,			//11
-	_clSetKernelArg( kernel,	12, sizeof( cl_mem), 	&SE3_grad_map_mem,				fname);									// __global 	float8*		SE3_grad_map,			//12	// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
-	_clSetKernelArg( kernel,	13, sizeof( cl_mem), 	&SE3_hessian_map_mem,			fname);									// __global 	float4*		SE3_Hessian_pinv_map,	//13	// HSV (6x6) matrix so 36*float8
+	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&img_grad_mem,					fname);									// __global 	float8*		img_grad_uv,			//11
+	_clSetKernelArg( kernel,	12, sizeof( cl_mem), 	&img_edge_mem,					fname);									// __global 	float2*		img_grad_uv,			//11
+
+	_clSetKernelArg( kernel,	13, sizeof( cl_mem), 	&SE3_grad_map_mem,				fname);									// __global 	float8*		SE3_grad_map,			//12	// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
+	_clSetKernelArg( kernel,	14, sizeof( cl_mem), 	&SE3_hessian_map_mem,			fname);									// __global 	float4*		SE3_Hessian_pinv_map,	//13	// HSV (6x6) matrix so 36*float8
 	//__local
-	_clSetKernelArg( kernel,	14,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,				//13	// local_Hessian[ sizeof(float4) *6*6 *local_size]
+	_clSetKernelArg( kernel,	15,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,				//13	// local_Hessian[ sizeof(float4) *6*6 *local_size]
 	//__global
-	_clSetKernelArg( kernel,	15, sizeof( cl_mem), 	&ST3_img_grad_mem,				fname);									// __global 	float4*		HSV_grad				//15
+	_clSetKernelArg( kernel,	16, sizeof( cl_mem), 	&ST3_img_grad_mem,				fname);									// __global 	float4*		HSV_grad				//15
 
 	res 	= clEnqueueNDRangeKernel(m_queue,		kernel, 1, 0, &threads_to_launch, &local_work_size_, 0, NULL, &ev);
 																	if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}

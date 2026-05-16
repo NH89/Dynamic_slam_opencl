@@ -157,7 +157,7 @@ void RunCL::regularize_depth(uint write_layer ){
 	_clSetKernelArg( kernel, 5, sizeof(int),						&patch_height,										fname);		// __private	uint		patch_height,				//3
 	_clSetKernelArg( kernel, 6, sizeof(int),						&dm_data_stop,										fname);		// __private	uint		stop_offset,				//4
 	_clSetKernelArg( kernel, 7, sizeof(cl_mem),						&patch_lookup_table_buf,							fname);		// __constant 	uint4*		lookup_table,				//5
-	_clSetKernelArg( kernel, 8, sizeof(cl_mem),						&img_grad_mem,										fname);		// __global 	float2*		img							//6
+	_clSetKernelArg( kernel, 8, sizeof(cl_mem),						&img_edge_mem,										fname);		// __global 	float2*		img							//6
 	_clSetKernelArg( kernel, 9, sizeof(cl_mem),						&depth_mem_temp,									fname);		// __global 	float2*		img							//7
 	_clSetKernelArg( kernel, 10, sizeof(int),						&prev_layer_dm_offset,								fname);		// __private	uint		stop_offset,				//4
 	_clSetKernelArg( kernel, 11, sizeof(int),						&prev_layer_depth_width,							fname);		// __private	uint		stop_offset,				//4
