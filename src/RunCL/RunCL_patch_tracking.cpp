@@ -81,9 +81,9 @@ void RunCL::update_k2k_buf( 	Matx44f k2k, 	Matx44f pose ){
 }
 
 void RunCL::update_k_buf( float k2k_array[16],		float k_arry[16],	float inv_k_arry[16]  ) {
-	string fname = "RunCL::update_k2k_buf( ..)";
-	int local_verbosity_threshold = V_RUNCL_UPDATE_K2K_BUF;
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k_buf( ..)_chk0 .##################################################################"<<flush;
+	string fname = "RunCL::update_k_buf( ..)";
+	int local_verbosity_threshold = V_RUNCL_UPDATE_K_BUF;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k_buf( ..)_chk0 .##################################################################"<<flush;
 																																				PRINT_FLOAT_16( k2k_array, );
 																																				PRINT_FLOAT_16( k_arry, );
 																																				PRINT_FLOAT_16( inv_k_arry, );

@@ -112,6 +112,11 @@
 	#define	V__RUNCL									0
 	#define	V_EXIT_										0
 
+	/////////////////////////////////////// RUN_CL_AUTOCALIBRATION.CPP
+	#define	V_RUNCL_PRECOM_PARAM_MAPS					-1
+	#define V_RUNCL_PATCH_CAM_LENS_HESSIAN				-2
+	#define V_RUNCL_PATCH_CAM_LENS_HESSIAN_REDUCE		-2
+
 	/////////////////////////////////////// RUNCL_DEPTH.CPP
 	#define V_RUNCL_UPDATE_DEPTH						2
 	#define V_RUNCL_REGULARIZE_DEPTH					2
@@ -187,10 +192,8 @@
 
 
 	/////////////////////////////////////// RUNCL_TRACKING.CPP
-	#define	V_RUNCL_PRECOM_PARAM_MAPS					-1
-
-
-	#define	V_RUNCL_UPDATE_K2K_BUF						2
+	#define	V_RUNCL_UPDATE_K2K_BUF						-2
+	#define	V_RUNCL_UPDATE_K_BUF						-2
 	#define	V_RUNCL_RHO_SQ								-2 //
 	#define	V_RUNCL_REDUCE_PATCH_RHO					-2
 	#define	V_RUNCL_UPDATE_K2K							-2

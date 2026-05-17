@@ -9,7 +9,7 @@
     // Setup openCL /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     "kernel_files":["kernels.h", "kernels__macros.h", "kernels_convertTransforms.cl", "kernels_load_image.cl",
     				"kernels_patch_slam.cl", "kernels_photometric_cost.cl", "kernels_first_gen_patch_kernels.cl",
-    				"kernels_patch_tracking.cl", "kernels_depth.cl, kernels_autocalibration.cl"],
+    				"kernels_patch_tracking.cl", "kernels_depth.cl", "kernels_autocalibration.cl"],
                                                                         // array of kernel filenames
 
     // Input data ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

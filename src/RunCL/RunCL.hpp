@@ -108,7 +108,8 @@ public:
 	// GPU Buffers																	// static = same for all instances of class Dynamic_slam.
 	cl_mem				fp32_param_buf, uint_param_buf, mipmap_buf, img_stats_buf, patch_lookup_table_buf;
 
-	cl_mem				SE3_grad_map_mem, SE3_incr_map_mem,	SE3_map_mem, SE3_rho_map_mem, SE3_weight_map_mem, SE3_hessian_map_mem, SE3_jacobian_map_mem;
+	cl_mem				SE3_rho_map_mem, SE3_weight_map_mem;
+	cl_mem				SE3_map_mem, SE3_grad_map_mem, SE3_incr_map_mem, SE3_hessian_map_mem;//, SE3_jacobian_map_mem;
 	cl_mem				depth_mem, depth_mem_temp, depth_mem_GT;					// 'depth_mem_temp' is use to load & prepare data for depth_mem_GT and transform_depthmap
 
 	cl_mem				camera_matrix_map_mem, camera_matrix_grad_map_mem, camera_matrix_hessian_map_mem;
@@ -237,7 +238,7 @@ public:
 	///////////////////////////////////// RunCL_autocalibration.cpp
 	void precomp_cam_and_lens_maps(			cl_float16 SE3_k2k[max_mipmap_layers*num_SE3_DoF], cl_mem map_mem, uint num_vars, string calling_fn);
 	void patch_cam_and_lens_Hessian(		 uint layer, cl_mem param_map_mem, cl_mem param_grad_map_mem, cl_mem param_hessian_map_mem  );
-	void patch_cam_and_lens__hessian_reduce( uint layer, cl_mem param_hessian_map_mem, Matx55d inv_Hessian);
+	void patch_cam_and_lens__hessian_reduce( uint layer, cl_mem param_hessian_map_mem, Matx55d &inv_Hessian);
 
 
 	///////////////////////////////////// RunCL_current_frames.cpp

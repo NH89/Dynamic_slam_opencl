@@ -278,15 +278,15 @@ void Dynamic_slam::estimate_tracking(){
 			newPose					=	LieToP_Matx( pose_update_cpu )  *  pose;
 			newK2K					=	K  *  newPose  * invK ;
 
-			runcl.update_k2k_buf(		newK2K,		newPose);
+			runcl.update_k2k_buf(		newK2K,		newPose);// may need to include   offset = frame_idx*cl_flt16_size
 																																		if( verbosity>local_verbosity_threshold ){
 																																			cout << "\nDynamic_slam::estimate_tracking() chk_5: ,  layer = "<<layer<<"##########"<<flush;
 																																			PRINT_MATX16F( deltas_matx[layer], );							PRINT_MATX16F( pose_update_cpu, );
 																																			PRINT_MATX16F( PToLie( LieToP_Matx(pose_update_cpu).inv() ), );
 																																			PRINT_MATX44F( newPose,	);										PRINT_MATX16F( PToLie( newPose ), );
 																																			PRINT_MATX44F( newK2K,			);
-																																			Matx44f	pose_now	= runcl.ReadOutput_44f( runcl.pose_buf );	PRINT_MATX44F( pose_now, );
-																																			Matx44f	k2k_now		= runcl.ReadOutput_44f( runcl.k2kbuf);		PRINT_MATX44F( k2k_now,	);
+																																			Matx44f	pose_now	= runcl.ReadOutput_44f( runcl.pose_buf );							PRINT_MATX44F( pose_now, );
+																																			Matx44f	k2k_now		= runcl.ReadOutput_44f( runcl.k2kbuf, frame_idx*cl_flt16_size);		PRINT_MATX44F( k2k_now,	);
 																																		}
 			if( SE_iter-(iter/10) < layer) {
 				layer --;																											// Step down to lower layer of image pyramid

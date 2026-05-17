@@ -347,12 +347,14 @@ void RunCL::get_rho_result ( Rho_result &rho_result, uint layer, uint num_DoF){	
 																																	if( verbosity>local_verbosity_threshold) { cout<<"\n\nRunCL::get_rho_result( ..)_finished ###############################"<< flush;
 																																		cout<<"\nrho_result.Rho="<<rho_result.Rho.x<<","<<rho_result.Rho.y<<flush;
 																																		cout<<"\nrho_result.param_incr_arry=("<<flush;
-																																		cout	<<rho_result.param_incr_arry[0]<<","<<rho_result.param_incr_arry[1]<<"),("<<flush;
-																																		cout	<<rho_result.param_incr_arry[2]<<","<<rho_result.param_incr_arry[3]<<"),("<<flush;
-																																		cout	<<rho_result.param_incr_arry[4]<<","<<rho_result.param_incr_arry[5]<<"),("<<flush;
-																																		cout	<<rho_result.param_incr_arry[6]<<","<<rho_result.param_incr_arry[7]<<"),("<<flush;
-																																		cout	<<rho_result.param_incr_arry[8]<<","<<rho_result.param_incr_arry[9]<<"),("<<flush;
-																																		cout	<<rho_result.param_incr_arry[10]<<","<<rho_result.param_incr_arry[11]<<")"<<flush;
+																																		for(int param=0; param<num_DoF; param+=2){
+																																			cout	<<rho_result.param_incr_arry[param]<<","<<rho_result.param_incr_arry[param+1]<<"),("<<flush;
+																																		}
+																																		// cout	<<rho_result.param_incr_arry[2]<<","<<rho_result.param_incr_arry[3]<<"),("<<flush;
+																																		// cout	<<rho_result.param_incr_arry[4]<<","<<rho_result.param_incr_arry[5]<<"),("<<flush;
+																																		// cout	<<rho_result.param_incr_arry[6]<<","<<rho_result.param_incr_arry[7]<<"),("<<flush;
+																																		// cout	<<rho_result.param_incr_arry[8]<<","<<rho_result.param_incr_arry[9]<<"),("<<flush;
+																																		// cout	<<rho_result.param_incr_arry[10]<<","<<rho_result.param_incr_arry[11]<<")"<<flush;
 																																	}
 }
 

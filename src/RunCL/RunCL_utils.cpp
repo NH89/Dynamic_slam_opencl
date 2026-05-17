@@ -83,6 +83,7 @@ void RunCL::_clEnqueueWriteBuffer(
 	status 		= clEnqueueWriteBuffer( command_queue, buffer, blocking_write, offset, size, ptr,  0, NULL, &event);
 											if (status 	!= CL_SUCCESS)	{ cout << "\n"<<fname << "_clEnqueueWriteBuffer  buffer="<<buffer<<",  status = " << checkerror(status) << "Error1: failed to enqueue\n" << endl; exit_(status); }
 	_cl_flush_finish( command_queue,  fname);
+	waitForEventAndRelease(&event);
 }
 
 

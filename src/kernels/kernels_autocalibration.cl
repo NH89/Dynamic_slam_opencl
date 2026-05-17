@@ -168,6 +168,7 @@ __kernel void  patch_cam_and_lens_Hessian(			// To be launched with 1 thread per
 			float4	gxSE3								= gu*param_px[0];																						// J_SE3 * img gradient i.e. edges
 			float4	gySE3								= gv*param_px[1];
 			Jacobian[i]									= (gxSE3 + gySE3) * null_factor;
+			Jacobian[i].w								= 1.0f;
 			param_grad_map[read_index + i* mm_pixels]	= Jacobian[i];
 		}
 		for (uint i=0; i<num_cam_matx_DoF; i++) {
@@ -188,23 +189,23 @@ __kernel void  patch_cam_and_lens_Hessian(			// To be launched with 1 thread per
 	for ( step=1; step<block_size; step *=2){																																						// for each step size, (multiples of 2)
 		for (uint block_row=0; block_row<block_size ; block_row += step){																															// step through rows in column
 
-			for (uint i=0; i<6; i++) {
+			for (uint i=0; i<num_cam_matx_DoF; i++) {
 																						Jacobian_pvt_arr[	block_row][i]						+=Jacobian_pvt_arr[		block_row + step ][i];
-				for (uint j=0; j<6; j++) {
+				for (uint j=0; j<num_cam_matx_DoF; j++) {
 																						Hessian_pvt_arr[	block_row][i][j]					+=Hessian_pvt_arr[		block_row + step ][i][j];	//+ se3_dim*block_size ];
 				}
 			}
 
 			// First reduce the Jacobian, using the Hessian local memory.
 			if( !(fmod((float)lid,(step*2))==0) &&  (fmod((float)lid,step)==0)    ){																												// selects 2nd column, sends data
-				for (uint i=0; i<6; i++) {
+				for (uint i=0; i<num_cam_matx_DoF; i++) {
 																						local_Hessian[		lid-step + i*local_size]			= Jacobian_pvt_arr[		block_row][i];
 				}
 			}
 			barrier(CLK_LOCAL_MEM_FENCE );																																							// Using barrier as a semaphore, for local mem messages between threads. This minimizes local_mem req, while allowing 2 patch sizes in output, full & ST3 map at out_block_size.
 
 			if( (fmod((float)lid,(step*2))==0)  ){																																					// selects 1st column, adds data. Sum of patch now held in top left element of patch.
-				for (uint i=0; i<6; i++) {
+				for (uint i=0; i<num_cam_matx_DoF; i++) {
 																						Jacobian_pvt_arr[	block_row][i]						+= local_Hessian[		lid + i*local_size];		//if(/*lid==0 &&*/ i==0) printf("\nstep=%d, J block_row=%d, lid=%d .x=%f, .w=%f",\
 																																																	//					step, block_row, lid, Jacobian_pvt_arr[ block_row][i].x, Jacobian_pvt_arr[	block_row][i].w);
 				}
@@ -213,8 +214,8 @@ __kernel void  patch_cam_and_lens_Hessian(			// To be launched with 1 thread per
 
 			// Now Reduce Hessian
 			if( !(fmod((float)lid,(step*2))==0) &&  (fmod((float)lid,step)==0)    ){																												// selects 2nd column, sends data
-				for (uint i=0; i<6; i++) {
-					for (uint j=0; j<6; j++) {
+				for (uint i=0; i<num_cam_matx_DoF; i++) {
+					for (uint j=0; j<num_cam_matx_DoF; j++) {
 																						local_Hessian[		lid-step + (i*6 + j)*local_size]	= Hessian_pvt_arr[		block_row ][i][j];			//+ se3_dim*block_size ];  TO DO correct size and indexing of local_Hessiasn
 					}
 				}
@@ -222,8 +223,8 @@ __kernel void  patch_cam_and_lens_Hessian(			// To be launched with 1 thread per
 			barrier(CLK_LOCAL_MEM_FENCE );																																							// Using barrier as a semaphore, for local mem messages between threads. This minimizes local_mem req, while allowing 2 patch sizes in output, full & ST3 map at out_block_size.
 
 			if( (fmod((float)lid,(step*2))==0)  ){																																					// selects 1st column, adds data. Sum of patch now held in top left element of patch.
-				for (uint i=0; i<6; i++) {
-					for (uint j=0; j<6; j++) {
+				for (uint i=0; i<num_cam_matx_DoF; i++) {
+					for (uint j=0; j<num_cam_matx_DoF; j++) {
 																						Hessian_pvt_arr[	block_row][i][j]					+= local_Hessian[		lid + (i*6 + j)*local_size ];	// + se3_dim*block_size ]
 					}
 				}
@@ -244,7 +245,7 @@ __kernel void  patch_cam_and_lens_Hessian(			// To be launched with 1 thread per
 				for (uint i=0; i<3; i++) {																																						// select only ST3
 					if( fmod((float)lid,out_block_size) == 0  ){																																// write Jacobian to 2nd page of SE3_Hessian_pinv_map buffer.
 																						offset_1_1 								= write_index		+ i*ST3_v_step	+ mm_pixels + write_block_row*mm_cols;
-																						float4	pvt_Jacobian 					= Jacobian_pvt_arr[		block_row][i+3];
+																						float4	pvt_Jacobian 					= Jacobian_pvt_arr[		block_row][i/*+3*/];
 																						if( inbounds == true ){
 																							cam_Hessian_map[	offset_1_1 ]	= pvt_Jacobian;
 																						}
@@ -253,7 +254,7 @@ __kernel void  patch_cam_and_lens_Hessian(			// To be launched with 1 thread per
 					for (uint j=0; j<3; j++) {																																					// write Hessian to 1st page of SE3_Hessian_pinv_map buffer.
 						if( /*inbounds == true*/ fmod((float)lid,out_block_size) == 0 ){																										// selects columns i.e. threads within the workgroup
 																						offset_1_1								= write_index		+ i*ST3_v_step	+ j*ST3_u_step + write_block_row*mm_cols;
-																						float4	pvt_Hessian 					= Hessian_pvt_arr[	block_row ][i+3][j+3];
+																						float4	pvt_Hessian 					= Hessian_pvt_arr[	block_row ][i/*+3*/][j/*+3*/];
 																						if( inbounds == true ){
 																							cam_Hessian_map[	offset_1_1 ]	= pvt_Hessian;
 																						}
@@ -269,7 +270,7 @@ __kernel void  patch_cam_and_lens_Hessian(			// To be launched with 1 thread per
 	uint offset_2					=  0;
 	uint block_row					=  0;
 
-	for (uint i=0; i<num_SE3_DoF; i++) {																																						// write Jacobian to 2nd page of SE3_Hessian_pinv_map buffer.		// All 6 DoF of SE3
+	for (uint i=0; i<num_cam_matx_DoF; i++) {																																						// write Jacobian to 2nd page of SE3_Hessian_pinv_map buffer.		// All 6 DoF of SE3
 		if( fmod((float)lid,block_size) == 0 ){																																					// selects columns i.e. threads within the workgroup
 																						offset_2 								= write_index_2		+ i*SE3_v_step	+ mm_pixels;
 																						float4	pvt_Jacobian 					= Jacobian_pvt_arr[		block_row][i];
@@ -277,7 +278,7 @@ __kernel void  patch_cam_and_lens_Hessian(			// To be launched with 1 thread per
 		}
 		barrier(CLK_GLOBAL_MEM_FENCE );
 
-		for (uint j=0; j<num_SE3_DoF; j++) {																																					// write Hessian to 1st page of SE3_Hessian_pinv_map buffer.
+		for (uint j=0; j<num_cam_matx_DoF; j++) {																																					// write Hessian to 1st page of SE3_Hessian_pinv_map buffer.
 			if( fmod((float)lid,block_size) == 0 ){
 																						offset_2 								= write_index_2		+ i*SE3_v_step	+ j*SE3_u_step;
 																						float4	pvt_Hessian 					= Hessian_pvt_arr[	block_row ][i][j];
@@ -289,4 +290,5 @@ __kernel void  patch_cam_and_lens_Hessian(			// To be launched with 1 thread per
 			barrier(CLK_GLOBAL_MEM_FENCE );
 		}
 	}
+
 }

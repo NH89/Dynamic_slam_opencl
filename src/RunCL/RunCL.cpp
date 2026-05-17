@@ -275,6 +275,8 @@ void RunCL::createKernels(){
 	cvt_color_space_linear_kernel		= clCreateKernel(m_program, "cvt_color_space_linear", 		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'cvt_color_space_linear'  kernel not built.\n"	<<flush; exit_(0);   }
 	comp_SE3_param_maps_kernel			= clCreateKernel(m_program, "compute_SE3_param_maps",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'compute_SE3_param_maps'  kernel not built.\n"		<<flush; exit_(0);   }
 	comp_cam_and_lens_maps_kernel		= clCreateKernel(m_program, "comp_cam_and_lens_maps",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'comp_cam_and_lens_maps'  kernel not built.\n"		<<flush; exit_(0);   }
+	patch_cam_and_lens_Hessian_kernel	= clCreateKernel(m_program, "patch_cam_and_lens_Hessian",	&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'patch_cam_and_lens_Hessian'  kernel not built.\n"		<<flush; exit_(0);   }
+
 
 
 	//  1st gen patch kernels ?
@@ -724,7 +726,9 @@ void RunCL::allocatemem(){
 
 	imgmem_blurred				= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	SE3_grad_map_mem 			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,		num_SE3_DoF *		mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 7= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // SE3_map * img grad, 6DoF*8channels=48     // 6DoF*3channels=18,but 4*6=24 because hsv img gradient is held in float4
+	camera_matrix_grad_map_mem	= clCreateBuffer(m_context, CL_MEM_READ_WRITE,		num_SE3_DoF *		mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 7= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // SE3_map * img grad, 6DoF*8channels=48     // 6DoF*3channels=18,but 4*6=24 because hsv img gradient is held in float4
 	SE3_weight_map_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 9= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+
 
 	SE3_incr_map_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,					 2	*	mm_size_bytes_C1,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 9= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // For debugging before summation.
 	SE3_map_mem					= clCreateBuffer(m_context, CL_MEM_READ_WRITE,		num_SE3_DoF *2	*	mm_size_bytes_C1,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 10= "<<checkerror(res)<<"\n"<<flush;exit_(res);}	// (row, col) increment fo each parameter.
@@ -735,8 +739,8 @@ void RunCL::allocatemem(){
 	depth_mem_temp				= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							mm_size_bytes_C1,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 12= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // Used to be : Copy used by tracing & auto-calib. Now spare buffer for upload & computations
 	depth_mem_GT				= clCreateBuffer(m_context, CL_MEM_READ_WRITE /*2*mm_size_bytes_C1*/,	mm_size_bytes_C1,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 13= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // Where depthmap GT mimpap is constructed.
 
-	img_grad_mem				= clCreateBuffer(m_context, CL_MEM_READ_WRITE,						2 * mm_size_bytes_C1, 		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 16= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	img_edge_mem				= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							mm_size_bytes_C8, 		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 16= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	img_grad_mem				= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							mm_size_bytes_C8, 		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 16= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	img_edge_mem				= clCreateBuffer(m_context, CL_MEM_READ_WRITE,						2 * mm_size_bytes_C1, 		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 16= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	depth_mem					= clCreateBuffer(m_context, CL_MEM_READ_WRITE,						2 * mm_size_bytes_C1,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 17= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 	fp32_param_buf				= clCreateBuffer(m_context, CL_MEM_READ_ONLY,							16* sizeof(float),		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 25= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
@@ -769,6 +773,9 @@ void RunCL::allocatemem(){
 
 	patch_lookup_table_buf		= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	SE3_hessian_map_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,						2 * mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	camera_matrix_hessian_map_mem	= clCreateBuffer(m_context, CL_MEM_READ_WRITE,						2 * mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+
+
 
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nRunCL::allocatemem_chk3\n\n" << flush;
@@ -836,6 +843,8 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 	}
 	status = clReleaseMemObject(imgmem_blurred);				if (status != CL_SUCCESS)	{ cout << "\nimgmem_blurred                 status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_02"<<flush;
 	status = clReleaseMemObject(SE3_grad_map_mem);				if (status != CL_SUCCESS)	{ cout << "\nSE3_grad_map_mem               status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_08"<<flush;
+	status = clReleaseMemObject(camera_matrix_grad_map_mem);	if (status != CL_SUCCESS)	{ cout << "\ncamera_matrix_grad_map_mem     status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_08"<<flush;
+
 	status = clReleaseMemObject(SE3_weight_map_mem);			if (status != CL_SUCCESS)	{ cout << "\nSE3_weight_map_mem             status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_10"<<flush;
 
 	status = clReleaseMemObject(SE3_incr_map_mem);				if (status != CL_SUCCESS)	{ cout << "\nSE3_incr_map_mem               status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_11"<<flush;
@@ -877,6 +886,7 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 
 	status = clReleaseMemObject(patch_lookup_table_buf);		if (status != CL_SUCCESS)	{ cout << "\npatch_lookup_table_buf         status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(SE3_hessian_map_mem);			if (status != CL_SUCCESS)	{ cout << "\nSE3_hessian_map_mem            status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+	status = clReleaseMemObject(camera_matrix_hessian_map_mem);	if (status != CL_SUCCESS)	{ cout << "\ncamera_matrix_hessian_map_mem  status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 
 
 	// release kernels

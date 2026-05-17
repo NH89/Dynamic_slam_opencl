@@ -138,7 +138,7 @@ void RunCL::ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t o
 														else 																				if(verbosity>local_verbosity_threshold) cout << "\nRunCL::ReadOutput chk_1"<<flush;
 		waitForEventAndRelease( &readEvt );
 		//clReleaseEvent(readEvt);
-																																			if(verbosity>local_verbosity_threshold) cout << "\nRunCL::ReadOutput finish"<<flush;
+																																			if(verbosity>local_verbosity_threshold) cout << "\nRunCL::ReadOutput finish\n"<<flush;
 }
 
 void RunCL::ReadOutputRect(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/, size_t cols, size_t margin) {
