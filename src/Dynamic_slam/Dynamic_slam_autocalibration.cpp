@@ -102,6 +102,8 @@ void Dynamic_slam::estimate_camera_matrix(){
 	Matx44f	old_inv_k			= Matx44f::eye();
 	Matx44f	old_k2k				= Matx44f::eye();
 
+	Matx44f	pose				= runcl.ReadOutput_44f(	runcl.pose_buf );
+
 	Matx44f new_k				= runcl.ReadOutput_44f( runcl.K_buf );
 	Matx44f new_inv_k			= runcl.ReadOutput_44f( runcl.inv_K_buf );
 	Matx44f newK2K				= runcl.ReadOutput_44f( runcl.k2kbuf, cl_flt16_size ); 													// offset = current_frames_idx * cl_flt16_size
@@ -153,16 +155,6 @@ void Dynamic_slam::estimate_camera_matrix(){
 																																			PRINT_MATX15D( camera_matrix_incr, );
 																																			cout<<endl<<flush;
 																																		}
-			Matx44f		pose		=	runcl.ReadOutput_44f(	runcl.pose_buf );
-			Matx44f		invK		=	runcl.ReadOutput_44f(	runcl.inv_K_buf);
-			Matx44f		K			=	runcl.ReadOutput_44f(	runcl.K_buf	 );
-																																		if( verbosity>local_verbosity_threshold ){
-																																			PRINT_MATX44F( pose,	from pose_buf );	PRINT_MATX16F( PToLie(pose),);
-																																			PRINT_MATX44F( invK,	);
-																																			PRINT_MATX44F( K,		);
-																																			PRINT_MATX44F( K * invK,		);
-																																			PRINT_MATX44F( invK * K,		);
-																																		}
 			Matx55d	invH			=	runcl.current_frames[ runcl.current_frames_idx[0] ].inv_camera_matrix_Hessian[layer];
 			Matx15d param_update	=	camera_matrix_incr * invH;																		// Double precision is required
 																																		if( verbosity>local_verbosity_threshold ){
@@ -189,7 +181,7 @@ void Dynamic_slam::estimate_camera_matrix(){
 			new_k(0,1)				+= param_update(0,4);	// skew
 
 			new_inv_k				= generate_invK_( new_k );
-			newK2K					= new_k  *  pose  * invK ;
+			newK2K					= new_k  *  pose  * new_inv_k ;
 
 			runcl.update_k_buf(		newK2K,		new_k, new_inv_k);// may need to include   offset = frame_idx*cl_flt16_size
 																																		if( verbosity>local_verbosity_threshold ){
@@ -212,10 +204,10 @@ void Dynamic_slam::estimate_camera_matrix(){
 																																		}
 	}
 
-	Matx44f pose_temp 					= runcl.update_pose_bufs_cur_frames( );											// NB these two lines are req because nextFrame() calls  runcl.set_cam_bufs(..), using frame_data.
-	frame_data.back().frame_data.pose 	= pose_temp ;
-
-	float16arry_To_Matx44f(	 &runcl.current_frames[	runcl.current_frames_idx[0]	].k2k_0to1_est[0]	, frame_data.back().frame_data.K2K );
+	// Matx44f pose_temp 					= runcl.update_pose_bufs_cur_frames( pose );											// NB these two lines are req because nextFrame() calls  runcl.set_cam_bufs(..), using frame_data.
+	// frame_data.back().frame_data.pose 	= pose_temp ;
+ //
+	// float16arry_To_Matx44f(	 &runcl.current_frames[	runcl.current_frames_idx[0]	].k2k_0to1_est[0]	, frame_data.back().frame_data.K2K );
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\fDynamic_slam::_camera_matrix() finished"<< flush;
 																																			PRINT_MATX44F(frame_data.back().frame_data.pose,);

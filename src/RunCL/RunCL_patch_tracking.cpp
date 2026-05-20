@@ -63,13 +63,13 @@ void RunCL::update_k2k_buf( float k2k_array[16],		float pose_arry[16] ) {
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k_buf( ..)_chk0 .##################################################################"<<flush;
 																																				PRINT_FLOAT_16( k2k_array, );
 																																				PRINT_FLOAT_16( pose_arry, );
-																																				PRINT_MATX44F( current_frames[ current_frames_idx[0] ].pose_0_to_this_frame,  );
+																																				PRINT_MATX44F( current_frames[ current_frames_idx[0] ].pose_from_0,  );
 																																			}
 	_clEnqueueWriteBuffer( uload_queue, 	k2kbuf,		CL_FALSE, cl_flt16_size, 16*sizeof( float), k2k_array,  	fname);
 	_clEnqueueWriteBuffer( uload_queue, 	pose_buf,	CL_FALSE, 0, 			 16*sizeof( float), pose_arry, 		fname);
 
-	for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].k2k_0to1_est[i]	=	k2k_array[i];	}
-	for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].pose[i]			=	pose_arry[i];	}
+	// for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].k2k_0to1_est[i]	=	k2k_array[i];	}
+	// for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].pose[i]			=	pose_arry[i];	}
 }
 
 void RunCL::update_k2k_buf( 	Matx44f k2k, 	Matx44f pose ){
@@ -93,9 +93,9 @@ void RunCL::update_k_buf( float k2k_array[16],		float k_arry[16],	float inv_k_ar
 	_clEnqueueWriteBuffer( uload_queue, 	K_buf,		CL_FALSE, 0, 			 16*sizeof( float), k_arry, 		fname);
 	_clEnqueueWriteBuffer( uload_queue, 	inv_K_buf,	CL_FALSE, 0, 			 16*sizeof( float), k_arry, 		fname);
 
-	for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].k2k_0to1_est[i]		=	k2k_array[i];	}
-	for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].K(i/4, i%4)			=	k_arry[i];		}
-	for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].inv_K(i/4, i%4)		=	inv_k_arry[i];	}
+	// for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].k2k_0to1_est[i]		=	k2k_array[i];	}
+	// for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].K(i/4, i%4)			=	k_arry[i];		}
+	// for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].inv_K(i/4, i%4)		=	inv_k_arry[i];	}
 }
 
 void RunCL::update_k_buf( 	Matx44f k2k, 	Matx44f k,	Matx44f inv_k ){

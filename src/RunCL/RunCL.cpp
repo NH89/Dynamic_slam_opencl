@@ -712,8 +712,14 @@ void RunCL::allocatemem(){
 	cl_int 			res;
 
 	for (uint i=0; i<num_current_frames; i++ ) {
-		imgmem[i]		= clCreateBuffer(m_context, CL_MEM_READ_WRITE  						, mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-		velmap[i]		= clCreateBuffer(m_context, CL_MEM_READ_WRITE  						, mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+		imgmem[i]				= clCreateBuffer(m_context, CL_MEM_READ_WRITE, 							mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+		depth_mem[i]			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,						2 * mm_size_bytes_C1,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 17= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+		velmap[i]				= clCreateBuffer(m_context, CL_MEM_READ_WRITE, 							mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+
+		pose_buf[i]				= clCreateBuffer(m_context, CL_MEM_READ_ONLY,							16* sizeof(float),		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 26= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+		k2kbuf[i]				= clCreateBuffer(m_context, CL_MEM_READ_ONLY,							16* sizeof(float),		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 26= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+		cur_frames_k2kbuf[i]	= clCreateBuffer(m_context, CL_MEM_READ_ONLY,							16*sizeof(float),		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 28= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+		cur_frames_st3buf[i]	= clCreateBuffer(m_context, CL_MEM_READ_ONLY,							 4*sizeof(float),		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 28= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	}
 																																			if(verbosity>local_verbosity_threshold){ cout <<"\nRunCL::allocatemem()_chk1"<<flush;
 																																				cout <<"\nmm_size_bytes_C4 = "<<mm_size_bytes_C4<<flush;
@@ -741,17 +747,13 @@ void RunCL::allocatemem(){
 
 	img_grad_mem				= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							mm_size_bytes_C8, 		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 16= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	img_edge_mem				= clCreateBuffer(m_context, CL_MEM_READ_WRITE,						2 * mm_size_bytes_C1, 		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 16= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	depth_mem					= clCreateBuffer(m_context, CL_MEM_READ_WRITE,						2 * mm_size_bytes_C1,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 17= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 	fp32_param_buf				= clCreateBuffer(m_context, CL_MEM_READ_ONLY,							16* sizeof(float),		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 25= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	uint_param_buf				= clCreateBuffer(m_context, CL_MEM_READ_ONLY,							8 * sizeof(uint), 		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 29= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	mipmap_buf					= clCreateBuffer(m_context, CL_MEM_READ_ONLY,							8*8*sizeof(uint), 		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 30= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
-	k2kbuf						= clCreateBuffer(m_context, CL_MEM_READ_ONLY,		num_current_frames*	16* sizeof(float),		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 26= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	//SE3_k2kbuf used to create param_maps of SE3 tracking, camera_calib and lens_distortion.
 	SE3_k2kbuf					= clCreateBuffer(m_context, CL_MEM_READ_ONLY,	max_mipmap_layers*num_SE3_DoF*16*sizeof(float),	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 28= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	cur_frames_k2kbuf			= clCreateBuffer(m_context, CL_MEM_READ_ONLY,		num_current_frames*16*sizeof(float),		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 28= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	cur_frames_st3buf			= clCreateBuffer(m_context, CL_MEM_READ_ONLY,		num_current_frames* 4*sizeof(float),		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 28= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-
 
 	SE3_rho_map_mem				= clCreateBuffer(m_context, CL_MEM_READ_WRITE,	tracking_num_samples*2*mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 34= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
@@ -763,7 +765,7 @@ void RunCL::allocatemem(){
 	ST3_img_grad_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,						3*	mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 39= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 	// buffers for patch kernel based Dynamic_slam
-	pose_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE,								sizeof(float)*16,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+//	pose_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE,								sizeof(float)*16,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	pose_update_buf				= clCreateBuffer(m_context, CL_MEM_READ_WRITE,								sizeof(float)*16,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	distorsion_update_buf		= clCreateBuffer(m_context, CL_MEM_READ_WRITE,								sizeof(float)*6,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	old_results_buf				= clCreateBuffer(m_context, CL_MEM_READ_WRITE,								sizeof(float)*6*4,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
@@ -773,8 +775,7 @@ void RunCL::allocatemem(){
 
 	patch_lookup_table_buf		= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	SE3_hessian_map_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,						2 * mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	camera_matrix_hessian_map_mem	= clCreateBuffer(m_context, CL_MEM_READ_WRITE,						2 * mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-
+	camera_matrix_hessian_map_mem	= clCreateBuffer(m_context, CL_MEM_READ_WRITE,						2 * mm_size_bytes_C4,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 
 																																		if(verbosity>local_verbosity_threshold) {
@@ -804,7 +805,9 @@ void RunCL::allocatemem(){
 	float default_confidence	= 0.1f;
 	cl_float2 start_depth		= {{ default_depth, default_confidence }};
 
-	status = clEnqueueFillBuffer(uload_queue, depth_mem, 				&start_depth,	sizeof(float),   0, 2*mm_size_bytes_C1,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.6\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	for (uint i=0; i<num_current_frames; i++ ) {
+	status = clEnqueueFillBuffer(uload_queue, depth_mem[i], 			&start_depth,	sizeof(float),   0, 2*mm_size_bytes_C1,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.6\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	}
 	status = clEnqueueFillBuffer(uload_queue, depth_mem_temp, 			&default_depth, sizeof(float),   0, mm_size_bytes_C1,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueFillBuffer(uload_queue, depth_mem_GT, 			&default_depth, sizeof(float),   0, mm_size_bytes_C1,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueFillBuffer(uload_queue, HSV_grad_mem, 			&zero_flt,		sizeof(float),   0, mm_size_bytes_C8,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
@@ -839,7 +842,14 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 
 	for (uint i=0; i<num_current_frames; i++ ) {
 		status = clReleaseMemObject(imgmem[i]);					if (status != CL_SUCCESS)	{ cout << "\nimgmem                         status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_01"<<flush;
-		status = clReleaseMemObject(velmap[i]);					if (status != CL_SUCCESS)	{ cout << "\nimgmem                         status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_01"<<flush;
+		status = clReleaseMemObject(depth_mem[i]);				if (status != CL_SUCCESS)	{ cout << "\ndepth_mem                      status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_01"<<flush;
+		status = clReleaseMemObject(velmap[i]);					if (status != CL_SUCCESS)	{ cout << "\nvelmap                         status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_01"<<flush;
+
+
+		status = clReleaseMemObject(pose_buf[i]);				if (status != CL_SUCCESS)	{ cout << "\nk2kbuf                         status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_01"<<flush;
+		status = clReleaseMemObject(k2kbuf[i]);					if (status != CL_SUCCESS)	{ cout << "\nk2kbuf                         status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_01"<<flush;
+		status = clReleaseMemObject(cur_frames_k2kbuf[i]);		if (status != CL_SUCCESS)	{ cout << "\ncur_frames_k2kbuf              status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_01"<<flush;
+		status = clReleaseMemObject(cur_frames_st3buf[i]);		if (status != CL_SUCCESS)	{ cout << "\ncur_frames_st3buf              status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_01"<<flush;
 	}
 	status = clReleaseMemObject(imgmem_blurred);				if (status != CL_SUCCESS)	{ cout << "\nimgmem_blurred                 status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_02"<<flush;
 	status = clReleaseMemObject(SE3_grad_map_mem);				if (status != CL_SUCCESS)	{ cout << "\nSE3_grad_map_mem               status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_08"<<flush;
@@ -858,10 +868,8 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 
 	status = clReleaseMemObject(img_grad_mem);					if (status != CL_SUCCESS)	{ cout << "\nimg_grad_mem                   status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_20"<<flush;
 	status = clReleaseMemObject(img_edge_mem);					if (status != CL_SUCCESS)	{ cout << "\nimg_edge_mem                   status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_20"<<flush;
-	status = clReleaseMemObject(depth_mem);						if (status != CL_SUCCESS)	{ cout << "\ndepth_mem                      status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_21"<<flush;
 
 	status = clReleaseMemObject(fp32_param_buf);				if (status != CL_SUCCESS)	{ cout << "\nfp32_param_buf                 status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_30"<<flush;
-	status = clReleaseMemObject(k2kbuf);						if (status != CL_SUCCESS)	{ cout << "\nk2kbuf                         status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_31"<<flush;
 
 	status = clReleaseMemObject(SE3_k2kbuf);					if (status != CL_SUCCESS)	{ cout << "\nSE3_k2kbuf                     status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_33"<<flush;
 	status = clReleaseMemObject(uint_param_buf);				if (status != CL_SUCCESS)	{ cout << "\nuint_param_buf                 status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_34"<<flush;
@@ -876,7 +884,7 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 
 
 	// buffers for patch kernel based Dynamic_slam
-	status = clReleaseMemObject(pose_buf);						if (status != CL_SUCCESS)	{ cout << "\npose_buf                       status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+	//status = clReleaseMemObject(pose_buf);						if (status != CL_SUCCESS)	{ cout << "\npose_buf                       status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(pose_update_buf);				if (status != CL_SUCCESS)	{ cout << "\npose_update_buf                status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(distorsion_update_buf);			if (status != CL_SUCCESS)	{ cout << "\ndistorsion_update_buf          status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(old_results_buf);				if (status != CL_SUCCESS)	{ cout << "\nold_result_buf                 status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;

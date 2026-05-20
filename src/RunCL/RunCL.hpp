@@ -110,7 +110,7 @@ public:
 
 	cl_mem				SE3_rho_map_mem, SE3_weight_map_mem;
 	cl_mem				SE3_map_mem, SE3_grad_map_mem, SE3_incr_map_mem, SE3_hessian_map_mem;//, SE3_jacobian_map_mem;
-	cl_mem				depth_mem, depth_mem_temp, depth_mem_GT;					// 'depth_mem_temp' is use to load & prepare data for depth_mem_GT and transform_depthmap
+	cl_mem				depth_mem_temp, depth_mem_GT;					// 'depth_mem_temp' is use to load & prepare data for depth_mem_GT and transform_depthmap
 
 	cl_mem				camera_matrix_map_mem, camera_matrix_grad_map_mem, camera_matrix_hessian_map_mem;
 	cl_mem				lens_distortion_map_mem, distorsion_update_buf;
@@ -118,32 +118,39 @@ public:
 	cl_mem				pix_sum_mem, var_sum_mem;
 	cl_mem				HSV_grad_mem, ST3_img_grad_mem, img_grad_mem, img_edge_mem;//, g1mem;
 
-	cl_mem				k2kbuf ;
-	cl_mem				pose_buf, pose_update_buf,		old_results_buf,	K_buf, inv_K_buf;
+	cl_mem				SE3_k2kbuf;
+	cl_mem				pose_update_buf,		old_results_buf,	K_buf, inv_K_buf;
 
 	cl_mem				basemem, imgmem_blurred;
-	cl_mem 				imgmem[num_current_frames],	velmap[num_current_frames],	SE3_k2kbuf, cur_frames_k2kbuf, cur_frames_st3buf;
+	cl_mem 				imgmem[num_current_frames],	depth_mem[num_current_frames], velmap[num_current_frames];
+	cl_mem				k2kbuf[num_current_frames], cur_frames_k2kbuf[num_current_frames], cur_frames_st3buf[num_current_frames];
+	cl_mem				pose_buf[num_current_frames];
 
 	// current frames
 	struct frame{
 		int 			dataset_frame_num					= 0;
 		uint			frame_count							= 0;
 		uint			frame_data_index					= 0;					// Index of this frame in the recycled arrays of cl_mem buffers above: imgmem[], 	velmap[]
-
+		////////////////////////////////////////////////////////////////////
 		cl_mem			img_buf								= nullptr;
 		cl_mem			depth_buf							= nullptr;
 		cl_mem			r_vel_buf							= nullptr;
 
-		Matx44f			pose_gt								= Matx44f::eye() ;
-		float			pose[16]							= FLOAT_16_EYE;			// Absolute pose of the frame. i.e. relative to initial frame. Computed from the local sample frames. Will req adjustment at loop closure.
-		Matx44f			pose_0_to_this_frame				= Matx44f::eye() ;
+		cl_mem			pose_buf							= nullptr;
+		cl_mem			k2k_buf								= nullptr;				// used from new frame for depth, cam & lens calib, relative to current depth map
+		cl_mem			k2k_buf_to_0						= nullptr;				// used in tracking new frame, relative to depth map of ??
+		////////////////////////////////////////////////////////////////////
+		Matx44f			pose_gt								= Matx44f::eye();
+		Matx44f			pose_from_start						= Matx44f::eye();
+		Matx44f			pose_from_0							= Matx44f::eye();
+		Matx44f			pose_to_0							= Matx44f::eye();
 
-		Matx44f			K									= Matx44f::eye() ;		// camera intrinsic matrix
-		Matx44f			inv_K								= Matx44f::eye() ;
+		Matx44f			K									= Matx44f::eye();		// camera intrinsic matrix
+		Matx44f			inv_K								= Matx44f::eye();
 
-		float			k2k_0to1_est[16]					=  FLOAT_16_EYE;		// Reprojection matrix to the current img. Estimated, then fitted for each new frame, also with updates of camera inrinsic mattix.
-		float			k2k[		num_current_frames][16]	= {FLOAT_16_EYE};
-
+		Matx44f			k2k_from_0							= Matx44f::eye();
+		Matx44f			k2k_to_0							= Matx44f::eye();
+		////////////////////////////////////////////////////////////////////
 		Matx66f			inv_SE3_Hessian[			max_mipmap_layers]	= { Matx66f::eye() };
 		Matx55d			inv_camera_matrix_Hessian[	max_mipmap_layers]	= { Matx55d::eye() };
 		Matx55d			inv_lens_distortion_Hessian[max_mipmap_layers]	= { Matx55d::eye() };
@@ -242,7 +249,7 @@ public:
 
 
 	///////////////////////////////////// RunCL_current_frames.cpp
-	Matx44f update_pose_bufs_cur_frames(  );
+	Matx44f update_pose_bufs_cur_frames( Matx44f new_pose_0to1 );
 	void initialize_current_frame( int idx);
 	void initialize_new_frame ();
 	void initialize_current_frames();

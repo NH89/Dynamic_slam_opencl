@@ -72,18 +72,18 @@ void RunCL::rho_sq( uint out_block_size, uint iter, uint frame_idx, uint layer, 
 																																					<<",  frame_idx="			<<frame_idx
 																																					<< flush;
 																																				float pose_ary[16];
-																																				ReadOutput( (uchar*)pose_ary, pose_buf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
-																																				PRINT_FLOAT_16(pose_ary, gpu buf);
+																																				//ReadOutput( (uchar*)pose_ary, pose_buf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
+																																				//PRINT_FLOAT_16(pose_ary, gpu buf);
 
 																																				float k2kbuf_ary[16];
-																																				ReadOutput( (uchar*)k2kbuf_ary, k2kbuf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
+																																				ReadOutput( (uchar*)k2kbuf_ary, k2k_buf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
 																																				PRINT_FLOAT_16(k2kbuf_ary, gpu buf);
 
 																																				for (uint i=0; i<5 ;i++){
 																																					cout<<"\n\n## current_frames[ current_frames_idx["<<i<<"] ].frame_num = "<< current_frames[ current_frames_idx[i] ].dataset_frame_num << flush;
-																																					PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].pose,		);
+																																					//PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].pose,		);
 																																					PRINT_MATX44F(	current_frames[ current_frames_idx[i] ].pose_gt,	);
-																																					PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].k2k_0to1_est,	);
+																																					//PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].k2k_0to1_est,	);
 																																				}
 																																			}
  	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, 	&zero_flt, sizeof( float), 0, 			  2*mm_size_bytes_C1, 	fname);				//_clEnqueueWriteBuffer( uload_queue, k2kbuf, CL_FALSE, 0, local_num_samples*16*sizeof( float), k2k_3_16_[start_sample_idx], fname);

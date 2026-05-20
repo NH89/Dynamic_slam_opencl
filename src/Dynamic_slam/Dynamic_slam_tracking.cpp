@@ -200,51 +200,75 @@ void Dynamic_slam::estimate_tracking(){
 	float	factor				= -2.0f;
 	Matx44f	old_pose			= Matx44f::eye();
 	Matx44f	old_k2k				= Matx44f::eye();
-	Matx44f newPose				= runcl.ReadOutput_44f( runcl.pose_buf );
-	Matx44f newK2K				= runcl.ReadOutput_44f( runcl.k2kbuf, cl_flt16_size ); 													// offset = current_frames_idx * cl_flt16_size
 																																		//for (uint out_block_size = 4/*32*/; out_block_size > 2; out_block_size /=2){
-	for (uint iter = 0; iter<SE_iter; iter++){
-		auto step_0 = high_resolution_clock::now();
+
+	RunCL::frame	frame1		= runcl.current_frames[ runcl.current_frames_idx[frame_idx] ];
+	Matx44f			invK		= frame1.inv_K;
+	Matx44f			K			= frame1.K;
+
+	Matx44f prev_pose			= runcl.current_frames[ runcl.current_frames_idx[2] ].pose_from_0;	// i.e. the single step frame to frame pose from the prevoius time step. // should load this into idx[0] at the end.
+
+
+	for (int frame_idx =1; frame_idx<num_current_frames; frame_idx++){
+		RunCL::frame this_frame = runcl.current_frames[ runcl.current_frames_idx[frame_idx] ];
+
+		Matx44f newPose			= runcl.ReadOutput_44f( this_frame.pose_buf );
+		Matx44f newK2K			= runcl.ReadOutput_44f( this_frame.k2k_buf_to_0 ); 																		// offset = current_frames_idx * cl_flt16_size
+
+		for (uint iter = 0; iter<SE_iter; iter++){
+			auto step_0 = high_resolution_clock::now();
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\nDynamic_slam::estimate_tracking() chk_1: layer="<<layer
 																																			<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
 																																			uint	out_block_size		= 2;
 																																			uint	layer				= 0;
-																																			runcl.rho_sq( out_block_size, iter, frame_idx, layer, runcl.k2kbuf, num_SE3_DoF, fname_short	);// For debugging, get a larger, finer Rho map
+																																			runcl.rho_sq( out_block_size, iter, frame_idx, layer, this_frame.k2k_buf, num_SE3_DoF, fname_short	);// For debugging, get a larger, finer Rho map
 																																			PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_pose, );
 																																		}
-		runcl.rho_sq( 			out_block_size, iter, 	frame_idx,	(uint)layer,  runcl.k2kbuf,	num_SE3_DoF, fname_short);
-		runcl.reduce_patch_Rho( out_block_size, iter, 				(uint)layer,				num_SE3_DoF);
-		runcl.get_rho_result(	runcl.se3_rho_result,				(uint)layer,				num_SE3_DoF);
-		//runcl.update_k2k_cpu( 									(uint)layer );														// frame_data_GT.keyframe2pose for comparision only.
-		float		sum_rho		=	runcl.se3_rho_result.Rho.x;																			// currently .x colour channel only.
-		float		sum_rho_sq	=	runcl.se3_rho_result.Rho.y;
-		if( isnan(sum_rho_sq) ){
-																			cout << "\nisnan(sum_rho_sq)" <<flush;
-			break;
-		}else if(sum_rho_sq > old_sum_rho_sq     ){																						// Rho, photometric error, got worse not better
-			if(layer<=0) {break;}																										// Reached bottom of image pyramid.
-			else {
-																			cout << "\nsum_rho_sq > old_sum_rho_sq = "<< old_sum_rho_sq;
-				if(factor<-1.0f){																										// End amplified steps
-					factor = -1.0f;
-																			cout << ",  factor -2.0f -> -1.0f";
-				}else {
-					layer --;																											// Step down to lower layer of image pyramid
-																			cout << "\nlayer = "	<<	layer;
-					old_sum_rho_sq			=	FLT_MAX-1;																				// Re-set old_sum_rho_sq for new layer
-				}
-																																		PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_pose, );
-				runcl.update_k2k_buf(		old_k2k,		old_pose);																	// Re-set to previous pose.
-																			cout << endl << flush;
-			}
-		}else{
-			old_sum_rho_sq			=	sum_rho_sq;
-			old_pose				=	newPose;
-			old_k2k					=	newK2K;
+			runcl.rho_sq( 			out_block_size, iter, 	frame_idx,	(uint)layer,  this_frame.k2k_buf_to_0,	num_SE3_DoF, fname_short);
+			runcl.reduce_patch_Rho( out_block_size, iter, 				(uint)layer,							num_SE3_DoF);
+			runcl.get_rho_result(	runcl.se3_rho_result,				(uint)layer,							num_SE3_DoF);
 
-			float		num_pixels	=	runcl.se3_rho_result.param_incr_arry[1];																		// TO DO move numpixels to SE3_incr.w   & reduce SE3_incr_map_mem from float8 tro float4
-			Matx16d		SE3_incr;	for (int i=0;	i<6; i++){	SE3_incr.operator()(i)	=	runcl.se3_rho_result.param_incr_arry[i*2];  };
+			float		sum_rho		=	runcl.se3_rho_result.Rho.x;																			// currently .x colour channel only.
+			float		sum_rho_sq	=	runcl.se3_rho_result.Rho.y;
+			if( isnan(sum_rho_sq) ){
+																			cout << "\nisnan(sum_rho_sq)" <<flush;
+				break;
+			}else if(sum_rho_sq > old_sum_rho_sq     ){																						// Rho, photometric error, got worse not better
+				if(layer<=0) {break;}																										// Reached bottom of image pyramid.
+				else {
+																			cout << "\nsum_rho_sq > old_sum_rho_sq = "<< old_sum_rho_sq;
+					if(factor<-1.0f){																										// End amplified steps
+						factor = -1.0f;
+																			cout << ",  factor -2.0f -> -1.0f";
+					}else {
+						layer --;																											// Step down to lower layer of image pyramid
+																			cout << "\nlayer = "	<<	layer;
+						old_sum_rho_sq			=	FLT_MAX-1;																				// Re-set old_sum_rho_sq for new layer
+					}
+																																			PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_pose, );
+
+					float newK2K_arry[16];																									// Re-set to previous pose.
+					Matx44f_To_float16arry( old_k2k, newK2K_arry );
+
+					runcl._clEnqueueWriteBuffer(
+						runcl.uload_queue,						//cl_command_queue 	command_queue,
+						this_frame.k2k_buf_to_0,				//cl_mem 			buffer,
+						CL_FALSE,								//cl_bool 			blocking_write,
+						0,										//size_t 			offset,
+						num_current_frames*16*sizeof(float),	//size_t 			size,
+						newK2K_arry,							//const void* 		ptr,
+						fname									//string 			fname
+					);
+																			cout << endl << flush;
+				}
+			}else{
+				old_sum_rho_sq			=	sum_rho_sq;
+				old_pose				=	newPose;
+				old_k2k					=	newK2K;
+
+				float		num_pixels	=	runcl.se3_rho_result.param_incr_arry[1];													// TO DO move numpixels to SE3_incr.w   & reduce SE3_incr_map_mem from float8 tro float4
+				Matx16d		SE3_incr;	for (int i=0;	i<6; i++){	SE3_incr.operator()(i)	=	runcl.se3_rho_result.param_incr_arry[i*2];  };
 																																		if( verbosity>local_verbosity_threshold ){
 																																			cout << "\nDynamic_slam::estimate_tracking() chk_4: ,  ###########################"<<
 																																			"\n sum_rho = "			<< sum_rho		<<
@@ -252,9 +276,8 @@ void Dynamic_slam::estimate_tracking(){
 																																			",	num_pixels = "		<< num_pixels	<< endl<<flush;
 																																			PRINT_MATX16F( SE3_incr, );
 																																		}
-			Matx44f		pose		=	runcl.ReadOutput_44f(	runcl.pose_buf );
-			Matx44f		invK		=	runcl.ReadOutput_44f(	runcl.inv_K_buf);
-			Matx44f		K			=	runcl.ReadOutput_44f(	runcl.K_buf	 );
+				Matx44f		pose		=	this_frame.pose_to_0  ;		//runcl.ReadOutput_44f(	runcl.pose_buf );
+
 																																		if( verbosity>local_verbosity_threshold ){
 																																			PRINT_MATX44F( pose,	from pose_buf );	PRINT_MATX16F( PToLie(pose),);
 																																			PRINT_MATX44F( invK,	);
@@ -262,48 +285,66 @@ void Dynamic_slam::estimate_tracking(){
 																																			PRINT_MATX44F( K * invK,		);
 																																			PRINT_MATX44F( invK * K,		);
 																																		}
-			Matx66d	invH			=	runcl.current_frames[ runcl.current_frames_idx[0] ].inv_SE3_Hessian[layer];
-			Matx16d pose_update_cpu	=	SE3_incr * invH;	// Matx_16fmul66f( SE3_incr, invH);  //										// Double precision is required
+				Matx66d	invH			=	runcl.current_frames[ runcl.current_frames_idx[0] ].inv_SE3_Hessian[layer];
+				Matx16d pose_update		=	SE3_incr * invH;						// Matx_16fmul66f( SE3_incr, invH);  //				// Double precision is required
 																																		if( verbosity>local_verbosity_threshold ){
 																																			cout << "\nSE3_incr="			<<SE3_incr			<<endl<<flush;
 																																			cout << "\ninvH="				<<invH				<<endl<<flush;
-																																			cout << "\npose_update_cpu="	<<pose_update_cpu	<<endl<<flush;
+																																			cout << "\npose_update_cpu="	<<pose_update	<<endl<<flush;
 																																			PRINT_MATX66F( invH, );
-																																			PRINT_MATX16F( pose_update_cpu, );
-																																			Matx44f	pose_old	= runcl.ReadOutput_44f( runcl.pose_buf );	PRINT_MATX44F( pose_old, );
-																																			Matx44f	k2k_old		= runcl.ReadOutput_44f( runcl.k2kbuf);		PRINT_MATX44F( k2k_old,	);
+																																			PRINT_MATX16F( pose_update, );
 																																		}
-			pose_update_cpu			=	factor *  pose_update_cpu.mul( deltas_matx[layer] );/*(-2.0f)*/ /*  * 0.5f; */  				//NB matx.mul(  matx ) => elementwise multiplication.
-																																		if( verbosity>local_verbosity_threshold-3 ){PRINT_MATX16F( pose_update_cpu, ); }
-			newPose					=	LieToP_Matx( pose_update_cpu )  *  pose;
-			newK2K					=	K  *  newPose  * invK ;
+				pose_update				=	factor *  pose_update.mul( deltas_matx[layer] );	/*(-2.0f)*/ /*  * 0.5f; */  			//NB matx.mul(  matx ) => elementwise multiplication.
+																																		if( verbosity>local_verbosity_threshold-3 ){PRINT_MATX16F( pose_update, ); }
+				newPose					=	LieToP_Matx( pose_update )  *  pose;
+				newK2K					=	K  *  newPose  * invK ;
+				float newK2K_arry[16];
+				Matx44f_To_float16arry( newK2K, newK2K_arry );
 
-			runcl.update_k2k_buf(		newK2K,		newPose);// may need to include   offset = frame_idx*cl_flt16_size
+				runcl._clEnqueueWriteBuffer(
+					runcl.uload_queue,						//cl_command_queue 	command_queue,
+					this_frame.k2k_buf_to_0,				//cl_mem 			buffer,
+					CL_FALSE,								//cl_bool 			blocking_write,
+					0,										//size_t 			offset,
+					num_current_frames*16*sizeof(float),	//size_t 			size,
+					newK2K_arry,							//const void* 		ptr,
+					fname									//string 			fname
+				);
 																																		if( verbosity>local_verbosity_threshold ){
 																																			cout << "\nDynamic_slam::estimate_tracking() chk_5: ,  layer = "<<layer<<"##########"<<flush;
-																																			PRINT_MATX16F( deltas_matx[layer], );							PRINT_MATX16F( pose_update_cpu, );
-																																			PRINT_MATX16F( PToLie( LieToP_Matx(pose_update_cpu).inv() ), );
+																																			PRINT_MATX16F( deltas_matx[layer], );							PRINT_MATX16F( pose_update, );
+																																			PRINT_MATX16F( PToLie( LieToP_Matx( pose_update ).inv() ), );
 																																			PRINT_MATX44F( newPose,	);										PRINT_MATX16F( PToLie( newPose ), );
 																																			PRINT_MATX44F( newK2K,			);
-																																			Matx44f	pose_now	= runcl.ReadOutput_44f( runcl.pose_buf );							PRINT_MATX44F( pose_now, );
-																																			Matx44f	k2k_now		= runcl.ReadOutput_44f( runcl.k2kbuf, frame_idx*cl_flt16_size);		PRINT_MATX44F( k2k_now,	);
 																																		}
-			if( SE_iter-(iter/10) < layer) {
-				layer --;																											// Step down to lower layer of image pyramid
-				cout << "\n( SE_iter-(iter/10) < layer),  layer = "	<<	layer <<endl<<flush;
-				old_sum_rho_sq			=	FLT_MAX-1;
+				if( SE_iter-(iter/10) < layer) {
+					layer --;																											// Step down to lower layer of image pyramid
+					cout << "\n( SE_iter-(iter/10) < layer),  layer = "	<<	layer <<endl<<flush;
+					old_sum_rho_sq		=	FLT_MAX-1;
+				}
 			}
-		}auto step_1 = high_resolution_clock::now();																					if( verbosity>local_verbosity_threshold-3){
+			auto step_1 = high_resolution_clock::now();																					if( verbosity>local_verbosity_threshold-3){
 																																			cout << "\nDynamic_slam::estimate_tracking() loop finished  ###########################"\
 																																			<<"Tracking loop time = "<<  duration_cast<microseconds>(step_1 - step_0).count()
 																																			<<" microseconds,  layer="<<layer<<endl<<flush;
 																																		}
+		}
+		Matx44f new_pose_from_0			= getInvPose(newPose);																			// set this_frame.k2k_buf for mapping, and
+		Matx44f new_k2k_from_0			= K  *  new_pose_from_0	  * invK;
+
+		float	new_K2K_arry_from_0[16];
+		Matx44f_To_float16arry( new_k2k_from_0, new_K2K_arry_from_0 );
+
+		runcl._clEnqueueWriteBuffer(
+			runcl.uload_queue,						//cl_command_queue 	command_queue,
+			this_frame.k2k_buf,						//cl_mem 			buffer,
+			CL_FALSE,								//cl_bool 			blocking_write,
+			0,										//size_t 			offset,
+			num_current_frames*16*sizeof(float),	//size_t 			size,
+			new_K2K_arry_from_0,					//const void* 		ptr,
+			fname									//string 			fname
+		);
 	}
-
-	Matx44f pose_temp 					= runcl.update_pose_bufs_cur_frames( );											// NB these two lines are req because nextFrame() calls  runcl.set_cam_bufs(..), using frame_data.
-	frame_data.back().frame_data.pose 	= pose_temp ;
-
-	float16arry_To_Matx44f(	 &runcl.current_frames[	runcl.current_frames_idx[0]	].k2k_0to1_est[0]	, frame_data.back().frame_data.K2K );
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\fDynamic_slam::tracking() finished"<< flush;
 																																			PRINT_MATX44F(frame_data.back().frame_data.pose,);

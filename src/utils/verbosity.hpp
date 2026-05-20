@@ -87,7 +87,7 @@
 
 	// RUNCL/ ##############################################
 	/////////////////////////////////////// RUNCL.HPP
-	#define V_RUNCL_UPDATE_POSE_BUFS_CUR_FRAMES			2
+	#define V_RUNCL_UPDATE_POSE_BUFS_CUR_FRAMES			-2
 
 	/////////////////////////////////////// RUNCL_CLASS.CPP
 	#define	V_RUNCL_RUNCL								0
