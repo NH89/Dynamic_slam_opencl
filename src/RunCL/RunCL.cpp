@@ -640,37 +640,27 @@ void RunCL::set_mimpmap_offsets(){
 
 }
 
-void RunCL::set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k ){
+void RunCL::set_all_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k ){
+	int local_verbosity_threshold = V_RUNCL_SET_CAM_BUFS;
+	string fname = "RunCL::set_cam_bufs( )";
+	for (uint frame_idx = 0; frame_idx<num_current_frames; frame_idx++){
+		set_cam_bufs( k, inv_k, pose, k2k, frame_idx );
+	}
+}
+
+void RunCL::set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k,	uint frame_idx ){
 	int local_verbosity_threshold = V_RUNCL_SET_CAM_BUFS;
 	string fname = "RunCL::set_cam_bufs( )";
 																																			if(verbosity>local_verbosity_threshold) { cout<<"\n"<<fname<<"(  )_chk0"<<flush; }
 																																			// NB Orthographic camera, See notes in convertTransforms.cpp , cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){..}
 																																			// 4x4 perspective matrix is not invertable for points at infinity. We correct ortho->perspective in the kernel by dividing by Z.
-	float k_arry[16], inv_k_arry[16], pose_arry[16], k2k_arry[16];
-	Matx44f_To_float16arry( k,		k_arry		);																							if(verbosity>local_verbosity_threshold) { cout<<"\n"<<fname<< endl; PRINT_FLOAT_16(k_arry, ) }
-	Matx44f_To_float16arry( inv_k,	inv_k_arry	);
-	Matx44f_To_float16arry( pose,	pose_arry	);
-	Matx44f_To_float16arry( k2k,	k2k_arry	);
 
-	current_frames[ current_frames_idx[0] ].K		= k;
-	current_frames[ current_frames_idx[0] ].inv_K	= inv_k;
-
-	_clEnqueueWriteBuffer( uload_queue, 	K_buf,		CL_FALSE, 0, 16 * sizeof( float), k_arry, 			fname);
-	_clEnqueueWriteBuffer( uload_queue, 	inv_K_buf,	CL_FALSE, 0, 16 * sizeof( float), inv_k_arry, 		fname);
-																																			if(verbosity>local_verbosity_threshold) {cout<<"\nRunCL::"<<fname<<"(  )_chk1"<<flush;
-																																				PRINT_MATX44F(k,);
-																																				PRINT_MATX44F(inv_k,);
-																																				PRINT_MATX44F(pose,);
-																																				PRINT_MATX44F(k2k,);
-																																			}
-	update_k2k_buf( k2k_arry, pose_arry );
-																																			if(verbosity>local_verbosity_threshold) {cout<<"\nRunCL::"<<fname<<"(  )_chk2"<<flush;
-																																				float k_buf_arr[16];
-																																				void * ptr = k_buf_arr;
-																																				ReadOutput( (uchar*)ptr, K_buf, sizeof(float)*16, 0 );
-																																				PRINT_FLOAT_16(k_buf_arr, )
-																																				cout<<"\n"<<fname<<"_finished"<<flush;
-																																			}
+	frame	this_frame		= current_frames[ current_frames_idx[frame_idx] ];
+	this_frame.K			=	k;
+	this_frame.inv_K		=	inv_k;
+	update_44f_buf(			pose,	this_frame.pose_buf,		fname);
+	update_44f_buf(			k2k,	this_frame.k2k_buf_to_0,	fname);
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\nRunCL::"<<fname<<"_finished"<<flush;}
 }
 
 
@@ -765,8 +755,6 @@ void RunCL::allocatemem(){
 	ST3_img_grad_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,						3*	mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 39= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 	// buffers for patch kernel based Dynamic_slam
-//	pose_buf					= clCreateBuffer(m_context, CL_MEM_READ_WRITE,								sizeof(float)*16,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	pose_update_buf				= clCreateBuffer(m_context, CL_MEM_READ_WRITE,								sizeof(float)*16,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	distorsion_update_buf		= clCreateBuffer(m_context, CL_MEM_READ_WRITE,								sizeof(float)*6,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	old_results_buf				= clCreateBuffer(m_context, CL_MEM_READ_WRITE,								sizeof(float)*6*4,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
@@ -884,8 +872,6 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 
 
 	// buffers for patch kernel based Dynamic_slam
-	//status = clReleaseMemObject(pose_buf);						if (status != CL_SUCCESS)	{ cout << "\npose_buf                       status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
-	status = clReleaseMemObject(pose_update_buf);				if (status != CL_SUCCESS)	{ cout << "\npose_update_buf                status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(distorsion_update_buf);			if (status != CL_SUCCESS)	{ cout << "\ndistorsion_update_buf          status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(old_results_buf);				if (status != CL_SUCCESS)	{ cout << "\nold_result_buf                 status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 

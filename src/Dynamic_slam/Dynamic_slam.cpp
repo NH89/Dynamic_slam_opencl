@@ -123,7 +123,7 @@ void Dynamic_slam::initialize_camera_vec(){
 																																				cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"
 																																					<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
 																																			}
-	runcl.set_cam_bufs(  frame_data.back().frame_data.K ,  frame_data.back().frame_data.inv_K,  frame_data.back().frame_data.pose,  frame_data.back().frame_data.K2K  );
+	runcl.set_all_cam_bufs(  frame_data.back().frame_data.K ,  frame_data.back().frame_data.inv_K,  frame_data.back().frame_data.pose,  frame_data.back().frame_data.K2K  );
 																																			if(verbosity>local_verbosity_threshold){
 																																				cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"
 																																					<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
@@ -184,10 +184,10 @@ int Dynamic_slam::nextFrame() {
 		else if( use_GT_pose		 ==true){				use_GT_pose_vec();		}
 
 		if(	initialize_tracking_from_GT_depth == true)	{	runcl.use_GT_depthmap( depth_layer );		}
+		uint frame_idx	= 0;
+		runcl.set_cam_bufs(  frame_data.back().frame_data.K ,  frame_data.back().frame_data.inv_K,  frame_data.back().frame_data.pose,  frame_data.back().frame_data.K2K,  frame_idx );
 	}																																		// else implies ( GT_available==false || (use_artif_pose_erro==false && use_GT_pose== flase) )
 																																			// NB new frame_data element was a copy of the previous one, so identity for first step, and constant vel thereafter.
-	runcl.set_cam_bufs(  frame_data.back().frame_data.K ,  frame_data.back().frame_data.inv_K,  frame_data.back().frame_data.pose,  frame_data.back().frame_data.K2K  );
-
 																						auto step_1 = high_resolution_clock::now();
 
 	getFrame();																			auto step_2 = high_resolution_clock::now();			if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 3, Pose error after Artif_pose_err:" << flush;

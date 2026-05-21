@@ -102,6 +102,8 @@ void Dynamic_slam::estimate_camera_matrix(){
 	Matx44f	old_inv_k			= Matx44f::eye();
 	Matx44f	old_k2k				= Matx44f::eye();
 
+	RunCL::frame 	this_frame	= runcl.current_frames[ runcl.current_frames_idx[0] ];
+
 	Matx44f	pose				= runcl.ReadOutput_44f(	runcl.pose_buf );
 
 	Matx44f new_k				= runcl.ReadOutput_44f( runcl.K_buf );
@@ -164,8 +166,8 @@ void Dynamic_slam::estimate_camera_matrix(){
 																																			cout << "\nparam_update="				<<param_update			<<endl<<flush;
 																																			PRINT_MATX55D( invH, );
 																																			PRINT_MATX15D( param_update, );
-																																			Matx44f	k_old		= runcl.ReadOutput_44f( runcl.K_buf );		PRINT_MATX44F( k_old, );
-																																			Matx44f	k2k_old		= runcl.ReadOutput_44f( runcl.k2kbuf);		PRINT_MATX44F( k2k_old,	);
+																																			//Matx44f	k_old		= runcl.ReadOutput_44f( runcl.K_buf );		PRINT_MATX44F( k_old, );
+																																			//Matx44f	k2k_old		= runcl.ReadOutput_44f( runcl.k2kbuf);		PRINT_MATX44F( k2k_old,	);
 																																		}
 			param_update			=	factor *  param_update;	//.mul( deltas_matx[layer] );/*(-2.0f)*/ /*  * 0.5f; */  				//NB matx.mul(  matx ) => elementwise multiplication.
 																																		if( verbosity>local_verbosity_threshold-3 ){PRINT_MATX15D( param_update, ); }
@@ -183,14 +185,18 @@ void Dynamic_slam::estimate_camera_matrix(){
 			new_inv_k				= generate_invK_( new_k );
 			newK2K					= new_k  *  pose  * new_inv_k ;
 
-			runcl.update_k_buf(		newK2K,		new_k, new_inv_k);// may need to include   offset = frame_idx*cl_flt16_size
+			//runcl.update_k_buf(		newK2K,		new_k, new_inv_k);// may need to include   offset = frame_idx*cl_flt16_size
+
+			runcl.update_44f_buf(	newK2K,		this_frame.k2k_buf_from_0,  fname );
+			this_frame.K			= new_k;
+			this_frame.inv_K		= new_inv_k;
 																																		if( verbosity>local_verbosity_threshold ){
 																																			cout << "\nDynamic_slam::_camera_matrix() chk_5: ,  layer = "<<layer<<"##########"<<flush;
 																																			PRINT_MATX15D( param_update, );
 																																			PRINT_MATX44F( new_k,		 );
 																																			PRINT_MATX44F( newK2K,		 );
-																																			Matx44f	pose_now	= runcl.ReadOutput_44f( runcl.pose_buf );							PRINT_MATX44F( pose_now, );
-																																			Matx44f	k2k_now		= runcl.ReadOutput_44f( runcl.k2kbuf, frame_idx*cl_flt16_size);		PRINT_MATX44F( k2k_now,	);
+																																			//Matx44f	pose_now	= runcl.ReadOutput_44f( runcl.pose_buf );							PRINT_MATX44F( pose_now, );
+																																			//Matx44f	k2k_now		= runcl.ReadOutput_44f( runcl.k2kbuf, frame_idx*cl_flt16_size);		PRINT_MATX44F( k2k_now,	);
 																																		}
 			if( SE_iter-(iter/10) < layer) {
 				layer --;																											// Step down to lower layer of image pyramid

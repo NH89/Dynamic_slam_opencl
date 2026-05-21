@@ -1,7 +1,5 @@
 #include "RunCL.hpp"
 
-
-
 /* Matx44f  RunCL::update_pose_bufs_cur_frames( Matx44f new_pose_0to1 ){								// To be called after tracking and before depth and other optimisations.
 // 		string		fname = "RunCL::update_pose_bufs_cur_frames(..)";
 // 		int			local_verbosity_threshold = V_RUNCL_UPDATE_POSE_BUFS_CUR_FRAMES;
@@ -97,7 +95,7 @@ void RunCL::initialize_current_frame( int idx ){									// Used at statem initi
 	current_frames[idx].r_vel_buf				= velmap[			idx];			// velocity _relative_ to the camera.
 
 	current_frames[idx].pose_buf				= pose_buf[			idx];
-	current_frames[idx].k2k_buf					= k2kbuf[			idx];			// used from new frame for depth, cam & lens calib, relative to current depth map
+	current_frames[idx].k2k_buf_from_0					= k2kbuf[			idx];			// used from new frame for depth, cam & lens calib, relative to current depth map
 	current_frames[idx].k2k_buf_to_0			= cur_frames_k2kbuf[idx];			// used in tracking new frame, relative to depth map of ??
 	////////////////////////////////////////////////////////////
 	current_frames[idx].pose_gt					= Matx44f::eye();
@@ -195,6 +193,21 @@ void RunCL::update_current_frames_idx(){											// Call immediately _before_ 
 		initialize_new_frame();	// Re-initializes the new frame.
 		return;
 	};
+
+void RunCL::update_44f_buf(	Matx44f matrix44f,	cl_mem matrix_buf, string fname ){
+	float array_44f[16];
+	Matx44f_To_float16arry(	matrix44f, array_44f);
+
+	_clEnqueueWriteBuffer(
+						uload_queue,							//cl_command_queue 	command_queue,
+						matrix_buf,								//cl_mem 			buffer,
+						CL_FALSE,								//cl_bool 			blocking_write,
+						0,										//size_t 			offset,
+						num_current_frames*16*sizeof(float),	//size_t 			size,
+						matrix_buf,								//const void* 		ptr,
+						fname									//string 			fname
+					);
+}
 
 /*void RunCL::test_update_current_frames_idx(uint num_iter){
 	// 	cout << "\n\n RunCL::test_update_current_frames_idx(uint "<<num_iter<<")";

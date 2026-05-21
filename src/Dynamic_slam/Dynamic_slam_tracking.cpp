@@ -222,7 +222,7 @@ void Dynamic_slam::estimate_tracking(){
 																																			<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
 																																			uint	out_block_size		= 2;
 																																			uint	layer				= 0;
-																																			runcl.rho_sq( out_block_size, iter, frame_idx, layer, this_frame.k2k_buf, num_SE3_DoF, fname_short	);// For debugging, get a larger, finer Rho map
+																																			runcl.rho_sq( out_block_size, iter, frame_idx, layer, this_frame.k2k_buf_from_0, num_SE3_DoF, fname_short	);// For debugging, get a larger, finer Rho map
 																																			PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_pose, );
 																																		}
 			runcl.rho_sq( 			out_block_size, iter, 	frame_idx,	(uint)layer,  this_frame.k2k_buf_to_0,	num_SE3_DoF, fname_short);
@@ -247,19 +247,8 @@ void Dynamic_slam::estimate_tracking(){
 						old_sum_rho_sq			=	FLT_MAX-1;																				// Re-set old_sum_rho_sq for new layer
 					}
 																																			PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_pose, );
+					runcl.update_44f_buf(	old_k2k,	this_frame.k2k_buf_to_0,	fname);
 
-					float newK2K_arry[16];																									// Re-set to previous pose.
-					Matx44f_To_float16arry( old_k2k, newK2K_arry );
-
-					runcl._clEnqueueWriteBuffer(
-						runcl.uload_queue,						//cl_command_queue 	command_queue,
-						this_frame.k2k_buf_to_0,				//cl_mem 			buffer,
-						CL_FALSE,								//cl_bool 			blocking_write,
-						0,										//size_t 			offset,
-						num_current_frames*16*sizeof(float),	//size_t 			size,
-						newK2K_arry,							//const void* 		ptr,
-						fname									//string 			fname
-					);
 																			cout << endl << flush;
 				}
 			}else{
@@ -298,18 +287,7 @@ void Dynamic_slam::estimate_tracking(){
 																																		if( verbosity>local_verbosity_threshold-3 ){PRINT_MATX16F( pose_update, ); }
 				newPose					=	LieToP_Matx( pose_update )  *  pose;
 				newK2K					=	K  *  newPose  * invK ;
-				float newK2K_arry[16];
-				Matx44f_To_float16arry( newK2K, newK2K_arry );
-
-				runcl._clEnqueueWriteBuffer(
-					runcl.uload_queue,						//cl_command_queue 	command_queue,
-					this_frame.k2k_buf_to_0,				//cl_mem 			buffer,
-					CL_FALSE,								//cl_bool 			blocking_write,
-					0,										//size_t 			offset,
-					num_current_frames*16*sizeof(float),	//size_t 			size,
-					newK2K_arry,							//const void* 		ptr,
-					fname									//string 			fname
-				);
+				runcl.update_44f_buf(	newK2K,	this_frame.k2k_buf_to_0,	fname);
 																																		if( verbosity>local_verbosity_threshold ){
 																																			cout << "\nDynamic_slam::estimate_tracking() chk_5: ,  layer = "<<layer<<"##########"<<flush;
 																																			PRINT_MATX16F( deltas_matx[layer], );							PRINT_MATX16F( pose_update, );
@@ -331,19 +309,8 @@ void Dynamic_slam::estimate_tracking(){
 		}
 		Matx44f new_pose_from_0			= getInvPose(newPose);																			// set this_frame.k2k_buf for mapping, and
 		Matx44f new_k2k_from_0			= K  *  new_pose_from_0	  * invK;
+		runcl.update_44f_buf(	new_k2k_from_0,		this_frame.k2k_buf_from_0,	fname);
 
-		float	new_K2K_arry_from_0[16];
-		Matx44f_To_float16arry( new_k2k_from_0, new_K2K_arry_from_0 );
-
-		runcl._clEnqueueWriteBuffer(
-			runcl.uload_queue,						//cl_command_queue 	command_queue,
-			this_frame.k2k_buf,						//cl_mem 			buffer,
-			CL_FALSE,								//cl_bool 			blocking_write,
-			0,										//size_t 			offset,
-			num_current_frames*16*sizeof(float),	//size_t 			size,
-			new_K2K_arry_from_0,					//const void* 		ptr,
-			fname									//string 			fname
-		);
 	}
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\fDynamic_slam::tracking() finished"<< flush;

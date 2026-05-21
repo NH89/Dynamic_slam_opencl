@@ -1,7 +1,5 @@
 #include "RunCL.hpp"
 
-// old functions
-
 void RunCL::precomp_SE3_param_maps ( float SE3_k2k[  max_mipmap_layers*num_SE3_DoF*16  ],  cl_mem map_mem, uint num_vars, string calling_fn){ //  Compute maps of pixel motion for each SE3 DoF, and camera params // Derived from RunCL::mipmap
 	string fname = "RunCL::precomp_SE3_param_maps(..)";
 	int local_verbosity_threshold = V_RUNCL_PRECOM_PARAM_MAPS;
@@ -46,68 +44,6 @@ void RunCL::precomp_SE3_param_maps ( float SE3_k2k[  max_mipmap_layers*num_SE3_D
 																																				cout<<"\nRunCL::precomp_SE3_param_maps(..)_chk.. Finished "<<flush;
 																																			}
 }
-
-
-
-
-void RunCL::update_tracking_depthmap(cl_mem depthmap_){
-	string fname = "RunCL::update_tracking_depthmap(cl_mem depthmap_)";
-
-	_clEnqueueCopyBuffer( m_queue, depthmap_, depth_mem, 0, 0, 2*mm_size_bytes_C1, fname);
-}
-
-
-void RunCL::update_k2k_buf( float k2k_array[16],		float pose_arry[16] ) {
-	string fname = "RunCL::update_k2k_buf( ..)";
-	int local_verbosity_threshold = V_RUNCL_UPDATE_K2K_BUF;
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k_buf( ..)_chk0 .##################################################################"<<flush;
-																																				PRINT_FLOAT_16( k2k_array, );
-																																				PRINT_FLOAT_16( pose_arry, );
-																																				PRINT_MATX44F( current_frames[ current_frames_idx[0] ].pose_from_0,  );
-																																			}
-	_clEnqueueWriteBuffer( uload_queue, 	k2kbuf,		CL_FALSE, cl_flt16_size, 16*sizeof( float), k2k_array,  	fname);
-	_clEnqueueWriteBuffer( uload_queue, 	pose_buf,	CL_FALSE, 0, 			 16*sizeof( float), pose_arry, 		fname);
-
-	// for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].k2k_0to1_est[i]	=	k2k_array[i];	}
-	// for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].pose[i]			=	pose_arry[i];	}
-}
-
-void RunCL::update_k2k_buf( 	Matx44f k2k, 	Matx44f pose ){
-	float 	k2k_array[16], 	pose_array[16];
-	Matx44f_To_float16arry(	k2k,	k2k_array );
-	Matx44f_To_float16arry( pose,	pose_array );
-
-	update_k2k_buf( k2k_array, pose_array);
-}
-
-void RunCL::update_k_buf( float k2k_array[16],		float k_arry[16],	float inv_k_arry[16]  ) {
-	string fname = "RunCL::update_k_buf( ..)";
-	int local_verbosity_threshold = V_RUNCL_UPDATE_K_BUF;
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k_buf( ..)_chk0 .##################################################################"<<flush;
-																																				PRINT_FLOAT_16( k2k_array, );
-																																				PRINT_FLOAT_16( k_arry, );
-																																				PRINT_FLOAT_16( inv_k_arry, );
-																																				PRINT_MATX44F( current_frames[ current_frames_idx[0] ].K,  );
-																																			}
-	_clEnqueueWriteBuffer( uload_queue, 	k2kbuf,		CL_FALSE, cl_flt16_size, 16*sizeof( float), k2k_array,  	fname);
-	_clEnqueueWriteBuffer( uload_queue, 	K_buf,		CL_FALSE, 0, 			 16*sizeof( float), k_arry, 		fname);
-	_clEnqueueWriteBuffer( uload_queue, 	inv_K_buf,	CL_FALSE, 0, 			 16*sizeof( float), k_arry, 		fname);
-
-	// for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].k2k_0to1_est[i]		=	k2k_array[i];	}
-	// for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].K(i/4, i%4)			=	k_arry[i];		}
-	// for (int i=0; i<16; i++){	current_frames[	current_frames_idx[0]	].inv_K(i/4, i%4)		=	inv_k_arry[i];	}
-}
-
-void RunCL::update_k_buf( 	Matx44f k2k, 	Matx44f k,	Matx44f inv_k ){
-	float 	k2k_array[16], 	k_array[16],	inv_k_array[16];
-	Matx44f_To_float16arry(	k2k,	k2k_array );
-	Matx44f_To_float16arry( k,		k_array );
-	Matx44f_To_float16arry( inv_k,	inv_k_array );
-
-
-	update_k_buf( k2k_array, k_array, inv_k_array);
-}
-
 
 // new functions ////////////////////////////////////////////////
 

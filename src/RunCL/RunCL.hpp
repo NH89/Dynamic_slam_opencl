@@ -119,7 +119,7 @@ public:
 	cl_mem				HSV_grad_mem, ST3_img_grad_mem, img_grad_mem, img_edge_mem;//, g1mem;
 
 	cl_mem				SE3_k2kbuf;
-	cl_mem				pose_update_buf,		old_results_buf,	K_buf, inv_K_buf;
+	cl_mem				old_results_buf,	K_buf, inv_K_buf;
 
 	cl_mem				basemem, imgmem_blurred;
 	cl_mem 				imgmem[num_current_frames],	depth_mem[num_current_frames], velmap[num_current_frames];
@@ -137,7 +137,7 @@ public:
 		cl_mem			r_vel_buf							= nullptr;
 
 		cl_mem			pose_buf							= nullptr;
-		cl_mem			k2k_buf								= nullptr;				// used from new frame for depth, cam & lens calib, relative to current depth map
+		cl_mem			k2k_buf_from_0						= nullptr;				// used from new frame for depth, cam & lens calib, relative to current depth map
 		cl_mem			k2k_buf_to_0						= nullptr;				// used in tracking new frame, relative to depth map of ??
 		////////////////////////////////////////////////////////////////////
 		Matx44f			pose_gt								= Matx44f::eye();
@@ -147,7 +147,6 @@ public:
 
 		Matx44f			K									= Matx44f::eye();		// camera intrinsic matrix
 		Matx44f			inv_K								= Matx44f::eye();
-
 		Matx44f			k2k_from_0							= Matx44f::eye();
 		Matx44f			k2k_to_0							= Matx44f::eye();
 		////////////////////////////////////////////////////////////////////
@@ -227,6 +226,8 @@ public:
 	void createKernels();
 
 	void set_cam_bufs( 						cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k );
+	void set_all_cam_bufs(					cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k );
+	void set_cam_bufs( 						cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k,	uint frame_idx );
 
 	void mipmap_call_kernel(				cl_kernel kernel_to_call, cl_command_queue queue_to_call, uint start, uint stop, bool layers_sequential, const size_t local_work_size);						// Call kernels on mipmap: start,stop allow running specific layers.
 	void mipmap_call_kernel(				cl_kernel kernel_to_call, cl_command_queue queue_to_call, bool layers_sequential=false){ mipmap_call_kernel( kernel_to_call,  queue_to_call, mm_start, mm_stop, layers_sequential, local_work_size); }
@@ -250,10 +251,11 @@ public:
 
 	///////////////////////////////////// RunCL_current_frames.cpp
 	Matx44f update_pose_bufs_cur_frames( Matx44f new_pose_0to1 );
-	void initialize_current_frame( int idx);
+	void initialize_current_frame( 		int idx);
 	void initialize_new_frame ();
 	void initialize_current_frames();
 	void update_current_frames_idx();
+	void update_44f_buf(				Matx44f matrix44f,		cl_mem matrix_buf,	string fname );
 	//	void test_update_current_frames_idx( uint num_iter );
 
 
@@ -301,9 +303,6 @@ public:
 	void DownloadAndSaveDepthUpdate(		uint layer, uint offset_rho, uint offset_depth, string fname );
 
 	////////////////////////////////////// RunCL_load_image.cpp
-
-	void precomp_SE3_param_maps (			float SE3_k2k[max_mipmap_layers*num_SE3_DoF*16], cl_mem map_mem, uint num_vars, string calling_fn);		// Image loading & preparation
-	void update_tracking_depthmap(			cl_mem depthmap_);
 	void use_inferred_depthmap();
 	void loadFrame(							cv::Mat image);
 	void cvt_color_space();
@@ -317,7 +316,7 @@ public:
 	////////////////////////////////////// RunCL_patch_slam.cpp
 	// variables
 	const uint	patch_size												= 32;
-	size_t		device_max_workitem_sizes[		3]						= {0};
+	size_t		device_max_workitem_sizes[			3]					= {0};
 	cl_uint		device_max_compute_units								=  0;
 	cl_ulong	device_local_mem_size									=  0;
 
@@ -345,6 +344,7 @@ public:
 
 
 	////////////////////////////////////// RunCL_patch_tracking.cpp
+	void	precomp_SE3_param_maps (				float SE3_k2k[max_mipmap_layers*num_SE3_DoF*16],  cl_mem map_mem,  uint num_vars,  string calling_fn);		// Image loading & preparation
 	void	build_img_pyramid( 						std::string folder );
 
 	void	blur_image_layer( 						uint layer );
@@ -373,18 +373,13 @@ public:
 	void rho_sq_set_params( 			uint out_block_size);
 	void rho_sq( 						uint out_block_size, uint iter, uint frame_idx, uint layer, cl_mem k2k_buf, uint num_DoF, string calling_fn);
 	void reduce_patch_Rho ( 			uint out_block_size, uint iter, 				uint layer,					uint num_DoF);
-	void get_rho_result( 				Rho_result &rho_result, 							uint layer,					uint num_DoF);
+	void get_rho_result( 				Rho_result &rho_result, 						uint layer,					uint num_DoF);
 
 	void update_k2k_cpu( 				uint layer );
 	void update_k2k( 					uint layer, float delta_theta, float delta, Matx44f GT_pose );
 
 
 	/////////////////////////////////////// RunCL_tracking.cpp
-	void update_k2k_buf(				float 	k2k_3_16_[16],	float pose_arry[16]	);
-	void update_k2k_buf( 				Matx44f k2k,			Matx44f pose		);
-
-	void update_k_buf(					float 	k2k_array[16],	float k_arry[16],	float inv_k_arry[16] );
-	void update_k_buf( 					Matx44f k2k,			Matx44f k,			Matx44f inv_k		 );
 
 
 	void SpatialCostFns();																												// SIRFS cost functions
