@@ -97,7 +97,7 @@ public:
 	cl_kernel			cvt_color_space_kernel, cvt_color_space_linear_kernel;
 	cl_kernel 			mipmap_float_kernel,  comp_SE3_param_maps_kernel;
 	// 1st gen patch kernels ?
-	cl_kernel			rho_sq_kernel, reduce_patch_Rho_kernel, update_k2k_kernel;	// TO DO declare, create, release kernel in Run_cl.h etc.
+	cl_kernel			rho_sq_to_0_kernel, rho_sq_from_0_kernel, reduce_patch_Rho_kernel, update_k2k_kernel;	// TO DO declare, create, release kernel in Run_cl.h etc.
 	// RunCL_patchslam.cpp
 	cl_kernel			compute_patch_lookup_table_kernel, patch_img_grad_kernel, patch_hessian_reduce_kernel;
 	// RunCL_patch_tracking.cpp
@@ -109,7 +109,7 @@ public:
 	cl_mem				fp32_param_buf, uint_param_buf, mipmap_buf, img_stats_buf, patch_lookup_table_buf;
 
 	cl_mem				SE3_rho_map_mem, SE3_weight_map_mem;
-	cl_mem				SE3_map_mem, SE3_grad_map_mem, SE3_incr_map_mem, SE3_hessian_map_mem;//, SE3_jacobian_map_mem;
+	cl_mem				SE3_map_mem, SE3_incr_map_mem, SE3_hessian_map_mem;//, SE3_jacobian_map_mem;
 	cl_mem				depth_mem_temp, depth_mem_GT;					// 'depth_mem_temp' is use to load & prepare data for depth_mem_GT and transform_depthmap
 
 	cl_mem				camera_matrix_map_mem, camera_matrix_grad_map_mem, camera_matrix_hessian_map_mem;
@@ -122,7 +122,7 @@ public:
 	cl_mem				old_results_buf,	K_buf, inv_K_buf;
 
 	cl_mem				basemem, imgmem_blurred;
-	cl_mem 				imgmem[num_current_frames],	depth_mem[num_current_frames], velmap[num_current_frames];
+	cl_mem 				imgmem[num_current_frames],	depth_mem[num_current_frames], velmap[num_current_frames], SE3_grad_map_mem[num_current_frames];
 	cl_mem				k2kbuf[num_current_frames], cur_frames_k2kbuf[num_current_frames], cur_frames_st3buf[num_current_frames];
 	cl_mem				pose_buf[num_current_frames];
 
@@ -133,6 +133,7 @@ public:
 		uint			frame_data_index					= 0;					// Index of this frame in the recycled arrays of cl_mem buffers above: imgmem[], 	velmap[]
 		////////////////////////////////////////////////////////////////////
 		cl_mem			img_buf								= nullptr;
+		cl_mem			SE3_grad_buf						= nullptr;
 		cl_mem			depth_buf							= nullptr;
 		cl_mem			r_vel_buf							= nullptr;
 
@@ -371,8 +372,9 @@ public:
 	} se3_rho_result, camera_matrix_result, lens_distortion_result;
 
 	void rho_sq_set_params( 			uint out_block_size);
-	void rho_sq( 						uint out_block_size, uint iter, uint frame_idx, uint layer, cl_mem k2k_buf, uint num_DoF, string calling_fn);
-	void reduce_patch_Rho ( 			uint out_block_size, uint iter, 				uint layer,					uint num_DoF);
+	void rho_sq_to_0 (					uint out_block_size, uint iter, uint frame_idx, uint layer, cl_mem k2k_buf, uint num_DoF, string calling_fn);
+	void rho_sq_from_0(					uint out_block_size, uint iter, uint frame_idx, uint layer, cl_mem k2k_buf, uint num_DoF, string calling_fn);
+	void reduce_patch_Rho(				uint out_block_size, uint iter, 				uint layer,					uint num_DoF);
 	void get_rho_result( 				Rho_result &rho_result, 						uint layer,					uint num_DoF);
 
 	void update_k2k_cpu( 				uint layer );

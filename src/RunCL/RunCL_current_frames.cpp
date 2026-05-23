@@ -91,11 +91,12 @@ void RunCL::initialize_current_frame( int idx ){									// Used at statem initi
 	current_frames[idx].frame_data_index		= idx;								// Initialized with cl_mem buffers in order. This will change with update_current_frames_idx().
 	////////////////////////////////////////////////////////////
 	current_frames[idx].img_buf					= imgmem[			idx];
+	current_frames[idx].SE3_grad_buf			= SE3_grad_map_mem[ idx];
 	current_frames[idx].depth_buf				= depth_mem[		idx];
 	current_frames[idx].r_vel_buf				= velmap[			idx];			// velocity _relative_ to the camera.
 
 	current_frames[idx].pose_buf				= pose_buf[			idx];
-	current_frames[idx].k2k_buf_from_0					= k2kbuf[			idx];			// used from new frame for depth, cam & lens calib, relative to current depth map
+	current_frames[idx].k2k_buf_from_0			= k2kbuf[			idx];			// used from new frame for depth, cam & lens calib, relative to current depth map
 	current_frames[idx].k2k_buf_to_0			= cur_frames_k2kbuf[idx];			// used in tracking new frame, relative to depth map of ??
 	////////////////////////////////////////////////////////////
 	current_frames[idx].pose_gt					= Matx44f::eye();
@@ -139,8 +140,8 @@ void RunCL::initialize_new_frame(){													// Used to set 1st estimate of n
 	////////////////////////////////////////////////////////////
 	current_frames[ idx ].pose_gt				= Matx44f::eye();
 	current_frames[ idx ].pose_from_start		= current_frames[ idx2 ].pose_from_start * current_frames[ idx2 ].pose_to_0;
-	current_frames[ idx ].pose_from_0			= current_frames[ idx2 ].pose_from_0;
-	current_frames[ idx ].pose_to_0				= current_frames[ idx2 ].pose_to_0;
+	current_frames[ idx ].pose_from_0			= current_frames[ idx2 ].pose_from_0;	// Not used. Overwritten by Dynamic_slam::estimate_tracking()
+	current_frames[ idx ].pose_to_0				= current_frames[ idx2 ].pose_to_0;		// ditto.
 
 	current_frames[ idx ].K						= current_frames[ idx2 ].K;
 	current_frames[ idx ].inv_K					= current_frames[ idx2 ].inv_K;

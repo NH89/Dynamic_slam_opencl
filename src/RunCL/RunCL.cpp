@@ -270,19 +270,18 @@ void RunCL::createKernels(){
 
 	cl_int err_code;
 	// RunCL_load_image.cpp
-	convert_depth_kernel				= clCreateKernel(m_program, "convert_depth", 				&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'convert_depth'  kernel not built.\n"			<<flush; exit_(0);   }
-	mipmap_float_kernel					= clCreateKernel(m_program, "mipmap_linear_flt", 			&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'mipmap_linear_flt'  kernel not built.\n"		<<flush; exit_(0);   }
-	cvt_color_space_linear_kernel		= clCreateKernel(m_program, "cvt_color_space_linear", 		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'cvt_color_space_linear'  kernel not built.\n"	<<flush; exit_(0);   }
+	convert_depth_kernel				= clCreateKernel(m_program, "convert_depth",				&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'convert_depth'  kernel not built.\n"				<<flush; exit_(0);   }
+	mipmap_float_kernel					= clCreateKernel(m_program, "mipmap_linear_flt",			&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'mipmap_linear_flt'  kernel not built.\n"			<<flush; exit_(0);   }
+	cvt_color_space_linear_kernel		= clCreateKernel(m_program, "cvt_color_space_linear",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'cvt_color_space_linear'  kernel not built.\n"		<<flush; exit_(0);   }
 	comp_SE3_param_maps_kernel			= clCreateKernel(m_program, "compute_SE3_param_maps",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'compute_SE3_param_maps'  kernel not built.\n"		<<flush; exit_(0);   }
 	comp_cam_and_lens_maps_kernel		= clCreateKernel(m_program, "comp_cam_and_lens_maps",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'comp_cam_and_lens_maps'  kernel not built.\n"		<<flush; exit_(0);   }
-	patch_cam_and_lens_Hessian_kernel	= clCreateKernel(m_program, "patch_cam_and_lens_Hessian",	&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'patch_cam_and_lens_Hessian'  kernel not built.\n"		<<flush; exit_(0);   }
-
-
+	patch_cam_and_lens_Hessian_kernel	= clCreateKernel(m_program, "patch_cam_and_lens_Hessian",	&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'patch_cam_and_lens_Hessian'  kernel not built.\n"	<<flush; exit_(0);   }
 
 	//  1st gen patch kernels ?
-	rho_sq_kernel						= clCreateKernel(m_program, "Rho_sq",				 		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'rho_sq_kernel'  kernel not built.\n"				<<flush; exit_(0);   }
-	reduce_patch_Rho_kernel				= clCreateKernel(m_program, "reduce_patch_Rho",		 		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'update_SE3'  kernel not built.\n"					<<flush; exit_(0);   }
-	update_k2k_kernel					= clCreateKernel(m_program, "update_k2k",			 		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'update_k2k'  kernel not built.\n"					<<flush; exit_(0);   }
+	rho_sq_to_0_kernel					= clCreateKernel(m_program, "Rho_sq_to_0",					&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'rho_sq_to_0_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
+	rho_sq_from_0_kernel				= clCreateKernel(m_program, "Rho_sq_from_0",				&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'rho_sq_from_0_kernel'  kernel not built.\n"			<<flush; exit_(0);   }
+	reduce_patch_Rho_kernel				= clCreateKernel(m_program, "reduce_patch_Rho",				&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'update_SE3'  kernel not built.\n"					<<flush; exit_(0);   }
+	update_k2k_kernel					= clCreateKernel(m_program, "update_k2k",					&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'update_k2k'  kernel not built.\n"					<<flush; exit_(0);   }
 
 	// RunCL_patchslam.cpp
 	compute_patch_lookup_table_kernel	= clCreateKernel(m_program, "compute_patch_lookup_table",	&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'compute_patch_lookup_table'  kernel not built.\n"	<<flush; exit_(0);   }
@@ -693,7 +692,7 @@ void RunCL::mipmap_call_kernel(cl_kernel kernel_to_call, cl_command_queue queue_
 
 
 void RunCL::allocatemem(){
-	int local_verbosity_threshold = V_RUNCL_ALLOCATEMEM;//verbosity_mp["RunCL::allocatemem"];// 0;
+	int local_verbosity_threshold = V_RUNCL_ALLOCATEMEM;
 																																			if(verbosity>local_verbosity_threshold) cout <<"\n\nRunCL::allocatemem()_chk0\n"<<flush;
 	stringstream 	ss;
 	ss 				<< "allocatemem";
@@ -704,6 +703,7 @@ void RunCL::allocatemem(){
 	for (uint i=0; i<num_current_frames; i++ ) {
 		imgmem[i]				= clCreateBuffer(m_context, CL_MEM_READ_WRITE, 							mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 		depth_mem[i]			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,						2 * mm_size_bytes_C1,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 17= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+		SE3_grad_map_mem[i]		= clCreateBuffer(m_context, CL_MEM_READ_WRITE,		num_SE3_DoF *		mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 7= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // SE3_map * img grad, 6DoF*8channels=48     // 6DoF*3channels=18,but 4*6=24 because hsv img gradient is held in float4
 		velmap[i]				= clCreateBuffer(m_context, CL_MEM_READ_WRITE, 							mm_size_bytes_C4,  		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 		pose_buf[i]				= clCreateBuffer(m_context, CL_MEM_READ_ONLY,							16* sizeof(float),		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 26= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
@@ -721,12 +721,11 @@ void RunCL::allocatemem(){
 	// test_update_current_frames_idx(64);	// NB Only for debugging.
 
 	imgmem_blurred				= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 1= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	SE3_grad_map_mem 			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,		num_SE3_DoF *		mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 7= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // SE3_map * img grad, 6DoF*8channels=48     // 6DoF*3channels=18,but 4*6=24 because hsv img gradient is held in float4
 	camera_matrix_grad_map_mem	= clCreateBuffer(m_context, CL_MEM_READ_WRITE,		num_SE3_DoF *		mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 7= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // SE3_map * img grad, 6DoF*8channels=48     // 6DoF*3channels=18,but 4*6=24 because hsv img gradient is held in float4
 	SE3_weight_map_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 9= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	SE3_incr_map_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,						2 * mm_size_bytes_C1,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 17= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
-
-	SE3_incr_map_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,					 2	*	mm_size_bytes_C1,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 9= "<<checkerror(res)<<"\n"<<flush;exit_(res);} // For debugging before summation.
+																																																										// For debugging before summation.
 	SE3_map_mem					= clCreateBuffer(m_context, CL_MEM_READ_WRITE,		num_SE3_DoF *2	*	mm_size_bytes_C1,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 10= "<<checkerror(res)<<"\n"<<flush;exit_(res);}	// (row, col) increment fo each parameter.
 	camera_matrix_map_mem		= clCreateBuffer(m_context, CL_MEM_READ_WRITE,		num_SE3_DoF *2	*	mm_size_bytes_C1,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 10= "<<checkerror(res)<<"\n"<<flush;exit_(res);}	// (row, col) increment fo each parameter.
 	lens_distortion_map_mem		= clCreateBuffer(m_context, CL_MEM_READ_WRITE,		num_SE3_DoF *2	*	mm_size_bytes_C1,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 10= "<<checkerror(res)<<"\n"<<flush;exit_(res);}	// (row, col) increment fo each parameter.
@@ -763,7 +762,7 @@ void RunCL::allocatemem(){
 
 	patch_lookup_table_buf		= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	SE3_hessian_map_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,						2 * mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	camera_matrix_hessian_map_mem	= clCreateBuffer(m_context, CL_MEM_READ_WRITE,						2 * mm_size_bytes_C4,	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	camera_matrix_hessian_map_mem	= clCreateBuffer(m_context, CL_MEM_READ_WRITE,					2 * mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 
 																																		if(verbosity>local_verbosity_threshold) {
@@ -825,14 +824,14 @@ void RunCL::allocatemem(){
 }
 
 RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large array method from Morphogenesis &  fluids_v3 ? OR a C++ vector ?
-	int local_verbosity_threshold = V__RUNCL;//verbosity_mp["RunCL::allocatemem"];																	cout<<"\nRunCL::~RunCL_chk0_called"<<flush;
+	int local_verbosity_threshold = V__RUNCL;																							if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk0_called"<<flush;
 	cl_int status;																														// release memory
 
 	for (uint i=0; i<num_current_frames; i++ ) {
 		status = clReleaseMemObject(imgmem[i]);					if (status != CL_SUCCESS)	{ cout << "\nimgmem                         status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_01"<<flush;
 		status = clReleaseMemObject(depth_mem[i]);				if (status != CL_SUCCESS)	{ cout << "\ndepth_mem                      status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_01"<<flush;
+		status = clReleaseMemObject(SE3_incr_map_mem[i]);		if (status != CL_SUCCESS)	{ cout << "\nSE3_incr_map_mem               status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_11"<<flush;
 		status = clReleaseMemObject(velmap[i]);					if (status != CL_SUCCESS)	{ cout << "\nvelmap                         status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_01"<<flush;
-
 
 		status = clReleaseMemObject(pose_buf[i]);				if (status != CL_SUCCESS)	{ cout << "\nk2kbuf                         status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_01"<<flush;
 		status = clReleaseMemObject(k2kbuf[i]);					if (status != CL_SUCCESS)	{ cout << "\nk2kbuf                         status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_01"<<flush;
@@ -845,7 +844,6 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 
 	status = clReleaseMemObject(SE3_weight_map_mem);			if (status != CL_SUCCESS)	{ cout << "\nSE3_weight_map_mem             status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_10"<<flush;
 
-	status = clReleaseMemObject(SE3_incr_map_mem);				if (status != CL_SUCCESS)	{ cout << "\nSE3_incr_map_mem               status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_11"<<flush;
 	status = clReleaseMemObject(SE3_map_mem);					if (status != CL_SUCCESS)	{ cout << "\nSE3_map_mem                    status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_12"<<flush;
 	status = clReleaseMemObject(camera_matrix_map_mem);			if (status != CL_SUCCESS)	{ cout << "\ncamera_matrix_map_mem          status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_12"<<flush;
 	status = clReleaseMemObject(lens_distortion_map_mem);		if (status != CL_SUCCESS)	{ cout << "\nlens_distortion_map_mem        status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_12"<<flush;
@@ -887,10 +885,12 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 	status = clReleaseKernel(convert_depth_kernel);					if (status != CL_SUCCESS)	{ cout << "\nconvert_depth_kernel				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_59"<<flush;
 	status = clReleaseKernel(mipmap_float_kernel);					if (status != CL_SUCCESS)	{ cout << "\nmipmap_float_kernel				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_59"<<flush;
 	status = clReleaseKernel(cvt_color_space_linear_kernel);		if (status != CL_SUCCESS)	{ cout << "\ncvt_color_space_linear_kernel 		status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_49"<<flush;
-	status = clReleaseKernel(comp_SE3_param_maps_kernel);				if (status != CL_SUCCESS)	{ cout << "\ncomp_param_maps_kernel 			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_54"<<flush;
+	status = clReleaseKernel(comp_SE3_param_maps_kernel);			if (status != CL_SUCCESS)	{ cout << "\ncomp_param_maps_kernel 			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_54"<<flush;
 	status = clReleaseKernel(comp_cam_and_lens_maps_kernel);		if (status != CL_SUCCESS)	{ cout << "\ncomp_cam_and_lens_maps_kernel		status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_54"<<flush;
 	//
-	status = clReleaseKernel(rho_sq_kernel);						if (status != CL_SUCCESS)	{ cout << "\nrho_sq_kernel						status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(rho_sq_to_0_kernel);					if (status != CL_SUCCESS)	{ cout << "\nrho_sq_to_0_kernel					status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(rho_sq_from_0_kernel);					if (status != CL_SUCCESS)	{ cout << "\nrho_sq_from_0_kernel				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+
 	status = clReleaseKernel(reduce_patch_Rho_kernel);				if (status != CL_SUCCESS)	{ cout << "\nupdate_SE3_kernel					status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(update_k2k_kernel);					if (status != CL_SUCCESS)	{ cout << "\nupdate_k2k_kernel					status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
@@ -904,7 +904,6 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 	status = clReleaseKernel(horiz_blur5_kernel);					if (status != CL_SUCCESS)	{ cout << "\nhoriz_blur5_kernel					status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(reduce_img_kernel);					if (status != CL_SUCCESS)	{ cout << "\nreduce_img_kernel					status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	// RunCL_depth.cpp
-	//status = clReleaseKernel(update_depth_kernel);					if (status != CL_SUCCESS)	{ cout << "\nupdate_depth_kernel				status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(update_depth_2_kernel);				if (status != CL_SUCCESS)	{ cout << "\nupdate_depth_2_kernel				status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(regularize_depth_kernel);				if (status != CL_SUCCESS)	{ cout << "\nregularize_depth_kernel			status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(enlarge_layer_float_kernel);			if (status != CL_SUCCESS)	{ cout << "\nenlarge_layer_float_kernel			status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;

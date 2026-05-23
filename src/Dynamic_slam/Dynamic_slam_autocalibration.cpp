@@ -104,11 +104,10 @@ void Dynamic_slam::estimate_camera_matrix(){
 
 	RunCL::frame 	this_frame	= runcl.current_frames[ runcl.current_frames_idx[0] ];
 
-	Matx44f	pose				= runcl.ReadOutput_44f(	runcl.pose_buf );
-
-	Matx44f new_k				= runcl.ReadOutput_44f( runcl.K_buf );
-	Matx44f new_inv_k			= runcl.ReadOutput_44f( runcl.inv_K_buf );
-	Matx44f newK2K				= runcl.ReadOutput_44f( runcl.k2kbuf, cl_flt16_size ); 													// offset = current_frames_idx * cl_flt16_size
+	Matx44f	pose				= this_frame.pose_from_0;				// runcl.ReadOutput_44f( runcl.pose_buf );
+	Matx44f new_k				= this_frame.K;							// runcl.ReadOutput_44f( runcl.K_buf );
+	Matx44f new_inv_k			= this_frame.inv_K;						// runcl.ReadOutput_44f( runcl.inv_K_buf );
+	Matx44f newK2K				= this_frame.k2k_from_0;				// runcl.ReadOutput_44f( runcl.k2kbuf, cl_flt16_size ); 		// offset = current_frames_idx * cl_flt16_size
 																																		//for (uint out_block_size = 4/*32*/; out_block_size > 2; out_block_size /=2){
 	for (uint iter = 0; iter<SE_iter; iter++){
 		auto step_0 = high_resolution_clock::now();
@@ -117,10 +116,10 @@ void Dynamic_slam::estimate_camera_matrix(){
 																																			<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
 																																			uint	out_block_size		= 2;
 																																			uint	layer				= 0;
-																																			runcl.rho_sq( out_block_size, iter, frame_idx, layer, runcl.k2kbuf, num_camera_matrix_DoF, fname_short );// For debugging, get a larger, finer Rho map
+																																			runcl.rho_sq_from_0( out_block_size, iter, frame_idx, layer, runcl.k2kbuf, num_camera_matrix_DoF, fname_short );// For debugging, get a larger, finer Rho map
 																																			PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_k, );
 																																		}
-		runcl.rho_sq( 				out_block_size, iter, frame_idx,	(uint)layer,  runcl.k2kbuf,	num_camera_matrix_DoF, fname_short );
+		runcl.rho_sq_from_0( 		out_block_size, iter, frame_idx,	(uint)layer,  runcl.k2kbuf,	num_camera_matrix_DoF, fname_short );
 		runcl.reduce_patch_Rho( 	out_block_size, iter, 				(uint)layer,				num_camera_matrix_DoF );
 		runcl.get_rho_result(		runcl.camera_matrix_result,			(uint)layer,				num_camera_matrix_DoF );
 
