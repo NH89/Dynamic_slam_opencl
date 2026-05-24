@@ -116,10 +116,10 @@ void Dynamic_slam::estimate_camera_matrix(){
 																																			<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
 																																			uint	out_block_size		= 2;
 																																			uint	layer				= 0;
-																																			runcl.rho_sq_from_0( out_block_size, iter, frame_idx, layer, runcl.k2kbuf, num_camera_matrix_DoF, fname_short );// For debugging, get a larger, finer Rho map
+																																			runcl.rho_sq_from_0( out_block_size, iter, frame_idx, layer, num_camera_matrix_DoF, fname_short );// For debugging, get a larger, finer Rho map
 																																			PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_k, );
 																																		}
-		runcl.rho_sq_from_0( 		out_block_size, iter, frame_idx,	(uint)layer,  runcl.k2kbuf,	num_camera_matrix_DoF, fname_short );
+		runcl.rho_sq_from_0( 		out_block_size, iter, frame_idx,	(uint)layer,  				num_camera_matrix_DoF, fname_short );
 		runcl.reduce_patch_Rho( 	out_block_size, iter, 				(uint)layer,				num_camera_matrix_DoF );
 		runcl.get_rho_result(		runcl.camera_matrix_result,			(uint)layer,				num_camera_matrix_DoF );
 
@@ -136,12 +136,13 @@ void Dynamic_slam::estimate_camera_matrix(){
 					layer--;												cout << "\nlayer = "	<<	layer;
 					old_sum_rho_sq	=	FLT_MAX-1;																						// Re-set old_sum_rho_sq for new layer
 				}																														PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_k, ); PRINT_MATX44F( old_inv_k, );
-// ### TODO				runcl.update_k2k_buf(	old_k2k,	old_k, old_inv_k);																	// Re-set to previous k, camera matrix
+				runcl.update_44f_buf(	old_k2k,	this_frame.k2k_buf_from_0,	fname );												// Re-set to previous k, camera matrix
+				this_frame.K		= old_k;
+				this_frame.inv_K	= old_inv_k;
 																			cout << endl << flush;
 			}
 		}else{
 			old_sum_rho_sq			=	sum_rho_sq;
-																			//old_pose				=	newPose;
 			old_k					=	new_k;
 			old_inv_k				=	new_inv_k;
 			old_k2k					=	newK2K;
@@ -211,7 +212,7 @@ void Dynamic_slam::estimate_camera_matrix(){
 
 	// Matx44f pose_temp 					= runcl.update_pose_bufs_cur_frames( pose );											// NB these two lines are req because nextFrame() calls  runcl.set_cam_bufs(..), using frame_data.
 	// frame_data.back().frame_data.pose 	= pose_temp ;
- //
+	//
 	// float16arry_To_Matx44f(	 &runcl.current_frames[	runcl.current_frames_idx[0]	].k2k_0to1_est[0]	, frame_data.back().frame_data.K2K );
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\fDynamic_slam::_camera_matrix() finished"<< flush;

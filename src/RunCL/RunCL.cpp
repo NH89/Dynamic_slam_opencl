@@ -94,10 +94,7 @@ RunCL::RunCL( Json::Value obj_  ){ //, int_map verbosity_mp_
 	==264229== For lists of detected and suppressed errors, rerun with: -s
 	==264229== ERROR SUMMARY: 11 errors from 11 contexts (suppressed: 0 from 0)
 	*/
-	for (uint i=0; i<num_current_frames; i++ ) {imgmem[i]=0; velmap[i]=0;}
-	basemem=k2kbuf=0;																														// Set device pointers to zero
 	createFolders( );																														// Create the folders to which the output will be written.
-
 	free(devices);
 																																			if(verbosity>local_verbosity_threshold) cout << "RunCL_constructor finished ##########################\n" << flush;
 }
@@ -830,7 +827,7 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 	for (uint i=0; i<num_current_frames; i++ ) {
 		status = clReleaseMemObject(imgmem[i]);					if (status != CL_SUCCESS)	{ cout << "\nimgmem                         status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_01"<<flush;
 		status = clReleaseMemObject(depth_mem[i]);				if (status != CL_SUCCESS)	{ cout << "\ndepth_mem                      status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_01"<<flush;
-		status = clReleaseMemObject(SE3_incr_map_mem[i]);		if (status != CL_SUCCESS)	{ cout << "\nSE3_incr_map_mem               status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_11"<<flush;
+		status = clReleaseMemObject(SE3_grad_map_mem[i]);		if (status != CL_SUCCESS)	{ cout << "\nSE3_grad_map_mem               status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_11"<<flush;
 		status = clReleaseMemObject(velmap[i]);					if (status != CL_SUCCESS)	{ cout << "\nvelmap                         status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_01"<<flush;
 
 		status = clReleaseMemObject(pose_buf[i]);				if (status != CL_SUCCESS)	{ cout << "\nk2kbuf                         status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_01"<<flush;
@@ -839,7 +836,7 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 		status = clReleaseMemObject(cur_frames_st3buf[i]);		if (status != CL_SUCCESS)	{ cout << "\ncur_frames_st3buf              status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_01"<<flush;
 	}
 	status = clReleaseMemObject(imgmem_blurred);				if (status != CL_SUCCESS)	{ cout << "\nimgmem_blurred                 status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_02"<<flush;
-	status = clReleaseMemObject(SE3_grad_map_mem);				if (status != CL_SUCCESS)	{ cout << "\nSE3_grad_map_mem               status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_08"<<flush;
+	status = clReleaseMemObject(SE3_incr_map_mem);				if (status != CL_SUCCESS)	{ cout << "\nSE3_incr_map_mem               status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_08"<<flush;
 	status = clReleaseMemObject(camera_matrix_grad_map_mem);	if (status != CL_SUCCESS)	{ cout << "\ncamera_matrix_grad_map_mem     status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_08"<<flush;
 
 	status = clReleaseMemObject(SE3_weight_map_mem);			if (status != CL_SUCCESS)	{ cout << "\nSE3_weight_map_mem             status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_10"<<flush;

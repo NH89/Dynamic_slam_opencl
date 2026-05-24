@@ -142,7 +142,7 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 	_clSetKernelArg( kernel, 9, sizeof( cl_mem),								&current_frames[current_frames_idx[0]			].img_buf,		fname);		//__global		float4*		img_cur,				//7		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
 	_clSetKernelArg( kernel,10, sizeof( cl_mem), 								&current_frames[current_frames_idx[frame_idx]	].img_buf,		fname);		//__global		float4*		img_past_0,				//8
 																																																				// NB GT_depth loaded to depth_mem by void RunCL::loadFrameData( ..)
-	_clSetKernelArg( kernel,11, sizeof( cl_mem), 								&current_frames[current_frames_idx[0]			].depth_buf,	fname);		//__global		float2* 	depth_map,				//12	// current frame depth, now stored as inv_depth
+	_clSetKernelArg( kernel,11, sizeof( cl_mem), 								&current_frames[current_frames_idx[frame_idx]	].depth_buf,	fname);		//__global		float2* 	depth_map,				//12	// current frame depth, now stored as inv_depth
 	_clSetKernelArg( kernel,12, sizeof( cl_mem), 								&current_frames[current_frames_idx[frame_idx]	].SE3_grad_buf,	fname);		//__global 		float8*		SE3_grad_map_cur_frame,	//14
 
 	_clSetKernelArg( kernel,13, sizeof( cl_mem), 								&current_frames[current_frames_idx[0]			].r_vel_buf,	fname);		//__global		float4*		img_cur,				//15	// multiple past frames.
@@ -182,7 +182,7 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 																																				DownloadAndSave_2Channel_volume(  SE3_rho_map_mem,		ss.str( ), paths.at( "SE3_rho_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	1);
 																																				float max_range_ = 0;
 																																				uint offset_depth_bytes	=0;
-																																				DownloadAndSave_2Channel( depth_mem, ss.str(),  paths.at("depth_mem"),  2*mm_size_bytes_C1, mm_Image_size, CV_32FC2, 	show , max_range_, offset_depth_bytes);	cout << "\nDownloadAndSave_2Channel(.. depth_mem ..)\n"<<flush;
+																																				DownloadAndSave_2Channel( current_frames[current_frames_idx[frame_idx]	].depth_buf, ss.str(),  paths.at("depth_mem"),  2*mm_size_bytes_C1, mm_Image_size, CV_32FC2, 	show , max_range_, offset_depth_bytes);	cout << "\nDownloadAndSave_2Channel(.. depth_mem ..)\n"<<flush;
 																																				for(int i=0; i<5; i++){
 																																					stringstream ss_; ss_<< ss.str()<<"_current_frames_idx"<<i;
 																																					DownloadAndSave_3Channel( current_frames[current_frames_idx[i]].img_buf,  ss_.str(),   paths.at("imgmem"),   	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , max_range_);
@@ -196,7 +196,7 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 }
 
 // From the current frame 0, using the current depth map, and Hessian. Used to calibrate the camera intrinsic matrix, and lens distortion fn.
-void RunCL::rho_sq_from_0( uint out_block_size, uint iter, uint frame_idx, uint layer, cl_mem k2k_buf, uint num_DoF, string calling_fn ){	// To be launched with 1 thread per col for 32x32 patches, and an integer multiple of 32 threads.
+void RunCL::rho_sq_from_0( uint out_block_size, uint iter, uint frame_idx, uint layer, uint num_DoF, string calling_fn ){	// To be launched with 1 thread per col for 32x32 patches, and an integer multiple of 32 threads.
 																	// Needs 16 elements of local mem per 32x32 patch, to pass data between threads in recursive square reduction.
 																	// Needs 32 elem array of private mem per thread.
 																	// Writes answer to SE3_rho_map_mem, BUT as float2
@@ -215,9 +215,9 @@ void RunCL::rho_sq_from_0( uint out_block_size, uint iter, uint frame_idx, uint 
 																																				//ReadOutput( (uchar*)pose_ary, pose_buf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
 																																				//PRINT_FLOAT_16(pose_ary, gpu buf);
 
-																																				float k2kbuf_ary[16];
-																																				ReadOutput( (uchar*)k2kbuf_ary, k2k_buf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
-																																				PRINT_FLOAT_16(k2kbuf_ary, gpu buf);
+																																				//float k2kbuf_ary[16];
+																																				//ReadOutput( (uchar*)k2kbuf_ary, k2k_buf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
+																																				//PRINT_FLOAT_16(k2kbuf_ary, gpu buf);
 
 																																				for (uint i=0; i<5 ;i++){
 																																					cout<<"\n\n## current_frames[ current_frames_idx["<<i<<"] ].frame_num = "<< current_frames[ current_frames_idx[i] ].dataset_frame_num << flush;
@@ -276,29 +276,33 @@ void RunCL::rho_sq_from_0( uint out_block_size, uint iter, uint frame_idx, uint 
 	_clSetKernelArg( kernel, 5, sizeof( cl_mem), 								&mipmap_buf,											fname);		//__constant	uint8*		mipmap_params,			//3
 	_clSetKernelArg( kernel, 6, sizeof( cl_mem), 								&uint_param_buf,										fname);		//__constant	uint*		uint_params,			//4
 	_clSetKernelArg( kernel, 7, sizeof( cl_mem), 								&fp32_param_buf,										fname);		//__constant	float*		fp32_params,			//5
-	_clSetKernelArg( kernel, 8, sizeof( cl_mem), 								&k2k_buf,												fname);		//__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames
+	_clSetKernelArg( kernel, 8, sizeof( cl_mem), 								&current_frames[current_frames_idx[0]].k2k_buf_from_0,	fname);		//__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames
+	_clSetKernelArg( kernel, 9, sizeof( cl_mem), 								&current_frames[current_frames_idx[1]].k2k_buf_from_0,	fname);		//__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames
+	_clSetKernelArg( kernel,10, sizeof( cl_mem), 								&current_frames[current_frames_idx[2]].k2k_buf_from_0,	fname);		//__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames
+	_clSetKernelArg( kernel,11, sizeof( cl_mem), 								&current_frames[current_frames_idx[3]].k2k_buf_from_0,	fname);		//__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames
+	_clSetKernelArg( kernel,12, sizeof( cl_mem), 								&current_frames[current_frames_idx[4]].k2k_buf_from_0,	fname);		//__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames
 
-	_clSetKernelArg( kernel, 9, sizeof( cl_mem),								&current_frames[current_frames_idx[0]].img_buf,			fname);		//__global		float4*		img_cur,				//7		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
-	_clSetKernelArg( kernel,10, sizeof( cl_mem), 								&current_frames[current_frames_idx[1]].img_buf,			fname);		//__global		float4*		img_past_0,				//8
-	_clSetKernelArg( kernel,11, sizeof( cl_mem), 								&current_frames[current_frames_idx[2]].img_buf,			fname);		//__global		float4*		img_past_1,				//9
-	_clSetKernelArg( kernel,12, sizeof( cl_mem), 								&current_frames[current_frames_idx[3]].img_buf,			fname);		//__global		float4*		img_past_2,				//10
-	_clSetKernelArg( kernel,13, sizeof( cl_mem), 								&current_frames[current_frames_idx[4]].img_buf,			fname);		//__global		float4*		img_past_3,				//11
+	_clSetKernelArg( kernel,13, sizeof( cl_mem),								&current_frames[current_frames_idx[0]].img_buf,			fname);		//__global		float4*		img_cur,				//7		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
+	_clSetKernelArg( kernel,14, sizeof( cl_mem), 								&current_frames[current_frames_idx[1]].img_buf,			fname);		//__global		float4*		img_past_0,				//8
+	_clSetKernelArg( kernel,15, sizeof( cl_mem), 								&current_frames[current_frames_idx[2]].img_buf,			fname);		//__global		float4*		img_past_1,				//9
+	_clSetKernelArg( kernel,16, sizeof( cl_mem), 								&current_frames[current_frames_idx[3]].img_buf,			fname);		//__global		float4*		img_past_2,				//10
+	_clSetKernelArg( kernel,17, sizeof( cl_mem), 								&current_frames[current_frames_idx[4]].img_buf,			fname);		//__global		float4*		img_past_3,				//11
 																																																				// NB GT_depth loaded to depth_mem by void RunCL::loadFrameData( ..)
-	_clSetKernelArg( kernel,14, sizeof( cl_mem), 								&current_frames[current_frames_idx[0]].depth_buf,		fname);		//__global		float2* 	depth_map,				//12	// current frame depth, now stored as inv_depth
-	_clSetKernelArg( kernel,15, sizeof( cl_mem), 								&img_edge_mem,											fname);		//__global		float8* 	g1p,					//13	// current frame g1mem
-	_clSetKernelArg( kernel,16, sizeof( cl_mem), 								&current_frames[current_frames_idx[0]].SE3_grad_buf,	fname);		//__global 		float8*		SE3_grad_map_cur_frame,	//14
+	_clSetKernelArg( kernel,18, sizeof( cl_mem), 								&current_frames[current_frames_idx[0]].depth_buf,		fname);		//__global		float2* 	depth_map,				//12	// current frame depth, now stored as inv_depth
+	_clSetKernelArg( kernel,19, sizeof( cl_mem), 								&img_edge_mem,											fname);		//__global		float8* 	g1p,					//13	// current frame g1mem
+	_clSetKernelArg( kernel,20, sizeof( cl_mem), 								&current_frames[current_frames_idx[0]].SE3_grad_buf,	fname);		//__global 		float8*		SE3_grad_map_cur_frame,	//14
 
-	_clSetKernelArg( kernel,17, sizeof( cl_mem), 								&current_frames[current_frames_idx[0]].r_vel_buf,		fname);		//__global		float4*		img_cur,				//15	// multiple past frames.
-	_clSetKernelArg( kernel,18, sizeof( cl_mem), 								&current_frames[current_frames_idx[1]].r_vel_buf,		fname);		//__global		float4*		img_past_0,				//16
-	_clSetKernelArg( kernel,19, sizeof( cl_mem), 								&current_frames[current_frames_idx[2]].r_vel_buf,		fname);		//__global		float4*		img_past_1,				//17
-	_clSetKernelArg( kernel,20, sizeof( cl_mem), 								&current_frames[current_frames_idx[3]].r_vel_buf,		fname);		//__global		float4*		img_past_2,				//18
-	_clSetKernelArg( kernel,21, sizeof( cl_mem), 								&current_frames[current_frames_idx[4]].r_vel_buf,		fname);		//__global		float4*		img_past_3,				//19
+	_clSetKernelArg( kernel,21, sizeof( cl_mem), 								&current_frames[current_frames_idx[0]].r_vel_buf,		fname);		//__global		float4*		img_cur,				//15	// multiple past frames.
+	_clSetKernelArg( kernel,22, sizeof( cl_mem), 								&current_frames[current_frames_idx[1]].r_vel_buf,		fname);		//__global		float4*		img_past_0,				//16
+	_clSetKernelArg( kernel,23, sizeof( cl_mem), 								&current_frames[current_frames_idx[2]].r_vel_buf,		fname);		//__global		float4*		img_past_1,				//17
+	_clSetKernelArg( kernel,24, sizeof( cl_mem), 								&current_frames[current_frames_idx[3]].r_vel_buf,		fname);		//__global		float4*		img_past_2,				//18
+	_clSetKernelArg( kernel,25, sizeof( cl_mem), 								&current_frames[current_frames_idx[4]].r_vel_buf,		fname);		//__global		float4*		img_past_3,				//19
 	//output
-	_clSetKernelArg( kernel,22, sizeof( cl_mem), 								&SE3_rho_map_mem, 										fname);		//__global		float2* 	Rho_,					//20	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
-	_clSetKernelArg( kernel,23, sizeof( cl_float2)*local_work_size,				NULL, 													fname);		//__local		float2*		local_rho				//21	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
+	_clSetKernelArg( kernel,26, sizeof( cl_mem), 								&SE3_rho_map_mem, 										fname);		//__global		float2* 	Rho_,					//20	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
+	_clSetKernelArg( kernel,27, sizeof( cl_float2)*local_work_size,				NULL, 													fname);		//__local		float2*		local_rho				//21	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
 
-	_clSetKernelArg( kernel,24, sizeof( cl_mem), 								&SE3_incr_map_mem,										fname);		//__global 		float2*		SE3_incr_map_,			//22
-	_clSetKernelArg( kernel,25, sizeof( cl_float2)*local_work_size*num_SE3_DoF,	NULL,													fname);		//__local 		float2*		local_SE3_incr			//23
+	_clSetKernelArg( kernel,28, sizeof( cl_mem), 								&SE3_incr_map_mem,										fname);		//__global 		float2*		SE3_incr_map_,			//22
+	_clSetKernelArg( kernel,29, sizeof( cl_float2)*local_work_size*num_SE3_DoF,	NULL,													fname);		//__local 		float2*		local_SE3_incr			//23
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_4 .  "<<flush;}
 
 	cl_command_queue	queue_to_call		= m_queue;
@@ -328,7 +332,7 @@ void RunCL::rho_sq_from_0( uint out_block_size, uint iter, uint frame_idx, uint 
 																																				DownloadAndSave_2Channel_volume(  SE3_rho_map_mem,		ss.str( ), paths.at( "SE3_rho_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	1);
 																																				float max_range_ = 0;
 																																				uint offset_depth_bytes	=0;
-																																				DownloadAndSave_2Channel( depth_mem, ss.str(),  paths.at("depth_mem"),  2*mm_size_bytes_C1, mm_Image_size, CV_32FC2, 	show , max_range_, offset_depth_bytes);	cout << "\nDownloadAndSave_2Channel(.. depth_mem ..)\n"<<flush;
+																																				DownloadAndSave_2Channel( current_frames[current_frames_idx[0]].depth_buf, ss.str(),  paths.at("depth_mem"),  2*mm_size_bytes_C1, mm_Image_size, CV_32FC2, 	show , max_range_, offset_depth_bytes);	cout << "\nDownloadAndSave_2Channel(.. depth_mem ..)\n"<<flush;
 																																				for(int i=0; i<5; i++){
 																																					stringstream ss_; ss_<< ss.str()<<"_current_frames_idx"<<i;
 																																					DownloadAndSave_3Channel( current_frames[current_frames_idx[i]].img_buf,  ss_.str(),   paths.at("imgmem"),   	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , max_range_);
@@ -376,7 +380,7 @@ void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer, uint 
 	uint 			row_offset			= rows_blocks + 4;																				//2
 	uint			thread_offset		= threads_per_DoF;																				//3     2^n  > pixels in fully reduced patch
 	uint			mm_cols				= uint_params[MM_COLS];																			//4
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::reduce_patch_Rho( ..)_chk_2 . "<<flush;
+																																		if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::reduce_patch_Rho( ..)_chk_2 . "<<flush;
 																																			cout<<"\nRunCL::reduce_patch_Rho(..)"\
 																																				<<",  layer="						<<layer\
 																																				<<",  thread_offset="				<<thread_offset\
@@ -453,8 +457,8 @@ void RunCL::update_k2k_cpu( uint layer ){
 																																		Matx44f pose_gt					=	previous_frame_pose_gt	*	current_frame_pose_gt.inv();	//PRINT_MATX44F( pose_gt, );
 																																		//Matx16f pose_gt_algebra			=	PToLie( pose_gt );											//PRINT_MATX16F( pose_gt_algebra, );
 
-																																		Matx44f	pose					=	ReadOutput_44f( 					pose_buf );				//PRINT_MATX44F( pose,	from pose_buf );	PRINT_MATX16F( PToLie(pose),);
-																																		Matx44f pose_update_gt			=	pose.inv() * pose_gt;										/* PRINT_MATX44F( pose_update_gt, );*/		PRINT_MATX16F( PToLie(pose_update_gt),);
+																																		//Matx44f	pose					=	ReadOutput_44f( 					pose_buf );				//PRINT_MATX44F( pose,	from pose_buf );	PRINT_MATX16F( PToLie(pose),);
+																																		//Matx44f pose_update_gt			=	pose.inv() * pose_gt;										/* PRINT_MATX44F( pose_update_gt, );*/		PRINT_MATX16F( PToLie(pose_update_gt),);
 																																	}
 	ReadOutput( (uchar*)&se3_rho_result.Rho,				SE3_rho_map_mem, 	sizeof(cl_float2),		32*sizeof(cl_float2)	);
 	ReadOutput(	(uchar*)se3_rho_result.param_incr_arry,		SE3_incr_map_mem,	6*sizeof(cl_float2),	32*sizeof(cl_float2)	);
@@ -479,8 +483,8 @@ void RunCL::get_rho_result ( Rho_result &rho_result, uint layer, uint num_DoF){	
 																																		Matx44f pose_gt					=	previous_frame_pose_gt	*	current_frame_pose_gt.inv();	//PRINT_MATX44F( pose_gt, );
 																																		//Matx16f pose_gt_algebra			=	PToLie( pose_gt );											//PRINT_MATX16F( pose_gt_algebra, );
 
-																																		Matx44f	pose					=	ReadOutput_44f( 					pose_buf );				//PRINT_MATX44F( pose,	from pose_buf );	PRINT_MATX16F( PToLie(pose),);
-																																		Matx44f pose_update_gt			=	pose.inv() * pose_gt;										/* PRINT_MATX44F( pose_update_gt, );*/		PRINT_MATX16F( PToLie(pose_update_gt),);
+																																		//Matx44f	pose					=	ReadOutput_44f( 					pose_buf );				//PRINT_MATX44F( pose,	from pose_buf );	PRINT_MATX16F( PToLie(pose),);
+																																		//Matx44f pose_update_gt			=	pose.inv() * pose_gt;										/* PRINT_MATX44F( pose_update_gt, );*/		PRINT_MATX16F( PToLie(pose_update_gt),);
 																																	}
 	ReadOutput( (uchar*)&rho_result.Rho,				SE3_rho_map_mem, 	sizeof(cl_float2),			sizeof(cl_float2)	);
 	ReadOutput(	(uchar*)rho_result.param_incr_arry,		SE3_incr_map_mem,	num_DoF*sizeof(cl_float2),	32*sizeof(cl_float2)	);
@@ -508,8 +512,7 @@ void RunCL::get_rho_result ( Rho_result &rho_result, uint layer, uint num_DoF){	
 
 
 
-
-void RunCL::update_k2k( uint layer, float delta_theta, float delta, Matx44f GT_pose )		// To be GPU kernel to iteratively update model..... to be written.
+/*void RunCL::update_k2k( uint layer, float delta_theta, float delta, Matx44f GT_pose )		// To be GPU kernel to iteratively update model..... to be written.
 {
 	string		fname						= "RunCL::update_k2k(..)";
 	int			local_verbosity_threshold	= V_RUNCL_UPDATE_K2K;
@@ -540,7 +543,7 @@ void RunCL::update_k2k( uint layer, float delta_theta, float delta, Matx44f GT_p
 	cl_event			ev;
 																																		if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_k2k( ..)_chk_1.5 #########################"<<flush;
 																																			float pose_ary[16];
-																																			ReadOutput( (uchar*)pose_ary, pose_buf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
+																																			ReadOutput( (uchar*)pose_ary, pose_buf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/ *=0* /)
 																																			Matx44f pose;
 																																			for(int i=0; i<4; i++){ for(int j=0; j<4; j++){ pose.operator()(i,j) = pose_ary[i*4 +j];  } }
 
@@ -553,7 +556,7 @@ void RunCL::update_k2k( uint layer, float delta_theta, float delta, Matx44f GT_p
 																																			PRINT_MATX44F( pose_error, );
 
 																																			float k2k_ary[16];
-																																			ReadOutput( (uchar*)k2k_ary, k2kbuf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
+																																			ReadOutput( (uchar*)k2k_ary, k2kbuf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/ *=0* /)
 																																			PRINT_FLOAT_16( k2k_ary, before );
 																																		}
 																									auto step_0 = high_resolution_clock::now();
@@ -569,16 +572,16 @@ void RunCL::update_k2k( uint layer, float delta_theta, float delta, Matx44f GT_p
 																																				<<" , "<<duration_cast<microseconds>(step_2 - step_1).count() <<flush;
 
 																																			float k2k_ary[16];
-																																			ReadOutput( (uchar*)k2k_ary, k2kbuf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
+																																			ReadOutput( (uchar*)k2k_ary, k2kbuf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/ *=0* /)
 																																			PRINT_FLOAT_16( k2k_ary, after );
 
 																																			float pose_update_ary[6];
-																																			ReadOutput( (uchar*)pose_update_ary, old_results_buf, sizeof(float)*6, 0);	//ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
+																																			ReadOutput( (uchar*)pose_update_ary, old_results_buf, sizeof(float)*6, 0);	//ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/ *=0* /)
 																																			cout<<"\n pose_update_ary = { 	"; for (int i=0; i<6; i++){ cout<<pose_update_ary[i]<<", 	"; }cout<<"}"<<flush;
 
 																																			// compute pose error
 																																			float pose_ary[16];
-																																			ReadOutput( (uchar*)pose_ary, pose_buf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
+																																			ReadOutput( (uchar*)pose_ary, pose_buf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/ *=0* /)
 																																			Matx44f pose;
 																																			for(int i=0; i<4; i++){ for(int j=0; j<4; j++){ pose.operator()(i,j) = pose_ary[i*4 +j];  } }
 
@@ -593,7 +596,7 @@ void RunCL::update_k2k( uint layer, float delta_theta, float delta, Matx44f GT_p
 																																			cout<<"\nRunCL::update_k2k( ..)_finished _____________________"<<flush;
 																																		}
 }
-
+*/
 
 // end of patch kernels //
 ////////////////////////////////////////////////////////////////////////////////////

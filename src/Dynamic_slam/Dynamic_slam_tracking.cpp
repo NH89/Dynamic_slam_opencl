@@ -194,7 +194,6 @@ void Dynamic_slam::estimate_tracking(){
 																																			<<"  ##############################################################"<< flush;
 																																		}
 	int				layer 				= SE3_start_layer;
-	uint			frame_idx			= 1;
 	uint			out_block_size		= 4;
 	float			old_sum_rho_sq		= FLT_MAX-1;
 	float			factor				= -2.0f;
@@ -242,7 +241,7 @@ void Dynamic_slam::estimate_tracking(){
 			runcl.reduce_patch_Rho(		out_block_size, iter,				(uint)layer,							num_SE3_DoF);
 			runcl.get_rho_result(		runcl.se3_rho_result,				(uint)layer,							num_SE3_DoF);
 
-			float		sum_rho			=	runcl.se3_rho_result.Rho.x;																			// currently .x colour channel only.
+			float		sum_rho			=	runcl.se3_rho_result.Rho.x;																		// currently .x colour channel only.
 			float		sum_rho_sq		=	runcl.se3_rho_result.Rho.y;
 			if( isnan(sum_rho_sq) ){
 																			cout << "\nisnan(sum_rho_sq)" <<flush;
@@ -257,11 +256,11 @@ void Dynamic_slam::estimate_tracking(){
 					}else {
 						layer --;																											// Step down to lower layer of image pyramid
 																			cout << "\nlayer = "	<<	layer;
-						old_sum_rho_sq			=	FLT_MAX-1;																				// Re-set old_sum_rho_sq for new layer
+						old_sum_rho_sq	=	FLT_MAX-1;																						// Re-set old_sum_rho_sq for new layer
 					}
 																																			PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_pose, );
 					runcl.update_44f_buf(	old_k2k,	this_frame.k2k_buf_to_0,	fname);
-
+					pose				= old_pose;
 																			cout << endl << flush;
 				}
 			}else{

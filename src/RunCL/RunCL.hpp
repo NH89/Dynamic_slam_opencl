@@ -103,28 +103,29 @@ public:
 	// RunCL_patch_tracking.cpp
 	cl_kernel			pad_image_top_bottom2_kernel, vertcal_blur5_kernel, pad_image_left_right2_kernel, horiz_blur5_kernel, reduce_img_kernel;
 	// RunCL_depth.cpp
-	cl_kernel			/*update_depth_kernel,*/ update_depth_2_kernel, regularize_depth_kernel, enlarge_layer_float_kernel, use_inferred_depthmap_kernel, use_GT_depthmap_kernel;
+	cl_kernel			update_depth_2_kernel, regularize_depth_kernel, enlarge_layer_float_kernel, use_inferred_depthmap_kernel, use_GT_depthmap_kernel;
 
 	// GPU Buffers																	// static = same for all instances of class Dynamic_slam.
-	cl_mem				fp32_param_buf, uint_param_buf, mipmap_buf, img_stats_buf, patch_lookup_table_buf;
+	cl_mem				fp32_param_buf=nullptr,					uint_param_buf=nullptr,								mipmap_buf=nullptr;
+	cl_mem				img_stats_buf=nullptr,					patch_lookup_table_buf=nullptr;
 
-	cl_mem				SE3_rho_map_mem, SE3_weight_map_mem;
-	cl_mem				SE3_map_mem, SE3_incr_map_mem, SE3_hessian_map_mem;//, SE3_jacobian_map_mem;
-	cl_mem				depth_mem_temp, depth_mem_GT;					// 'depth_mem_temp' is use to load & prepare data for depth_mem_GT and transform_depthmap
+	cl_mem				SE3_rho_map_mem=nullptr,				SE3_weight_map_mem=nullptr;
+	cl_mem				SE3_map_mem=nullptr,					SE3_incr_map_mem=nullptr,							SE3_hessian_map_mem=nullptr;//, SE3_jacobian_map_mem;
+	cl_mem				depth_mem_temp=nullptr,					depth_mem_GT=nullptr;								// 'depth_mem_temp' is use to load & prepare data for depth_mem_GT and transform_depthmap
 
-	cl_mem				camera_matrix_map_mem, camera_matrix_grad_map_mem, camera_matrix_hessian_map_mem;
-	cl_mem				lens_distortion_map_mem, distorsion_update_buf;
+	cl_mem				camera_matrix_map_mem=nullptr,			camera_matrix_grad_map_mem=nullptr,					camera_matrix_hessian_map_mem=nullptr;
+	cl_mem				lens_distortion_map_mem=nullptr,		distorsion_update_buf=nullptr;
 
-	cl_mem				pix_sum_mem, var_sum_mem;
-	cl_mem				HSV_grad_mem, ST3_img_grad_mem, img_grad_mem, img_edge_mem;//, g1mem;
+	cl_mem				pix_sum_mem=nullptr,					var_sum_mem=nullptr;
+	cl_mem				HSV_grad_mem=nullptr,					ST3_img_grad_mem=nullptr,							img_grad_mem=nullptr,								img_edge_mem=nullptr;//, g1mem;
 
-	cl_mem				SE3_k2kbuf;
-	cl_mem				old_results_buf,	K_buf, inv_K_buf;
+	cl_mem				SE3_k2kbuf=nullptr;
+	cl_mem				old_results_buf=nullptr,				K_buf=nullptr, 										inv_K_buf=nullptr;
 
-	cl_mem				basemem, imgmem_blurred;
-	cl_mem 				imgmem[num_current_frames],	depth_mem[num_current_frames], velmap[num_current_frames], SE3_grad_map_mem[num_current_frames];
-	cl_mem				k2kbuf[num_current_frames], cur_frames_k2kbuf[num_current_frames], cur_frames_st3buf[num_current_frames];
-	cl_mem				pose_buf[num_current_frames];
+	cl_mem				basemem=nullptr, 						imgmem_blurred=nullptr;
+	cl_mem 				imgmem[num_current_frames]={nullptr},	depth_mem[num_current_frames]={nullptr}, 			velmap[num_current_frames]={nullptr},				SE3_grad_map_mem[num_current_frames]={nullptr};
+	cl_mem				k2kbuf[num_current_frames]={nullptr},	cur_frames_k2kbuf[num_current_frames]={nullptr},	cur_frames_st3buf[num_current_frames]={nullptr};
+	cl_mem				pose_buf[num_current_frames]={nullptr};
 
 	// current frames
 	struct frame{
@@ -373,7 +374,7 @@ public:
 
 	void rho_sq_set_params( 			uint out_block_size);
 	void rho_sq_to_0 (					uint out_block_size, uint iter, uint frame_idx, uint layer, cl_mem k2k_buf, uint num_DoF, string calling_fn);
-	void rho_sq_from_0(					uint out_block_size, uint iter, uint frame_idx, uint layer, cl_mem k2k_buf, uint num_DoF, string calling_fn);
+	void rho_sq_from_0(					uint out_block_size, uint iter, uint frame_idx, uint layer, 			    uint num_DoF, string calling_fn);
 	void reduce_patch_Rho(				uint out_block_size, uint iter, 				uint layer,					uint num_DoF);
 	void get_rho_result( 				Rho_result &rho_result, 						uint layer,					uint num_DoF);
 
