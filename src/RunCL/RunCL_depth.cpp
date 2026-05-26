@@ -210,6 +210,8 @@ void RunCL::propagate_depth_next_layer(uint write_layer ){	// layer = write laye
 	int 	local_verbosity_threshold	= V_RUNCL_PROPAGATE_DEPTH_NEXT_LAYER;												if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::propagate_depth_next_layer(..)_chk0"<<
 																																",   write_layer = "<<write_layer<<flush; }
 	cl_kernel		kernel				= enlarge_layer_float_kernel;
+	const frame		*frame_0			= &current_frames[						current_frames_idx[0] ];
+	const cl_mem 	depth_mem_			= frame_0->depth_buf;
 
 	uint	lookup_table_read_offset	= patch_lookup_table_offset[write_layer+1];
 	uint	write_offset				= MipMap[write_layer*8 + MiM_READ_OFFSET];
@@ -227,7 +229,7 @@ void RunCL::propagate_depth_next_layer(uint write_layer ){	// layer = write laye
 																																"\npatch_height             	= "		<<patch_height<<
 																																"\nstop_offset              	= "		<<stop_offset<<
 																																"\npatch_lookup_table_buf   	= "		<<patch_lookup_table_buf<<
-																																"\ndepth_mem                	= "		<<depth_mem<<
+																																"\ndepth_mem_                	= "		<<depth_mem_<<
 																																endl<<flush;
 																															}
 	_clSetKernelArg( kernel, 0, sizeof(int),						&lookup_table_read_offset,							fname);		// __private	const uint	lookup_table_read_offset,	//0
@@ -257,31 +259,32 @@ void RunCL::propagate_depth_next_layer(uint write_layer ){	// layer = write laye
 																																ss << "_raw_";
 																																stringstream ss_path;	ss_path << "depth_mem";
 																																uint offset_depth_bytes	=0;
-																																DownloadAndSave_2Channel( depth_mem,   	ss.str(),   paths.at(ss_path.str()),   	2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, 	false , fp32_params[MAX_INV_DEPTH], offset_depth_bytes);
+																																DownloadAndSave_2Channel( depth_mem_,   	ss.str(),   paths.at(ss_path.str()),   	2*mm_size_bytes_C1,   mm_Image_size,   CV_32FC2, 	false , fp32_params[MAX_INV_DEPTH], offset_depth_bytes);
 																															}
 																															if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::propagate_depth_next_layer(..)_chk4 Finished:#######################################################"<<flush;}
 }
 
 
 void RunCL::use_inferred_depthmap(uint write_layer ){
-	string 	fname						= "RunCL::use_inferred_depthmap(..)";
-	int 	local_verbosity_threshold	= V_RUNCL_USE_INFERRED_DEPTH;												if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::use_inferred_depthmap(..)_chk0"<<
+	string 	fname							= "RunCL::use_inferred_depthmap(..)";
+	int 	local_verbosity_threshold		= V_RUNCL_USE_INFERRED_DEPTH;													if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::use_inferred_depthmap(..)_chk0"<<
 																																",   write_layer = "<<write_layer<<flush; }
-	cl_kernel 	kernel					= use_inferred_depthmap_kernel;
+	cl_kernel		kernel					= use_inferred_depthmap_kernel;
+	const frame		*frame_0				= &current_frames[						current_frames_idx[0] ];
+	const cl_mem	depth_mem_				= frame_0->depth_buf;
 
-	const uint	lookup_table_read_offset	=	patch_lookup_table_offset[write_layer+2];																//0
-	const uint	read_offset					=	depthmap_params[write_layer].DM_DATA_OFFSET	+  depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET;		//1					//MipMap[write_layer*8 + MiM_READ_OFFSET];			//1
-	uint		depth_in_width				=	depthmap_params[write_layer].DM_WIN_COLS;																//2					//MipMap[ (2+write_layer)*8 + MiM_READ_COLS];		//2
+	const uint	lookup_table_read_offset	= patch_lookup_table_offset[write_layer+2];																	//0
+	const uint	read_offset					= depthmap_params[write_layer].DM_DATA_OFFSET	+  depthmap_params[ max_mipmap_layers-1].DM_WIN_OFFSET;		//1					//MipMap[write_layer*8 + MiM_READ_OFFSET];			//1
+	uint		depth_in_width				= depthmap_params[write_layer].DM_WIN_COLS;																	//2					//MipMap[ (2+write_layer)*8 + MiM_READ_COLS];		//2
 
-	uint		write_offset				=	MipMap[ write_layer*8 + MiM_READ_OFFSET ];																//3
-	uint		depth_width_out				=	uint_params[MM_COLS];																					//4
-	uint		patch_height				=	patch_size;																								//4
+	uint		write_offset				= MipMap[ write_layer*8 + MiM_READ_OFFSET ];																//3
+	uint		depth_width_out				= uint_params[MM_COLS];																						//4
+	uint		patch_height				= patch_size;																								//4
 
 	uint		dm_win_cols					= depthmap_params[ write_layer].DM_WIN_COLS;
 	uint		dm_data_rows				= depthmap_params[ write_layer].DM_DATA_ROWS;
-	uint		stop_offset					= read_offset + dm_win_cols * (dm_data_rows+2);																	//5
+	uint		stop_offset					= read_offset + dm_win_cols * (dm_data_rows+2);																//5
 																															cout << "\nstop_offset="<<stop_offset<<"	= read_offset ("<<read_offset<<") + (dm_win_cols "<<dm_win_cols <<" -1) * dm_data_rows("<<dm_data_rows<<");"<<flush;
-
 
 	_clSetKernelArg( kernel, 0, sizeof(int),						&lookup_table_read_offset,	fname);		// __private	const uint	lookup_table_read_offset,	//0
 	_clSetKernelArg( kernel, 1, sizeof(int),						&read_offset,				fname);		// __private	const uint	write_offset,				//1
@@ -319,7 +322,7 @@ void RunCL::use_inferred_depthmap(uint write_layer ){
 																																uint offset_depth_bytes			=0;
 
 																																cv::Size depth_mem_temp_size	= { mm_Image_size.width, mm_Image_size.height/2 };
-																																DownloadAndSave_2Channel( 		depth_mem,   	ss.str(),   paths.at(ss_path.str()),   	mm_size_bytes_C1,  depth_mem_temp_size /*mm_Image_size*/,   CV_32FC2, 	false , fp32_params[MAX_INV_DEPTH], offset_depth_bytes);
+																																DownloadAndSave_2Channel( 		depth_mem_,   	ss.str(),   paths.at(ss_path.str()),   	mm_size_bytes_C1,  depth_mem_temp_size /*mm_Image_size*/,   CV_32FC2, 	false , fp32_params[MAX_INV_DEPTH], offset_depth_bytes);
 
 																																//DownloadAndSave_2Channel( 		  depth_mem_temp,  ss.str( ), paths.at( "depth_mem_temp"),	mm_size_bytes_C1, depth_mem_temp_size,	CV_32FC2, false , fp32_params[MAX_INV_DEPTH], offset_depth_bytes);
 																																/*

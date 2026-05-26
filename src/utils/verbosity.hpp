@@ -107,7 +107,7 @@
 	#define V_RUNCL__CL_ENQUEUE_ND_RANGE_KERNEL			1
 	#define V_RUNCL_FLUSH_FINISH						1
 	#define	V_RUNCL_WAITFOREVENTANDRELEASE				0
-	#define	V_RUNCL_SET_CAM_BUFS						1
+	#define	V_RUNCL_SET_CAM_BUFS						-1
 	#define	V_RUNCL_ALLOCATEMEM							0
 	#define	V__RUNCL									0
 	#define	V_EXIT_										0
@@ -126,7 +126,7 @@
 
 	/////////////////////////////////////// RUNCL_DOWNLOADANDSAVE.CPP
 	#define	V_RUNCL_CREATEFOLDERS						2
-	#define	V_RUNCL_READOUTPUT							-2
+	#define	V_RUNCL_READOUTPUT							2
 	#define	V_RUNCL_SAVECOSTVOLS						2
 	#define	V_RUNCL_STORE_KEYFRAME						2
 	#define	V_RUNCL_SAVE_VTK							2
@@ -194,9 +194,9 @@
 	/////////////////////////////////////// RUNCL_TRACKING.CPP
 	#define	V_RUNCL_UPDATE_K2K_BUF						-2
 	#define	V_RUNCL_UPDATE_K_BUF						-2
-	#define	V_RUNCL_RHO_SQ								-2 //
-	#define	V_RUNCL_REDUCE_PATCH_RHO					-2
-	#define	V_RUNCL_UPDATE_K2K							-2
+	#define	V_RUNCL_RHO_SQ								2 //
+	#define	V_RUNCL_REDUCE_PATCH_RHO					2
+	#define	V_RUNCL_UPDATE_K2K							2
 
 	#define	V_RELATIVEVEL_MAP							1
 

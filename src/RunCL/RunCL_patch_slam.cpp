@@ -291,7 +291,9 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 	string fname = "RunCL::patch_img_gradients()";
 	int local_verbosity_threshold = V_RUNCL_PATCH_IMG_GRADIENTS;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_chk1 #############################################################"<<flush;}
 	cl_kernel		kernel						= patch_img_grad_kernel;
-	const cl_mem 	imgmem_						= current_frames[						current_frames_idx[0] ].img_buf;
+	const frame		*frame_0					= &current_frames[						current_frames_idx[0] ];
+	const cl_mem 	imgmem_						= frame_0->img_buf;
+	const cl_mem	SE3_grad_map_mem_			= frame_0->SE3_grad_buf;
 
 	size_t			local_work_size_			= patch_img_gradients_workgroup_size[	layer];											// patch_local_work_size[	layer];						//patch_img_gradients_workgroup_size; // patch_img_gradients_local_work_size_;
 	size_t			threads_to_launch			= patch_num_threads[					layer];
@@ -319,30 +321,30 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 	cl_int			res, status;
 	//Inputs:
 	//__private
-	_clSetKernelArg( kernel,	0, sizeof(int),			&layer,							fname);									// __private	uint		layer,						//0
-	_clSetKernelArg( kernel,	1, sizeof(int),			&lookup_table_offset_uint,		fname);									// __private	uint		lookup_table_offset_uint,	//1
-	_clSetKernelArg( kernel,	2, sizeof(int), 		&out_block_size,				fname );								// __private	uint		out_block_size,				//2
-	_clSetKernelArg( kernel,	3, sizeof(cl_uint3),	&SE3_hessian_offset,			fname);									// __private	uint		SE3_hessian_offset,			//2
-	_clSetKernelArg( kernel,	4, sizeof(cl_uint3),	&ST3_out_offset,				fname);									// __private	uint		SE3_hessian_offset,			//3
+	_clSetKernelArg( kernel,	0, sizeof(int),			&layer,											fname);					// __private	uint		layer,						//0
+	_clSetKernelArg( kernel,	1, sizeof(int),			&lookup_table_offset_uint,						fname);					// __private	uint		lookup_table_offset_uint,	//1
+	_clSetKernelArg( kernel,	2, sizeof(int), 		&out_block_size,								fname );				// __private	uint		out_block_size,				//2
+	_clSetKernelArg( kernel,	3, sizeof(cl_uint3),	&SE3_hessian_offset,							fname);					// __private	uint		SE3_hessian_offset,			//3
+	_clSetKernelArg( kernel,	4, sizeof(cl_uint3),	&ST3_out_offset,								fname);					// __private	uint		SE3_hessian_offset,			//4
 	//__constant
-	_clSetKernelArg( kernel,	5, sizeof( cl_mem), 	&mipmap_buf,					fname);									// __constant	uint8*		mipmap_params,			//5
-	_clSetKernelArg( kernel,	6, sizeof( cl_mem), 	&uint_param_buf,				fname);									// __constant	uint*		uint_params,			//6
-	_clSetKernelArg( kernel,	7, sizeof( cl_mem), 	&SE3_map_mem,					fname);									// __constant 	float2*		SE3_map,				//7
+	_clSetKernelArg( kernel,	5, sizeof( cl_mem), 	&mipmap_buf,									fname);					// __constant	uint8*		mipmap_params,				//5
+	_clSetKernelArg( kernel,	6, sizeof( cl_mem), 	&uint_param_buf,								fname);					// __constant	uint*		uint_params,				//6
+	_clSetKernelArg( kernel,	7, sizeof( cl_mem), 	&SE3_map_mem,									fname);					// __constant 	float2*		SE3_map,					//7
 	//__global
-	_clSetKernelArg( kernel,	8, sizeof( cl_mem), 	&patch_lookup_table_buf,		fname);									// __global 	float4*		lookup_table,			//8
-	_clSetKernelArg( kernel,	9, sizeof( cl_mem),		&imgmem_,						fname);									// __global 	float4*		img,						//9		//	"current_frames[idx].img_buf	= imgmem[idx];", NB changes every new frame.
-	_clSetKernelArg( kernel,	10, sizeof(cl_mem), 	&depth_mem,						fname);									// __global		float2* 	depth_map,					//10	// current frame depth, now stored as inv_depth
+	_clSetKernelArg( kernel,	8, sizeof( cl_mem), 	&patch_lookup_table_buf,						fname);					// __global 	float4*		lookup_table,				//8
+	_clSetKernelArg( kernel,	9, sizeof( cl_mem),		&imgmem_,										fname);					// __global 	float4*		img,						//9		//	"current_frames[idx].img_buf	= imgmem[idx];", NB changes every new frame.
+	_clSetKernelArg( kernel,	10, sizeof(cl_mem), 	&depth_mem,										fname);					// __global		float2* 	depth_map,					//10	// current frame depth, now stored as inv_depth
 	//Outputs:
 	//__global
-	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&img_grad_mem,					fname);									// __global 	float8*		img_grad_uv,			//11
-	_clSetKernelArg( kernel,	12, sizeof( cl_mem), 	&img_edge_mem,					fname);									// __global 	float2*		img_grad_uv,			//11
+	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&img_grad_mem,									fname);					// __global 	float8*		img_grad_uv,				//11
+	_clSetKernelArg( kernel,	12, sizeof( cl_mem), 	&img_edge_mem,									fname);					// __global 	float2*		img_grad_uv,				//12
 
-	_clSetKernelArg( kernel,	13, sizeof( cl_mem), 	&SE3_grad_map_mem,				fname);									// __global 	float8*		SE3_grad_map,			//12	// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
-	_clSetKernelArg( kernel,	14, sizeof( cl_mem), 	&SE3_hessian_map_mem,			fname);									// __global 	float4*		SE3_Hessian_pinv_map,	//13	// HSV (6x6) matrix so 36*float8
+	_clSetKernelArg( kernel,	13, sizeof( cl_mem), 	&SE3_grad_map_mem_,								fname);					// __global 	float8*		SE3_grad_map,				//13	// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
+	_clSetKernelArg( kernel,	14, sizeof( cl_mem), 	&SE3_hessian_map_mem,							fname);					// __global 	float4*		SE3_Hessian_pinv_map,		//14	// HSV (6x6) matrix so 36*float8
 	//__local
-	_clSetKernelArg( kernel,	15,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,				//13	// local_Hessian[ sizeof(float4) *6*6 *local_size]
+	_clSetKernelArg( kernel,	15,local_Hessian_size,	NULL,											fname);					// __local		float4*		local_Hessian,				//15	// local_Hessian[ sizeof(float4) *6*6 *local_size]
 	//__global
-	_clSetKernelArg( kernel,	16, sizeof( cl_mem), 	&ST3_img_grad_mem,				fname);									// __global 	float4*		HSV_grad				//15
+	_clSetKernelArg( kernel,	16, sizeof( cl_mem), 	&ST3_img_grad_mem,								fname);					// __global 	float4*		HSV_grad					//16
 
 	res 	= clEnqueueNDRangeKernel(m_queue,		kernel, 1, 0, &threads_to_launch, &local_work_size_, 0, NULL, &ev);
 																	if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
@@ -367,9 +369,9 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 																																}
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_img_gradients()_finished #############################################################"<<flush;
 																																	size_t	offset_		=	0;
-																																	Mat	hessian_Mat(	 mm_Image_size,	CV_32FC4);		ReadOutput( hessian_Mat.data,      SE3_hessian_map_mem,  mm_size_bytes_C4, offset_ );
-																																	Mat	ST3_img_grad_Mat(mm_Image_size,	CV_32FC4);		ReadOutput( ST3_img_grad_Mat.data, ST3_img_grad_mem,     mm_size_bytes_C4, offset_ );
-																																	Mat	SE3_grad_map_Mat(mm_Image_size,	CV_32FC4);		ReadOutput( SE3_grad_map_Mat.data, SE3_grad_map_mem,     mm_size_bytes_C4, offset_ );
+																																	Mat	hessian_Mat(	 mm_Image_size,	CV_32FC4);	ReadOutput( hessian_Mat.data,      SE3_hessian_map_mem,		mm_size_bytes_C4, offset_ );
+																																	Mat	ST3_img_grad_Mat(mm_Image_size,	CV_32FC4);	ReadOutput( ST3_img_grad_Mat.data, ST3_img_grad_mem,		mm_size_bytes_C4, offset_ );
+																																	Mat	SE3_grad_map_Mat(mm_Image_size,	CV_32FC4);	ReadOutput( SE3_grad_map_Mat.data, SE3_grad_map_mem_,		mm_size_bytes_C4, offset_ );
 
 																																	cv::Scalar sum = cv::sum(hessian_Mat);
 																																	bool idx0, idx1, idx2, idx3;
@@ -434,7 +436,7 @@ void RunCL::patch_img_gradients( uint layer ){														// called by Dynamic
 																																	cv::Mat temp_mat = cv::Mat::zeros (rows, mm_width, CV_32FC4);
 																																	cout<<"\n offset = "<<offset<<",  rows ="<<rows<<flush;
 
-																																	ReadOutput( temp_mat.data, SE3_grad_map_mem, size_bytes, offset*4*sizeof(float) );	// read 1st elem of Jacobian to verify kernel summation.
+																																	ReadOutput( temp_mat.data, SE3_grad_map_mem_, size_bytes, offset*4*sizeof(float) );	// read 1st elem of Jacobian to verify kernel summation.
 
 																																	cl_float4 sum_J1	= {{0.0f}};
 																																	cl_float4 sum_H11	= {{0.0f}};
@@ -464,6 +466,8 @@ void  RunCL::patch_SE3_hessian_reduce (uint layer){														// called by Dy
 	string 		fname	= "RunCL::patch_hessian_reduce()";
 	int local_verbosity_threshold = V_RUNCL_PATCH_SE3_HESSIAN_REDUCE;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_hessian_reduce()_chk1 layer="<<layer<<" #############################################################"<<flush;}
 	cl_kernel	kernel	= patch_hessian_reduce_kernel;
+	const frame		*frame_0					= &current_frames[		current_frames_idx[0] ];
+	const cl_mem	SE3_grad_map_mem_			= frame_0->SE3_grad_buf;
 
 	uint	cols		=		patch_hessian_cols[ layer];
 	uint	rows		=		patch_hessian_rows[ layer];
@@ -531,7 +535,7 @@ void  RunCL::patch_SE3_hessian_reduce (uint layer){														// called by Dy
 	current_frames[ current_frames_idx[0] ].inv_SE3_Hessian[layer]	= pinv_H;
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_hessian_reduce()_chk3 ."<<flush;	// Save buffers to file ###########
 																																	stringstream ss;
-																																	ss << "patch_hessian_reduce__frame_num="<<current_frames[ current_frames_idx[0] ].dataset_frame_num<<"_layer="<<layer<<"_";
+																																	ss << "patch_hessian_reduce__frame_num="<<frame_0->dataset_frame_num<<"_layer="<<layer<<"_";
 																																	bool show 		= false;
 																																	bool old_tiff 	= tiff;
 																																	tiff 			= true;
@@ -550,7 +554,7 @@ void  RunCL::patch_SE3_hessian_reduce (uint layer){														// called by Dy
 																																		ss_path 		<< "SE3_grad_map_mem"<<flush;
 																																		cout 			<< "\n" << ss_path.str() <<flush;
 																																		cout 			<< "\n" << paths.at(ss_path.str()) <<flush;
-																																		DownloadAndSave_6Channel_volume(  SE3_grad_map_mem, ss.str(), paths.at(ss_path.str()), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, 1, 6 );
+																																		DownloadAndSave_6Channel_volume(  SE3_grad_map_mem_, ss.str(), paths.at(ss_path.str()), mm_size_bytes_C4, mm_Image_size, CV_32FC4, false, 1, 6 );
 																																	}
 																																	//////////
 																																	tiff 			= old_tiff;

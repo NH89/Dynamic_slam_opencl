@@ -102,12 +102,12 @@ void Dynamic_slam::estimate_camera_matrix(){
 	Matx44f	old_inv_k			= Matx44f::eye();
 	Matx44f	old_k2k				= Matx44f::eye();
 
-	RunCL::frame 	this_frame	= runcl.current_frames[ runcl.current_frames_idx[0] ];
+	RunCL::frame 	*this_frame	= &runcl.current_frames[ runcl.current_frames_idx[0] ];
 
-	Matx44f	pose				= this_frame.pose_from_0;				// runcl.ReadOutput_44f( runcl.pose_buf );
-	Matx44f new_k				= this_frame.K;							// runcl.ReadOutput_44f( runcl.K_buf );
-	Matx44f new_inv_k			= this_frame.inv_K;						// runcl.ReadOutput_44f( runcl.inv_K_buf );
-	Matx44f newK2K				= this_frame.k2k_from_0;				// runcl.ReadOutput_44f( runcl.k2kbuf, cl_flt16_size ); 		// offset = current_frames_idx * cl_flt16_size
+	Matx44f	pose				= this_frame->pose_from_0;				// runcl.ReadOutput_44f( runcl.pose_buf );
+	Matx44f new_k				= this_frame->K;							// runcl.ReadOutput_44f( runcl.K_buf );
+	Matx44f new_inv_k			= this_frame->inv_K;						// runcl.ReadOutput_44f( runcl.inv_K_buf );
+	Matx44f newK2K				= this_frame->k2k_from_0;				// runcl.ReadOutput_44f( runcl.k2kbuf, cl_flt16_size ); 		// offset = current_frames_idx * cl_flt16_size
 																																		//for (uint out_block_size = 4/*32*/; out_block_size > 2; out_block_size /=2){
 	for (uint iter = 0; iter<SE_iter; iter++){
 		auto step_0 = high_resolution_clock::now();
@@ -136,9 +136,9 @@ void Dynamic_slam::estimate_camera_matrix(){
 					layer--;												cout << "\nlayer = "	<<	layer;
 					old_sum_rho_sq	=	FLT_MAX-1;																						// Re-set old_sum_rho_sq for new layer
 				}																														PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_k, ); PRINT_MATX44F( old_inv_k, );
-				runcl.update_44f_buf(	old_k2k,	this_frame.k2k_buf_from_0,	fname );												// Re-set to previous k, camera matrix
-				this_frame.K		= old_k;
-				this_frame.inv_K	= old_inv_k;
+				runcl.update_44f_buf(	old_k2k,	this_frame->k2k_buf_from_0,	fname );												// Re-set to previous k, camera matrix
+				this_frame->K		= old_k;
+				this_frame->inv_K	= old_inv_k;
 																			cout << endl << flush;
 			}
 		}else{
@@ -187,9 +187,9 @@ void Dynamic_slam::estimate_camera_matrix(){
 
 			//runcl.update_k_buf(		newK2K,		new_k, new_inv_k);// may need to include   offset = frame_idx*cl_flt16_size
 
-			runcl.update_44f_buf(	newK2K,		this_frame.k2k_buf_from_0,  fname );
-			this_frame.K			= new_k;
-			this_frame.inv_K		= new_inv_k;
+			runcl.update_44f_buf(	newK2K,		this_frame->k2k_buf_from_0,  fname );
+			this_frame->K			= new_k;
+			this_frame->inv_K		= new_inv_k;
 																																		if( verbosity>local_verbosity_threshold ){
 																																			cout << "\nDynamic_slam::_camera_matrix() chk_5: ,  layer = "<<layer<<"##########"<<flush;
 																																			PRINT_MATX15D( param_update, );

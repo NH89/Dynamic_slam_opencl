@@ -638,7 +638,7 @@ void RunCL::set_mimpmap_offsets(){
 
 void RunCL::set_all_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k ){
 	int local_verbosity_threshold = V_RUNCL_SET_CAM_BUFS;
-	string fname = "RunCL::set_cam_bufs( )";
+	string fname = "RunCL::set_all_cam_bufs( )";																							if(verbosity>local_verbosity_threshold) { cout<<"\n"<<fname<<"(  )_chk0"<<flush;}
 	for (uint frame_idx = 0; frame_idx<num_current_frames; frame_idx++){
 		set_cam_bufs( k, inv_k, pose, k2k, frame_idx );
 	}
@@ -647,15 +647,19 @@ void RunCL::set_all_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f po
 void RunCL::set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k,	uint frame_idx ){
 	int local_verbosity_threshold = V_RUNCL_SET_CAM_BUFS;
 	string fname = "RunCL::set_cam_bufs( )";
-																																			if(verbosity>local_verbosity_threshold) { cout<<"\n"<<fname<<"(  )_chk0"<<flush; }
+																																			if(verbosity>local_verbosity_threshold) { cout<<"\n"<<fname<<"(  )_chk0"
+																																				<<" frame_idx="							<<frame_idx
+																																				<<" current_frames_idx[frame_idx]="		<<current_frames_idx[frame_idx]
+																																				<<flush; }
 																																			// NB Orthographic camera, See notes in convertTransforms.cpp , cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){..}
 																																			// 4x4 perspective matrix is not invertable for points at infinity. We correct ortho->perspective in the kernel by dividing by Z.
 
-	frame	this_frame		= current_frames[ current_frames_idx[frame_idx] ];
-	this_frame.K			=	k;
-	this_frame.inv_K		=	inv_k;
-	update_44f_buf(			pose,	this_frame.pose_buf,		fname);
-	update_44f_buf(			k2k,	this_frame.k2k_buf_to_0,	fname);
+	frame	*this_frame		= &current_frames[ current_frames_idx[frame_idx] ];	cout<<", chk1 "<<flush;		cout<<"\nthis_frame.pose_buf="<<this_frame->pose_buf<<flush;
+	this_frame->K			=	k;												cout<<"\n this_frame.K = \n"<<this_frame->K
+																					<<"\ncurrent_frames[ current_frames_idx[frame_idx] ].K=\n"<<current_frames[ current_frames_idx[frame_idx] ].K<<flush;
+	this_frame->inv_K		=	inv_k;
+	update_44f_buf(			pose,	this_frame->pose_buf,		fname);			cout<<", chk2 "<<flush;
+	update_44f_buf(			k2k,	this_frame->k2k_buf_to_0,	fname);			cout<<", chk3 "<<flush;
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\nRunCL::"<<fname<<"_finished"<<flush;}
 }
 

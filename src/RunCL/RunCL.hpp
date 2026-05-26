@@ -254,7 +254,7 @@ public:
 	///////////////////////////////////// RunCL_current_frames.cpp
 	Matx44f update_pose_bufs_cur_frames( Matx44f new_pose_0to1 );
 	void initialize_current_frame( 		int idx);
-	void initialize_new_frame ();
+	void initialize_new_frame (frame old_frame1);
 	void initialize_current_frames();
 	void update_current_frames_idx();
 	void update_44f_buf(				Matx44f matrix44f,		cl_mem matrix_buf,	string fname );

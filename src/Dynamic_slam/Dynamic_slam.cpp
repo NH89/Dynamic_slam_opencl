@@ -240,7 +240,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 	runcl.cvt_color_space( );
 
 	runcl.build_img_pyramid( "imgmem" );		// RunCL_patch_image_tracking.cpp  way to build pyramid, with additional blur layers at apex
-
+												// Writes img_pyr in 	current_frames[	current_frames_idx[0] ].img_buf;
 	cl_int 			status;
 	cl_event 		writeEvt;
 	status = clEnqueueFillBuffer(runcl.uload_queue, runcl.SE3_hessian_map_mem, &zero_flt, 	sizeof(float), 	0, 2*runcl.mm_size_bytes_C4, 	0, NULL, &writeEvt);

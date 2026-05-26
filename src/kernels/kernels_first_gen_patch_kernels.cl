@@ -92,11 +92,11 @@ __kernel void Rho_sq_to_0(								// To be launched with 1 thread per col for 32
 // 	if (global_id_u < 1 / *num_past_frames* /){printf("\n__kernel void Rho_sq()  layer = %d,  read_index=%d,  read_index/mm_cols=%f ",
 // 																				layer,		read_index,  	(float)read_index/(float)mm_cols	);	}
 */
-	if(global_id_u==0){
-		float16 k2k = inv_k2k[0];
-		printf("\n\n__kernel void Rho_sq(..) frame_idx=%u, layer=%u, inv_k2k[0]= \n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f, ", frame_idx, layer, \
-		k2k[0],k2k[1],k2k[2],k2k[3],	k2k[4],k2k[5],k2k[6],k2k[7],	k2k[8],k2k[9],k2k[10],k2k[11],	k2k[12],k2k[13],k2k[14],k2k[15]		);
-	}
+// 	if(global_id_u==0){
+// 		float16 k2k = inv_k2k[0];
+// 		printf("\n\n__kernel void Rho_sq(..) frame_idx=%u, layer=%u, inv_k2k[0]= \n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f, ", frame_idx, layer, \
+// 		k2k[0],k2k[1],k2k[2],k2k[3],	k2k[4],k2k[5],k2k[6],k2k[7],	k2k[8],k2k[9],k2k[10],k2k[11],	k2k[12],k2k[13],k2k[14],k2k[15]		);
+// 	}
 	local_rho[lid]										= zero_f2;
 	for (uint param_dim=0; param_dim<num_DoF; param_dim++) {
 		local_param_incr[lid + param_dim*local_size]	= zero_f2;

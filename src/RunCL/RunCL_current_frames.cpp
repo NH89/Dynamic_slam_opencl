@@ -122,15 +122,16 @@ void RunCL::initialize_current_frames(){
 	}
 }
 
-void RunCL::initialize_new_frame(){													// Used to set 1st estimate of new frame.
+void RunCL::initialize_new_frame(frame old_frame1){													// Used to set 1st estimate of new frame.
 	int idx		= current_frames_idx[0];
 	int idx2	= current_frames_idx[1];
 																					cout<<"\n\nRunCL::initialize_new_frame()"<<flush;
-																					cout<<"\ncurrent_frames_idx[0] = "<<current_frames_idx[0]<<flush;
+																					cout<<"\ncurrent_frames_idx[0] = "<<current_frames_idx[0]
+																						<<"\ncurrent_frames[	current_frames_idx[0] ].img_buf = "<<current_frames[	current_frames_idx[0] ].img_buf<<flush;
 																					cout<<"\ncurrent_frames_idx[1] = "<<current_frames_idx[1]<<endl<<flush;
-	current_frames[ idx ].dataset_frame_num		= current_frames[ idx2 ].dataset_frame_num + 1;
-	current_frames[ idx ].frame_count			= current_frames[ idx2 ].frame_count;
-	current_frames[ idx ].frame_data_index		= current_frames[ idx2 ].frame_data_index;
+	current_frames[ idx ].dataset_frame_num		= old_frame1.dataset_frame_num + 1;		// Overwritten by RunCL::loadFrame(..)
+	current_frames[ idx ].frame_count			= old_frame1.frame_count+1;				// Overwritten by RunCL::loadFrame(..)
+	current_frames[ idx ].frame_data_index		= old_frame1.frame_data_index;
 	////////////////////////////////////////////////////////////
 	/*	GPU buffers to be Initialized by the kernels that use them.
 	//current_frames[idx].img_buf			= imgmem[idx];			// needs to load new frame - done where ?
@@ -139,14 +140,14 @@ void RunCL::initialize_new_frame(){													// Used to set 1st estimate of n
 	*/
 	////////////////////////////////////////////////////////////
 	current_frames[ idx ].pose_gt				= Matx44f::eye();
-	current_frames[ idx ].pose_from_start		= current_frames[ idx2 ].pose_from_start * current_frames[ idx2 ].pose_to_0;
-	current_frames[ idx ].pose_from_0			= current_frames[ idx2 ].pose_from_0;	// Not used. Overwritten by Dynamic_slam::estimate_tracking()
-	current_frames[ idx ].pose_to_0				= current_frames[ idx2 ].pose_to_0;		// ditto.
+	current_frames[ idx ].pose_from_start		= old_frame1.pose_from_start * old_frame1.pose_to_0;
+	current_frames[ idx ].pose_from_0			= old_frame1.pose_from_0;	// Not used. Overwritten by Dynamic_slam::estimate_tracking()
+	current_frames[ idx ].pose_to_0				= old_frame1.pose_to_0;		// ditto.
 
-	current_frames[ idx ].K						= current_frames[ idx2 ].K;
-	current_frames[ idx ].inv_K					= current_frames[ idx2 ].inv_K;
-	current_frames[ idx ].k2k_from_0			= current_frames[ idx2 ].k2k_from_0;
-	current_frames[ idx ].k2k_to_0				= current_frames[ idx2 ].k2k_to_0;
+	current_frames[ idx ].K						= old_frame1.K;
+	current_frames[ idx ].inv_K					= old_frame1.inv_K;
+	current_frames[ idx ].k2k_from_0			= old_frame1.k2k_from_0;
+	current_frames[ idx ].k2k_to_0				= old_frame1.k2k_to_0;
 	////////////////////////////////////////////////////////////
 	for(uint layer=0; layer<max_mipmap_layers; layer++){
 		current_frames[idx].inv_SE3_Hessian[			layer]	= Matx66f::eye();
@@ -160,6 +161,7 @@ void RunCL::update_current_frames_idx(){											// Call immediately _before_ 
 		uint mod_8  	= fmod(mod_16,8);
 		uint mod_4		= fmod(mod_8,4);
 		uint mod_2		= fmod(mod_4,2);
+		frame	old_frame1	= current_frames[current_frames_idx[1]];
 																					cout<<"\n\nRunCL::update_current_frames_idx()"<<flush;
 																					for(int idx = 0; idx< num_current_frames; idx++){
 																						cout<<"\nidx="<<idx<<",  current_frames_idx["<<idx<<"] = "<<current_frames_idx[idx]<<flush;
@@ -191,7 +193,7 @@ void RunCL::update_current_frames_idx(){											// Call immediately _before_ 
 		}
 		swap( new_current_frames_idx, current_frames_idx);
 
-		initialize_new_frame();	// Re-initializes the new frame.
+		initialize_new_frame(old_frame1);	// Re-initializes the new frame.
 		return;
 	};
 
@@ -204,8 +206,8 @@ void RunCL::update_44f_buf(	Matx44f matrix44f,	cl_mem matrix_buf, string fname )
 						matrix_buf,								//cl_mem 			buffer,
 						CL_FALSE,								//cl_bool 			blocking_write,
 						0,										//size_t 			offset,
-						num_current_frames*16*sizeof(float),	//size_t 			size,
-						matrix_buf,								//const void* 		ptr,
+						16*sizeof(float),						//size_t 			size,
+						array_44f,								//const void* 		ptr,
 						fname									//string 			fname
 					);
 }

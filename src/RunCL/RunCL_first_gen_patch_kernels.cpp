@@ -183,10 +183,14 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 																																				float max_range_ = 0;
 																																				uint offset_depth_bytes	=0;
 																																				DownloadAndSave_2Channel( current_frames[current_frames_idx[frame_idx]	].depth_buf, ss.str(),  paths.at("depth_mem"),  2*mm_size_bytes_C1, mm_Image_size, CV_32FC2, 	show , max_range_, offset_depth_bytes);	cout << "\nDownloadAndSave_2Channel(.. depth_mem ..)\n"<<flush;
-																																				for(int i=0; i<5; i++){
+																																				//for(int i=0; i<5; i++){
+																																				int i =0;
 																																					stringstream ss_; ss_<< ss.str()<<"_current_frames_idx"<<i;
 																																					DownloadAndSave_3Channel( current_frames[current_frames_idx[i]].img_buf,  ss_.str(),   paths.at("imgmem"),   	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , max_range_);
-																																				}
+																																				i = frame_idx;
+																																					ss_<< "_"<<i;
+																																					DownloadAndSave_3Channel( current_frames[current_frames_idx[i]].img_buf,  ss_.str(),   paths.at("imgmem"),   	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , max_range_);
+																																				//}
 																																				//DownloadAndSave_2Channel_volume(  SE3_weight_map_mem,	ss.str( ), paths.at( "SE3_weight_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	vol_layers);
 																																				DownloadAndSave_2Channel_volume(  SE3_incr_map_mem,		ss.str( ), paths.at( "SE3_incr_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	vol_layers);
 																																				tiff = old_tiff;
@@ -218,13 +222,13 @@ void RunCL::rho_sq_from_0( uint out_block_size, uint iter, uint frame_idx, uint 
 																																				//float k2kbuf_ary[16];
 																																				//ReadOutput( (uchar*)k2kbuf_ary, k2k_buf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
 																																				//PRINT_FLOAT_16(k2kbuf_ary, gpu buf);
-
+																																				/*
 																																				for (uint i=0; i<5 ;i++){
 																																					cout<<"\n\n## current_frames[ current_frames_idx["<<i<<"] ].frame_num = "<< current_frames[ current_frames_idx[i] ].dataset_frame_num << flush;
 																																					//PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].pose,		);
 																																					PRINT_MATX44F(	current_frames[ current_frames_idx[i] ].pose_gt,	);
 																																					//PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].k2k_0to1_est,	);
-																																				}
+																																				}*/
 																																			}
  	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, 	&zero_flt, sizeof( float), 0, 			  2*mm_size_bytes_C1, 	fname);				//_clEnqueueWriteBuffer( uload_queue, k2kbuf, CL_FALSE, 0, local_num_samples*16*sizeof( float), k2k_3_16_[start_sample_idx], fname);
 // //	_clEnqueueFillBuffer( uload_queue, SE3_weight_map_mem, 	&zero, sizeof( float), 0, num_SE3_DoF*2*mm_size_bytes_C1, 	fname);
@@ -475,7 +479,7 @@ void RunCL::update_k2k_cpu( uint layer ){
 
 void RunCL::get_rho_result ( Rho_result &rho_result, uint layer, uint num_DoF){	// NB must pass struct by reference to send data to the calling fn.
 	constexpr int		local_verbosity_threshold	= V_RUNCL_UPDATE_K2K;
-																																	if( verbosity>local_verbosity_threshold-3) { cout<<"\n\nRunCL::get_rho_result( ..)_chk_0 . ################################"<< flush;
+																																	if( verbosity>local_verbosity_threshold/*-3*/) { cout<<"\n\nRunCL::get_rho_result( ..)_chk_0 . ################################"<< flush;
 																																		cout << "\nlayer = "	<< layer 	<<endl<<flush;
 																																		Matx44f	current_frame_pose_gt	=	current_frames[ current_frames_idx[0] ].pose_gt;			//PRINT_MATX44F( current_frame_pose_gt, );
 																																		Matx44f	previous_frame_pose_gt	=	current_frames[ current_frames_idx[1] ].pose_gt;			//PRINT_MATX44F( previous_frame_pose_gt, );

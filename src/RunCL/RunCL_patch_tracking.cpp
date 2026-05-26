@@ -66,8 +66,11 @@ void RunCL::build_img_pyramid( std::string folder ){
 	}
 	size_t			local_size		= local_work_size;
 	const cl_mem 	imgmem_			= current_frames[	current_frames_idx[0] ].img_buf;
-																																if(verbosity>local_verbosity_threshold) {
+																																if(verbosity>local_verbosity_threshold-3) {
 																																	cout << "\nlast layer = "<<layer<<flush;
+																																	cout 	<< "\ncurrent_frames_idx[0] = "<<current_frames_idx[0]
+																																			<< "\ncurrent_frames[	current_frames_idx[0] ].img_buf = "<<current_frames[	current_frames_idx[0] ].img_buf<<flush;
+
 																																	cout<<"\n\nRunCL::build_img_pyramid(..)_chk3 Finished all loops."<<flush;
 																																	stringstream ss;	ss << dataset_frame_num << "build_img_pyramid";
 																																	cv::Size new_Image_size = cv::Size(mm_width, mm_height);
