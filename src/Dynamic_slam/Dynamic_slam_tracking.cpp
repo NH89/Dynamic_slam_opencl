@@ -309,23 +309,23 @@ void Dynamic_slam::estimate_tracking(){
 
 				float		num_pixels	=	runcl.se3_rho_result.param_incr_arry[1];													// TO DO move numpixels to SE3_incr.w   & reduce SE3_incr_map_mem from float8 tro float4
 				Matx16d		SE3_incr;	for (int i=0;	i<6; i++){	SE3_incr.operator()(i)	=	runcl.se3_rho_result.param_incr_arry[i*2];  };
-																																		// if( verbosity>local_verbosity_threshold ){
+																																	/*	// if( verbosity>local_verbosity_threshold ){
 																																		// 	cout << "\nDynamic_slam::estimate_tracking() chk_4: ,  ###########################"<<
 																																		// 	"\n sum_rho = "			<< sum_rho		<<
 																																		// 	",	sum_rho_sq	= "		<< sum_rho_sq	<<
 																																		// 	",	num_pixels = "		<< num_pixels	<< endl<<flush;
 																																		// 	PRINT_MATX16F( SE3_incr, );
-																																		// 	/*PRINT_MATX44F( pose, "before update" );*/	PRINT_MATX16F( PToLie(pose), "before update");
-																																		// }
+																																		// 	/ *PRINT_MATX44F( pose, "before update" );* /	PRINT_MATX16F( PToLie(pose), "before update");
+																																		// } */
 				Matx66d	invH			=	runcl.current_frames[ runcl.current_frames_idx[frame_idx] ].inv_SE3_Hessian[layer];
 				Matx16d pose_update		=	SE3_incr * invH;																			// Double precision is required
-																																		// if( verbosity>local_verbosity_threshold ){
+																																	/*	// if( verbosity>local_verbosity_threshold ){
 																																		// 	cout << "\nSE3_incr="			<<SE3_incr		<<endl<<flush;
 																																		// 	cout << "\ninvH="				<<invH			<<endl<<flush;
 																																		// 	cout << "\npose_update_cpu="	<<pose_update	<<endl<<flush;
 																																		// 	PRINT_MATX66F( invH, );
 																																		// 	PRINT_MATX16F( pose_update, "before factor and deltas_matx");
-																																		// }
+																																		// } */
 				pose_update				=	factor *  pose_update.mul( deltas_matx[layer] );											//NB matx.mul(  matx ) => elementwise multiplication.
 																																	//	if( verbosity>local_verbosity_threshold-3 ){PRINT_MATX16F( pose_update, ); }
 				pose					=	LieToP_Matx( pose_update )  *  pose;

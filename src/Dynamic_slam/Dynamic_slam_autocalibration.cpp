@@ -193,6 +193,7 @@ void Dynamic_slam::estimate_camera_matrix(){
 																																		if( verbosity>local_verbosity_threshold ){
 																																			cout << "\nDynamic_slam::_camera_matrix() chk_5: ,  layer = "<<layer<<"##########"<<flush;
 																																			PRINT_MATX15D( param_update, );
+																																			PRINT_MATX44F( old_k,		 );
 																																			PRINT_MATX44F( new_k,		 );
 																																			PRINT_MATX44F( newK2K,		 );
 																																			//Matx44f	pose_now	= runcl.ReadOutput_44f( runcl.pose_buf );							PRINT_MATX44F( pose_now, );

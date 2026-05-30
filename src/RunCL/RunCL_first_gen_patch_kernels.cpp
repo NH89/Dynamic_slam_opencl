@@ -62,10 +62,10 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 																	// Needs 16 elements of local mem per 32x32 patch, to pass data between threads in recursive square reduction.
 																	// Needs 32 elem array of private mem per thread.
 																	// Writes answer to SE3_rho_map_mem, BUT as float2
-	string fname					= "RunCL::rho_sq( ..)";
+	string fname					= "RunCL::rho_sq_to_0( ..)";
 	int local_verbosity_threshold	= V_RUNCL_RHO_SQ;
 	cl_kernel	kernel 				= rho_sq_to_0_kernel;
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk0 .##################################################################"<<flush;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq_to_0( ..)_chk0 .##################################################################"<<flush;
 																																				cout<<endl<<endl
 																																					<<"   dataset_frame_num="	<<dataset_frame_num
 																																					<<",  out_block_size="		<<out_block_size
@@ -106,7 +106,7 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 	size_t				local_work_size_[1]			= { patches_per_compute_uint	* patch_size };
 	size_t				threads_to_launch			= blocks_required 				* local_work_size_[0];									// TO DO precompute an array for this function. ? where to store
 																																			// ? Have a subclass and object for each kernel ?
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_3 "<<flush;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq_to_0( ..)_chk_3 "<<flush;
 																																				cout <<"\n"
 																																					//<<",  reduction="<<reduction
 																																					//<<",  num_threads[reduction]="					<<num_threads[reduction]
@@ -153,7 +153,7 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 
 	_clSetKernelArg( kernel,17, sizeof( cl_mem), 								&SE3_incr_map_mem,												fname);		//__global 		float2*		SE3_incr_map_,			//22
 	_clSetKernelArg( kernel,18, sizeof( cl_float2)*local_work_size*num_SE3_DoF,	NULL,															fname);		//__local 		float2*		local_SE3_incr			//23
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_4 .  "<<flush;}
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq_to_0( ..)_chk_4 .  "<<flush;}
 
 	cl_command_queue	queue_to_call		= m_queue;
 	cl_int				res, status;
@@ -161,16 +161,16 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 																									auto step_0 = high_resolution_clock::now();
 	res 	= clEnqueueNDRangeKernel(queue_to_call, kernel, 1, 0, &threads_to_launch, local_work_size_, 0, NULL, &ev);
 																									if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
-	status 	= clFlush(queue_to_call);																if (status != CL_SUCCESS)	{ cout << "\nRunCL::rho_sq( ..) call_kernel( cl_kernel "<<kernel<<",  clFlush(queue_to_call) status  = "		<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
+	status 	= clFlush(queue_to_call);																if (status != CL_SUCCESS)	{ cout << "\nRunCL::rho_sq_to_0( ..) call_kernel( cl_kernel "<<kernel<<",  clFlush(queue_to_call) status  = "		<<status<<" "<< checkerror(status) <<"\n"<<flush; exit_(status);}
 																									auto step_1 = high_resolution_clock::now();
-	status 	= clWaitForEvents (1, &ev);																if (status != CL_SUCCESS)	{ cout << "\nRunCL::rho_sq( ..) call_kernel( cl_kernel "<<kernel<<") final,  clWaitForEventsh(1, &ev) ="		<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
+	status 	= clWaitForEvents (1, &ev);																if (status != CL_SUCCESS)	{ cout << "\nRunCL::rho_sq_to_0( ..) call_kernel( cl_kernel "<<kernel<<") final,  clWaitForEventsh(1, &ev) ="		<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 																									auto step_2 = high_resolution_clock::now();
 	clReleaseEvent(ev);
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_5 . "<<\
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq_to_0( ..)_chk_5 . "<<\
 																																				"Execution time = "<<  duration_cast<microseconds>(step_1 - step_0).count() \
 																																				<<" , "<<duration_cast<microseconds>(step_2 - step_1).count() <<flush;
 																																			}
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_6 ."<<flush;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq_to_0( ..)_chk_6 ."<<flush;
 																																				stringstream ss;
 																																				ss << "_ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_iter"<<iter<<"_out_bock_size"<<out_block_size<<"_rho_sq()"<<calling_fn;
 																																				stringstream ss_path;
@@ -195,7 +195,7 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 																																				DownloadAndSave_2Channel_volume(  SE3_incr_map_mem,		ss.str( ), paths.at( "SE3_incr_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	vol_layers);
 																																				tiff = old_tiff;
 
-																																				cout<<"\n\nRunCL::rho_sq( ..) finished ########################################################################"<<endl<< flush;
+																																				cout<<"\n\nRunCL::rho_sq_to_0( ..) finished ########################################################################"<<endl<< flush;
 																																			}
 }
 
@@ -204,10 +204,10 @@ void RunCL::rho_sq_from_0( uint out_block_size, uint iter, uint frame_idx, uint 
 																	// Needs 16 elements of local mem per 32x32 patch, to pass data between threads in recursive square reduction.
 																	// Needs 32 elem array of private mem per thread.
 																	// Writes answer to SE3_rho_map_mem, BUT as float2
-	string fname					= "RunCL::rho_sq( ..)";
+	string fname					= "RunCL::rho_sq_from_0( ..)";
 	int local_verbosity_threshold	= V_RUNCL_RHO_SQ;
-	cl_kernel	kernel 				= rho_sq_to_0_kernel;
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk0 .##################################################################"<<flush;
+	cl_kernel	kernel 				= rho_sq_from_0_kernel;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq_from_0( ..)_chk0 .##################################################################"<<flush;
 																																				cout<<endl<<endl
 																																					<<"   dataset_frame_num="	<<dataset_frame_num
 																																					<<",  out_block_size="		<<out_block_size
@@ -249,7 +249,7 @@ void RunCL::rho_sq_from_0( uint out_block_size, uint iter, uint frame_idx, uint 
 	size_t				local_work_size_[1]			= { patches_per_compute_uint	* patch_size };
 	size_t				threads_to_launch			= blocks_required 				* local_work_size_[0];									// TO DO precompute an array for this function. ? where to store
 																																			// ? Have a subclass and object for each kernel ?
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_3 "<<flush;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq_from_0( ..)_chk_3 "<<flush;
 																																				cout <<"\n"
 																																					//<<",  reduction="<<reduction
 																																					//<<",  num_threads[reduction]="					<<num_threads[reduction]
@@ -307,7 +307,7 @@ void RunCL::rho_sq_from_0( uint out_block_size, uint iter, uint frame_idx, uint 
 
 	_clSetKernelArg( kernel,28, sizeof( cl_mem), 								&SE3_incr_map_mem,										fname);		//__global 		float2*		SE3_incr_map_,			//22
 	_clSetKernelArg( kernel,29, sizeof( cl_float2)*local_work_size*num_SE3_DoF,	NULL,													fname);		//__local 		float2*		local_SE3_incr			//23
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_4 .  "<<flush;}
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq_from_0( ..)_chk_4 .  "<<flush;}
 
 	cl_command_queue	queue_to_call		= m_queue;
 	cl_int				res, status;
@@ -320,11 +320,11 @@ void RunCL::rho_sq_from_0( uint out_block_size, uint iter, uint frame_idx, uint 
 	status 	= clWaitForEvents (1, &ev);																if (status != CL_SUCCESS)	{ cout << "\nRunCL::rho_sq( ..) call_kernel( cl_kernel "<<kernel<<") final,  clWaitForEventsh(1, &ev) ="		<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 																									auto step_2 = high_resolution_clock::now();
 	clReleaseEvent(ev);
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_5 . "<<\
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq_from_0( ..)_chk_5 . "<<\
 																																				"Execution time = "<<  duration_cast<microseconds>(step_1 - step_0).count() \
 																																				<<" , "<<duration_cast<microseconds>(step_2 - step_1).count() <<flush;
 																																			}
-																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq( ..)_chk_6 ."<<flush;
+																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq_from_0( ..)_chk_6 ."<<flush;
 																																				stringstream ss;
 																																				ss << "_ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_iter"<<iter<<"_out_bock_size"<<out_block_size<<"_rho_sq()"<<calling_fn;
 																																				stringstream ss_path;

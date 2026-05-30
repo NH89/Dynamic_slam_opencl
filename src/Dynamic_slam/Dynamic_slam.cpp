@@ -197,7 +197,7 @@ int Dynamic_slam::nextFrame() {
 
 	estimate_depth();																	auto step_4 = high_resolution_clock::now();			// own thread ? num iter ?
 
-/*	estimate_calibration();	*/															auto step_5 = high_resolution_clock::now();
+	estimate_calibration();																auto step_5 = high_resolution_clock::now();
 
 																						if(verbosity>local_verbosity_threshold-1) {
 																							getNextFrameProfile(step_0, step_1, step_2, step_3, step_4, step_5 );

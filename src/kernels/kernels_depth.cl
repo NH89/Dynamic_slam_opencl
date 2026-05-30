@@ -25,34 +25,32 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 	__private	const uint	dm_data_rows,			//12
 	__private	const uint	dm_data_stop,			//13
 
-	__private	const float inv_depth_step,			//11
+	__private	const float inv_depth_step,			//14
 
-	__global	float16*	inv_k2k_1,				//12		// transforms for 4 past frames,  k2k_buf
-	__global	float16*	inv_k2k_2,				//12		// transforms for 4 past frames,  k2k_buf
-	__global	float16*	inv_k2k_3,				//12		// transforms for 4 past frames,  k2k_buf
-	__global	float16*	inv_k2k_4,				//12		// transforms for 4 past frames,  k2k_buf
+	__global	float16*	inv_k2k_1,				//15		// transforms for 4 past frames,  k2k_buf
+	__global	float16*	inv_k2k_2,				//16		// transforms for 4 past frames,  k2k_buf
+	__global	float16*	inv_k2k_3,				//17		// transforms for 4 past frames,  k2k_buf
+	__global	float16*	inv_k2k_4,				//18		// transforms for 4 past frames,  k2k_buf
 
-	__constant	uint4*		lookup_table,			//13		// should ideally be a constant.
+	__constant	uint4*		lookup_table,			//19		// should ideally be a constant.
 
-	__global	float4*		img_cur,				//14		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
-	__global	float4*		img_past_1,				//15
-	__global	float4*		img_past_2,				//16
-	__global	float4*		img_past_3,				//17
-	__global	float4*		img_past_4,				//18
+	__global	float4*		img_cur,				//20		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
+	__global	float4*		img_past_1,				//21
+	__global	float4*		img_past_2,				//22
+	__global	float4*		img_past_3,				//23
+	__global	float4*		img_past_4,				//24
 
-//	__global	float*		depth_map,				//19	// current frame depth, now stored as inv_depth
-
-	__global	float4*		vel_cur,				//20	// multiple past frames.
-	__global	float4*		vel_past_1,				//21	// TO DO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
-	__global	float4*		vel_past_2,				//22
-	__global	float4*		vel_past_3,				//23
-	__global	float4*		vel_past_4,				//24
+	__global	float4*		vel_cur,				//25	// multiple past frames.
+	__global	float4*		vel_past_1,				//26	// TO DO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
+	__global	float4*		vel_past_2,				//27
+	__global	float4*		vel_past_3,				//28
+	__global	float4*		vel_past_4,				//29
 
 	//outputs
-	__global	float2*		Rho_,					//25	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
-	__local		float2*		local_rho,				//26	// float2 local_rho[ num_depth_steps * local_work_size/2 ]  hence sizeof(cl_float2)*local_mem_size*num_depth_steps,
+	__global	float2*		Rho_,					//30	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
+	__local		float2*		local_rho,				//31	// float2 local_rho[ num_depth_steps * local_work_size/2 ]  hence sizeof(cl_float2)*local_mem_size*num_depth_steps,
 
-	__global	float2*		inv_depth_incr			//27
+	__global	float2*		inv_depth_incr			//32
 	)
 {
 	const		float16		inv_k2k[num_current_frames]		= { inv_k2k_1[0],	inv_k2k_1[0],	inv_k2k_2[0],	inv_k2k_3[0],	inv_k2k_4[0] };
@@ -61,7 +59,7 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 	__global	float4*		vel_past[num_current_frames]	= { vel_cur,		vel_past_1,		vel_past_2,		vel_past_3, 	vel_past_4 };
 
 
-	const	uint	max_frames							= min(frame_count-1, num_current_frames);
+	const	uint	max_frames							= min(frame_count/*-1*/, num_current_frames);
 	const	uint	global_id_uint						= get_global_id(0);
 	const	uint	lid									= get_local_id(0);
 	const	uint	group_id							= get_group_id(0);
@@ -69,8 +67,8 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 																																					//st3=[%d]=(%f,	%f,	%f,	%f),     past_frame_idx,
 																																					//	st3[past_frame_idx].s0,      st3[past_frame_idx].s1,      st3[past_frame_idx].s2,      st3[past_frame_idx].s3,
 																																					if(global_id_uint==0){
-																																						printf("\n__kernel void update_depth_2(..) frame_count=%d,  max_frames = %d", frame_count, max_frames );
-																																						for (uint		past_frame_idx=1; past_frame_idx <= max_frames; past_frame_idx++){
+																																						printf("\n__kernel void update_depth_2(..) frame_count=%d,  reduction=%f,  max_frames = %d", frame_count, reduction, max_frames );
+																																						for (uint		past_frame_idx=1; past_frame_idx </*=*/ max_frames; past_frame_idx++){
 																																							printf("\n__kernel void update_depth_2(..)   \ninv_k2k[%d]=\n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f)",\
 																																								past_frame_idx,\
 																																								inv_k2k[past_frame_idx].s0,  inv_k2k[past_frame_idx].s1,  inv_k2k[past_frame_idx].s2,  inv_k2k[past_frame_idx].s3,\
