@@ -270,6 +270,8 @@ void RunCL::createKernels(){
 	convert_depth_kernel				= clCreateKernel(m_program, "convert_depth",				&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'convert_depth'  kernel not built.\n"				<<flush; exit_(0);   }
 	mipmap_float_kernel					= clCreateKernel(m_program, "mipmap_linear_flt",			&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'mipmap_linear_flt'  kernel not built.\n"			<<flush; exit_(0);   }
 	cvt_color_space_linear_kernel		= clCreateKernel(m_program, "cvt_color_space_linear",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'cvt_color_space_linear'  kernel not built.\n"		<<flush; exit_(0);   }
+	cvt_image_kernel					= clCreateKernel(m_program, "cvt_image_8UC3_to_32FC4",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'cvt_image_8UC3_to_32FC4'  kernel not built.\n"		<<flush; exit_(0);   }
+
 	comp_SE3_param_maps_kernel			= clCreateKernel(m_program, "compute_SE3_param_maps",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'compute_SE3_param_maps'  kernel not built.\n"		<<flush; exit_(0);   }
 	comp_cam_and_lens_maps_kernel		= clCreateKernel(m_program, "comp_cam_and_lens_maps",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'comp_cam_and_lens_maps'  kernel not built.\n"		<<flush; exit_(0);   }
 	patch_cam_and_lens_Hessian_kernel	= clCreateKernel(m_program, "patch_cam_and_lens_Hessian",	&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'patch_cam_and_lens_Hessian'  kernel not built.\n"	<<flush; exit_(0);   }
@@ -886,6 +888,8 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 	status = clReleaseKernel(convert_depth_kernel);					if (status != CL_SUCCESS)	{ cout << "\nconvert_depth_kernel				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_59"<<flush;
 	status = clReleaseKernel(mipmap_float_kernel);					if (status != CL_SUCCESS)	{ cout << "\nmipmap_float_kernel				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_59"<<flush;
 	status = clReleaseKernel(cvt_color_space_linear_kernel);		if (status != CL_SUCCESS)	{ cout << "\ncvt_color_space_linear_kernel 		status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_49"<<flush;
+	status = clReleaseKernel(cvt_image_kernel);						if (status != CL_SUCCESS)	{ cout << "\ncvt_color_space_linear_kernel 		status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_49"<<flush;
+
 	status = clReleaseKernel(comp_SE3_param_maps_kernel);			if (status != CL_SUCCESS)	{ cout << "\ncomp_param_maps_kernel 			status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_54"<<flush;
 	status = clReleaseKernel(comp_cam_and_lens_maps_kernel);		if (status != CL_SUCCESS)	{ cout << "\ncomp_cam_and_lens_maps_kernel		status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_54"<<flush;
 	//

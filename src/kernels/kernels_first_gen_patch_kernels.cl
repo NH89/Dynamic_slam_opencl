@@ -92,11 +92,12 @@ __kernel void Rho_sq_to_0(								// To be launched with 1 thread per col for 32
 // 	if (global_id_u < 1 / *num_past_frames* /){printf("\n__kernel void Rho_sq()  layer = %d,  read_index=%d,  read_index/mm_cols=%f ",
 // 																				layer,		read_index,  	(float)read_index/(float)mm_cols	);	}
 */
-// 	if(global_id_u==0){
-// 		float16 k2k = inv_k2k[0];
-// 		printf("\n\n__kernel void Rho_sq(..) frame_idx=%u, layer=%u, inv_k2k[0]= \n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f, ", frame_idx, layer, \
-// 		k2k[0],k2k[1],k2k[2],k2k[3],	k2k[4],k2k[5],k2k[6],k2k[7],	k2k[8],k2k[9],k2k[10],k2k[11],	k2k[12],k2k[13],k2k[14],k2k[15]		);
-// 	}
+ 	if(global_id_u==0){
+ 		float16 k2k = inv_k2k[0];
+ 		printf("\n\n__kernel void Rho_sq(..) frame_idx=%u, layer=%u, img_cur=%p,  img_past=%p  reduction=%f,  inv_k2k[0]= \n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f, ", \
+ 		frame_idx, layer,  img_cur,  img_past, reduction,\
+ 		k2k[0],k2k[1],k2k[2],k2k[3],	k2k[4],k2k[5],k2k[6],k2k[7],	k2k[8],k2k[9],k2k[10],k2k[11],	k2k[12],k2k[13],k2k[14],k2k[15]		);
+ 	}
 	local_rho[lid]										= zero_f2;
 	for (uint param_dim=0; param_dim<num_DoF; param_dim++) {
 		local_param_incr[lid + param_dim*local_size]	= zero_f2;
@@ -116,6 +117,8 @@ __kernel void Rho_sq_to_0(								// To be launched with 1 thread per col for 32
 		uint u 						= fmod((float)index, mm_cols);
 		px_k2k( inv_k2k[0],  reduction,  v,  u,  inv_depth.x, &u2_flt_1,  &v2_flt_1, print_ );
 
+		if(global_id_u==0){ printf("\n\n__kernel void Rho_sq(..) frame_idx=%u, layer=%u, reduction=%f,  v,u=(%u,%u)  inv_depth.x=%f, u2_flt_1,v2_flt_1=(%f,%f)", \
+																 frame_idx,    layer, 	 reduction,  v,  u,  inv_depth.x, u2_flt_1,   v2_flt_1 ); }
 		uint margin					= 4;// * reduction;
 		intersection 				= 	(u>margin)			&& (u<=read_cols_-margin)			&& (v>margin)			&& (v<=read_rows_-margin)			&& \
 										(u2_flt_1>margin)	&& (u2_flt_1<=read_cols_-margin)	&& (v2_flt_1>margin)	&& (v2_flt_1<=read_rows_-margin)	&& \
@@ -166,7 +169,7 @@ __kernel void Rho_sq_to_0(								// To be launched with 1 thread per col for 32
 			barrier(CLK_LOCAL_MEM_FENCE );
 		}
 		// Save intermediate size ST3 patches for depth map updates, //////////			// TODO ST3 Depth, vel, accel ? Vary output level.
-		if (layer==0 && step==out_block_size/2){										// currently only for layer zero for debugging															// save ST3 map at out_block_size, to use for updating depth_map and rel_vel_map
+		if (/*layer==0 &&*/ step==out_block_size/2){										// currently only for layer zero for debugging															// save ST3 map at out_block_size, to use for updating depth_map and rel_vel_map
 			uint frame_offset 		= write_index  + 25 ;								// stacks frame ST3 maps in adjacent columns..
 			uint write_block_row	= 0;
 			if( fmod((float)lid,out_block_size) == 0 ){																																			// selects columns i.e. threads within the workgroup

@@ -87,6 +87,9 @@ void RunCL::_clEnqueueWriteBuffer(
 }
 
 
+
+
+
 void RunCL::_clEnqueueFillBuffer(
 	cl_command_queue 	command_queue,
 	cl_mem 				buffer,

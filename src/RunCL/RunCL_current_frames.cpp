@@ -123,15 +123,16 @@ void RunCL::initialize_current_frames(){
 }
 
 void RunCL::initialize_new_frame(frame old_frame1){													// Used to set 1st estimate of new frame.
-	int idx		= current_frames_idx[0];
-	int idx2	= current_frames_idx[1];
+	int idx0	= current_frames_idx[0];
+	int idx1	= current_frames_idx[1];
 																					cout<<"\n\nRunCL::initialize_new_frame()"<<flush;
 																					cout<<"\ncurrent_frames_idx[0] = "<<current_frames_idx[0]
 																						<<"\ncurrent_frames[	current_frames_idx[0] ].img_buf = "<<current_frames[	current_frames_idx[0] ].img_buf<<flush;
 																					cout<<"\ncurrent_frames_idx[1] = "<<current_frames_idx[1]<<endl<<flush;
-	current_frames[ idx ].dataset_frame_num		= old_frame1.dataset_frame_num + 1;		// Overwritten by RunCL::loadFrame(..)
-	current_frames[ idx ].frame_count			= old_frame1.frame_count+1;				// Overwritten by RunCL::loadFrame(..)
-	current_frames[ idx ].frame_data_index		= old_frame1.frame_data_index;
+
+	current_frames[ idx0 ].dataset_frame_num	= old_frame1.dataset_frame_num + 1;		// Overwritten by RunCL::loadFrame(..)
+	current_frames[ idx0 ].frame_count			= old_frame1.frame_count+1;				// Overwritten by RunCL::loadFrame(..)
+	current_frames[ idx0 ].frame_data_index		= old_frame1.frame_data_index;
 	////////////////////////////////////////////////////////////
 	/*	GPU buffers to be Initialized by the kernels that use them.
 	//current_frames[idx].img_buf			= imgmem[idx];			// needs to load new frame - done where ?
@@ -139,21 +140,26 @@ void RunCL::initialize_new_frame(frame old_frame1){													// Used to set 1
 	//current_frames[idx].r_vel_buf			= velmap[idx];			// TODO needs to sample & interpolate previous 		// velocity _relative_ to the camera.
 	*/
 	////////////////////////////////////////////////////////////
-	current_frames[ idx ].pose_gt				= Matx44f::eye();
-	current_frames[ idx ].pose_from_start		= old_frame1.pose_from_start * old_frame1.pose_to_0;
-	current_frames[ idx ].pose_from_0			= old_frame1.pose_from_0;	// Not used. Overwritten by Dynamic_slam::estimate_tracking()
-	current_frames[ idx ].pose_to_0				= old_frame1.pose_to_0;		// ditto.
+	current_frames[ idx0 ].pose_gt				= Matx44f::eye();
 
-	current_frames[ idx ].K						= old_frame1.K;
-	current_frames[ idx ].inv_K					= old_frame1.inv_K;
-	current_frames[ idx ].k2k_from_0			= old_frame1.k2k_from_0;
-	current_frames[ idx ].k2k_to_0				= old_frame1.k2k_to_0;
+	current_frames[ idx1 ].pose_from_start		= old_frame1.pose_from_start * old_frame1.pose_to_0;
+	current_frames[ idx1 ].pose_from_0			= old_frame1.pose_from_0;	// Not used. Overwritten by Dynamic_slam::estimate_tracking()
+	current_frames[ idx1 ].pose_to_0			= old_frame1.pose_to_0;		// ditto.
+
+	current_frames[ idx0 ].K					= old_frame1.K;
+	current_frames[ idx0 ].inv_K				= old_frame1.inv_K;
+
+	current_frames[ idx1 ].K					= old_frame1.K;
+	current_frames[ idx1 ].inv_K				= old_frame1.inv_K;
+	current_frames[ idx1 ].k2k_from_0			= old_frame1.k2k_from_0;
+	current_frames[ idx1 ].k2k_to_0				= old_frame1.k2k_to_0;
 	////////////////////////////////////////////////////////////
 	for(uint layer=0; layer<max_mipmap_layers; layer++){
-		current_frames[idx].inv_SE3_Hessian[			layer]	= Matx66f::eye();
-		current_frames[idx].inv_camera_matrix_Hessian[	layer]	= Matx55d::eye();
-		current_frames[idx].inv_lens_distortion_Hessian[layer]	= Matx55d::eye();
+		current_frames[idx0].inv_SE3_Hessian[			layer]	= Matx66f::eye();
+		current_frames[idx0].inv_camera_matrix_Hessian[	layer]	= Matx55d::eye();
+		current_frames[idx0].inv_lens_distortion_Hessian[layer]	= Matx55d::eye();
 	}
+																					PRINT_MATX44F( current_frames[ idx0 ].pose_to_0, );
 }
 
 void RunCL::update_current_frames_idx(){											// Call immediately _before_ loading new frame.
@@ -161,30 +167,38 @@ void RunCL::update_current_frames_idx(){											// Call immediately _before_ 
 		uint mod_8  	= fmod(mod_16,8);
 		uint mod_4		= fmod(mod_8,4);
 		uint mod_2		= fmod(mod_4,2);
-		frame	old_frame1	= current_frames[current_frames_idx[1]];
+		frame	old_frame1			= current_frames[current_frames_idx[1]];	// shallow copy
+
+		old_frame1.pose_from_start	= current_frames[current_frames_idx[1]].pose_from_start;
+		old_frame1.pose_from_0		= current_frames[current_frames_idx[1]].pose_from_0;
+		old_frame1.pose_to_0		= current_frames[current_frames_idx[1]].pose_to_0;
+		old_frame1.K 				= current_frames[current_frames_idx[1]].K;
+		old_frame1.inv_K 			= current_frames[current_frames_idx[1]].inv_K;
 																					cout<<"\n\nRunCL::update_current_frames_idx()"<<flush;
+																					PRINT_MATX44F(old_frame1.pose_from_start, );
+
 																					for(int idx = 0; idx< num_current_frames; idx++){
 																						cout<<"\nidx="<<idx<<",  current_frames_idx["<<idx<<"] = "<<current_frames_idx[idx]<<flush;
 																					}
-		if ( (mod_8==0) || (frame_count<num_current_frames) ){						//cout<<"\n(mod_16==0) "; NB in first 4 frames keeps every frame until the array is full.
+		if ( (mod_8==0) || (frame_count<num_current_frames) ){						cout<<"\n(mod_8==0) "; //NB in first 4 frames keeps every frame until the array is full.
 			new_current_frames_idx[0] = current_frames_idx[4];
 			new_current_frames_idx[1] = current_frames_idx[0];
 			new_current_frames_idx[2] = current_frames_idx[1];
 			new_current_frames_idx[3] = current_frames_idx[2];
 			new_current_frames_idx[4] = current_frames_idx[3];
-		}else if (mod_4==0){														//cout<<"\n(mod_8==0) ";
+		}else if (mod_4==0){														cout<<"\n(mod_4==0) ";
 			new_current_frames_idx[0] = current_frames_idx[3];
 			new_current_frames_idx[1] = current_frames_idx[0];
 			new_current_frames_idx[2] = current_frames_idx[1];
 			new_current_frames_idx[3] = current_frames_idx[2];
 			new_current_frames_idx[4] = current_frames_idx[4];
-		}else if (mod_2==0){														//cout<<"\n(mod_4==0) ";
+		}else if (mod_2==0){														cout<<"\n(mod_2==0) ";
 			new_current_frames_idx[0] = current_frames_idx[2];
 			new_current_frames_idx[1] = current_frames_idx[0];
 			new_current_frames_idx[2] = current_frames_idx[1];
 			new_current_frames_idx[3] = current_frames_idx[3];
 			new_current_frames_idx[4] = current_frames_idx[4];
-		}else{																		//cout<<"\n(mod_2==0) ";
+		}else{																		cout<<"\n(mod_ELSE==0) ";
 			new_current_frames_idx[0] = current_frames_idx[1];
 			new_current_frames_idx[1] = current_frames_idx[0];
 			new_current_frames_idx[2] = current_frames_idx[2];

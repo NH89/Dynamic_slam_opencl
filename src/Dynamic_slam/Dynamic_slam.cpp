@@ -237,7 +237,7 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 																																			//image.convertTo(image, CV_16FC3, 1.0/256, 0.0); // NB cv_16FC3 is preferable, for faster half precision processing on AMD, Intel & ARM GPUs.
 	runcl.loadFrame( image );																												// NB Nvidia GeForce have 'Tensor Compute" FP16, accessible by PTX. AMD have RDNA and CDNA. These need PTX/assembly code and may use BF16 instead of FP16.
 																																			// load a basic image in CV_8UC3, then convert on GPU to 'half'
-	runcl.cvt_color_space( );
+	runcl.cvt_image();	//runcl.cvt_color_space( ); suspect step in hue values caused tracking errors.
 
 	runcl.build_img_pyramid( "imgmem" );		// RunCL_patch_image_tracking.cpp  way to build pyramid, with additional blur layers at apex
 												// Writes img_pyr in 	current_frames[	current_frames_idx[0] ].img_buf;

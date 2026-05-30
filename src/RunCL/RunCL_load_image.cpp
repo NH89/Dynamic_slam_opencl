@@ -17,6 +17,35 @@ void RunCL::loadFrame(cv::Mat image){ //getFrame();																							// Wri
 																																			}
 }
 
+void RunCL::cvt_image(){
+	string			fname 						= "RunCL::cvt_image()";
+	int				local_verbosity_threshold 	= V_RUNCL_CVT_COLOR_SPACE;
+	cl_kernel		kernel						= cvt_image_kernel;
+	const cl_mem	imgmem_						= current_frames[ current_frames_idx[0] ].img_buf;
+																																			if(verbosity>local_verbosity_threshold) {
+																																				cout<<"\n\nRunCL::cvt_image()_chk0"<<flush;
+																																				cout << "\n";
+																																				cout << ",mm_Image_size = " 	<< mm_Image_size << endl;
+																																				cout << ",mm_Image_type = "		<< mm_Image_type << endl;
+																																				cout << ",mm_size_bytes_C3 = " 	<< mm_size_bytes_C3 << endl;
+																																				cout << ",mm_size_bytes_C4 = " 	<< mm_size_bytes_C4 << endl;
+																																				cout << ",mm_size_bytes_C1 = " 	<< mm_size_bytes_C1 << endl;
+																																				cout << "\n";
+																																				cout << ",baseImage_size, = " 	<< baseImage_size << endl;
+																																				cout << ",baseImage_type = " 	<< baseImage_type << endl;
+																																				cout << ",image_size_bytes = " 	<< image_size_bytes	<< endl;
+																																				cout << ",mm_vol_size_bytes = " << mm_vol_size_bytes << endl;
+																																				cout << "\n" 					<< flush;
+																																			}
+	_clSetKernelArg( kernel, 0, sizeof(cl_mem), &basemem, fname);														//__global uchar3*		base,			//0
+	_clSetKernelArg( kernel, 1, sizeof(cl_mem), &imgmem_, fname);	   													//__global float4*		img,			//1
+	_clSetKernelArg( kernel, 2, sizeof(cl_mem), &uint_param_buf, fname);												//__global uint*		uint_params		//2
+	_clSetKernelArg( kernel, 3, sizeof(cl_mem), &mipmap_buf, fname);													//__constant uint*		mipmap_params,	//3		// NB layer = 0.
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::cvt_image()_chk1,  global_work_size="<< global_work_size <<flush;
+	_clEnqueueNDRangeKernel(m_queue, kernel, 1, 0, &global_work_size, &local_work_size, fname);
+																																			if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::cvt_image()_chk3_Finished"<<flush;
+}
+
 void RunCL::cvt_color_space(){ //getFrame(); basemem(CV_8UC3, RGB)->imgmem(CV16FC3, HSV), NB we will use basemem for image upload, and imgmem for the MipMap. RGB is default for .png standard.
 	string			fname 						= "RunCL::cvt_color_space()";
 	int				local_verbosity_threshold 	= V_RUNCL_CVT_COLOR_SPACE;

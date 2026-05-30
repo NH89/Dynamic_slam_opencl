@@ -193,9 +193,9 @@ void Dynamic_slam::estimate_tracking(){
 																																			cout << "\nDynamic_slam::estimate_tracking() chk_0"
 																																			<<"  ##############################################################"<< flush;
 																																		}
-	uint			out_block_size		= 4;
+	uint			out_block_size		= 2;
 
-	float			factor				= -1.0f;//-2.0f;
+
 	Matx44f			old_pose			= Matx44f::eye();
 	Matx44f			old_k2k				= Matx44f::eye();
 	RunCL::frame	*frame1				= &runcl.current_frames[ runcl.current_frames_idx[1] ];
@@ -238,11 +238,12 @@ void Dynamic_slam::estimate_tracking(){
 																																		}
 		int			layer 				= SE3_start_layer;
 		float		old_sum_rho_sq		= FLT_MAX-1;
+		float		old_sum_rho_sq_l0	= FLT_MAX-1;
+		float		factor				= -1.0f;
+
 		Matx44f		pose;
 		Matx44f		newK2K;
-		if (frame_idx==1){
-			//frame1->pose_to_0			= frame2->pose_to_0 * frame2->pose_to_0;															// Initial SE3 estimate is same as previous time step.
-		}else{
+		if (frame_idx>1){																													// Initial SE3 estimate is same as previous time step.
 			this_frame->pose_to_0		= this_frame->pose_to_0 * frame1->pose_to_0;														// Subsequent past frames start from frame1_to_0 estimate, as update to this_frame to frame1 from previous time step.
 		}
 		pose							= this_frame->pose_to_0;
@@ -257,18 +258,25 @@ void Dynamic_slam::estimate_tracking(){
 			auto step_0 = high_resolution_clock::now();
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\nDynamic_slam::estimate_tracking() chk_3: frame_idx="<<frame_idx<<",  layer="<<layer
-																																			<<", out_block_size="<<out_block_size<<",  iter="<<iter<<",  ###########################"<<flush;
+																																			<<", out_block_size="<<out_block_size<<",  iter="<<iter
+																																			<<",  this_frame->dataset_frame_num="<<this_frame->dataset_frame_num<<"###########################"<<flush;
 																																			PRINT_MATX16F( PToLie(pose), "current estimate" );
 																																			//PRINT_MATX44F( old_k2k, ); PRINT_MATX16F( PToLie(old_pose), );
 
 																																			uint	out_block_size		= 2;
 																																			uint	layer				= 0;
-																																			string fname_ = fname_short + to_string(frame_idx);
+																																			string fname_ = fname_short + to_string(frame_idx) +"_"+ to_string(this_frame->dataset_frame_num)+"_"+to_string(old_sum_rho_sq_l0)+"_#";
 																																			runcl.rho_sq_to_0( out_block_size, iter, frame_idx, layer, this_frame->k2k_buf_to_0, num_SE3_DoF, fname_	);
-																																			// For debugging, get a larger, finer Rho map
 
+																																			// For debugging, get a larger, finer Rho map
+																																			runcl.reduce_patch_Rho(		out_block_size, iter,				(uint)layer,							num_SE3_DoF);
+																																			runcl.get_rho_result(		runcl.se3_rho_result,				(uint)layer,							num_SE3_DoF);
+
+																																			old_sum_rho_sq_l0	=	runcl.se3_rho_result.Rho.y;		cout << "\nold_sum_rho_sq_l0	= "<< old_sum_rho_sq_l0 <<flush;
 																																		}
-			runcl.rho_sq_to_0(			out_block_size, iter,	frame_idx,	(uint)layer,  this_frame->k2k_buf_to_0,	num_SE3_DoF, fname_short);
+			string fname_ = fname_short + to_string(frame_idx) +"_"+ to_string(this_frame->dataset_frame_num)+"_"+to_string(old_sum_rho_sq);
+
+			runcl.rho_sq_to_0(			out_block_size, iter,	frame_idx,	(uint)layer,  this_frame->k2k_buf_to_0,	num_SE3_DoF, fname_);
 			runcl.reduce_patch_Rho(		out_block_size, iter,				(uint)layer,							num_SE3_DoF);
 			runcl.get_rho_result(		runcl.se3_rho_result,				(uint)layer,							num_SE3_DoF);
 
@@ -281,12 +289,12 @@ void Dynamic_slam::estimate_tracking(){
 				if(layer<=0) {break;}																										// Reached bottom of image pyramid.
 				else {
 																		//	cout << "\nsum_rho_sq > old_sum_rho_sq = "<< old_sum_rho_sq;
-					if(factor<-1.0f){																										// End amplified steps
-						factor = -1.0f;
-																		//	cout << ",  factor -2.0f -> -1.0f";
+					if(factor<-0.1f){																										// End amplified steps
+						factor *= 0.5f;
+																			cout << ",  factor -2.0f -> -1.0f";
 					}else {
 						layer --;																											// Step down to lower layer of image pyramid
-																		//	cout << "\nlayer = "	<<	layer;
+																			cout << "\nlayer = "	<<	layer;
 						old_sum_rho_sq	=	FLT_MAX-1;																						// Re-set old_sum_rho_sq for new layer
 					}
 																																		//	PRINT_MATX44F( old_k2k, ); PRINT_MATX16F( PToLie(old_pose), );
@@ -336,6 +344,7 @@ void Dynamic_slam::estimate_tracking(){
 					old_sum_rho_sq		=	FLT_MAX-1;
 				}
 			}
+			if( ( SE3_start_layer - layer) < (iter/3) ) layer--;
 			auto step_1 = high_resolution_clock::now();																					/*if( verbosity>local_verbosity_threshold-3){
 																																			cout << "\nDynamic_slam::estimate_tracking() loop finished  ###########################"\
 																																			<<"Tracking loop time = "<<  duration_cast<microseconds>(step_1 - step_0).count()

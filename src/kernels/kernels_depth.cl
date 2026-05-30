@@ -27,8 +27,11 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 
 	__private	const float inv_depth_step,			//11
 
+	__global	float16*	inv_k2k_1,				//12		// transforms for 4 past frames,  k2k_buf
+	__global	float16*	inv_k2k_2,				//12		// transforms for 4 past frames,  k2k_buf
+	__global	float16*	inv_k2k_3,				//12		// transforms for 4 past frames,  k2k_buf
+	__global	float16*	inv_k2k_4,				//12		// transforms for 4 past frames,  k2k_buf
 
-	__constant	float16*	inv_k2k,				//12		// transforms for 4 past frames,  k2k_buf
 	__constant	uint4*		lookup_table,			//13		// should ideally be a constant.
 
 	__global	float4*		img_cur,				//14		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
@@ -52,8 +55,11 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 	__global	float2*		inv_depth_incr			//27
 	)
 {
-	__global float4*	img_past[num_current_frames]	= { img_cur, img_past_1, img_past_2, img_past_3, img_past_4 };
-	__global float4*	vel_past[num_current_frames]	= { vel_cur, vel_past_1, vel_past_2, vel_past_3, vel_past_4 };
+	const		float16		inv_k2k[num_current_frames]		= { inv_k2k_1[0],	inv_k2k_1[0],	inv_k2k_2[0],	inv_k2k_3[0],	inv_k2k_4[0] };
+
+	__global	float4*		img_past[num_current_frames]	= { img_cur,		img_past_1,		img_past_2,		img_past_3, 	img_past_4 };
+	__global	float4*		vel_past[num_current_frames]	= { vel_cur,		vel_past_1,		vel_past_2,		vel_past_3, 	vel_past_4 };
+
 
 	const	uint	max_frames							= min(frame_count-1, num_current_frames);
 	const	uint	global_id_uint						= get_global_id(0);
@@ -64,7 +70,7 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 																																					//	st3[past_frame_idx].s0,      st3[past_frame_idx].s1,      st3[past_frame_idx].s2,      st3[past_frame_idx].s3,
 																																					if(global_id_uint==0){
 																																						printf("\n__kernel void update_depth_2(..) frame_count=%d,  max_frames = %d", frame_count, max_frames );
-																																						for (uint		past_frame_idx=0; past_frame_idx <= max_frames; past_frame_idx++){
+																																						for (uint		past_frame_idx=1; past_frame_idx <= max_frames; past_frame_idx++){
 																																							printf("\n__kernel void update_depth_2(..)   \ninv_k2k[%d]=\n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f) \n(%f,	%f,	%f,	%f)",\
 																																								past_frame_idx,\
 																																								inv_k2k[past_frame_idx].s0,  inv_k2k[past_frame_idx].s1,  inv_k2k[past_frame_idx].s2,  inv_k2k[past_frame_idx].s3,\
@@ -173,7 +179,7 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 		// Is simple rho a bad choice, do I need covariance ?  Do I need more colour channels ? or a way to vary weighting between them ?
 
 					float		u2f,	v2f;																												// current frame
-					px_k2k( 	inv_k2k[past_frame_idx],  reduction,  v,  u,  inv_depth,  &u2f,  &v2f, print_ );											// Where to sample the past image frame //////
+					px_k2k(		inv_k2k[past_frame_idx],  reduction,  v,  u,  inv_depth,  &u2f,  &v2f, print_ );											// Where to sample the past image frame //////
 /*
 // 																							if( global_id_uint ==10 && row_in_block==0 ){		//  / *lid* / / *group_id * /  / *u==(read_cols_/2) && v==(read_rows_/2)* / / *global_id_uint==0* /
 // 																							printf("\n__kernel void update_depth_2(..) chk_2,  reduction=%f,  past_frame_idx=%u,   group_id=%d,  row_in_block=%u, read_index=%u, inv_depth=%f,    u=%u, v=%u, u2f=%f,  v2f=%f,  read_cols_=%u,  read_rows_=%u, global_id_uint=%d, inv_depth_step= %f",\

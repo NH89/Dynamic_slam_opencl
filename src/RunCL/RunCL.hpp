@@ -94,7 +94,7 @@ public:
 	cl_kernel			comp_cam_and_lens_maps_kernel, patch_cam_and_lens_Hessian_kernel;
 	// old kernels
 	cl_kernel			convert_depth_kernel;
-	cl_kernel			cvt_color_space_kernel, cvt_color_space_linear_kernel;
+	cl_kernel			cvt_color_space_kernel, cvt_color_space_linear_kernel, cvt_image_kernel;
 	cl_kernel 			mipmap_float_kernel,  comp_SE3_param_maps_kernel;
 	// 1st gen patch kernels ?
 	cl_kernel			rho_sq_to_0_kernel, rho_sq_from_0_kernel, reduce_patch_Rho_kernel, update_k2k_kernel;	// TO DO declare, create, release kernel in Run_cl.h etc.
@@ -307,6 +307,7 @@ public:
 	////////////////////////////////////// RunCL_load_image.cpp
 	void use_inferred_depthmap();
 	void loadFrame(							cv::Mat image);
+	void cvt_image();
 	void cvt_color_space();
 	void patch_img_gradients();
 	

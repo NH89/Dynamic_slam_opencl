@@ -120,6 +120,42 @@ __kernel void convert_depth(
 
 
 /////////
+__kernel void cvt_image_8UC3_to_32FC4(																// Writes the first entry in a linear mipmap, and computes img_mean
+	__global	uchar*	base,			//0															// NB for debugging the mimpam is arranged as a series below eachother with margins.
+	__global	float4*	img,			//1												 			// This can be changed to dense packing in a linear array, to reduce memeory and data transfer requirements.
+
+	__constant	uint*	uint_params,	//2
+	__constant 	uint8*	mipmap_params	//3
+		 )
+{																									// NB need 32-bit uint (2**32=4,294,967,296) for index, not 16bit (2**16=65,536).
+	int global_id 			= (int)get_global_id(0);
+	uint pixels 			= uint_params[PIXELS];
+	uint lid 				= get_local_id(0);
+	uint local_size 		= get_local_size(0);
+	uint group_size 		= local_size;
+	uint reduction			= 1;																	// = mm_cols/read_cols_; but this is only the baselayer ofthe image pyramid.
+
+	uint8 mipmap_params_	= mipmap_params[0];
+	uint read_offset_ 		= mipmap_params_[MiM_READ_OFFSET];
+	uint cols 				= uint_params[COLS];
+	//uint margin 			= uint_params[MARGIN];
+	uint mm_cols			= uint_params[MM_COLS];
+
+	float R_float			= base[global_id*3]  /256.0f;
+	float G_float			= base[global_id*3+1]/256.0f;
+	float B_float			= base[global_id*3+2]/256.0f;
+
+	uint base_row	= global_id/cols ;
+	uint base_col	= global_id%cols ;
+	uint read_index = read_offset_  +  base_row  * mm_cols  + base_col  ;							// NB 4 channels.  + margin
+
+	float4 temp_float4  = { R_float, G_float, B_float, 1.0f};	//{H/(2*M_PI_F),S,V,1.0f};													// Note how to load a float4 vector. Also H->(0,1) for display.
+	if (global_id <= pixels) {
+		img[read_index] 		= temp_float4;
+	}
+}
+
+
 
 __kernel void cvt_color_space_linear(																// Writes the first entry in a linear mipmap, and computes img_mean
 	__global	uchar*	base,			//0															// NB for debugging the mimpam is arranged as a series below eachother with margins.

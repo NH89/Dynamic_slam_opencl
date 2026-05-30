@@ -24,7 +24,7 @@
     "MipMap_margin":1,          //4
 
     //"imagesPerCV":2,//5, //########## //10,//20,//4,//30//4//7    ###################################################################
-    "max_frame_count":6,//16,//5,//27,//30,    //4,//30,//4,//140,//30,          // how many frames to run for. NB -1 -> run indefinitely.
+    "max_frame_count":8,//16,//5,//27,//30,    //4,//30,//4,//140,//30,          // how many frames to run for. NB -1 -> run indefinitely.
 
 
     // Mapping parameters - DTAM ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -42,7 +42,7 @@
     "SE3_start_layer":4,//4 NB seems to track faster starting at layer 4 on Office dataset.
     "SE3_stop_layer":1,
     //"SE_iter_per_layer":1,//10 //5
-    "SE_iter":9,//3,//30,//12, //25,//10//50//25,               //1 //10// 1,//
+    "SE_iter":15,//3,//30,//12, //25,//10//50//25,               //1 //10// 1,//
 
     "SO3_delta_theta":1.0,                                              // radians 0.01 = 0.57 degrees
     "ST3_delta":1.0,                                                    // NB depends on depth scale, see max & min depth in mapping params.
