@@ -30,50 +30,27 @@ __kernel void comp_cam_and_lens_maps(
 	float reduction		= base_cols/read_cols_;
 	uint v				= global_id_u / read_cols_;													// read_row
 	uint u				= fmod(global_id_flt, read_cols_);											// read_column
-	float u_flt			= (float)u * reduction;														// NB this causes sparse sampling of the original space, to use the same k2k at every scale.
-	float v_flt			= (float)v * reduction;
+
+	if (lid<num_vars ) { printf("\n layer=%u,	gid=%u, (u,v)=(%u,%u),	param_k2k[%u]={{ %f,	%f,	%f,	%f},{ %f,	%f,	%f,	%f},{ %f,	%f,	%f,	%f},{ %f,	%f,	%f,	%f}}",\
+		layer, global_id_u, u,v, lid, \
+		param_k2k[lid].s0, param_k2k[lid].s1, param_k2k[lid].s2, param_k2k[lid].s3,\
+		param_k2k[lid].s4, param_k2k[lid].s5, param_k2k[lid].s6, param_k2k[lid].s7,\
+		param_k2k[lid].s8, param_k2k[lid].s9, param_k2k[lid].sa, param_k2k[lid].sb,\
+		param_k2k[lid].sc, param_k2k[lid].sd, param_k2k[lid].se, param_k2k[lid].sf);
+	}
+
 	float u2, v2, u_ref, v_ref;
 	uint read_index 	= read_offset_  +  v  * mm_cols  + u ;
-	//int idx 			= layer * 6 * 16;
-	bool print			= false;	//true; //
-	if( (u_flt==10)&&(v==10) ){ print=true; }  // global_id_u==0) || (u==read_cols_/2.0f && v==read_rows_/2.0f) || (u==read_cols_ && v==read_rows_
-/*
-//	uint idx_ref		= idx + num_vars;
-// 	float16 k2k_ 		= (float16)(param_k2k[idx_ref+0], 	SE3_k2k[idx_ref+1], 	SE3_k2k[idx_ref+2], 	SE3_k2k[idx_ref+3],\
-// 									param_k2k[idx_ref+4], 	SE3_k2k[idx_ref+5], 	SE3_k2k[idx_ref+6], 	SE3_k2k[idx_ref+7],\
-// 									param_k2k[idx_ref+8], 	SE3_k2k[idx_ref+9], 	SE3_k2k[idx_ref+10], 	SE3_k2k[idx_ref+11],\
-// 									param_k2k[idx_ref+12], 	SE3_k2k[idx_ref+13], 	SE3_k2k[idx_ref+14], 	SE3_k2k[idx_ref+15]);
-*/
-	px_k2k( param_k2k[num_vars],  reduction,  v,  u,  inv_depth, &u_ref,  &v_ref,  print  );
+	bool print			= false;	if( (u==10)&&(v==10) ){ print=true; }
+																									// computes u_ref and v_ref, i.e. pixel reprojection of existing k2k.
+	px_k2k( 													param_k2k[num_vars],  reduction,  v,  u,  inv_depth, &u_ref,  &v_ref,  print  );
+	for (uint i=0; i<num_vars; i++) {																// for each param DoF, find new pixel position, h=homogeneous coords.
+		px_k2k( 												param_k2k[i],  reduction,  v,  u,  inv_depth, &u2,  &v2,  print  );
+		float2 partial_gradient								=	{ /*u_ref - u2*/ u ,  /*v_ref - v2*/ i }; 		// Find movement of pixel
+		SE3_map[read_index + i* uint_params[MM_PIXELS]  ]	=	partial_gradient;
 
-	for (uint i=0; i<num_vars; i++/*, idx+=16*/) {													// for each param DoF, find new pixel position, h=homogeneous coords.
-/*
-		if(global_id_u==0){
-			printf("\n\n\n__kernel void compute_param_maps()          layer=%d,  SE3 i=%d,  idx=%d,  SE3_k2k=(\n(%f, %f, %f, %f),\n(%f, %f, %f, %f),\n(%f, %f, %f, %f),\n(%f, %f, %f, %f))  ",\
-			layer, i, idx,\
-			param_k2k[idx+ 0],param_k2k[idx+ 1],param_k2k[idx+ 2],param_k2k[idx+ 3],\
-			param_k2k[idx+ 4],param_k2k[idx+ 5],param_k2k[idx+ 6],param_k2k[idx+ 7],\
-			param_k2k[idx+ 8],param_k2k[idx+ 9],param_k2k[idx+10],param_k2k[idx+11],\
-			param_k2k[idx+12],param_k2k[idx+13],param_k2k[idx+14],param_k2k[idx+15] );
-		}
-
-		float16 k2k_ = (float16)(param_k2k[idx+0], 	param_k2k[idx+1], 	param_k2k[idx+2], 	param_k2k[idx+3],\
-								 param_k2k[idx+4], 	param_k2k[idx+5], 	param_k2k[idx+6], 	param_k2k[idx+7],\
-								 param_k2k[idx+8], 	param_k2k[idx+9], 	param_k2k[idx+10], 	param_k2k[idx+11],\
-								 param_k2k[idx+12], 	param_k2k[idx+13], 	param_k2k[idx+14], 	param_k2k[idx+15]);
-*/
-		px_k2k( param_k2k[i],  reduction,  v,  u,  inv_depth, &u2,  &v2,  print  );
-/*
-// 		if(print==true){
-// 			printf("\n__kernel void compute_param_maps()    u_flt=%f,  u2=%f,  v_flt=%f,   v2=%f  ", u_flt, u2 , v_flt, v2);
-// 		}
-*/
-		float2 partial_gradient={ u_ref-u2 ,  v_ref-v2 }; 						// Find movement of pixel		// {  u_ref ,  v_ref };	//
-
-		SE3_map[read_index + i* uint_params[MM_PIXELS]  ] = partial_gradient;
 		if((u%100)==0 & (v%100)==0)printf("\n__kernel void comp_cam_and_lens_maps(..) i=%u, (read_index + i* uint_params[MM_PIXELS]) = %u,  partial_gradient=(%f, %f), 		u_ref=%f, u2=%f,		 v_ref=%f, v2=%f, u=%u, v=%u",\
 																			 			i,  (read_index + i* uint_params[MM_PIXELS]), 	partial_gradient.x, partial_gradient.y, u_ref, u2,	 v_ref, v2, u, v );
-
 		barrier(CLK_GLOBAL_MEM_FENCE );
 	}
 

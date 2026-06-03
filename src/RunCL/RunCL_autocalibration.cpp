@@ -38,7 +38,7 @@ void RunCL::precomp_cam_and_lens_maps ( cl_float16 SE3_k2k[  max_mipmap_layers*(
 																																			if( verbosity>local_verbosity_threshold) {
 																																				cout<<"\n\nRunCL::precomp_cam_and_lens_maps(..)_output "<<flush;
 																																				stringstream ss;	ss << dataset_frame_num << "_param_map_"<<calling_fn;
-																																				float max_range = 0.0f;		// i.e. find max value, and map 0.0->0.5.
+																																				float max_range = -1.0f;		// i.e. find max value, and map 0.0->0.5.
 																																				DownloadAndSave_2Channel_volume( map_mem, ss.str( ), paths.at( "SE3_map_mem"), mm_size_bytes_C1*2, mm_Image_size, CV_32FC2, false, max_range, num_vars );
 
 																																				cout<<"\nRunCL::precomp_cam_and_lens_maps(..)_chk.. Finished "<<flush;
@@ -143,8 +143,8 @@ void  RunCL::patch_cam_and_lens__hessian_reduce (uint layer, cl_mem param_hessia
 	status	= clFinish(m_queue);						if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_hessian_reduce( ),  clFinish(m_queue) status = "<<status<<" "<<checkerror(status)  <<"\n"<<flush; exit_(status);}
 
 	Matx55d		Hessian;
-	Mat			hessian_Mat(	(num_camera_matrix_DoF+1),	num_camera_matrix_DoF,	CV_32FC4);
-	size_t		data_size	=	(num_camera_matrix_DoF+1) *	num_camera_matrix_DoF *	sizeof(cl_float4);
+	Mat			hessian_Mat(	(num_camera_matrix_DoF+1),	num_SE3_DoF,	CV_32FC4);											// NB we use the same Patch Hessian reduce kernel as SE3 Hessian, hence same num_SE3_DoF data spacing.
+	size_t		data_size	=	(num_camera_matrix_DoF+1) *	num_SE3_DoF *	sizeof(cl_float4);
 	size_t		offset		=	layer*8*6 ;
 
 	ReadOutput( hessian_Mat.data, param_hessian_map_mem, data_size, offset*sizeof(cl_float4) );
@@ -168,7 +168,7 @@ void  RunCL::patch_cam_and_lens__hessian_reduce (uint layer, cl_mem param_hessia
 	Eigen::MatrixXd pinv 										= GN_H.completeOrthogonalDecomposition().pseudoInverse();
 	for (int i=0;i<num_camera_matrix_DoF;i++){
 		for (int j=0;j<num_camera_matrix_DoF;j++){
-			inv_Hessian.operator()(i,j)								= pinv(i,j);
+			inv_Hessian.operator()(i,j)							= pinv(i,j);
 		}
 	}
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_cam_and_lens__hessian_reduce()_chk3 ."<<flush;	// Save buffers to file ###########

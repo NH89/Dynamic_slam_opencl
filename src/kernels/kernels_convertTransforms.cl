@@ -180,7 +180,7 @@ void matmul_44x41_single_thread(float16 k2k,  float4 px_in, float px_out[4], boo
 
 void px_k2k( float16 k2k_,  float reduction,  uint v,  uint u,  float inv_depth, float *u2_flt_1,  float *v2_flt_1,  bool print_  ){
 
-	float u_flt		= (float)u * reduction;
+	float u_flt		= (float)u * reduction;							// NB this causes sparse sampling of the original space, to use the same k2k at every scale.
 	float v_flt		= (float)v * reduction;
 
 	float4 px_in	= (float4)( u_flt, v_flt, inv_depth, 1.0f );
@@ -195,7 +195,6 @@ void px_k2k( float16 k2k_,  float reduction,  uint v,  uint u,  float inv_depth,
 			printf("\n\n__device_fn px_k2k()    u_flt=%f,  u2=%f,  v_flt=%f,   v2=%f,  k2k_.s0=%f,   inv_depth_1=%f,", \
 												u_flt,  *u2_flt_1,  v_flt, *v2_flt_1,  k2k_.s0,  	inv_depth );
 	}
-
 }
 
 void mat_mul44( uint lid,	__local float local_A[16],		__local float local_B[16],		__local float local_C[16] ){
