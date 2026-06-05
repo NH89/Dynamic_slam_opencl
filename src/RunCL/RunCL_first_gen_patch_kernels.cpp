@@ -180,18 +180,17 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 																																				bool old_tiff			= tiff;
 																																				tiff					= true;
 																																				DownloadAndSave_2Channel_volume(  SE3_rho_map_mem,		ss.str( ), paths.at( "SE3_rho_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	1);
-																																				float max_range_ = 0;
-																																				uint offset_depth_bytes	=0;
-																																				DownloadAndSave_2Channel( current_frames[current_frames_idx[frame_idx]	].depth_buf, ss.str(),  paths.at("depth_mem"),  2*mm_size_bytes_C1, mm_Image_size, CV_32FC2, 	show , max_range_, offset_depth_bytes);	cout << "\nDownloadAndSave_2Channel(.. depth_mem ..)\n"<<flush;
-																																				//for(int i=0; i<5; i++){
-																																				int i =0;
-																																					stringstream ss_; ss_<< ss.str()<<"_current_frames_idx"<<i;
-																																					DownloadAndSave_3Channel( current_frames[current_frames_idx[i]].img_buf,  ss_.str(),   paths.at("imgmem"),   	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , max_range_);
-																																				i = frame_idx;
-																																					ss_<< "_"<<i;
-																																					DownloadAndSave_3Channel( current_frames[current_frames_idx[i]].img_buf,  ss_.str(),   paths.at("imgmem"),   	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , max_range_);
-																																				//}
-																																				//DownloadAndSave_2Channel_volume(  SE3_weight_map_mem,	ss.str( ), paths.at( "SE3_weight_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	vol_layers);
+																																				float max_range_		= 0;
+																																				uint offset_depth_bytes	= 0;
+																																				DownloadAndSave_2Channel( current_frames[current_frames_idx[frame_idx]	].depth_buf, ss.str(),  paths.at("depth_mem"),  2*mm_size_bytes_C1, mm_Image_size, CV_32FC2, 	show , max_range_, offset_depth_bytes);
+																																				cout << "\nDownloadAndSave_2Channel(.. depth_mem ..)\n"<<flush;
+
+																																				stringstream ss_;
+																																				ss_<< ss.str()<<"_current_frames_idx"<<0;
+																																				DownloadAndSave_3Channel( current_frames[current_frames_idx[0]].img_buf,			ss_.str(),   paths.at("imgmem"),   	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , max_range_);
+																																				ss_<< "_"<<frame_idx;
+																																				DownloadAndSave_3Channel( current_frames[current_frames_idx[frame_idx]].img_buf,	ss_.str(),   paths.at("imgmem"),   	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , max_range_);
+
 																																				DownloadAndSave_2Channel_volume(  SE3_incr_map_mem,		ss.str( ), paths.at( "SE3_incr_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	vol_layers);
 																																				tiff = old_tiff;
 
@@ -219,9 +218,9 @@ void RunCL::rho_sq_from_0( uint out_block_size, uint iter, uint frame_idx, uint 
 																																				//ReadOutput( (uchar*)pose_ary, pose_buf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
 																																				//PRINT_FLOAT_16(pose_ary, gpu buf);
 
-																																				//float k2kbuf_ary[16];
-																																				//ReadOutput( (uchar*)k2kbuf_ary, k2k_buf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
-																																				//PRINT_FLOAT_16(k2kbuf_ary, gpu buf);
+																																				float k2kbuf_ary[16];
+																																				ReadOutput( (uchar*)k2kbuf_ary, current_frames[current_frames_idx[frame_idx]].k2k_buf_from_0, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
+																																				PRINT_FLOAT_16(k2kbuf_ary, gpu buf);
 																																				/*
 																																				for (uint i=0; i<5 ;i++){
 																																					cout<<"\n\n## current_frames[ current_frames_idx["<<i<<"] ].frame_num = "<< current_frames[ current_frames_idx[i] ].dataset_frame_num << flush;
@@ -230,24 +229,23 @@ void RunCL::rho_sq_from_0( uint out_block_size, uint iter, uint frame_idx, uint 
 																																					//PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].k2k_0to1_est,	);
 																																				}*/
 																																			}
- 	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, 	&zero_flt, sizeof( float), 0, 			  2*mm_size_bytes_C1, 	fname);				//_clEnqueueWriteBuffer( uload_queue, k2kbuf, CL_FALSE, 0, local_num_samples*16*sizeof( float), k2k_3_16_[start_sample_idx], fname);
-// //	_clEnqueueFillBuffer( uload_queue, SE3_weight_map_mem, 	&zero, sizeof( float), 0, num_SE3_DoF*2*mm_size_bytes_C1, 	fname);
- 	_clEnqueueFillBuffer( uload_queue, SE3_incr_map_mem, 	&zero_flt, sizeof( float), 0, 			  2*mm_size_bytes_C1, 	fname);
+	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem,		&zero_flt, sizeof( float), 0,			2*mm_size_bytes_C1,	fname);				//_clEnqueueWriteBuffer( uload_queue, k2kbuf, CL_FALSE, 0, local_num_samples*16*sizeof( float), k2k_3_16_[start_sample_idx], fname);
+	_clEnqueueFillBuffer( uload_queue, SE3_incr_map_mem,	&zero_flt, sizeof( float), 0,			2*mm_size_bytes_C1,	fname);
 
 	uint				read_rows					= MipMap[layer * 8 + MiM_READ_ROWS] ;
 	uint				read_cols					= MipMap[layer * 8 + MiM_READ_COLS] ;
-	uint				rows_blocks					= ceil( (float)  read_rows / patch_size );
-	uint				cols_blocks					= ceil( (float)  read_cols / patch_size );
+	uint				rows_blocks					= ceil( (float)  read_rows			/ patch_size );
+	uint				cols_blocks					= ceil( (float)  read_cols			/ patch_size );
 	uint				cols_per_row				= cols_blocks  * patch_size;
 	uint				patches_required			= cols_blocks  * rows_blocks;
 
-	uint				patches_per_compute_uint	= ceil( (float)patches_required / device_max_compute_units );
-	uint				blocks_per_k_wg_size		= rho_sq_params.max_workgroup_size			/ device_work_size_multiple;
-						patches_per_compute_uint	= min( patches_per_compute_uint,  blocks_per_k_wg_size );
+	uint				patches_per_compute_uint	= ceil( (float)patches_required 	/ device_max_compute_units );
+	uint				blocks_per_k_wg_size		= rho_sq_params.max_workgroup_size	/ device_work_size_multiple;
+						patches_per_compute_uint	= min( patches_per_compute_uint,	blocks_per_k_wg_size );
 
-	uint				blocks_required				= ceil( (float)patches_required / patches_per_compute_uint );
-	size_t				local_work_size_[1]			= { patches_per_compute_uint	* patch_size };
-	size_t				threads_to_launch			= blocks_required 				* local_work_size_[0];									// TO DO precompute an array for this function. ? where to store
+	uint				blocks_required				= ceil( (float)patches_required		/ patches_per_compute_uint );
+	size_t				local_work_size_[1]			= { patches_per_compute_uint		* patch_size };
+	size_t				threads_to_launch			= blocks_required 					* local_work_size_[0];								// TO DO precompute an array for this function. ? where to store
 																																			// ? Have a subclass and object for each kernel ?
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq_from_0( ..)_chk_3 "<<flush;
 																																				cout <<"\n"
@@ -369,7 +367,7 @@ void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer, uint 
 	uint			threads_per_DoF		= powf(2,ceil( log2((float)cols_blocks) )); 						// 10 layer 1 =>  pown(2,ciel(log2(10.0f) ))=16; 6*16=96.      // * rows_blocks  ;//	8x10=80 layer1 => 96 threads to launch?		// num pixels in fully reduced map. Req per SE3 DoF.
 																											//cout <<" cols_blocks = "<<cols_blocks
 
-	float 			DoF_per_workgroup	= device_work_size_multiple / threads_per_DoF;
+	float			DoF_per_workgroup	= device_work_size_multiple / threads_per_DoF;
 																																		if( verbosity>local_verbosity_threshold) {cout<<"\nRunCL::reduce_patch_Rho( ..)_chk_1.1"
 																																			<<"   log2((float)cols_blocks) = "		<<log2((float)cols_blocks)
 																																			<<"   threads_per_DoF = "				<<threads_per_DoF
@@ -378,10 +376,10 @@ void RunCL::reduce_patch_Rho ( uint out_block_size, uint iter, uint layer, uint 
 																																			<<") / DoF_per_workgroup = "			<<DoF_per_workgroup <<flush;
 																																		}
 	size_t			threads_required	= ceil((device_work_size_multiple * num_DoF ) / DoF_per_workgroup);	// NB device_work_size_multiple is usually a poer of 2, DoF_per_workgroup will also be a power of 2.
-	uint 			workgroups_required	= ceil( (float)threads_required / device_work_size_multiple );
+	uint			workgroups_required	= ceil( (float)threads_required / device_work_size_multiple );
 	size_t			threads_to_launch	= workgroups_required  *  device_work_size_multiple;
 
-	uint 			row_offset			= rows_blocks + 4;																				//2
+	uint			row_offset			= rows_blocks + 4;																				//2
 	uint			thread_offset		= threads_per_DoF;																				//3     2^n  > pixels in fully reduced patch
 	uint			mm_cols				= uint_params[MM_COLS];																			//4
 																																		if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::reduce_patch_Rho( ..)_chk_2 . "<<flush;

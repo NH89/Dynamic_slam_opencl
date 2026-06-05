@@ -168,12 +168,12 @@ void matmul_44x41_single_thread(float16 k2k,  float4 px_in, float px_out[4], boo
 
 	px_out[2]	= k2k.s8*px_in.s0  + k2k.s9*px_in.s1 +  k2k.sa*px_in.s2  + k2k.sb*px_in.s3;
 	px_out[3]	= k2k.sc*px_in.s0  + k2k.sd*px_in.s1 +  k2k.se*px_in.s2  + k2k.sf*px_in.s3;
-/*
+
 	if(print_==true){
 			printf("\n\n__device_fn matmul_44x41   px_in=(%f, %f, %f, %f),  px_out[0-3]=(%f, %f, %f, %f)",\
 									px_in.s0, px_in.s1, px_in.s2, px_in.s3,   px_out[0], px_out[1], px_out[2], px_out[3] );
 	}
-*/
+
 	px_out[0]		/= px_out[3];
 	px_out[1]		/= px_out[3];
 }

@@ -317,8 +317,8 @@ void Dynamic_slam::estimate_tracking(){
 																																		// 	PRINT_MATX16F( SE3_incr, );
 																																		// 	/ *PRINT_MATX44F( pose, "before update" );* /	PRINT_MATX16F( PToLie(pose), "before update");
 																																		// } */
-				Matx66d	invH			=	runcl.current_frames[ runcl.current_frames_idx[frame_idx] ].inv_SE3_Hessian[layer];
-				Matx16d pose_update		=	SE3_incr * invH;																			// Double precision is required
+				Matx66d		invH		=	runcl.current_frames[ runcl.current_frames_idx[frame_idx] ].inv_SE3_Hessian[layer];
+				Matx16d 	pose_update	=	SE3_incr * invH;																			// Double precision is required
 																																	/*	// if( verbosity>local_verbosity_threshold ){
 																																		// 	cout << "\nSE3_incr="			<<SE3_incr		<<endl<<flush;
 																																		// 	cout << "\ninvH="				<<invH			<<endl<<flush;
@@ -355,6 +355,9 @@ void Dynamic_slam::estimate_tracking(){
 		this_frame->k2k_to_0			= newK2K;
 		Matx44f new_pose_from_0			= getInvPose( pose );																			// set this_frame.k2k_buf for mapping, and
 		Matx44f new_k2k_from_0			= K  *  new_pose_from_0	  * invK;
+		this_frame->pose_from_0			= new_pose_from_0;
+		this_frame->k2k_from_0			= new_k2k_from_0;
+
 		runcl.update_44f_buf(	new_k2k_from_0,		this_frame->k2k_buf_from_0,	fname);
 
 	}

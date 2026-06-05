@@ -2,7 +2,7 @@
 
 
 
-void RunCL::precomp_cam_and_lens_maps ( cl_float16 SE3_k2k[  max_mipmap_layers*(num_camera_matrix_DoF +1)  ],  cl_mem map_mem, uint num_vars, string calling_fn){ //  Compute maps of pixel motion for each DoF of camera intrinsic matrix, or lens distortion // Derived from RunCL::mipmap
+void RunCL::precomp_cam_and_lens_maps ( uint layer, cl_float16 SE3_k2k[  num_camera_matrix_DoF +1  ],  cl_mem map_mem, uint num_vars, string calling_fn){ //  Compute maps of pixel motion for each DoF of camera intrinsic matrix, or lens distortion // Derived from RunCL::mipmap
 	string fname = "RunCL::precomp_cam_and_lens_maps(..)";
 	int local_verbosity_threshold = V_RUNCL_PRECOM_PARAM_MAPS;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::precomp_cam_and_lens_maps(..)_chk_0 "
@@ -19,7 +19,7 @@ void RunCL::precomp_cam_and_lens_maps ( cl_float16 SE3_k2k[  max_mipmap_layers*(
 																																			}
 	cl_kernel	kernel	= comp_cam_and_lens_maps_kernel;
 	float inv_depth		= 1;
-	_clEnqueueWriteBuffer( uload_queue, SE3_k2kbuf,		CL_FALSE, 0, max_mipmap_layers*(num_camera_matrix_DoF +1)*sizeof(cl_float16), 	SE3_k2k,		fname);
+	_clEnqueueWriteBuffer( uload_queue, SE3_k2kbuf,		CL_FALSE, 0, (num_camera_matrix_DoF +1)*sizeof(cl_float16), 	SE3_k2k,		fname);
 
 	//      __private	 uint layer, set in mipmap_call_kernel( ..) below                                                                      __private	 uint	 layer,		//0
 	_clSetKernelArg( kernel, 1, sizeof( float),		&inv_depth,	 		fname);												//__private	float 	inv_depth,		//1
@@ -34,7 +34,9 @@ void RunCL::precomp_cam_and_lens_maps ( cl_float16 SE3_k2k[  max_mipmap_layers*(
 																																				<<"\ncalling_fn = "<<calling_fn
 																																				<<flush;}
 	// SE3_map_mem, k_map_mem, dist_map_mem;
-	mipmap_call_kernel( kernel, m_queue );
+	bool layers_sequential=false;
+	mipmap_call_kernel( kernel, m_queue, layer, layer, layers_sequential, local_work_size);
+
 																																			if( verbosity>local_verbosity_threshold) {
 																																				cout<<"\n\nRunCL::precomp_cam_and_lens_maps(..)_output "<<flush;
 																																				stringstream ss;	ss << dataset_frame_num << "_param_map_"<<calling_fn;
@@ -152,7 +154,7 @@ void  RunCL::patch_cam_and_lens__hessian_reduce (uint layer, cl_mem param_hessia
 																																	cout<<"\noffset="<<offset<<flush;
 																																	cout<<"\nhessian_Mat = \n"<<hessian_Mat<<flush;
 																																}
-	for(int row=0; row<num_camera_matrix_DoF; row++){																						// per_pixel division currently done in kernel, TO DO which is better ?
+	for(int row=0; row<num_camera_matrix_DoF; row++){																			// per_pixel division currently done in kernel, TO DO which is better ?
 		for(int col=0; col<num_camera_matrix_DoF; col++){
 			Hessian.operator()(row,col)							= hessian_Mat.at<cl_float4>( row+1,col ).x; 					// NB choose colour channel of Hessian
 		}

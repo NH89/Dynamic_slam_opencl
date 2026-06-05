@@ -88,16 +88,21 @@ __kernel void Rho_sq_to_0(								// To be launched with 1 thread per col for 32
 	float4 old_px										= zero_f4;;
 	bool   intersection									= false;
 	bool   print_ 										= false;
+	if(global_id_u==10) print_							= true;
 /*
 // 	if (global_id_u < 1 / *num_past_frames* /){printf("\n__kernel void Rho_sq()  layer = %d,  read_index=%d,  read_index/mm_cols=%f ",
 // 																				layer,		read_index,  	(float)read_index/(float)mm_cols	);	}
 */
+/*
  	if(global_id_u==0){
  		float16 k2k = inv_k2k[0];
- 		printf("\n\n__kernel void Rho_sq(..) frame_idx=%u, layer=%u, img_cur=%p,  img_past=%p  reduction=%f,  inv_k2k[0]= \n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f, ", \
+ 		printf("\n\n__kernel void Rho_sq(..)1 frame_idx=%u, layer=%u, img_cur=%p,  img_past=%p  reduction=%f,  inv_k2k[0]= \n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f, ", \
  		frame_idx, layer,  img_cur,  img_past, reduction,\
  		k2k[0],k2k[1],k2k[2],k2k[3],	k2k[4],k2k[5],k2k[6],k2k[7],	k2k[8],k2k[9],k2k[10],k2k[11],	k2k[12],k2k[13],k2k[14],k2k[15]		);
+
+		printf("\n__kernel void Rho_sq(..)2 write_index=%u, write_index_2=%u, block_size=%u ", write_index, write_index_2, block_size);
  	}
+*/
 	local_rho[lid]										= zero_f2;
 	for (uint param_dim=0; param_dim<num_DoF; param_dim++) {
 		local_param_incr[lid + param_dim*local_size]	= zero_f2;
@@ -116,9 +121,10 @@ __kernel void Rho_sq_to_0(								// To be launched with 1 thread per col for 32
 		uint v 						= index / mm_cols;
 		uint u 						= fmod((float)index, mm_cols);
 		px_k2k( inv_k2k[0],  reduction,  v,  u,  inv_depth.x, &u2_flt_1,  &v2_flt_1, print_ );
-
-		if(global_id_u==0){ printf("\n\n__kernel void Rho_sq(..) frame_idx=%u, layer=%u, reduction=%f,  v,u=(%u,%u)  inv_depth.x=%f, u2_flt_1,v2_flt_1=(%f,%f)", \
-																 frame_idx,    layer, 	 reduction,  v,  u,  inv_depth.x, u2_flt_1,   v2_flt_1 ); }
+/*
+		if(global_id_u==10){ printf("\n__kernel void Rho_sq(..)3 frame_idx=%u, layer=%u, reduction=%f,  v,u=(%u,%u)  inv_depth.x=%f, u2_flt_1,v2_flt_1=(%f,%f),  index=%u = read_index_row(%u) - read_offset_(%u)", \
+																 frame_idx,    layer, 	 reduction,  v,  u,  inv_depth.x, u2_flt_1,   v2_flt_1 ,  index, read_index_row, read_offset_ ); }
+*/
 		uint margin					= 4;// * reduction;
 		intersection 				= 	(u>margin)			&& (u<=read_cols_-margin)			&& (v>margin)			&& (v<=read_rows_-margin)			&& \
 										(u2_flt_1>margin)	&& (u2_flt_1<=read_cols_-margin)	&& (v2_flt_1>margin)	&& (v2_flt_1<=read_rows_-margin)	&& \
@@ -133,17 +139,29 @@ __kernel void Rho_sq_to_0(								// To be launched with 1 thread per col for 32
 			// Gradient of pixel value wrt SE3 rotation & translation, taking account of current depth map //////
 			param_incr_pvt_flt2.y											=  1;
 			for (uint param_dim=0; param_dim<num_DoF; param_dim++) {
-				param_incr_pvt_flt4											= rho_pvt_flt4 		* 	param_grad_map_cur_frame[ read_index_row + (param_dim * mm_pixels) ] ;
+				param_incr_pvt_flt4											= rho_pvt_flt4		*	param_grad_map_cur_frame[ read_index_row + (param_dim * mm_pixels) ] ;
 				param_incr_pvt_flt2.x										= param_incr_pvt_flt4.x;
-				param_incr_pvt_arr[ param_dim*block_size + row_in_block ]	= param_incr_pvt_flt2 ;
+				param_incr_pvt_arr[ param_dim*block_size + row_in_block ]	= param_incr_pvt_flt2;
 			}
 		}
+/*
+		else if(global_id_u==10){printf("\t\t__kernel void Rho_sq(..)4 intersection=false, (u=%u>margin=%u))=%u, (u=<=read_cols_-margin)=%u, (v=%u>margin)=%u, (v<=read_rows_-margin)=%u, \
+										(u2_flt_1=%f>margin)=%u, (u2_flt_1<=read_cols_-margin)=%u, (v2_flt_1=%f>margin)=%u, (v2_flt_1<=read_rows_-margin)=%u, \
+										(global_id_u<=layer_pixels=%u)=%u,	(inv_depth.x>=min_inv_depth)=%u, (inv_depth.x<=max_inv_depth)=%u",\
+										u, margin, (u>margin), (u<=read_cols_-margin), v, (v>margin), (v<=read_rows_-margin),\
+										u2_flt_1, (u2_flt_1>margin), (u2_flt_1<=read_cols_-margin), v2_flt_1, (v2_flt_1>margin), (v2_flt_1<=read_rows_-margin), \
+										(global_id_u<=layer_pixels), layer_pixels, (inv_depth.x>=min_inv_depth), (inv_depth.x<=max_inv_depth) );
+		}
+*/
 		barrier( CLK_GLOBAL_MEM_FENCE );
 		rho_pvt_flt2.x					=  rho_pvt_flt4.x;																																	// Sum Rho
 		rho_pvt_flt2.y					=  rho_pvt_flt4.x * rho_pvt_flt4.x;																													// Sum Rho_squared
 		rho_pvt_arr[row_in_block]		+= rho_pvt_flt2;																																	// save to pvt mem for this column
 	}
-
+/*
+	if(global_id_u==100){ printf("\n__kernel void Rho_sq(..)5 frame_idx=%u, rho_pvt_arr[20] = (%f,%f)", \
+																frame_idx,	 rho_pvt_arr[20].x, rho_pvt_arr[20].y   ); }
+*/
 	// Sum-reduce image, /////////////  Save intermediate size ST3 patches for depth map updates, and maximally reduced SE3 patches for pose updates. Second reduce_patch_Rho(..) kernel required for SE3 from lareger image pyramid layers, before update_k2k(..) kernel.
 	uint step;
 	for ( step=1; step<block_size; step *=2){																																					// for each step size, (multiples of 2)
@@ -177,8 +195,10 @@ __kernel void Rho_sq_to_0(								// To be launched with 1 thread per col for 32
 																						uint offset_1 				= frame_offset		+ write_block_row*mm_cols;
 																						Rho_[			offset_1]	= rho_pvt_arr[		block_row ];
 /*
-// 					if(block_row==10 && group_id==0 ){printf("\n__kernel void Rho_sq_2, global_id_u=%u,	block_row=%u,	group_id=%u,		rho_pvt_arr[ block_row ]=(%f, %f ) ", \
-// 					global_id_u, block_row, group_id,	rho_pvt_arr[block_row].x, rho_pvt_arr[block_row].y ); }
+					if(block_row==10 && group_id==0 ){
+						printf("\n__kernel void Rho_sq_(..)6, global_id_u=%u,	block_row=%u,	group_id=%u,	offset_1=%u,	rho_pvt_arr[ block_row ]=(%f, %f ) ", \
+														  global_id_u, 		block_row, 		group_id,		offset_1,		rho_pvt_arr[block_row].x, rho_pvt_arr[block_row].y );
+					}
 */
 					for (uint param_dim=3; param_dim<num_DoF; param_dim++) {																													// select only ST3
 																						uint offset_2 				= offset_1			+ (param_dim-3)*( 4+ (read_rows_/out_block_size) )*mm_cols;
@@ -315,8 +335,9 @@ __kernel void Rho_sq_from_0(						// To be launched with 1 thread per col for 32
 																								// PATCH KERNEL //  TO DO need to transfer computation of Huber Norm weighting, Jacobian and Hessian here,
 																								// because Hessian must include weights and therefore be updated if weights change.
 	////////////////////////////////////////////////////////////////////////////				// transfer data from global memory.
-	for (uint past_frame_idx=frame_idx; past_frame_idx<num_current_frames; past_frame_idx++){	// step though past frames ///////////////////////////////////////////////////////////////////////////////
-		for (uint row_in_block=0; row_in_block<block_size; row_in_block ++){					// step through rows of the patch, /////////////////////////////////////////////////////////////
+	//for (uint past_frame_idx=frame_idx; past_frame_idx<num_current_frames; past_frame_idx++){	// step though past frames ///////////////////////////////////////////////////////////////////////////////
+	uint past_frame_idx=frame_idx;
+	for (uint row_in_block=0; row_in_block<block_size; row_in_block ++){					// step through rows of the patch, /////////////////////////////////////////////////////////////
 			float						u2_flt_1, 	v2_flt_1;									// current frame
 			uint read_index_row 		= read_index + row_in_block * mm_cols;
 			img_cur_pvt[row_in_block]	= img_cur[read_index_row];
@@ -354,9 +375,9 @@ __kernel void Rho_sq_from_0(						// To be launched with 1 thread per col for 32
 			rho_pvt_flt2.y					=  rho_pvt_flt4.x * rho_pvt_flt4.x;																													// Sum Rho_squared
 			rho_pvt_arr[row_in_block]		+= rho_pvt_flt2;																																	// save to pvt mem for this column
 		}
-	}
+	//}
 	// Sum-reduce image, /////////////  Save intermediate size ST3 patches for depth map updates, and maximally reduced SE3 patches for pose updates. Second reduce_patch_Rho(..) kernel required for SE3 from lareger image pyramid layers, before update_k2k(..) kernel.
-	uint past_frame_idx =0; // TO DO remove and restore long outer loop.
+	//uint past_frame_idx =0; // TO DO remove and restore long outer loop.
 	uint step;
 	for ( step=1; step<block_size; step *=2){																																					// for each step size, (multiples of 2)
 		for (uint block_row=0; block_row<block_size ; block_row += step){																														// step through rows in column
@@ -382,8 +403,8 @@ __kernel void Rho_sq_from_0(						// To be launched with 1 thread per col for 32
 			barrier(CLK_LOCAL_MEM_FENCE );
 		}
 		// Save intermediate size ST3 patches for depth map updates, //////////			// TODO ST3 Depth, vel, accel ? Vary output level.
-		if (layer==0 && step==out_block_size/2){		// currently only for layer zero for debugging																																					// save ST3 map at out_block_size, to use for updating depth_map and rel_vel_map
-			uint frame_offset 		= write_index + past_frame_idx * 100 + 25 ;			// NB 100 works for current img size . // stacks frame ST3 maps in adjacent columns..
+		if (/*layer==0 &&*/ step==out_block_size/2){		// currently only for layer zero for debugging																																					// save ST3 map at out_block_size, to use for updating depth_map and rel_vel_map
+			uint frame_offset 		= write_index + /*past_frame_idx * 100*/ + 25 ;			// NB 100 works for current img size . // stacks frame ST3 maps in adjacent columns..
 			uint write_block_row	= 0;
 			if( fmod((float)lid,out_block_size) == 0 ){																																			// selects columns i.e. threads within the workgroup
 				for (uint block_row=0; block_row < block_size ; block_row += step*2, write_block_row++){

@@ -65,18 +65,18 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {
 void Dynamic_slam::initialize_camera_intrinsic_matrix(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_INITIALIZE_CAMERA;
 																																			if (verbosity>local_verbosity_threshold) { cout << "\fDynamic_slam::initialize_camera_vec_chk 0:" <<flush;}
-	cv::Matx44f k 					= Matx44f::eye();;																						// NB In DTAM_opencl, "cameraMatrix" found by convertAhandPovRay, called by fileLoader
+	cv::Matx44f k 					= Matx44f::zeros();																						// NB In DTAM_opencl, "cameraMatrix" found by convertAhandPovRay, called by fileLoader
 
 		if(use_conf_camera_matx==true){
-			for (int i=0; i<9; i++){ k.operator()(i/3,i%3) = obj["cameraMatrix"][i].asFloat(); }											// 3x3 Camera matrix from conf file.
-		}else{
-			for (int i=0; i<9; i++){ k.operator()(i/3,i%3) = 0.0f;}																			// 3x3 Default naive camera matrix.
+			for (int i=0; i<16; i++){ k(i/4,i%4) = obj["cameraMatrix"][i].asFloat(); }											// 3x3 Camera matrix from conf file.
+		}else{																													// 3x3 Default naive camera matrix.
 			f	= 	2*min( runcl.baseImage_height, runcl.baseImage_width);
-			 k.operator()(0,0) = f;
-			 k.operator()(1,1) = f;
-			 k.operator()(0,2) = runcl.baseImage_width  / 2.0;
-			 k.operator()(1,2) = runcl.baseImage_height / 2.0;
-			 k.operator()(2,2) = 1.0;
+			k(0,0) = f;
+			k(1,1) = f;
+			k(0,2) = runcl.baseImage_width  / 2.0;
+			k(1,2) = runcl.baseImage_height / 2.0;
+			k(3,2) = 1.0;
+			k(2,3) = 0.0;
 		}
 	initial_K = k;																															if (verbosity>local_verbosity_threshold){ PRINT_MATX44F( initial_K , ); }
 }
