@@ -7,7 +7,7 @@ void RunCL::rho_sq_set_params( uint out_block_size ){
 																	// Needs 32 elem array of private mem per thread.
 																	// Writes answer to SE3_rho_map_mem, BUT as float2
 	string fname					= "RunCL::rho_sqset_params( ..)";
-	int local_verbosity_threshold	= V_RUNCL_RHO_SQ;
+	int local_verbosity_threshold	= V_RUNCL_RHO_SQ_TO_0;
 	cl_kernel	kernel 				= rho_sq_to_0_kernel;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sqset_params( ..)_chk0 .##################################################################"<<flush;
 																																				cout<<endl<<endl <<",  out_block_size="	<<out_block_size << flush;
@@ -63,7 +63,7 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 																	// Needs 32 elem array of private mem per thread.
 																	// Writes answer to SE3_rho_map_mem, BUT as float2
 	string fname					= "RunCL::rho_sq_to_0( ..)";
-	int local_verbosity_threshold	= V_RUNCL_RHO_SQ;
+	int local_verbosity_threshold	= V_RUNCL_RHO_SQ_TO_0;
 	cl_kernel	kernel 				= rho_sq_to_0_kernel;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq_to_0( ..)_chk0 .##################################################################"<<flush;
 																																				cout<<endl<<endl
@@ -204,7 +204,7 @@ void RunCL::rho_sq_from_0( uint out_block_size, uint iter, uint frame_idx, uint 
 																	// Needs 32 elem array of private mem per thread.
 																	// Writes answer to SE3_rho_map_mem, BUT as float2
 	string fname					= "RunCL::rho_sq_from_0( ..)";
-	int local_verbosity_threshold	= V_RUNCL_RHO_SQ;
+	int local_verbosity_threshold	= V_RUNCL_RHO_SQ_FROM_0;
 	cl_kernel	kernel 				= rho_sq_from_0_kernel;
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq_from_0( ..)_chk0 .##################################################################"<<flush;
 																																				cout<<endl<<endl
@@ -292,7 +292,7 @@ void RunCL::rho_sq_from_0( uint out_block_size, uint iter, uint frame_idx, uint 
 																																																				// NB GT_depth loaded to depth_mem by void RunCL::loadFrameData( ..)
 	_clSetKernelArg( kernel,18, sizeof( cl_mem), 								&current_frames[current_frames_idx[0]].depth_buf,		fname);		//__global		float2* 	depth_map,				//12	// current frame depth, now stored as inv_depth
 	_clSetKernelArg( kernel,19, sizeof( cl_mem), 								&img_edge_mem,											fname);		//__global		float8* 	g1p,					//13	// current frame g1mem
-	_clSetKernelArg( kernel,20, sizeof( cl_mem), 								&current_frames[current_frames_idx[0]].SE3_grad_buf,	fname);		//__global 		float8*		SE3_grad_map_cur_frame,	//14
+	_clSetKernelArg( kernel,20, sizeof( cl_mem), 								&camera_matrix_grad_map_mem,							fname);		//__global 		float4*		SE3_grad_map_cur_frame,	//14
 
 	_clSetKernelArg( kernel,21, sizeof( cl_mem), 								&current_frames[current_frames_idx[0]].r_vel_buf,		fname);		//__global		float4*		img_cur,				//15	// multiple past frames.
 	_clSetKernelArg( kernel,22, sizeof( cl_mem), 								&current_frames[current_frames_idx[1]].r_vel_buf,		fname);		//__global		float4*		img_past_0,				//16

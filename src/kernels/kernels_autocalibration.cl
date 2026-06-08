@@ -50,7 +50,7 @@ __kernel void comp_cam_and_lens_maps(
 		SE3_map[read_index + i* uint_params[MM_PIXELS]  ]	=	partial_gradient;
 
 		if((u%100)==0 & (v%100)==0)printf("\n__kernel void comp_cam_and_lens_maps(..) i=%u, (read_index + i* uint_params[MM_PIXELS]) = %u,  partial_gradient=(%f, %f), 		u_ref=%f, u2=%f,		 v_ref=%f, v2=%f, u=%u, v=%u",\
-																			 			i,  (read_index + i* uint_params[MM_PIXELS]), 	partial_gradient.x, partial_gradient.y, u_ref, u2,	 v_ref, v2, u, v );
+																						i,  (read_index + i* uint_params[MM_PIXELS]), 	partial_gradient.x, partial_gradient.y, u_ref, u2,	 v_ref, v2, u, v );
 		barrier(CLK_GLOBAL_MEM_FENCE );
 	}
 

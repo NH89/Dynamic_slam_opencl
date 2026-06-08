@@ -91,9 +91,9 @@ void RunCL::patch_cam_and_lens_Hessian(  uint layer, cl_mem param_map_mem, cl_me
 	_clSetKernelArg( kernel,	7, sizeof( cl_mem), 	&param_map_mem,					fname);									// __constant 	float2*		SE3_map,				//7
 	_clSetKernelArg( kernel,	8, sizeof( cl_mem), 	&patch_lookup_table_buf,		fname);									// __global 	float4*		lookup_table,			//8
 	_clSetKernelArg( kernel,	9, sizeof( cl_mem), 	&img_grad_mem,					fname);									// __global 	float8*		img_grad_uv,			//11
-	_clSetKernelArg( kernel,	10, sizeof( cl_mem), 	&param_grad_map_mem,			fname);									// __global 	float4*		SE3_grad_map,			//12	// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
 	//Outputs:
 	//__global
+	_clSetKernelArg( kernel,	10, sizeof( cl_mem), 	&param_grad_map_mem,			fname);									// __global 	float4*		SE3_grad_map,			//12	// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
 	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&param_hessian_map_mem,			fname);									// __global 	float4*		SE3_Hessian_pinv_map,	//13	// HSV (6x6) matrix so 36*float8
 	//__local
 	_clSetKernelArg( kernel,	12,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,				//13	// local_Hessian[ sizeof(float4) *6*6 *local_size]
@@ -103,6 +103,23 @@ void RunCL::patch_cam_and_lens_Hessian(  uint layer, cl_mem param_map_mem, cl_me
 	status	= clFlush(m_queue);										if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_cam_and_lens_Hessian( ),  clFlush(m_queue) status  = "<<status<<" "<<checkerror(status) <<"\n"<<flush; exit_(status);}
 	status	= clWaitForEvents (1, &ev);								if (status != CL_SUCCESS)	{ cout << "\nRunCL::patch_cam_and_lens_Hessian( ),  clWaitForEventsh(1, &ev) =" <<status<<" "<<checkerror(status) <<"\n"<<flush; exit_(status);}
 
+																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_cam_and_lens_Hessian()_chk4 ."<<flush;	// Save buffers to file ###########
+																																	stringstream ss;
+																																	ss << "patch_cam_and_lens_Hessian__frame_num="<<current_frames[ current_frames_idx[0] ].dataset_frame_num<<"_layer="<<layer<<"_";
+																																	bool show 		= false;
+																																	bool old_tiff 	= tiff;
+																																	tiff 			= true;
+																																	float max_range	= 1;
+																																	//cv::Mat bufImg;
+																																	//_cl_flush_finish(m_queue, fname);
+																																	//DownloadAndSave_3Channel( 	param_grad_map_mem,	ss.str( ), paths.at( "SE3_grad_map_mem"),  	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  0,			false);
+
+																																	uint vol_layers = 5;
+																																	DownloadAndSave_6Channel_volume(  param_grad_map_mem, ss.str(), paths.at("SE3_grad_map_mem"), mm_size_bytes_C4, mm_Image_size, CV_32FC4, show,  max_range,  vol_layers );
+
+																																	tiff 			= old_tiff;
+																																	cout<<"\n\nRunCL::patch_cam_and_lens_Hessian()_Finished ."<<flush;
+																																}
 }
 
 

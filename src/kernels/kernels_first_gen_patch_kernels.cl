@@ -250,7 +250,7 @@ __kernel void Rho_sq_from_0(						// To be launched with 1 thread per col for 32
 	__global	float4*		img_past_4,					//17
 
 	__global	float2*		depth_map,					//18	// current frame depth, now stored as inv_depth
-	__global	float8*		g1p,						//19	// current frame g1mem
+	__global	float8*		g1p,						//19	// current frame g1mem  							// Not used at present
 	__global 	float4*		param_grad_map_cur_frame,	//20
 
 	__global	float4*		vel_cur,					//21	// multiple past frames.
@@ -337,11 +337,11 @@ __kernel void Rho_sq_from_0(						// To be launched with 1 thread per col for 32
 	////////////////////////////////////////////////////////////////////////////				// transfer data from global memory.
 	//for (uint past_frame_idx=frame_idx; past_frame_idx<num_current_frames; past_frame_idx++){	// step though past frames ///////////////////////////////////////////////////////////////////////////////
 	uint past_frame_idx=frame_idx;
-	for (uint row_in_block=0; row_in_block<block_size; row_in_block ++){					// step through rows of the patch, /////////////////////////////////////////////////////////////
+	for (uint row_in_block=0; row_in_block<block_size; row_in_block ++){						// step through rows of the patch, /////////////////////////////////////////////////////////////
 			float						u2_flt_1, 	v2_flt_1;									// current frame
 			uint read_index_row 		= read_index + row_in_block * mm_cols;
 			img_cur_pvt[row_in_block]	= img_cur[read_index_row];
-			g1p_pvt[row_in_block]		= g1p[read_index_row];
+			g1p_pvt[row_in_block]		= g1p[read_index_row];									// 	__global	float8*		g1p,	//19	// current frame g1mem	//	&img_edge_mem,
 			float2 inv_depth 			= depth_map[read_index_row];							// { inv_depth, confidence }
 
 			// Where to sample the past image frame //////
@@ -363,7 +363,7 @@ __kernel void Rho_sq_from_0(						// To be launched with 1 thread per col for 32
 				rho_pvt_flt4.w			= 1.0f;																																					// rho.w holds pixel count. Not used...
 				// Gradient of pixel value wrt SE3 rotation & translation, taking account of current depth map //////
 				param_incr_pvt_flt2.y											=  1;
-				for (uint param_dim=0; param_dim<num_DoF; param_dim++) {
+				for (uint param_dim=0; param_dim<num_DoF; param_dim++) {						//	__global 	float4*		param_grad_map_cur_frame,	//20		//	&current_frames[current_frames_idx[0]].SE3_grad_buf, float8*
 					param_incr_pvt_flt4											= rho_pvt_flt4 		* 	param_grad_map_cur_frame[ read_index_row + (param_dim * mm_pixels) ] ;
 					param_incr_pvt_flt2.x										= param_incr_pvt_flt4.x;
 					param_incr_pvt_arr[ param_dim*block_size + row_in_block ]	= param_incr_pvt_flt2 ;
@@ -389,7 +389,7 @@ __kernel void Rho_sq_from_0(						// To be launched with 1 thread per col for 32
 			if( !(fmod((float)lid,(step*2))==0) &&  (fmod((float)lid,step)==0)    ){																											// selects 2nd column, sends data
 																						local_rho[			lid-step ]							= rho_pvt_arr[		block_row];
 				for (uint param_dim=0; param_dim<num_DoF; param_dim++) {																																// NB integer division. Hence both threads use the same index to local memory.
-																						local_param_incr[		lid-step + param_dim*local_size ]		= param_incr_pvt_arr[	block_row + param_dim*block_size ];
+																						local_param_incr[	lid-step + param_dim*local_size ]	= param_incr_pvt_arr[	block_row + param_dim*block_size ];
 				}
 			}
 			barrier(CLK_LOCAL_MEM_FENCE );																																						// Using barrier as a semaphore, for local mem messages between threads. This minimizes local_mem req, while allowing 2 patch sizes in output, full & ST3 map at out_block_size.

@@ -135,6 +135,7 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer){
 																																			//}
 																																		}
 	for (uint iter = 0; iter<3/*SE_iter*/; iter++){
+	//uint iter = 0;
 		auto step_0 								= high_resolution_clock::now();
 
 		Matx15d param_update[num_current_frames]	= { Matx15d::zeros() };
@@ -191,6 +192,9 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer){
 																																			"\nsum_sum_rho_sq = "	<< sum_sum_rho_sq	<<endl<<flush;
 																																			PRINT_MATX15D( (sum_param_update/*/(float)(num_current_frames-1)*/ ), );
 																																		}
+		//return;
+
+
 		if( isnan(sum_sum_rho_sq) ){											cout << "\nisnan(sum_rho_sq)" <<flush;
 			break;
 		}else if(sum_sum_rho_sq > old_sum_rho_sq){
@@ -225,13 +229,13 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer){
 		new_k(0,0)						+= sum_param_update(0,0);	// f
 		new_k(1,1)						+= sum_param_update(0,0);
 
-		new_k(0,0)						+= sum_param_update(0,1);	// fx:fy
-		new_k(1,1)						-= sum_param_update(0,1);
+	//	new_k(0,0)						+= sum_param_update(0,1);	// fx:fy
+	//	new_k(1,1)						-= sum_param_update(0,1);
 
-		new_k(0,2)						+= sum_param_update(0,2);	// cx
-		new_k(1,2)						+= sum_param_update(0,3);	// cy
+	//	new_k(0,2)						+= sum_param_update(0,2);	// cx
+	//	new_k(1,2)						+= sum_param_update(0,3);	// cy
 
-		new_k(0,1)						+= sum_param_update(0,4);	// skew
+	//	new_k(0,1)						+= sum_param_update(0,4);	// skew
 
 
 
@@ -251,7 +255,7 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer){
 			this_frame->K				= new_k;
 			this_frame->inv_K			= new_inv_k;
 																																		if( verbosity>local_verbosity_threshold ){
-																																			cout 	<< "\nDynamic_slam::_camera_matrix() chk_5: ,  layer = "<<layer
+																																			cout 	<< "\nDynamic_slam::_camera_matrix() chk_6: ,  layer = "<<layer
 																																					<<",  frame_idx = "<<frame_idx
 																																					<<",  runcl.current_frames_idx["<<frame_idx<<"] = "<<runcl.current_frames_idx[frame_idx]
 																																					<<",  ##########"<<flush;
@@ -269,16 +273,16 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer){
 																																			<<" microseconds,  layer="<<layer<<endl<<flush;
 																																		}
 	}
-	// Matx44f pose_temp 					= runcl.update_pose_bufs_cur_frames( pose );											// NB these two lines are req because nextFrame() calls  runcl.set_cam_bufs(..), using frame_data.
-	// frame_data.back().frame_data.pose 	= pose_temp ;
-	//
-	// float16arry_To_Matx44f(	 &runcl.current_frames[	runcl.current_frames_idx[0]	].k2k_0to1_est[0]	, frame_data.back().frame_data.K2K );
-																																		if(verbosity>local_verbosity_threshold) {
-																																			cout << "\n\nDynamic_slam::_camera_matrix() finished"<< flush;
-																																			PRINT_MATX44F(frame_data.back().frame_data.K,);
-																																			PRINT_MATX44F(frame_data.back().frame_data.pose,);
-																																			PRINT_MATX44F(frame_data.back().frame_data.K2K, );
-																																		}
+	// // Matx44f pose_temp 					= runcl.update_pose_bufs_cur_frames( pose );											// NB these two lines are req because nextFrame() calls  runcl.set_cam_bufs(..), using frame_data.
+	// // frame_data.back().frame_data.pose 	= pose_temp ;
+	// //
+	// // float16arry_To_Matx44f(	 &runcl.current_frames[	runcl.current_frames_idx[0]	].k2k_0to1_est[0]	, frame_data.back().frame_data.K2K );
+	// 																																	if(verbosity>local_verbosity_threshold) {
+	// 																																		cout << "\n\nDynamic_slam::_camera_matrix() finished"<< flush;
+	// 																																		PRINT_MATX44F(frame_data.back().frame_data.K,);
+	// 																																		PRINT_MATX44F(frame_data.back().frame_data.pose,);
+	// 																																		PRINT_MATX44F(frame_data.back().frame_data.K2K, );
+	// 																																	}
 }
 
 
