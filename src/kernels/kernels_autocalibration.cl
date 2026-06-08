@@ -41,12 +41,12 @@ __kernel void comp_cam_and_lens_maps(
 
 	float u2, v2, u_ref, v_ref;
 	uint read_index 	= read_offset_  +  v  * mm_cols  + u ;
-	bool print			= false;	if( (u==10)&&(v==10) ){ print=true; }
+	bool print			= false;	//if( (u==10)&&(v==10) ){ print=true; }
 																									// computes u_ref and v_ref, i.e. pixel reprojection of existing k2k.
 	px_k2k( 													param_k2k[num_vars],  reduction,  v,  u,  inv_depth, &u_ref,  &v_ref,  print  );
 	for (uint i=0; i<num_vars; i++) {																// for each param DoF, find new pixel position, h=homogeneous coords.
 		px_k2k( 												param_k2k[i],  reduction,  v,  u,  inv_depth, &u2,  &v2,  print  );
-		float2 partial_gradient								=	{ /*u_ref - u2*/ u ,  /*v_ref - v2*/ i }; 		// Find movement of pixel
+		float2 partial_gradient								=	{ u_ref - u2  ,  v_ref - v2 }; 		// Find movement of pixel
 		SE3_map[read_index + i* uint_params[MM_PIXELS]  ]	=	partial_gradient;
 
 		if((u%100)==0 & (v%100)==0)printf("\n__kernel void comp_cam_and_lens_maps(..) i=%u, (read_index + i* uint_params[MM_PIXELS]) = %u,  partial_gradient=(%f, %f), 		u_ref=%f, u2=%f,		 v_ref=%f, v2=%f, u=%u, v=%u",\

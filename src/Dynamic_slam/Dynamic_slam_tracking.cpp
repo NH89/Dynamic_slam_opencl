@@ -206,8 +206,8 @@ void Dynamic_slam::estimate_tracking(){
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\nDynamic_slam::estimate_tracking() chk_1, max_frames="<<max_frames<<flush;
 																																			// PRINT_MATX44F( invK,	);
-																																			// PRINT_MATX44F( K,		);
-																																			// PRINT_MATX44F( K * invK,		);
+																																			 PRINT_MATX44F( K,		);
+																																			 PRINT_MATX44F( K * invK,		);
 																																			// PRINT_MATX44F( invK * K,		);
 																																			// cout<<"runcl.current_frames[ runcl.current_frames_idx[0-4] ].frame_count="
 																																			// <<runcl.current_frames[ runcl.current_frames_idx[0] ].frame_count<<", "

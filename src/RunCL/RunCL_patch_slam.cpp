@@ -514,7 +514,7 @@ void  RunCL::patch_SE3_hessian_reduce (uint layer){														// called by Dy
 																																}
 	for(int row=0; row<num_SE3_DoF; row++){																						// per_pixel division currently done in kernel, TO DO which is better ?
 		for(int col=0; col<num_SE3_DoF; col++){
-			Hessian.operator()(row,col)							= hessian_Mat.at<cl_float4>( row+1,col ).x; 					// NB choose colour channel of Hessian
+			Hessian.operator()(row,col)								= hessian_Mat.at<cl_float4>( row+1,col ).x; 				// NB choose colour channel of Hessian
 		}
 	}
 
@@ -522,14 +522,14 @@ void  RunCL::patch_SE3_hessian_reduce (uint layer){														// called by Dy
 	Eigen::MatrixXd GN_H(6,6);																									// TO DO replace Eigen with a kernel for 6x6 matrix pseudo-inverse or inverse.
 	for (int i=0;i<6;i++){																										// Hard code efficient computation of 6x6 inversion, & Det.
 		for (int j=0;j<6;j++){
-			GN_H(i,j) 											= Hessian.operator()(i,j);	// GN_Hessian.operator()(i,j);
+			GN_H(i,j) 												= Hessian.operator()(i,j);	// GN_Hessian.operator()(i,j);
 		}
 	}
-	Eigen::MatrixXd pinv 										= GN_H.completeOrthogonalDecomposition().pseudoInverse();
+	Eigen::MatrixXd pinv 											= GN_H.completeOrthogonalDecomposition().pseudoInverse();
 	Matx66f pinv_H;
 	for (int i=0;i<6;i++){
 		for (int j=0;j<6;j++){
-			pinv_H.operator()(i,j)								= pinv(i,j);
+			pinv_H.operator()(i,j)									= pinv(i,j);
 		}
 	}
 	current_frames[ current_frames_idx[0] ].inv_SE3_Hessian[layer]	= pinv_H;
@@ -575,12 +575,12 @@ void  RunCL::patch_SE3_hessian_reduce (uint layer){														// called by Dy
 																																	/////////////////////////////////////////////////////////////////////////
 																																	const auto old_precision{ cout.precision() };
 																																	cout << setprecision(15);
-																																	cout <<"\nEigen GN_H \n" 			<< GN_H															<< endl << endl <<flush;
-																																	cout <<"\nEigen pinv \n" 			<< pinv															<< endl << endl <<flush;
+																																	cout <<"\nEigen GN_H \n" 					<< GN_H			<< endl << endl <<flush;
+																																	cout <<"\nEigen pinv \n" 					<< pinv			<< endl << endl <<flush;
 
-																																	cout <<"\nEigen FullPivLU GN_H2 \n" << GN_H2														<< endl << endl <<flush;
-																																	cout <<"\nEigen FullPivLU isInvertible = "<< invertible <<endl<<flush;
-																																	cout <<"\nEigen FullPivLU inv \n" 	<< inv															<< endl << endl <<flush;
+																																	cout <<"\nEigen FullPivLU GN_H2 \n" 		<< GN_H2		<< endl << endl <<flush;
+																																	cout <<"\nEigen FullPivLU isInvertible = "	<< invertible 	<< endl << flush;
+																																	cout <<"\nEigen FullPivLU inv \n"			<< inv			<< endl << endl <<flush;
 
 																																	cout << setprecision( old_precision );
 																																	cout <<"\n\nRunCL::patch_hessian_reduce()_finished #############################################################"<<flush;

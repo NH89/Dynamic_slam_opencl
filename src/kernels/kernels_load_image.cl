@@ -36,7 +36,7 @@ __kernel void compute_SE3_param_maps(
 	uint read_index 	= read_offset_  +  v  * mm_cols  + u ;
 	int idx 			= layer * 6 * 16;
 	bool print			= false;
-	if( (u_flt==10)&&(v==10) ){ print=true; }  // global_id_u==0) || (u==read_cols_/2.0f && v==read_rows_/2.0f) || (u==read_cols_ && v==read_rows_
+	//if( (u_flt==10)&&(v==10) ){ print=true; }  // global_id_u==0) || (u==read_cols_/2.0f && v==read_rows_/2.0f) || (u==read_cols_ && v==read_rows_
 
 	for (uint i=0; i<num_vars; i++, idx+=16) {																// for each SE3 DoF
 																									// Find new pixel position, h=homogeneous coords.

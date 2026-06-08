@@ -156,7 +156,7 @@ void  RunCL::patch_cam_and_lens__hessian_reduce (uint layer, cl_mem param_hessia
 																																}
 	for(int row=0; row<num_camera_matrix_DoF; row++){																			// per_pixel division currently done in kernel, TO DO which is better ?
 		for(int col=0; col<num_camera_matrix_DoF; col++){
-			Hessian.operator()(row,col)							= hessian_Mat.at<cl_float4>( row+1,col ).x; 					// NB choose colour channel of Hessian
+			Hessian(row,col)									= hessian_Mat.at<cl_float4>( row+1,col ).x; 					// NB choose colour channel of Hessian
 		}
 	}
 
@@ -164,15 +164,42 @@ void  RunCL::patch_cam_and_lens__hessian_reduce (uint layer, cl_mem param_hessia
 	Eigen::MatrixXd GN_H(num_camera_matrix_DoF,num_camera_matrix_DoF);															// TO DO replace Eigen with a kernel for 6x6 matrix pseudo-inverse or inverse.
 	for (int i=0;i<num_camera_matrix_DoF;i++){																					// Hard code efficient computation of 6x6 inversion, & Det.
 		for (int j=0;j<num_camera_matrix_DoF;j++){
-			GN_H(i,j) 											= Hessian.operator()(i,j);	// GN_Hessian.operator()(i,j);
+			GN_H(i,j) 											= Hessian(i,j);	// GN_Hessian.operator()(i,j);
 		}
 	}
 	Eigen::MatrixXd pinv 										= GN_H.completeOrthogonalDecomposition().pseudoInverse();
 	for (int i=0;i<num_camera_matrix_DoF;i++){
 		for (int j=0;j<num_camera_matrix_DoF;j++){
-			inv_Hessian.operator()(i,j)							= pinv(i,j);
+			inv_Hessian(i,j)									= pinv(i,j);
 		}
 	}
+																																if( verbosity>local_verbosity_threshold+1) {
+																																	////Prove inv = pinv when invertible. NB pinv is numerically safer.
+																																	typedef Eigen::Matrix<double,5,5> Matrix5x5d;
+																																	Matrix5x5d GN_H2;
+
+																																	for (int i=0;i<5;i++){
+																																		for (int j=0;j<5;j++){
+																																			GN_H2(i,j)						= Hessian(i,j);
+																																		}
+																																	}
+																																	Eigen::FullPivLU<Matrix5x5d> lu_GN_H2(GN_H2);
+																																	bool invertible							= lu_GN_H2.isInvertible();
+																																	Matrix5x5d			inv 				= lu_GN_H2.inverse();
+																																	/////////////////////////////////////////////////////////////////////////
+																																	const auto old_precision{ cout.precision() };
+																																	cout << setprecision(15);
+																																	cout <<"\nEigen GN_H \n"					<< GN_H			<< endl << endl <<flush;
+																																	cout <<"\nEigen pinv \n"					<< pinv			<< endl << endl <<flush;
+
+																																	cout <<"\nEigen FullPivLU GN_H2 \n"			<< GN_H2		<< endl << endl <<flush;
+																																	cout <<"\nEigen FullPivLU isInvertible = "	<< invertible	<< endl << flush;
+																																	cout <<"\nEigen FullPivLU inv \n"			<< inv			<< endl << endl <<flush;
+
+																																	cout << setprecision( old_precision );
+																																	cout <<"\n\nRunCL::patch_hessian_reduce()_finished #############################################################"<<flush;
+																																}
+
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_cam_and_lens__hessian_reduce()_chk3 ."<<flush;	// Save buffers to file ###########
 																																	stringstream ss;
 																																	ss << "patch_cam_and_lens__hessian_reduce__frame_num="<<current_frames[ current_frames_idx[0] ].dataset_frame_num<<"_layer="<<layer<<"_";

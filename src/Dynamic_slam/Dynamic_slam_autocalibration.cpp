@@ -12,7 +12,7 @@ void Dynamic_slam::estimate_calibration(){
 																																			cout << "\fDynamic_slam::estimate_calibration() chk_0"
 																																			<<"  ##############################################################"<< flush;
 																																		}
-	uint		layer							= 4;
+	uint		layer							= 0;
 	uint		frame_idx						= 1;
 	precompute_cam_matrix_buffers(				layer, frame_idx );
 	runcl.patch_cam_and_lens_Hessian(			layer, runcl.camera_matrix_map_mem,				runcl.camera_matrix_grad_map_mem,			runcl.camera_matrix_hessian_map_mem );
@@ -31,9 +31,9 @@ void Dynamic_slam::precompute_cam_matrix_buffers(  uint layer,  uint frame_idx )
 																																			if (verbosity>local_verbosity_threshold) { cout << "\nprecompute_cam_matrix_and_lens_distortion_buffers_chk 0:" <<flush;
 																																				cout<<"\n frame_data.size() = "<<frame_data.size()<<flush;
 																																			}
-	RunCL::frame*	this_frame 				= &runcl.current_frames[runcl.current_frames_idx[frame_idx]	];
+	RunCL::frame*	this_frame				= &runcl.current_frames[runcl.current_frames_idx[frame_idx]	];
 
-	cl_float16 		camera_matrix_k2k[		num_camera_matrix_DoF +1 ];
+	cl_float16		camera_matrix_k2k[		num_camera_matrix_DoF +1 ];
 
 	generate_camera_matrix_k2k_vec(			this_frame->K, this_frame->pose_from_0, camera_matrix_k2k );
 
@@ -59,7 +59,7 @@ void Dynamic_slam::generate_camera_matrix_k2k_vec( cv::Matx44f K, cv::Matx44f po
 
 		for (int i=0; i<=num_camera_matrix_DoF; i++) {	d_k[i] = K;	}
 
-		float step = 10.0f;
+		float step = 1.0f;
 		d_k[0](0,0)	+=	step;	// change of focal length
 		d_k[0](1,1)	+=	step;
 
@@ -102,10 +102,10 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer){
 																																			PRINT_MATX55D( runcl.current_frames[ runcl.current_frames_idx[0] ].inv_camera_matrix_Hessian[layer], );
 																																			}
 	//int		layer 				= 4;//4;//SE3_start_layer;
-	uint	out_block_size 		= 4;
+	uint	out_block_size 		= 2;//4;
 
 	float	old_sum_rho_sq		= FLT_MAX-1;
-	float	factor				= -0.5f;
+	float	factor				= 0.1f;
 	Matx44f	old_k				= Matx44f::eye();
 	Matx44f	old_inv_k			= Matx44f::eye();
 	Matx44f	old_k2k				= Matx44f::eye();
@@ -134,7 +134,7 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer){
 																																				//}
 																																			//}
 																																		}
-	for (uint iter = 0; iter<SE_iter; iter++){
+	for (uint iter = 0; iter<3/*SE_iter*/; iter++){
 		auto step_0 								= high_resolution_clock::now();
 
 		Matx15d param_update[num_current_frames]	= { Matx15d::zeros() };
@@ -157,9 +157,9 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer){
 																																			Matx44f	pose				= this_frame->pose_from_0;
 																																			PRINT_MATX44F( pose,		);
 																																			PRINT_MATX16F( PToLie(pose),);
-																																			uint	out_block_size		= 2;
-																																			uint	layer				= 0;
-																																			runcl.rho_sq_from_0( out_block_size, iter, frame_idx, layer, num_camera_matrix_DoF, fname_short );// For debugging, get a larger, finer Rho map
+																																			//uint	out_block_size		= 2;
+																																			//uint	layer				= 0;
+																																			//runcl.rho_sq_from_0( out_block_size, iter, frame_idx, layer, num_camera_matrix_DoF, fname_short );// For debugging, get a larger, finer Rho map
 																																		}
 			runcl.rho_sq_from_0(		out_block_size, iter, frame_idx,	(uint)layer,	num_camera_matrix_DoF, fname_short );
 			runcl.reduce_patch_Rho(		out_block_size, iter, 				(uint)layer,	num_camera_matrix_DoF );
@@ -232,6 +232,11 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer){
 		new_k(1,2)						+= sum_param_update(0,3);	// cy
 
 		new_k(0,1)						+= sum_param_update(0,4);	// skew
+
+
+
+	//	new_k = frame_data.back().frame_data_GT.K;		/////   Ignores update and sets K to GT.  ##################################
+
 
 		new_inv_k						= generate_invK_( new_k );
 
