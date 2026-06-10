@@ -135,10 +135,10 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 		float4 gv										= { (pd.x - pu.x)/2.0f,  (pd.y - pu.y)/2.0f,  (pd.z - pu.z)/2.0f,   0.5f };		// down -up				// in +ve (u,v) directions, origin at top left of image.
 		img_grad_uv[ read_index ]						= (float8){  gu.x, gu.y, gu.z, gu.w,  gv.x, gv.y, gv.z, gv.w };
 		img_edge_uv[ read_index ]						= (float2){  ((signbit(gu.y)*2)-1) * ( fabs(gu.x)+fabs(gu.y)+fabs(gu.z) )*(1<<5),		 ((signbit(gv.y)*2)-1) * ( fabs(gv.x)+fabs(gv.y)+fabs(gv.z) )*(1<<5) }; // NB .z = value channel, used for direction.
-														// ### TODO generate DTAM g1mem, but separately in u,v and preserve sign.
+																												// ### TODO generate DTAM g1mem, but separately in u,v and preserve sign.
 		float2	flt2_inv_depth							=  depth_map[read_index];
 		float	inv_depth								= flt2_inv_depth.x;
-		confidence_pvt_arr[row_in_block]				= 1.0f;	//flt2_inv_depth.y; ### TODO restore use of depthmap confidence
+		confidence_pvt_arr[row_in_block]				= 1.0f;													//flt2_inv_depth.y; ### TODO restore use of depthmap confidence
 
 		float4	Jacobian[6]								=  {0};
 
@@ -148,7 +148,7 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 			float4	gySE3								= gv*SE3_px[1];
 			Jacobian[i]									= (gxSE3 + gySE3) * confidence_pvt_arr[row_in_block];	// ### Is this all that is needed ?
 			if(i>2){
-				ST3_img_grad[read_index + (i-3)* mm_pixels] = Jacobian[i] * null_factor;																		// collecting full HSV.
+				ST3_img_grad[read_index + (i-3)* mm_pixels] = Jacobian[i] * null_factor;																		// collecting full HSV. for rel_vel
 
 				int4 J_notnan = !isnan(Jacobian[i]);
 				if(  !isnan( inv_depth ) && J_notnan.x && J_notnan.y && J_notnan.z && J_notnan.w ){

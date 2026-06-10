@@ -808,20 +808,20 @@ void RunCL::allocatemem(){
 
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nRunCL::allocatemem_chk5\n\n" << flush;
-																																			cout << ",mm_Image_size = " << mm_Image_size << endl;
-																																			cout << ",mm_Image_type = "	<< mm_Image_type << endl;
-																																			cout << ",mm_size_bytes_C3 = " << mm_size_bytes_C3 << endl;
-																																			cout << ",mm_size_bytes_C4 = " << mm_size_bytes_C4 << endl;
-																																			cout << ",mm_size_bytes_C1 = " << mm_size_bytes_C1 << endl;
+																																			cout << ",mm_Image_size = "		<< mm_Image_size		<< endl;
+																																			cout << ",mm_Image_type = "		<< mm_Image_type		<< endl;
+																																			cout << ",mm_size_bytes_C3 = "	<< mm_size_bytes_C3 	<< endl;
+																																			cout << ",mm_size_bytes_C4 = "	<< mm_size_bytes_C4 	<< endl;
+																																			cout << ",mm_size_bytes_C1 = "	<< mm_size_bytes_C1 	<< endl;
 																																			cout << "\n";
-																																			cout << ",baseImage_size, = " << baseImage_size << endl;
-																																			cout << ",baseImage_type = " << baseImage_type << endl;
-																																			cout << ",image_size_bytes = " << image_size_bytes	<< endl;
-																																			cout << ",mm_vol_size_bytes = " << mm_vol_size_bytes << endl;
+																																			cout << ",baseImage_size, = "	<< baseImage_size		<< endl;
+																																			cout << ",baseImage_type = "	<< baseImage_type		<< endl;
+																																			cout << ",image_size_bytes = "	<< image_size_bytes		<< endl;
+																																			cout << ",mm_vol_size_bytes = "	<< mm_vol_size_bytes	<< endl;
 																																			cout << "\n" << flush;
 																																		}
 																																		if(verbosity>local_verbosity_threshold) {
-																																			DownloadAndSave_3Channel( 	basemem,	ss.str(), paths.at("basemem"),		image_size_bytes, 	baseImage_size, 	baseImage_type, false ); 	cout << "\nbasemem,"	<< flush;
+																																			DownloadAndSave_3Channel(	basemem,	ss.str(), paths.at("basemem"),		image_size_bytes,	baseImage_size, 	baseImage_type, false ); 	cout << "\nbasemem,"	<< flush;
 																																		}
 																																		if(verbosity>local_verbosity_threshold) cout << "RunCL::allocatemem_finished #############################################################################\n\n" << flush;
 }

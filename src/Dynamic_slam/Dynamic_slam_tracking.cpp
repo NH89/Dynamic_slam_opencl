@@ -205,7 +205,7 @@ void Dynamic_slam::estimate_tracking(){
 	int				max_frames			= min( (1+runcl.current_frames[ runcl.current_frames_idx[0] ].frame_count),		num_current_frames);
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\nDynamic_slam::estimate_tracking() chk_1, max_frames="<<max_frames<<flush;
-																																			// PRINT_MATX44F( invK,	);
+																																			 PRINT_MATX44F( invK,	);
 																																			 PRINT_MATX44F( K,		);
 																																			 PRINT_MATX44F( K * invK,		);
 																																			// PRINT_MATX44F( invK * K,		);

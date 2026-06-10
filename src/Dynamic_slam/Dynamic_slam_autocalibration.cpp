@@ -8,19 +8,22 @@ using namespace std;
 void Dynamic_slam::estimate_calibration(){
 	string fname = "Dynamic_slam::estimate_calibration(()";
 	int 	local_verbosity_threshold 		= V_DYNAMIC_SLAM_ESTIMATE_CALIBRATION;//verbosity_mp["Dynamic_slam::estimateSE3"];
-																																		if(verbosity>local_verbosity_threshold) {
-																																			cout << "\fDynamic_slam::estimate_calibration() chk_0"
-																																			<<"  ##############################################################"<< flush;
-																																		}
-	uint		layer							= 0;
+																																if(verbosity>local_verbosity_threshold) {
+																																	cout << "\nDynamic_slam::estimate_calibration() chk_0"
+																																	<<"  ##############################################################"<< flush;
+																																}
+	RunCL::frame *frame_0						= &runcl.current_frames[ runcl.current_frames_idx[0] ];
+	uint		layer							= 4;
 	uint		frame_idx						= 1;
 	precompute_cam_matrix_buffers(				layer, frame_idx );
-	runcl.patch_cam_and_lens_Hessian(			layer, runcl.camera_matrix_map_mem,				runcl.camera_matrix_grad_map_mem,			runcl.camera_matrix_hessian_map_mem );
-	runcl.patch_cam_and_lens__hessian_reduce(	layer, runcl.camera_matrix_hessian_map_mem,		runcl.current_frames[ runcl.current_frames_idx[0] ].inv_camera_matrix_Hessian[layer] );
-																																			PRINT_MATX55D( runcl.current_frames[ runcl.current_frames_idx[0] ].inv_camera_matrix_Hessian[layer], );
+	runcl.patch_cam_and_lens_Hessian(			layer);
+	runcl.patch_cam_and_lens__Hessian_reduce (	layer, 	frame_0->inv_camera_matrix_Hessian[layer] );
+																																if(verbosity>local_verbosity_threshold) {
+																																	cout << "\nDynamic_slam::estimate_calibration() chk_1" << flush;
+																																	PRINT_MATX55D( frame_0->inv_camera_matrix_Hessian[layer], );
+																																}
 	//////////
 	estimate_camera_matrix( layer);
-
 
 //	estimate_lens_distortion();
 }
@@ -28,9 +31,9 @@ void Dynamic_slam::estimate_calibration(){
 void Dynamic_slam::precompute_cam_matrix_buffers(  uint layer,  uint frame_idx ){			// needs to be run _after_ computing the SE3 transform,  if the aim is to find the actual values of K, rather than the change in K between frames.
 	string fname = "precompute_cam_lens_buffers";
 	const int local_verbosity_threshold = V_DYNAMIC_SLAM_PRECOMPUTE_CAM_LENS_BUFFERS;
-																																			if (verbosity>local_verbosity_threshold) { cout << "\nprecompute_cam_matrix_and_lens_distortion_buffers_chk 0:" <<flush;
-																																				cout<<"\n frame_data.size() = "<<frame_data.size()<<flush;
-																																			}
+																																if (verbosity>local_verbosity_threshold) { cout << "\nprecompute_cam_matrix_and_lens_distortion_buffers_chk 0:" <<flush;
+																																	cout<<"\n frame_data.size() = "<<frame_data.size()<<flush;
+																																}
 	RunCL::frame*	this_frame				= &runcl.current_frames[runcl.current_frames_idx[frame_idx]	];
 
 	cl_float16		camera_matrix_k2k[		num_camera_matrix_DoF +1 ];
@@ -104,8 +107,9 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer){
 	//int		layer 				= 4;//4;//SE3_start_layer;
 	uint	out_block_size 		= 2;//4;
 
+	bool	stop_loop			= false;
 	float	old_sum_rho_sq		= FLT_MAX-1;
-	float	factor				= 0.1f;
+	float	factor				= -0.05f;
 	Matx44f	old_k				= Matx44f::eye();
 	Matx44f	old_inv_k			= Matx44f::eye();
 	Matx44f	old_k2k				= Matx44f::eye();
@@ -189,39 +193,23 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer){
 		}
 																																		if( verbosity>local_verbosity_threshold ){
 																																			cout << "\n\nDynamic_slam::_camera_matrix() chk_5: ,  ###########################"<<
+																																			"\niter="				<< iter<<
 																																			"\nsum_sum_rho_sq = "	<< sum_sum_rho_sq	<<endl<<flush;
-																																			PRINT_MATX15D( (sum_param_update/*/(float)(num_current_frames-1)*/ ), );
+																																			PRINT_MATX15D( (sum_param_update ), );								/*/(float)(num_current_frames-1)*/
 																																		}
-		//return;
-
-
 		if( isnan(sum_sum_rho_sq) ){											cout << "\nisnan(sum_rho_sq)" <<flush;
-			break;
+			stop_loop 	= true;
+			new_k		= old_k;
+			new_inv_k	= old_inv_k;
 		}else if(sum_sum_rho_sq > old_sum_rho_sq){
 																				cout << "\n"<<sum_sum_rho_sq<<" = sum_sum_rho_sq > old_sum_rho_sq = "<< old_sum_rho_sq;
-			break;
-		}
+			stop_loop 	= true;
+			new_k		= old_k;
+			new_inv_k	= old_inv_k;
+		}else{
 		old_sum_rho_sq					= sum_sum_rho_sq ;
 		//sum_param_update				/= (float)max_frames;
-/*
-		if( isnan(sum_rho_sq) ){											cout << "\nisnan(sum_rho_sq)" <<flush;
-			break;
-		}else if(sum_rho_sq > old_sum_rho_sq){																							// Rho, photometric error, got worse not better
-			if(layer<=0) {break;}																										// Reached bottom of image pyramid.
-			else {															cout << "\nsum_rho_sq > old_sum_rho_sq = "<< old_sum_rho_sq;
-				if(factor<-1.0f){																										// End amplified steps
-					factor 			=	-1.0f;								cout << ",  factor -2.0f -> -1.0f";
-				}else {
-					layer--;												cout << "\nlayer = "	<<	layer;
-					old_sum_rho_sq	=	FLT_MAX-1;																						// Re-set old_sum_rho_sq for new layer
-				}																														PRINT_MATX44F( old_k2k, ); PRINT_MATX44F( old_k, ); PRINT_MATX44F( old_inv_k, );
-				runcl.update_44f_buf(	old_k2k,	this_frame->k2k_buf_from_0,	fname );												// Re-set to previous k, camera matrix
-				this_frame->K		= old_k;
-				this_frame->inv_K	= old_inv_k;
-																			cout << endl << flush;
-			}
-		}else{
-*/
+
 		old_k							=	new_k;
 		old_inv_k						=	new_inv_k;
 		old_k2k							=	newK2K;
@@ -229,13 +217,13 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer){
 		new_k(0,0)						+= sum_param_update(0,0);	// f
 		new_k(1,1)						+= sum_param_update(0,0);
 
-	//	new_k(0,0)						+= sum_param_update(0,1);	// fx:fy
-	//	new_k(1,1)						-= sum_param_update(0,1);
+		new_k(0,0)						+= sum_param_update(0,1);	// fx:fy
+		new_k(1,1)						-= sum_param_update(0,1);
 
-	//	new_k(0,2)						+= sum_param_update(0,2);	// cx
-	//	new_k(1,2)						+= sum_param_update(0,3);	// cy
+		new_k(0,2)						+= sum_param_update(0,2);	// cx
+		new_k(1,2)						+= sum_param_update(0,3);	// cy
 
-	//	new_k(0,1)						+= sum_param_update(0,4);	// skew
+		new_k(0,1)						+= sum_param_update(0,4);	// skew
 
 
 
@@ -243,8 +231,8 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer){
 
 
 		new_inv_k						= generate_invK_( new_k );
-
-		for (int frame_idx = 1; frame_idx < max_frames; frame_idx++){
+		}
+		for (int frame_idx = 0; frame_idx < max_frames; frame_idx++){
 			RunCL::frame *this_frame	= &runcl.current_frames[ runcl.current_frames_idx[frame_idx] ];
 
 			Matx44f	pose				= this_frame->pose_from_0;
@@ -272,7 +260,12 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer){
 																																			<<"K Calibration loop time = "<<  duration_cast<microseconds>(step_1 - step_0).count()
 																																			<<" microseconds,  layer="<<layer<<endl<<flush;
 																																		}
+		if (stop_loop == true) break;
 	}
+	frame_data.back().frame_data.K		=	new_k;																						// Needed for Dynamic_slam::nextFrame() -> runcl.set_cam_bufs(...)
+	frame_data.back().frame_data.inv_K	=	new_inv_k;
+	frame_data.back().frame_data.K2K	=	newK2K;
+
 	// // Matx44f pose_temp 					= runcl.update_pose_bufs_cur_frames( pose );											// NB these two lines are req because nextFrame() calls  runcl.set_cam_bufs(..), using frame_data.
 	// // frame_data.back().frame_data.pose 	= pose_temp ;
 	// //

@@ -539,7 +539,7 @@ void  RunCL::patch_SE3_hessian_reduce (uint layer){														// called by Dy
 																																	bool show 		= false;
 																																	bool old_tiff 	= tiff;
 																																	tiff 			= true;
-																																	float max_range	= 1;
+																																	float max_range	= -1;
 																																	cv::Mat bufImg;
 																																	_cl_flush_finish(m_queue, fname);
 																																	DownloadAndSave_3Channel( 	SE3_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  		mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  0,			false);

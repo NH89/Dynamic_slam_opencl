@@ -269,8 +269,8 @@ void RunCL::rho_sq_from_0( uint out_block_size, uint iter, uint frame_idx, uint 
 																																					<< endl<<flush;
 																	 																		}
 	//input integers
-	_clSetKernelArg( kernel, 0, sizeof( uint),									&frame_idx,	 											fname);		//__private		uint 		layer,					//0
-	_clSetKernelArg( kernel, 1, sizeof( uint),									&layer,	 												fname);		//__private		uint 		layer,					//0
+	_clSetKernelArg( kernel, 0, sizeof( uint),									&frame_idx,												fname);		//__private		uint 		layer,					//0
+	_clSetKernelArg( kernel, 1, sizeof( uint),									&layer,													fname);		//__private		uint 		layer,					//0
 	_clSetKernelArg( kernel, 2, sizeof( uint),									&cols_per_row,											fname);		//__private		uint 		cols_per_row,			//1
 	_clSetKernelArg( kernel, 3, sizeof( uint),									&out_block_size,										fname);		//__private		uint 		out_block_size,			//2
 	_clSetKernelArg( kernel, 4, sizeof( uint),									&num_DoF,												fname);		//__private		float2		delta_SE3,				//3
@@ -301,7 +301,7 @@ void RunCL::rho_sq_from_0( uint out_block_size, uint iter, uint frame_idx, uint 
 	_clSetKernelArg( kernel,25, sizeof( cl_mem), 								&current_frames[current_frames_idx[4]].r_vel_buf,		fname);		//__global		float4*		img_past_3,				//19
 	//output
 	_clSetKernelArg( kernel,26, sizeof( cl_mem), 								&SE3_rho_map_mem, 										fname);		//__global		float2* 	Rho_,					//20	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
-	_clSetKernelArg( kernel,27, sizeof( cl_float2)*local_work_size,				NULL, 													fname);		//__local		float2*		local_rho				//21	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
+	_clSetKernelArg( kernel,27, sizeof( cl_float2)*local_work_size,				NULL,													fname);		//__local		float2*		local_rho				//21	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
 
 	_clSetKernelArg( kernel,28, sizeof( cl_mem), 								&SE3_incr_map_mem,										fname);		//__global 		float2*		SE3_incr_map_,			//22
 	_clSetKernelArg( kernel,29, sizeof( cl_float2)*local_work_size*num_SE3_DoF,	NULL,													fname);		//__local 		float2*		local_SE3_incr			//23

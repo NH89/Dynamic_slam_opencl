@@ -88,7 +88,7 @@ __kernel void Rho_sq_to_0(								// To be launched with 1 thread per col for 32
 	float4 old_px										= zero_f4;;
 	bool   intersection									= false;
 	bool   print_ 										= false;
-	if(global_id_u==10) print_							= true;
+	//if(global_id_u==10) print_							= true;
 /*
 // 	if (global_id_u < 1 / *num_past_frames* /){printf("\n__kernel void Rho_sq()  layer = %d,  read_index=%d,  read_index/mm_cols=%f ",
 // 																				layer,		read_index,  	(float)read_index/(float)mm_cols	);	}
@@ -351,9 +351,10 @@ __kernel void Rho_sq_from_0(						// To be launched with 1 thread per col for 32
 			px_k2k( k2k_past[past_frame_idx],  reduction,  v,  u,  inv_depth.x, &u2_flt_1,  &v2_flt_1, print_ );
 
 			uint margin					= 4;// * reduction;
-			intersection 				= 	(u>margin)			&& (u<=read_cols_-margin)			&& (v>margin)			&& (v<=read_rows_-margin)			&& \
-											(u2_flt_1>margin)	&& (u2_flt_1<=read_cols_-margin)	&& (v2_flt_1>margin)	&& (v2_flt_1<=read_rows_-margin)	&& \
-											(global_id_u<=layer_pixels)		&&	(inv_depth.x>=min_inv_depth)	&& (inv_depth.x<=max_inv_depth);												// if images overlap
+			intersection 				= 	(u>margin)						&& (u<=read_cols_-margin)			&& (v>margin)					&& (v<=read_rows_-margin)			&& \
+											(u2_flt_1>margin)				&& (u2_flt_1<=read_cols_-margin)	&& (v2_flt_1>margin)			&& (v2_flt_1<=read_rows_-margin)	&& \
+											(global_id_u<=layer_pixels)		&& (inv_depth.x>=min_inv_depth)		&& (inv_depth.x<=max_inv_depth)	&&\
+											(isnormal(inv_depth.x)) 		&& (isnormal(inv_depth.y));												// if images overlap
 			rho_pvt_flt4				= zero_f4;
 			//////////////////////////////////////////////////
 			if (intersection){

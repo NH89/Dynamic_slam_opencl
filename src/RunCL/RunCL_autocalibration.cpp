@@ -48,7 +48,7 @@ void RunCL::precomp_cam_and_lens_maps ( uint layer, cl_float16 SE3_k2k[  num_cam
 }
 
 
-void RunCL::patch_cam_and_lens_Hessian(  uint layer, cl_mem param_map_mem, cl_mem param_grad_map_mem, cl_mem param_hessian_map_mem ){														// called by Dynamic_slam::getFrame
+void RunCL::patch_cam_and_lens_Hessian(  uint layer ){																			// called by Dynamic_slam::getFrame		/* , cl_mem param_map_mem, cl_mem param_grad_map_mem, cl_mem param_hessian_map_mem*/
 	string fname = "RunCL::patch_cam_and_lens_Hessian()";
 	int local_verbosity_threshold = V_RUNCL_PATCH_CAM_LENS_HESSIAN;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_cam_and_lens_Hessian()_chk1 #############################################################"<<flush;}
 	cl_kernel		kernel						= patch_cam_and_lens_Hessian_kernel;
@@ -67,12 +67,12 @@ void RunCL::patch_cam_and_lens_Hessian(  uint layer, cl_mem param_map_mem, cl_me
 	cl_uint3		SE3_hessian_offset			= {{ SE3_h_offset,	(patch_hessian_start_idx[layer][0][1]     - SE3_h_offset) ,	(patch_hessian_start_idx[layer][1][0]     - SE3_h_offset)  }};
 	cl_uint3		ST3_out_offset				= {{ ST3_h_offset,	(patch_ST3_hessian_start_idx[layer][0][1] - ST3_h_offset) ,	(patch_ST3_hessian_start_idx[layer][1][0] - ST3_h_offset)  }};
 																																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_cam_and_lens_Hessian()_chk2 "
-																																	<<" local_Hessian_size = "<<local_Hessian_size<<"  "<<flush;
-																																	cout<<" out_block_size = "<<out_block_size
-																																	<<"\n SE3_h_offset = "<<SE3_h_offset
-																																	<<"\n ST3_h_offset = "<<ST3_h_offset
-																																	<<"\n SE3_hessian_offset = ("<<SE3_hessian_offset.x <<", "<<SE3_hessian_offset.y <<", "<<SE3_hessian_offset.z <<")"
-																																	<<"\n ST3_out_offset = ("<<ST3_out_offset.x <<", "<<ST3_out_offset.y <<", "<<ST3_out_offset.z <<")"
+																																	<<" local_Hessian_size = "		<<local_Hessian_size<<"  "<<flush;
+																																	cout<<" out_block_size = "		<<out_block_size
+																																	<<"\n SE3_h_offset = "			<<SE3_h_offset
+																																	<<"\n ST3_h_offset = "			<<ST3_h_offset
+																																	<<"\n SE3_hessian_offset = ("	<<SE3_hessian_offset.x 	<<", "<<SE3_hessian_offset.y 	<<", "<<SE3_hessian_offset.z <<")"
+																																	<<"\n ST3_out_offset = ("		<<ST3_out_offset.x 		<<", "<<ST3_out_offset.y 		<<", "<<ST3_out_offset.z <<")"
 																																	<<flush;
 																																}
 	cl_event		ev;
@@ -85,18 +85,18 @@ void RunCL::patch_cam_and_lens_Hessian(  uint layer, cl_mem param_map_mem, cl_me
 	_clSetKernelArg( kernel,	3, sizeof(cl_uint3),	&SE3_hessian_offset,			fname);									// __private	uint		SE3_hessian_offset,			//2
 	_clSetKernelArg( kernel,	4, sizeof(cl_uint3),	&ST3_out_offset,				fname);									// __private	uint		SE3_hessian_offset,			//3
 	//__constant
-	_clSetKernelArg( kernel,	5, sizeof( cl_mem), 	&mipmap_buf,					fname);									// __constant	uint8*		mipmap_params,			//5
-	_clSetKernelArg( kernel,	6, sizeof( cl_mem), 	&uint_param_buf,				fname);									// __constant	uint*		uint_params,			//6
+	_clSetKernelArg( kernel,	5, sizeof( cl_mem), 	&mipmap_buf,					fname);									// __constant	uint8*		mipmap_params,				//5
+	_clSetKernelArg( kernel,	6, sizeof( cl_mem), 	&uint_param_buf,				fname);									// __constant	uint*		uint_params,				//6
 	//__global
-	_clSetKernelArg( kernel,	7, sizeof( cl_mem), 	&param_map_mem,					fname);									// __constant 	float2*		SE3_map,				//7
-	_clSetKernelArg( kernel,	8, sizeof( cl_mem), 	&patch_lookup_table_buf,		fname);									// __global 	float4*		lookup_table,			//8
-	_clSetKernelArg( kernel,	9, sizeof( cl_mem), 	&img_grad_mem,					fname);									// __global 	float8*		img_grad_uv,			//11
+	_clSetKernelArg( kernel,	7, sizeof( cl_mem), 	&camera_matrix_map_mem,			fname);									// __constant 	float2*		param_map,					//7
+	_clSetKernelArg( kernel,	8, sizeof( cl_mem), 	&patch_lookup_table_buf,		fname);									// __global 	float4*		lookup_table,				//8
+	_clSetKernelArg( kernel,	9, sizeof( cl_mem), 	&img_grad_mem,					fname);									// __global 	float8*		img_grad_uv,				//9
 	//Outputs:
 	//__global
-	_clSetKernelArg( kernel,	10, sizeof( cl_mem), 	&param_grad_map_mem,			fname);									// __global 	float4*		SE3_grad_map,			//12	// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
-	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&param_hessian_map_mem,			fname);									// __global 	float4*		SE3_Hessian_pinv_map,	//13	// HSV (6x6) matrix so 36*float8
+	_clSetKernelArg( kernel,	10, sizeof( cl_mem), 	&camera_matrix_grad_map_mem,	fname);									// __global 	float4*		param_grad_map,				//10	// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
+	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&camera_matrix_hessian_map_mem,	fname);									// __global 	float4*		cam_Hessian_map,			//11	// HSV (6x6) matrix so 36*float8
 	//__local
-	_clSetKernelArg( kernel,	12,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,				//13	// local_Hessian[ sizeof(float4) *6*6 *local_size]
+	_clSetKernelArg( kernel,	12,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,				//12	// local_Hessian[ sizeof(float4) *6*6 *local_size]
 																																cout<<"\n\nRunCL::patch_cam_and_lens_Hessian()_chk3 "<<flush;
 	res 	= clEnqueueNDRangeKernel(m_queue,		kernel, 1, 0, &threads_to_launch, &local_work_size_, 0, NULL, &ev);
 																	if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}
@@ -107,23 +107,19 @@ void RunCL::patch_cam_and_lens_Hessian(  uint layer, cl_mem param_map_mem, cl_me
 																																	stringstream ss;
 																																	ss << "patch_cam_and_lens_Hessian__frame_num="<<current_frames[ current_frames_idx[0] ].dataset_frame_num<<"_layer="<<layer<<"_";
 																																	bool show 		= false;
+																																	float max_range	= -1;
+																																	uint vol_layers = 5;
+
 																																	bool old_tiff 	= tiff;
 																																	tiff 			= true;
-																																	float max_range	= 1;
-																																	//cv::Mat bufImg;
-																																	//_cl_flush_finish(m_queue, fname);
-																																	//DownloadAndSave_3Channel( 	param_grad_map_mem,	ss.str( ), paths.at( "SE3_grad_map_mem"),  	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  0,			false);
-
-																																	uint vol_layers = 5;
-																																	DownloadAndSave_6Channel_volume(  param_grad_map_mem, ss.str(), paths.at("SE3_grad_map_mem"), mm_size_bytes_C4, mm_Image_size, CV_32FC4, show,  max_range,  vol_layers );
-
+																																	DownloadAndSave_6Channel_volume(  camera_matrix_grad_map_mem, ss.str(), paths.at("SE3_grad_map_mem"), mm_size_bytes_C4, mm_Image_size, CV_32FC4, show,  max_range,  vol_layers );
 																																	tiff 			= old_tiff;
 																																	cout<<"\n\nRunCL::patch_cam_and_lens_Hessian()_Finished ."<<flush;
 																																}
 }
 
 
-void  RunCL::patch_cam_and_lens__hessian_reduce (uint layer, cl_mem param_hessian_map_mem, Matx55d &inv_Hessian ){				// called by Dynamic_slam::getFrame
+void  RunCL::patch_cam_and_lens__Hessian_reduce (uint layer,  Matx55d &inv_Hessian ){											// called by Dynamic_slam::getFrame		/*cl_mem param_hessian_map_mem,*/
 	string 		fname	= "RunCL::patch_cam_and_lens__hessian_reduce()";
 	int local_verbosity_threshold = V_RUNCL_PATCH_CAM_LENS_HESSIAN_REDUCE;														if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_cam_and_lens__hessian_reduce()_chk1 layer="<<layer<<" #############################################################"<<flush;}
 	cl_kernel	kernel	= patch_hessian_reduce_kernel;
@@ -132,13 +128,13 @@ void  RunCL::patch_cam_and_lens__hessian_reduce (uint layer, cl_mem param_hessia
 	uint	rows		=		patch_hessian_rows[ layer];
 	uint	mm_cols		=		mm_width;
 
-	_clSetKernelArg( kernel,	1, sizeof(int),			&layer,						fname);										// __private	uint	cols		//1
-	_clSetKernelArg( kernel,	2, sizeof(int),			&cols,						fname);										// __private	uint	cols		//2
-	_clSetKernelArg( kernel,	3, sizeof(int),			&rows,						fname);										// __private	uint	rows		//3
-	_clSetKernelArg( kernel,	4, sizeof(int),			&mm_cols,					fname);										// __private	uint	mm_cols		//4
+	_clSetKernelArg( kernel,	1, sizeof(int),			&layer,								fname);								// __private	uint	cols		//1
+	_clSetKernelArg( kernel,	2, sizeof(int),			&cols,								fname);								// __private	uint	cols		//2
+	_clSetKernelArg( kernel,	3, sizeof(int),			&rows,								fname);								// __private	uint	rows		//3
+	_clSetKernelArg( kernel,	4, sizeof(int),			&mm_cols,							fname);								// __private	uint	mm_cols		//4
 
-	_clSetKernelArg( kernel,	6, sizeof(int),			&mm_layerstep,				fname);										// __private	uint	mm_pixels	//6
-	_clSetKernelArg( kernel,	7, sizeof(cl_mem),		&param_hessian_map_mem,		fname);										// __private	uint				//7
+	_clSetKernelArg( kernel,	6, sizeof(int),			&mm_layerstep,						fname);								// __private	uint	mm_pixels	//6
+	_clSetKernelArg( kernel,	7, sizeof(cl_mem),		&camera_matrix_hessian_map_mem,		fname);								// __private	uint				//7
 
 	cl_int		status	= CL_SUCCESS;
 	cl_event	ev		= 0;
@@ -166,7 +162,7 @@ void  RunCL::patch_cam_and_lens__hessian_reduce (uint layer, cl_mem param_hessia
 	size_t		data_size	=	(num_camera_matrix_DoF+1) *	num_SE3_DoF *	sizeof(cl_float4);
 	size_t		offset		=	layer*8*6 ;
 
-	ReadOutput( hessian_Mat.data, param_hessian_map_mem, data_size, offset*sizeof(cl_float4) );
+	ReadOutput( hessian_Mat.data, camera_matrix_hessian_map_mem, data_size, offset*sizeof(cl_float4) );							 /*param_hessian_map_mem*/
 																																if( verbosity>local_verbosity_threshold) {cout<<"\nRunCL::patch_cam_and_lens__hessian_reduce()_chk2.1";
 																																	cout<<"\noffset="<<offset<<flush;
 																																	cout<<"\nhessian_Mat = \n"<<hessian_Mat<<flush;
@@ -223,11 +219,11 @@ void  RunCL::patch_cam_and_lens__hessian_reduce (uint layer, cl_mem param_hessia
 																																	bool show 		= false;
 																																	bool old_tiff 	= tiff;
 																																	tiff 			= true;
-																																	float max_range	= 1;
+																																	float max_range	= -1;
 																																	cv::Mat bufImg;
 																																	_cl_flush_finish(m_queue, fname);
-																																	DownloadAndSave_3Channel( 	param_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  0,			false);
-																																	DownloadAndSave_3Channel( 	param_hessian_map_mem,	ss.str( ), paths.at( "jacobian"),  	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  mm_size_bytes_C4/*mm_layerstep*/, false);
+																																	DownloadAndSave_3Channel( 	camera_matrix_hessian_map_mem,	ss.str( ), paths.at( "hessian"),  	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  0,				 false);
+																																	DownloadAndSave_3Channel( 	camera_matrix_hessian_map_mem,	ss.str( ), paths.at( "jacobian"),  	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show, &bufImg, max_range,  mm_size_bytes_C4, false);
 																																	// NB the tiff file holda the int32 values as float32. This is okay because they fit in the mantissa.
 																																	// BGRA format, B=u, G=v, R=read_index, A=alpha.
 																																	////////////////
