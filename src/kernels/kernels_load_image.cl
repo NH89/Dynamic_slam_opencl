@@ -6,11 +6,11 @@ __kernel void compute_SE3_param_maps(
 	__private	float	inv_depth,		//1
 	__private	uint	num_vars,		//2
 
-	__constant 	uint8*	mipmap_params,	//3
-	__constant 	uint*	uint_params,	//4
-	__constant 	float* 	SE3_k2k,		//5
+	__constant	uint8*	mipmap_params,	//3
+	__constant	uint*	uint_params,	//4
+	__constant	float*	SE3_k2k,		//5
 
-	__global 	float2*	SE3_map			//6
+	__global	float2*	SE3_map			//6
 		 )
 {
 	uint global_id_u 	= get_global_id(0);

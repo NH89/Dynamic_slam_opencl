@@ -117,6 +117,8 @@
 	#define V_RUNCL_PATCH_CAM_LENS_HESSIAN				-2
 	#define V_RUNCL_PATCH_CAM_LENS_HESSIAN_REDUCE		-2
 
+	#define V_DYNAMIC_SLAM_FOCAL_LENGTH_GRAD_DESC		-2
+
 	/////////////////////////////////////// RUNCL_DEPTH.CPP
 	#define V_RUNCL_UPDATE_DEPTH						-2
 	#define V_RUNCL_REGULARIZE_DEPTH					2
@@ -178,7 +180,7 @@
 
 	/////////////////////////////////////// RUNCL_PATCH_SLAM.CPP
 	#define V_RUNCL_INITIALIZE_PATCH_PARAMS				1
-	#define	V_RUNCL_COMPUTE_PATCH_LOOKUP_TABLE			2
+	#define	V_RUNCL_COMPUTE_PATCH_LOOKUP_TABLE			-2
 	#define	V_RUNCL_PATCH_IMG_GRADIENTS					-2
 	#define V_RUNCL_PATCH_SE3_HESSIAN_REDUCE			-2
 

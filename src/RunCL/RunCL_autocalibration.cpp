@@ -17,17 +17,22 @@ void RunCL::precomp_cam_and_lens_maps ( uint layer, cl_float16 SE3_k2k[  num_cam
 																																					}
 																																				}
 																																			}
-	cl_kernel	kernel	= comp_cam_and_lens_maps_kernel;
-	float inv_depth		= 1;
+	cl_kernel	kernel		= comp_cam_and_lens_maps_kernel;
+	frame		*frame0		= &current_frames[current_frames_idx[0]];
+
+	//float inv_depth		= 1;
 	_clEnqueueWriteBuffer( uload_queue, SE3_k2kbuf,		CL_FALSE, 0, (num_camera_matrix_DoF +1)*sizeof(cl_float16), 	SE3_k2k,		fname);
 
 	//      __private	 uint layer, set in mipmap_call_kernel( ..) below                                                                      __private	 uint	 layer,		//0
-	_clSetKernelArg( kernel, 1, sizeof( float),		&inv_depth,	 		fname);												//__private	float 	inv_depth,		//1
-	_clSetKernelArg( kernel, 2, sizeof( uint),		&num_vars,	 		fname);												//__private	uint,	num_vars		//2
+//	_clSetKernelArg( kernel, 1, sizeof( float),		&inv_depth,	 		fname);												//__private	float 	inv_depth,		//1
+	_clSetKernelArg( kernel, 1, sizeof( uint),		&num_vars,	 		fname);												//__private	uint,	num_vars		//1
 
-	_clSetKernelArg( kernel, 3, sizeof( cl_mem),	&mipmap_buf, 		fname);												//__constant uint*	mipmap_params,	//3
-	_clSetKernelArg( kernel, 4, sizeof( cl_mem), 	&uint_param_buf,	fname);												//__global 	uint*	uint_params		//4
-	_clSetKernelArg( kernel, 5, sizeof( cl_mem), 	&SE3_k2kbuf, 		fname);												//__global 	float* 	k2k,			//5
+	_clSetKernelArg( kernel, 2, sizeof( cl_mem),	&mipmap_buf, 		fname);												//__constant uint*	mipmap_params,	//2
+	_clSetKernelArg( kernel, 3, sizeof( cl_mem), 	&uint_param_buf,	fname);												//__global 	uint*	uint_params		//3
+	_clSetKernelArg( kernel, 4, sizeof( cl_mem), 	&SE3_k2kbuf, 		fname);												//__global 	float*	k2k,			//4
+
+	_clSetKernelArg( kernel, 5, sizeof( cl_mem), 	&frame0->depth_buf,	fname);												// __global	float2*	depth_map,		//5	// current frame depth, now stored as inv_depth
+
 	_clSetKernelArg( kernel, 6, sizeof( cl_mem), 	&map_mem, 			fname);												//__global 	float* 	SE3_map,		//6
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\nRunCL::precomp_cam_and_lens_maps(..)_chk_1 "
 																																				<<"\nnum_vars = "<<num_vars
@@ -48,10 +53,14 @@ void RunCL::precomp_cam_and_lens_maps ( uint layer, cl_float16 SE3_k2k[  num_cam
 }
 
 
-void RunCL::patch_cam_and_lens_Hessian(  uint layer ){																			// called by Dynamic_slam::getFrame		/* , cl_mem param_map_mem, cl_mem param_grad_map_mem, cl_mem param_hessian_map_mem*/
+void RunCL::patch_cam_and_lens_Hessian(  uint layer,	cl_float16 cam_param_weights ){																			// called by Dynamic_slam::getFrame		/* , cl_mem param_map_mem, cl_mem param_grad_map_mem, cl_mem param_hessian_map_mem*/
 	string fname = "RunCL::patch_cam_and_lens_Hessian()";
-	int local_verbosity_threshold = V_RUNCL_PATCH_CAM_LENS_HESSIAN;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_cam_and_lens_Hessian()_chk1 #############################################################"<<flush;}
+	int local_verbosity_threshold = V_RUNCL_PATCH_CAM_LENS_HESSIAN;																if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::patch_cam_and_lens_Hessian()_chk1 #############################################################"<<flush;
+																																	cout<<"\n\ncam_param_weights = "
+																																			<< cam_param_weights.s0 << endl<<flush;
+																																	}
 	cl_kernel		kernel						= patch_cam_and_lens_Hessian_kernel;
+	frame			*frame0						= &current_frames[current_frames_idx[0]];
 
 	size_t			local_work_size_			= patch_img_gradients_workgroup_size[	layer];											// patch_local_work_size[	layer];						//patch_img_gradients_workgroup_size; // patch_img_gradients_local_work_size_;
 	size_t			threads_to_launch			= patch_num_threads[					layer];
@@ -81,22 +90,25 @@ void RunCL::patch_cam_and_lens_Hessian(  uint layer ){																			// call
 	//__private
 	_clSetKernelArg( kernel,	0, sizeof(int),			&layer,							fname);									// __private	uint		layer,						//0
 	_clSetKernelArg( kernel,	1, sizeof(int),			&lookup_table_offset_uint,		fname);									// __private	uint		lookup_table_offset_uint,	//1
-	_clSetKernelArg( kernel,	2, sizeof(int), 		&out_block_size,				fname );								// __private	uint		out_block_size,				//2
-	_clSetKernelArg( kernel,	3, sizeof(cl_uint3),	&SE3_hessian_offset,			fname);									// __private	uint		SE3_hessian_offset,			//2
-	_clSetKernelArg( kernel,	4, sizeof(cl_uint3),	&ST3_out_offset,				fname);									// __private	uint		SE3_hessian_offset,			//3
+	_clSetKernelArg( kernel,	2, sizeof(int),			&out_block_size,				fname );								// __private	uint		out_block_size,				//2
+	_clSetKernelArg( kernel,	3, sizeof(cl_uint3),	&SE3_hessian_offset,			fname);									// __private	uint		SE3_hessian_offset,			//3
+	_clSetKernelArg( kernel,	4, sizeof(cl_uint3),	&ST3_out_offset,				fname);									// __private	uint		SE3_hessian_offset,			//4
+	_clSetKernelArg( kernel,	5, sizeof(cl_float16),	&cam_param_weights,				fname);									// __private	uint		SE3_hessian_offset,			//5
 	//__constant
-	_clSetKernelArg( kernel,	5, sizeof( cl_mem), 	&mipmap_buf,					fname);									// __constant	uint8*		mipmap_params,				//5
-	_clSetKernelArg( kernel,	6, sizeof( cl_mem), 	&uint_param_buf,				fname);									// __constant	uint*		uint_params,				//6
+	_clSetKernelArg( kernel,	6, sizeof( cl_mem),		&mipmap_buf,					fname);									// __constant	uint8*		mipmap_params,				//6
+	_clSetKernelArg( kernel,	7, sizeof( cl_mem),		&uint_param_buf,				fname);									// __constant	uint*		uint_params,				//7
 	//__global
-	_clSetKernelArg( kernel,	7, sizeof( cl_mem), 	&camera_matrix_map_mem,			fname);									// __constant 	float2*		param_map,					//7
-	_clSetKernelArg( kernel,	8, sizeof( cl_mem), 	&patch_lookup_table_buf,		fname);									// __global 	float4*		lookup_table,				//8
-	_clSetKernelArg( kernel,	9, sizeof( cl_mem), 	&img_grad_mem,					fname);									// __global 	float8*		img_grad_uv,				//9
+	_clSetKernelArg( kernel,	8, sizeof( cl_mem), 	&frame0->depth_buf,				fname);									// __global		float2* 	depth_map,					//8	// current frame depth, now stored as inv_depth
+
+	_clSetKernelArg( kernel,	9, sizeof( cl_mem),		&camera_matrix_map_mem,			fname);									// __global 	float2*		param_map,					//9
+	_clSetKernelArg( kernel,	10, sizeof( cl_mem),	&patch_lookup_table_buf,		fname);									// __global 	float4*		lookup_table,				//10
+	_clSetKernelArg( kernel,	11, sizeof( cl_mem),	&img_grad_mem,					fname);									// __global 	float8*		img_grad_uv,				//11
 	//Outputs:
 	//__global
-	_clSetKernelArg( kernel,	10, sizeof( cl_mem), 	&camera_matrix_grad_map_mem,	fname);									// __global 	float4*		param_grad_map,				//10	// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
-	_clSetKernelArg( kernel,	11, sizeof( cl_mem), 	&camera_matrix_hessian_map_mem,	fname);									// __global 	float4*		cam_Hessian_map,			//11	// HSV (6x6) matrix so 36*float8
+	_clSetKernelArg( kernel,	12, sizeof( cl_mem),	&camera_matrix_grad_map_mem,	fname);									// __global 	float4*		param_grad_map,				//12	// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
+	_clSetKernelArg( kernel,	13, sizeof( cl_mem),	&camera_matrix_hessian_map_mem,	fname);									// __global 	float4*		cam_Hessian_map,			//13	// HSV (6x6) matrix so 36*float8
 	//__local
-	_clSetKernelArg( kernel,	12,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,				//12	// local_Hessian[ sizeof(float4) *6*6 *local_size]
+	_clSetKernelArg( kernel,	14,local_Hessian_size,	NULL,							fname);									// __local		float4*		local_Hessian,				//14	// local_Hessian[ sizeof(float4) *6*6 *local_size]
 																																cout<<"\n\nRunCL::patch_cam_and_lens_Hessian()_chk3 "<<flush;
 	res 	= clEnqueueNDRangeKernel(m_queue,		kernel, 1, 0, &threads_to_launch, &local_work_size_, 0, NULL, &ev);
 																	if (res    != CL_SUCCESS)	{ cout << "\nres = " << checkerror(res) <<"\n"<<flush; exit_(res);}

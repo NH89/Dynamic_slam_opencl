@@ -3,12 +3,14 @@
 
 __kernel void comp_cam_and_lens_maps(
 	__private	uint		layer,			//0
-	__private	float		inv_depth,		//1
-	__private	uint		num_vars,		//2
+														//	__private	float		inv_depth,		//1		// may need real inv_depth map ###
+	__private	uint		num_vars,		//1
 
-	__constant	uint8*		mipmap_params,	//3
-	__constant	uint*		uint_params,	//4
-	__constant	float16*	param_k2k,		//5
+	__constant	uint8*		mipmap_params,	//2
+	__constant	uint*		uint_params,	//3
+	__constant	float16*	param_k2k,		//4
+
+	__global 	float2*		depth_map,		//5
 
 	__global 	float2*		SE3_map			//6
 		 )
@@ -19,7 +21,7 @@ __kernel void comp_cam_and_lens_maps(
 	uint read_offset_ 	= mipmap_params_[MiM_READ_OFFSET];
 	uint read_cols_ 	= mipmap_params_[MiM_READ_COLS];
 	uint read_rows_ 	= mipmap_params_[MiM_READ_ROWS];
-	if (global_id_u >= mipmap_params_[MiM_PIXELS]) return;
+	if (global_id_u 	>= mipmap_params_[MiM_PIXELS]) return;
 
 	uint lid 			= get_local_id(0);
 	uint group_size 	= get_local_size(0);
@@ -42,6 +44,8 @@ __kernel void comp_cam_and_lens_maps(
 	float u2, v2, u_ref, v_ref;
 	uint read_index 	= read_offset_  +  v  * mm_cols  + u ;
 	bool print			= false;	//if( (u==10)&&(v==10) ){ print=true; }
+
+	float  inv_depth	= depth_map[ read_index ].s0;
 																														// computes u_ref and v_ref, i.e. pixel reprojection of existing k2k.
 	px_k2k( 							param_k2k[num_vars],	reduction,  v,  u,  inv_depth, &u_ref,	&v_ref,	print );
 	for (uint i=0; i<num_vars; i++) {																					// for each param DoF, find new pixel position, h=homogeneous coords.
@@ -70,18 +74,20 @@ __kernel void  patch_cam_and_lens_Hessian(			// To be launched with 1 thread per
 	__private	uint		out_block_size,			//2
 	__private	uint3		SE3_offset3,			//3
 	__private	uint3		ST3_offset3,			//4
+	__private	float16		cam_param_weights,		//5
 
-	__constant	uint8*		mipmap_params,			//5
-	__constant	uint*		uint_params,			//6
+	__constant	uint8*		mipmap_params,			//6
+	__constant	uint*		uint_params,			//7
 
-	__global	float2*		param_map,				//7
-	__global	uint4*		lookup_table,			//8
-	__global	float8*		img_grad_uv,			//9
+	__global	float2*		depth_map,				//8	// current frame depth, now stored as inv_depth
+	__global	float2*		param_map,				//9
+	__global	uint4*		lookup_table,			//10
+	__global	float8*		img_grad_uv,			//11
 
 	//Outputs:
-	__global 	float4*		param_grad_map,			//10											// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
-	__global 	float4*		cam_Hessian_map,		//11											// HSV (5x5) matrix so 25*float4. 2nd half holds Jacobian maps, req for IC-LK algorithm. Size 2xmm_pixels.
-	__local		float4*		local_Hessian			//12											// local_Hessian_pseudo_inverse[ sizeof(float4) *5*5 *local_size]
+	__global 	float4*		param_grad_map,			//12											// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
+	__global 	float4*		cam_Hessian_map,		//13											// HSV (5x5) matrix so 25*float4. 2nd half holds Jacobian maps, req for IC-LK algorithm. Size 2xmm_pixels.
+	__local		float4*		local_Hessian			//14											// local_Hessian_pseudo_inverse[ sizeof(float4) *5*5 *local_size]
 ){
 	uint	global_id_uint								= get_global_id(0);
 	uint	lid											= get_local_id(0);
@@ -92,7 +98,7 @@ __kernel void  patch_cam_and_lens_Hessian(			// To be launched with 1 thread per
 
 	float	null_factor = 1.0f;
 	uint4	lookup_ref									= lookup_table[global_id_uint + lookup_table_offset];
-	if( lookup_ref.w != global_id_uint){	//printf("\n__kernel void patch_img_grad(..) lookup_ref.w %u != global_id_uint %u", lookup_ref.w, global_id_uint);	// NB nullify cols tha are outside img_cur.  TODO (1) can threads be returned when not used? (2) can if statements be reduced / made more efficient ?
+	if( lookup_ref.w != global_id_uint){	printf("\n__kernel void patch_img_grad(..) lookup_ref.w %u != global_id_uint %u", lookup_ref.w, global_id_uint);	// NB nullify cols tha are outside img_cur.  TODO (1) can threads be returned when not used? (2) can if statements be reduced / made more efficient ?
 											null_factor = 0.0f;
 	}
 	uint	read_index									= lookup_ref.z;
@@ -131,10 +137,22 @@ __kernel void  patch_cam_and_lens_Hessian(			// To be launched with 1 thread per
 	uint	write_index_2								= u/block_size				 + (v/block_size)*mm_cols		+ SE3_offset;
 	uint 	offset_1_1_max								= mm_cols * read_rows_ / out_block_size 		 			+ ST3_offset;
 
+// 	if(global_id_uint==0){printf("\n__kernel_patch_cam_and_lens_Hessian, cam_param_weights=%f,  %f,  %f,  %f,  %f,  %f,  %f,  %f,  %f,  %f ",\
+// 		cam_param_weights.s0, cam_param_weights.s1, cam_param_weights.s2, cam_param_weights.s3, cam_param_weights.s4,\
+// 		cam_param_weights.s5, cam_param_weights.s6, cam_param_weights.s7, cam_param_weights.s8, cam_param_weights.s9 );}
+
+	float	SE3_weights[5]								= { cam_param_weights.s0, cam_param_weights.s2, cam_param_weights.s4, cam_param_weights.s6, cam_param_weights.s8 };
+	float	ST3_weights[5]								= { cam_param_weights.s1, cam_param_weights.s3, cam_param_weights.s5, cam_param_weights.s7, cam_param_weights.s9 };
+
+// 	if(global_id_uint==0){printf("\n__kernel_patch_cam_and_lens_Hessian, SE3_weights[5] = %f,  %f,  %f,  %f,  %f,     ST3_weights = %f,  %f,  %f,  %f,  %f ",
+// 		SE3_weights[0], SE3_weights[1], SE3_weights[2], SE3_weights[3], SE3_weights[4], \
+// 		ST3_weights[0], ST3_weights[1], ST3_weights[2], ST3_weights[3], ST3_weights[4]  ); }
+
 	for (uint row_in_block=0; (row_in_block<block_size)&&(read_index<=stop_offset&&read_index>0); row_in_block++, v++,  read_index +=mm_cols){					// stop offset prevents bottom row patches from overrunning the bottom of the image layer. // NB readindex may be 0 if not in range according to lookup table.
 		int dnoff										=  (v  < read_rows_-2) * mm_cols;			// +1														// (read_row  < read_rows_-1) * mm_cols;
 		int upoff										= -(v  >1 )*mm_cols;						// -1														//-(read_row  != 0)*mm_cols;	// up, down, left, right offsets, by boolean logic.
 
+		float  inv_depth								= depth_map[ read_index ].s0;
 		float8 pvt_img_grad								= img_grad_uv[ read_index ];
 		float4 gu										= pvt_img_grad.s0123;
 		float4 gv										= pvt_img_grad.s4567;
@@ -144,7 +162,7 @@ __kernel void  patch_cam_and_lens_Hessian(			// To be launched with 1 thread per
 			float2	param_px							= param_map[read_index + i* mm_pixels];																	// SE3_map[read_index + i* uint_params[MM_PIXELS]  ] = partial_gradient;  // float2 partial_gradient={u_flt-u2 , v_flt-v2}; // Find movement of pixel
 			float4	gxSE3								= gu*param_px[0];																						// J_SE3 * img gradient i.e. edges
 			float4	gySE3								= gv*param_px[1];
-			Jacobian[i]									= (gxSE3 + gySE3) * null_factor;
+			Jacobian[i]									= (gxSE3 + gySE3)  * null_factor;	//* ( SE3_weights[i]  +  ST3_weights[i] * inv_depth );
 			Jacobian[i].w								= 1.0f;
 			param_grad_map[read_index + i* mm_pixels]	= Jacobian[i];
 		}
@@ -261,8 +279,8 @@ __kernel void  patch_cam_and_lens_Hessian(			// To be launched with 1 thread per
 																						float4	pvt_Hessian 					= Hessian_pvt_arr[	block_row ][i][j];
 																						cam_Hessian_map[	offset_2 ]			= pvt_Hessian;
 
-																						float4		debug 						= {(float)lid, global_id_uint, group_id, 1.0f};
-																						cam_Hessian_map[read_index]				= debug;														// marks top left corner of where original patches are read from.
+																					//	float4		debug 						= {(float)lid, global_id_uint, group_id, 1.0f};					// NB Must comment out to compute correct Hessian.
+																					//	cam_Hessian_map[read_index]				= debug;														// marks top left corner of where original patches are read from.
 			}
 			barrier(CLK_GLOBAL_MEM_FENCE );
 		}

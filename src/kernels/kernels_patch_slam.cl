@@ -63,10 +63,10 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 	//Outputs:
 	__global	float8*		img_grad_uv,			//11
 	__global	float2*		img_edge_uv,			//12
-	__global 	float4*		SE3_grad_map,			//13											// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
-	__global 	float4*		SE3_Hessian_map,		//14											// HSV (6x6) matrix so 36*float4. 2nd half holds Jacobian maps, req for IC-LK algorithm. Size 2xmm_pixels.
+	__global	float4*		SE3_grad_map,			//13											// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
+	__global	float4*		SE3_Hessian_map,		//14											// HSV (6x6) matrix so 36*float4. 2nd half holds Jacobian maps, req for IC-LK algorithm. Size 2xmm_pixels.
 	__local		float4*		local_Hessian,			//15											// local_Hessian_pseudo_inverse[ sizeof(float4) *6*6 *local_size]
-	__global 	float4*		ST3_img_grad			//16
+	__global	float4*		ST3_img_grad			//16
 ){
 	uint	global_id_uint								= get_global_id(0);
 	uint	lid											= get_local_id(0);
@@ -287,8 +287,8 @@ __kernel void  patch_img_grad(						// To be launched with 1 thread per col for 
 																						float4	pvt_Hessian 					= Hessian_pvt_arr[	block_row ][i][j];
 																						SE3_Hessian_map[	offset_2 ]			= pvt_Hessian;
 
-																						float4		debug 						= {(float)lid, global_id_uint, group_id, 1.0f};
-																						SE3_Hessian_map[read_index]				= debug;														// marks top left corner of where original patches are read from.
+																					//	float4		debug 						= {(float)lid, global_id_uint, group_id, 1.0f};					// NB must comment out to avoid corrupting the Hessian
+																					//	SE3_Hessian_map[read_index]				= debug;														// marks top left corner of where original patches are read from.
 			}
 			barrier(CLK_GLOBAL_MEM_FENCE );
 		}

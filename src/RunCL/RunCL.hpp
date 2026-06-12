@@ -22,7 +22,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/utility.hpp>
 #include <opencv2/imgcodecs.hpp>
-#include <opencv2/imgproc/imgproc_c.h> 			// req for types e.g. CV_BGR2GRAY
+#include <opencv2/imgproc/imgproc_c.h>			// req for types e.g. CV_BGR2GRAY
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/highgui.hpp>
 
@@ -35,6 +35,7 @@
 #include <cstdlib>
 #include <cassert>
 #include <cstring>
+#include <cmath>
 #include <string>
 #include <fstream>
 #include <iostream>
@@ -43,8 +44,8 @@
 
 using namespace std::chrono;
 constexpr uint tracking_num_colour_channels = TRACKING_NUM_COLOR_CHANNELS;
-constexpr uint tracking_num_samples 		= TRACKING_NUM_SAMPLES +1;				// One more on host, for original Rho sample.
-constexpr uint tracking_tot_samples 		= TRACKING_TOT_SAMPLES;
+constexpr uint tracking_num_samples			= TRACKING_NUM_SAMPLES +1;				// One more on host, for original Rho sample.
+constexpr uint tracking_tot_samples			= TRACKING_TOT_SAMPLES;
 constexpr uint max_mipmap_layers 			= MAX_MIPMAP_LAYERS;					// Determines max image size, for img pyr apex < 10x10. 10k=>10, 8k=>9, 4k=>8, 2k=>7, SD(640x480)=>6 (2^6=64).
 																					// Insufficient layers would reduce tracking robustness, due to more pixels in apex of image pyramid.
 constexpr uint max_num_DoF					= MAX_NUM_DOF;
@@ -58,7 +59,7 @@ constexpr uint out_block_size				= OUT_BLOCK_SIZE;
 constexpr uint num_current_frames			= NUM_CURR_FRAMES;
 static constexpr uint max_patches_per_layer = 2^max_mipmap_layers * 2^max_mipmap_layers; //
 
-#define FLOAT_16_EYE 	{1.0f, 0.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f, 0.0f,		0.0f, 0.0f, 1.0f, 0.0f,		0.0f, 0.0f, 0.0f, 1.0f}
+#define FLOAT_16_EYE	{1.0f, 0.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f, 0.0f,		0.0f, 0.0f, 1.0f, 0.0f,		0.0f, 0.0f, 0.0f, 1.0f}
 constexpr float identity_flt16[16]			= FLOAT_16_EYE;
 constexpr float zero_flt					= 0;
 constexpr uint  zero_uint					= 0;
@@ -246,9 +247,9 @@ public:
 
 
 	///////////////////////////////////// RunCL_autocalibration.cpp
-	void precomp_cam_and_lens_maps(			 uint layer, cl_float16 SE3_k2k[ num_camera_matrix_DoF +1 ], cl_mem map_mem, uint num_vars, string calling_fn);
-	void patch_cam_and_lens_Hessian(		 uint layer);
-	void patch_cam_and_lens__Hessian_reduce ( uint layer, Matx55d &inv_Hessian);
+	void precomp_cam_and_lens_maps(			 uint layer,	cl_float16 SE3_k2k[ num_camera_matrix_DoF +1 ],		cl_mem map_mem, uint num_vars, string calling_fn);
+	void patch_cam_and_lens_Hessian(		 uint layer,	cl_float16 cam_param_weights);
+	void patch_cam_and_lens__Hessian_reduce ( uint layer,	Matx55d &inv_Hessian		);
 
 
 	///////////////////////////////////// RunCL_current_frames.cpp
