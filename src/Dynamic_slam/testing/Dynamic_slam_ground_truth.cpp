@@ -146,12 +146,22 @@ void Dynamic_slam::set_artif_pose_error(){
 void Dynamic_slam::use_GT_pose_vec(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_USE_GT_POSE;//verbosity_mp["Dynamic_slam::use_GT_pose"];// -1;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::use_GT_pose_chk_0,"<<flush;
-	frame_data.back().frame_data 	= frame_data.back().frame_data_GT;
-	float pose_arry[16];
-	Matx44f_To_float16arry(		runcl.current_frames[  runcl.current_frames_idx[0]  ].pose_gt,			pose_arry );
+	pose_datum		GT_datum 			= frame_data.back().frame_data_GT;
+
+	Matx44f			pose_frame0to1_gt	= runcl.current_frames[ runcl.current_frames_idx[1] ].pose_gt	*	GT_datum.inv_pose;
+
+	Matx44f			k2k_0to1			= GT_datum.K		* pose_frame0to1_gt		* GT_datum.K.inv();
+
+	frame_data.back().frame_data.pose	= pose_frame0to1_gt;
+	frame_data.back().frame_data.K2K	= k2k_0to1;
+
+
+	//frame_data.back().frame_data 		= frame_data.back().frame_data_GT;
+	//float pose_arry[16];
+	//Matx44f_To_float16arry(		runcl.current_frames[  runcl.current_frames_idx[0]  ].pose_gt,			pose_arry );
 	//runcl.update_k2k_buf(		runcl.current_frames[  runcl.current_frames_idx[0]  ].k2k_0to1_est,		pose_arry );
 																																			if(verbosity>local_verbosity_threshold){
-																																				//PRINT_MATX44F(frame_data.back().frame_data.keyframe2pose,);
+																																				PRINT_MATX44F(frame_data.back().frame_data.pose,);
 																																				//PRINT_FLOAT_16(runcl.fp32_k2keyframe,);
 																																				cout << "\nDynamic_slam::use_GT_pose()_finish ##############################################\n\n" << flush;
 																																			}

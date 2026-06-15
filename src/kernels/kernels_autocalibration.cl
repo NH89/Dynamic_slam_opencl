@@ -74,20 +74,20 @@ __kernel void  patch_cam_and_lens_Hessian(			// To be launched with 1 thread per
 	__private	uint		out_block_size,			//2
 	__private	uint3		SE3_offset3,			//3
 	__private	uint3		ST3_offset3,			//4
-	__private	float16		cam_param_weights,		//5
+//	__private	float16		cam_param_weights,		//
 
-	__constant	uint8*		mipmap_params,			//6
-	__constant	uint*		uint_params,			//7
+	__constant	uint8*		mipmap_params,			//5
+	__constant	uint*		uint_params,			//6
 
-	__global	float2*		depth_map,				//8	// current frame depth, now stored as inv_depth
-	__global	float2*		param_map,				//9
-	__global	uint4*		lookup_table,			//10
-	__global	float8*		img_grad_uv,			//11
+	__global	float2*		depth_map,				//7	// current frame depth, now stored as inv_depth
+	__global	float2*		param_map,				//8
+	__global	uint4*		lookup_table,			//9
+	__global	float8*		img_grad_uv,			//10
 
 	//Outputs:
-	__global 	float4*		param_grad_map,			//12											// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
-	__global 	float4*		cam_Hessian_map,		//13											// HSV (5x5) matrix so 25*float4. 2nd half holds Jacobian maps, req for IC-LK algorithm. Size 2xmm_pixels.
-	__local		float4*		local_Hessian			//14											// local_Hessian_pseudo_inverse[ sizeof(float4) *5*5 *local_size]
+	__global 	float4*		param_grad_map,			//11											// We keep hsv sepate at this stage, so 6*4*2=24, but float16 is the largest type, so 6*float8.
+	__global 	float4*		cam_Hessian_map,		//12											// HSV (5x5) matrix so 25*float4. 2nd half holds Jacobian maps, req for IC-LK algorithm. Size 2xmm_pixels.
+	__local		float4*		local_Hessian			//13											// local_Hessian_pseudo_inverse[ sizeof(float4) *5*5 *local_size]
 ){
 	uint	global_id_uint								= get_global_id(0);
 	uint	lid											= get_local_id(0);
@@ -136,7 +136,7 @@ __kernel void  patch_cam_and_lens_Hessian(			// To be launched with 1 thread per
 	uint	write_index									= u/out_block_size			 + (v/out_block_size)*mm_cols	+ ST3_offset;
 	uint	write_index_2								= u/block_size				 + (v/block_size)*mm_cols		+ SE3_offset;
 	uint 	offset_1_1_max								= mm_cols * read_rows_ / out_block_size 		 			+ ST3_offset;
-
+/*
 // 	if(global_id_uint==0){printf("\n__kernel_patch_cam_and_lens_Hessian, cam_param_weights=%f,  %f,  %f,  %f,  %f,  %f,  %f,  %f,  %f,  %f ",\
 // 		cam_param_weights.s0, cam_param_weights.s1, cam_param_weights.s2, cam_param_weights.s3, cam_param_weights.s4,\
 // 		cam_param_weights.s5, cam_param_weights.s6, cam_param_weights.s7, cam_param_weights.s8, cam_param_weights.s9 );}
@@ -147,7 +147,7 @@ __kernel void  patch_cam_and_lens_Hessian(			// To be launched with 1 thread per
 // 	if(global_id_uint==0){printf("\n__kernel_patch_cam_and_lens_Hessian, SE3_weights[5] = %f,  %f,  %f,  %f,  %f,     ST3_weights = %f,  %f,  %f,  %f,  %f ",
 // 		SE3_weights[0], SE3_weights[1], SE3_weights[2], SE3_weights[3], SE3_weights[4], \
 // 		ST3_weights[0], ST3_weights[1], ST3_weights[2], ST3_weights[3], ST3_weights[4]  ); }
-
+*/
 	for (uint row_in_block=0; (row_in_block<block_size)&&(read_index<=stop_offset&&read_index>0); row_in_block++, v++,  read_index +=mm_cols){					// stop offset prevents bottom row patches from overrunning the bottom of the image layer. // NB readindex may be 0 if not in range according to lookup table.
 		int dnoff										=  (v  < read_rows_-2) * mm_cols;			// +1														// (read_row  < read_rows_-1) * mm_cols;
 		int upoff										= -(v  >1 )*mm_cols;						// -1														//-(read_row  != 0)*mm_cols;	// up, down, left, right offsets, by boolean logic.

@@ -18,13 +18,13 @@
 	"use_conf_camera_matx":true,//false,
 	"use_GT_camera_matx":false,//false,
 
-    "cameraMatrix":[485.00,  0.0,  320.0,  0.0,		0.0,  485.0,  240.0,  0.0,		0.0,  0.0,  0.0,  1.0,		0.0,  0.0,  1.0,  0.0 ], // NB 3x3 matrix  [481.20,   0.0,  319.5, 	    0.0,  480.0,  239.5, 	  0.0,    1.0,    0.0]
+    "cameraMatrix":[481.20,  0.0,  320.0,  0.0,		0.0,  480.0,  200.0,  0.0,		0.0,  0.0,  0.0,  1.0,		0.0,  0.0,  1.0,  0.0 ], // NB 3x3 matrix  [481.20,   0.0,  319.5, 	    0.0,  480.0,  239.5, 	  0.0,    1.0,    0.0]
 
     // Load images //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     "MipMap_margin":1,          //4
 
     //"imagesPerCV":2,//5, //########## //10,//20,//4,//30//4//7    ###################################################################
-    "max_frame_count":2,//8,//16,//5,//27,//30,    //4,//30,//4,//140,//30,          // how many frames to run for. NB -1 -> run indefinitely.
+    "max_frame_count":6,//8,//16,//5,//27,//30,    //4,//30,//4,//140,//30,          // how many frames to run for. NB -1 -> run indefinitely.
 
 
     // Mapping parameters - DTAM ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -47,7 +47,7 @@
     "SO3_delta_theta":1.0,                                              // radians 0.01 = 0.57 degrees
     "ST3_delta":1.0,                                                    // NB depends on depth scale, see max & min depth in mapping params.
 
-    "use_GT_pose":true,//false,//
+    "use_GT_pose":false,//false,//
     "Artif_pose_err_bool":false,//true,//  // artif pose currently hard coded in    DynamicSLAM getFrameData_vec()
     "Artif_pose_err_algebra":[ 0.0, 0.0, 0.0,   0.0, 0.0, 10.0 ],
     //[ 0.0278,  -0.0155,  0.30,     7.7418,  14.1337, -29.2635] ,//0.15 // SO3 in Radians, ST3 in world units ? Pseudo exp / Log   //  0.10,  0.0,  0.0,      5.0,  -10.0,  0.0 // [0.10,  -0.05,  -0.10,      0.0,  0.0,  5.0]

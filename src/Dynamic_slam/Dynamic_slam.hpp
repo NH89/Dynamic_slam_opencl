@@ -36,7 +36,6 @@ class Dynamic_slam
     bool					initialize_keyframe_from_GT 		= false;
 	bool					initialize_tracking_from_GT_depth 	= false;
 
-    //uint                    SE_iter_per_layer;
     uint                    SE3_stop_layer;
     uint                    SE3_start_layer;
     uint                    SE_iter;
@@ -69,26 +68,17 @@ class Dynamic_slam
       cv::Matx44f           inv_pose                = Matx44f::eye() ;
       cv::Matx44f           prev_pose2pose          = Matx44f::eye() ;
       cv::Matx44f           K2K                     = Matx44f::eye() ;             // Kamera to Kamera reprojection.
-                                                                                //cv::Matx44f           pose_from_start         = MATX44F_EYE ;             // pose2pose_accumulated
+                                                                                   //cv::Matx44f           pose_from_start         = MATX44F_EYE ;             // pose2pose_accumulated
       // lens distortion params
     };
 
     struct frame_datum{     // default intitialization, if instatiated with " ... = {}; "
-      uint                  keyframe_index          = 0 ;                       // Index within this vector< >, of the keyframe for this frame.
+      uint                  keyframe_index          = 0 ;                          // Index within this vector< >, of the keyframe for this frame.
       pose_datum            frame_data              = {};
       pose_datum            frame_data_GT           = {};
       pose_datum            error_data              = {};
     };
-/*
-    struct keyframe_datum{  // default intitialization, if instatiated with " ... = {}; "
-      uint                  first_frame_index       = 0 ;
-      cv::Mat               reference_image;
-      cv::Mat               depthmap;
-      frame_datum           frame_data              = {};
-    };
-*/
     std::vector<frame_datum>     frame_data;			// (frame_data start, old, current, key_frame) are now indices of elements in the vector.
-//    std::vector<keyframe_datum>  keyframe_data;		// TO DO remove keyframes ?
 
     // GT data loading ?
     cv::Mat image, depth_GT, cameraMatrix;				// TO DO should these be Matx ?   , projection   NB cameraMatrix => K_GT
@@ -156,7 +146,7 @@ class Dynamic_slam
 
     //////////////////////////////////// Dynamic_slam_autocalibration.cpp
     void estimate_calibration();
-    void precompute_cam_matrix_buffers(  uint layer,		uint frame_idx );
+//    void precompute_cam_matrix_buffers(  uint layer,		uint frame_idx );
     void generate_camera_matrix_k2k_vec( cv::Matx44f K,		cv::Matx44f pose,				cl_float16 _camera_matrix_k2k[ num_camera_matrix_DoF+1 ] );
     void generate_cam_param_weights(	 cv::Matx44f pose,	cl_float16 &cam_param_weights );
     void estimate_camera_matrix(		 uint layer);

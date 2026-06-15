@@ -248,7 +248,7 @@ public:
 
 	///////////////////////////////////// RunCL_autocalibration.cpp
 	void precomp_cam_and_lens_maps(			 uint layer,	cl_float16 SE3_k2k[ num_camera_matrix_DoF +1 ],		cl_mem map_mem, uint num_vars, string calling_fn);
-	void patch_cam_and_lens_Hessian(		 uint layer,	cl_float16 cam_param_weights);
+	void patch_cam_and_lens_Hessian(		 uint layer);																														//,	cl_float16 cam_param_weights
 	void patch_cam_and_lens__Hessian_reduce ( uint layer,	Matx55d &inv_Hessian		);
 
 

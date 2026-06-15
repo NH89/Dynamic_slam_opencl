@@ -21,6 +21,7 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {
 
 	GT_available						= obj["GT_available"].asBool();
 	use_artif_pose_error				= obj["Artif_pose_err_bool"].asBool();
+	use_GT_pose							= obj["use_GT_pose"].asBool();
 
 	invert_GT_depth						= obj["invert_GT_depth"].asBool();
 	initialize_keyframe_from_GT  		= obj["initialize_keyframe_from_GT"].asBool();
@@ -53,7 +54,7 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {
 																																			}
 	runcl.initialize_RunCL( imread( png[ runcl.dataset_frame_num ].string() ) );															// Set image params, ref for dimensions and data type. ########################################################################
 
-	initialize_camera_vec();
+	initialize_camera_vec();	// NB initalized solely from 1 sample image, without GT data.
 	precompute_SE3_buffers();
 	getFrame();
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::Dynamic_slam_ finished "
@@ -114,7 +115,7 @@ void Dynamic_slam::initialize_camera_vec(){
 																																			}
 		if(		 use_GT_camera_matx	 ==true){				initial_K	= datum.frame_data_GT.K; }
 		if(		 use_artif_pose_error==true){				set_artif_pose_error();	}
-		else if( use_GT_pose		 ==true){				use_GT_pose_vec();		}
+		else if( use_GT_pose		 ==true){				use_GT_pose_vec();		}		// i.e. comp frame2frame pose transform from abs GT pose of each frame.
 	}
 	inv_initial_K											= generate_invK_( initial_K );
 	frame_data.back().frame_data.K							= initial_K;
@@ -179,11 +180,11 @@ int Dynamic_slam::nextFrame() {
 																																			}
 	uint depth_layer = 0;																													// i.e. layer of depth map used for tracking. Currently has to be 0.
 
-	if(			 GT_available		 ==true){				getFrameData_vec( frame_data.back() );											// Sets frame_data.back().frame_data_GT
-		if(		 use_artif_pose_error==true){				set_artif_pose_error();	}
-		else if( use_GT_pose		 ==true){				use_GT_pose_vec();		}
+	if(			 GT_available		 ==true){				getFrameData_vec( frame_data.back()); 		cout <<"\n GT_available\n"			<<flush;		// Sets frame_data.back().frame_data_GT
+		if(		 use_artif_pose_error==true){				set_artif_pose_error();						cout <<"\n use_artif_pose_error\n"	<<flush;	}
+		else if( use_GT_pose		 ==true){				use_GT_pose_vec();							cout <<"\n use_GT_pose\n"			<<flush;	}
 
-		if(	initialize_tracking_from_GT_depth == true)	{	runcl.use_GT_depthmap( depth_layer );		}
+		if(	initialize_tracking_from_GT_depth == true)	{	runcl.use_GT_depthmap( depth_layer );		cout <<"\n initialize_tracking_from_GT_depth\n"	<<flush;	}
 		uint frame_idx	= 0;
 		runcl.set_cam_bufs(  frame_data.back().frame_data.K ,  frame_data.back().frame_data.inv_K,  frame_data.back().frame_data.pose,  frame_data.back().frame_data.K2K,  frame_idx );
 	}																																		// else implies ( GT_available==false || (use_artif_pose_erro==false && use_GT_pose== flase) )
@@ -197,7 +198,9 @@ int Dynamic_slam::nextFrame() {
 
 	estimate_depth();																	auto step_4 = high_resolution_clock::now();			// own thread ? num iter ?
 
-	estimate_calibration();																auto step_5 = high_resolution_clock::now();
+	const uint frame_count = runcl.current_frames[ runcl.current_frames_idx[0]].frame_count;
+	if ( ( frame_count<16 && (frame_count % 4)==0 ) || (frame_count % 16)==0 ){ 															// estimate calibration every 4 frames, then every 16 frames.
+	estimate_calibration();	}															auto step_5 = high_resolution_clock::now();
 
 																						if(verbosity>local_verbosity_threshold-1) {
 																							getNextFrameProfile(step_0, step_1, step_2, step_3, step_4, step_5 );

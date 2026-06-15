@@ -660,6 +660,7 @@ void RunCL::set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose, 
 	this_frame->K			=	k;												cout<<"\n this_frame.K = \n"<<this_frame->K
 																					<<"\ncurrent_frames[ current_frames_idx[frame_idx] ].K=\n"<<current_frames[ current_frames_idx[frame_idx] ].K<<flush;
 	this_frame->inv_K		=	inv_k;
+	this_frame->pose_to_0	=	pose;
 	update_44f_buf(			pose,	this_frame->pose_buf,		fname);			cout<<", chk2 "<<flush;
 	update_44f_buf(			k2k,	this_frame->k2k_buf_to_0,	fname);			cout<<", chk3 "<<flush;
 																																			if(verbosity>local_verbosity_threshold) {cout<<"\nRunCL::"<<fname<<"_finished"<<flush;}

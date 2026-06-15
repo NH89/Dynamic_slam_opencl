@@ -1,7 +1,7 @@
 #include "print_functions.hpp"
 using namespace std;
 
-#define PRECISION 10
+#define PRECISION 15
 
 void print_matx33f(cv::Matx33f matx){
      for(int row=0;row<3;row++){
