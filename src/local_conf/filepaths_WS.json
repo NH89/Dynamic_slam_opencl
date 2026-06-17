@@ -1,33 +1,36 @@
 {
-                                                                        // Can add either relative or absolute path. NB Uses BoostFileSystem for OS portablitity.
-    "source_filepath":"/home/nick/programming/ComputerVision/MyCode/Dynamic_slam_opencl/src/",
-    // other .json files
-    "params_conf":"local_conf/conf.json",
-    "verbosity_conf":"local_conf/verbosity.json",
+	// Can add either relative or absolute path. NB Uses C++ <filesystem> for OS portablitity.
+	"source_filepath":		"/home/nick/programming/ComputerVision/MyCode/Dynamic_slam_opencl/src/",
+	// other .json files
+	"params_conf":			"local_conf/conf.json",
+	"verbosity_conf":		"local_conf/verbosity.json",
 
-    // filepaths for a particular host machine ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    "out_path":"/home/nick/programming/ComputerVision/MyCode",          // /home/nick/Programming/OpenCV/MySLAM  // /media/hockingsn/Backup/output/Dynamic_slam_opencl
+	// filepaths for a particular host machine ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	"out_path":				"/home/nick/programming/ComputerVision/MyCode",		// /home/nick/Programming/OpenCV/MySLAM  // /media/hockingsn/Backup/output/Dynamic_slam_opencl
 
-     // Setup openCL /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    "kernel_folder":"kernels/",
-    "kernel_build_options": "-I/home/nick/programming/ComputerVision/MyCode/Dynamic_slam_opencl/src/kernels/",  //   to do reconstruct using source_filepath
+	 // Setup openCL /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	"kernel_folder":		"kernels/",
+	"kernel_build_options": "-I/home/nick/programming/ComputerVision/MyCode/Dynamic_slam_opencl/src/kernels/",		// to do reconstruct using source_filepath
 
-    "opencl_platform":0,        // ThinkPad 2, Clevo 0, WS 0 or 1       // need platform & device GPU choices
-    "opencl_device":0,
+	"opencl_platform":		0,		// ThinkPad 2, Clevo 0, WS 0 or 1			// need platform & device GPU choices
+	"opencl_device":		0,
 
-    // Input data ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    "data_path":"/home/nick/programming/ComputerVision/DataSets/",       // home/nick/Programming/OpenCV/MySLAM/data/
-                                                                        // /media/hockingsn/Backup/DoNotDelete/DataSets/computer_vision_data/
-                                                                        // /home/hockingsn/Programming/DataSets/computer_vision_data/
-                                                                        // /home/hockingsn/Programming/computer_vision_data/
-                                                                        // /home/nick/programming/ComputerVision/DataSets
-				// "Video_samples/011-20251217T141225Z-3-001/011_8K_sample_pngs",//8k
-				// "Video_samples/011-20251217T141225Z-3-001/4K_sample_pngs",//4k
-				// "Video_samples/011-20251217T141225Z-3-001/2K_sample_pngs",//2k
-				// "ahanda-icl/Trajectory_for_Variable_Frame-Rate/200fps/stationary_video", // ahanda-icl/LivingRoom'lt kt0'/living_room_traj3_loop
-    "data_file": "ahanda-icl/Trajectory_for_Variable_Frame-Rate/200fps/200fps_GT_archieve",
-    "data_file_increment":1,
-    "data_file_offset":0       //475;//10;//46;//462;//380;//0;
+	// Input data ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	"data_path":			"/home/nick/programming/ComputerVision/DataSets/",
+																				// home/nick/Programming/OpenCV/MySLAM/data/
+																				// /media/hockingsn/Backup/DoNotDelete/DataSets/computer_vision_data/
+																				// /home/hockingsn/Programming/DataSets/computer_vision_data/
+																				// /home/hockingsn/Programming/computer_vision_data/
+																				// /home/nick/programming/ComputerVision/DataSets
+
+	"data_file":			"ahanda-icl/Trajectory_for_Variable_Frame-Rate/200fps/200fps_GT_archieve",
+																				// "Video_samples/011-20251217T141225Z-3-001/011_8K_sample_pngs",	//8k
+																				// "Video_samples/011-20251217T141225Z-3-001/4K_sample_pngs",		//4k
+																				// "Video_samples/011-20251217T141225Z-3-001/2K_sample_pngs",		//2k
+																				// "ahanda-icl/Trajectory_for_Variable_Frame-Rate/200fps/stationary_video",
+																				// ahanda-icl/LivingRoom'lt kt0'/living_room_traj3_loop
+	"data_file_increment":	1,
+	"data_file_offset":		0	   //475;//10;//46;//462;//380;//0;
 }
 // ws datasets
 // /home/nick/programming/ComputerVision/DataSets/ahanda-icl/Trajectory_for_Variable_Frame-Rate/200fps/200fps_GT_archieve

@@ -32,15 +32,15 @@ __kernel void comp_cam_and_lens_maps(
 	float reduction		= base_cols/read_cols_;
 	uint v				= global_id_u / read_cols_;													// read_row
 	uint u				= fmod(global_id_flt, read_cols_);											// read_column
-
-	if (lid<num_vars ) { printf("\n layer=%u,	gid=%u, (u,v)=(%u,%u),	param_k2k[%u]={{ %f,	%f,	%f,	%f},{ %f,	%f,	%f,	%f},{ %f,	%f,	%f,	%f},{ %f,	%f,	%f,	%f}}",\
+/*
+	if (lid<num_vars ) { printf("\n__kernel comp_cam_and_lens_maps() layer=%u,	gid=%u, (u,v)=(%u,%u),	param_k2k[%u]={{ %f,	%f,	%f,	%f},{ %f,	%f,	%f,	%f},{ %f,	%f,	%f,	%f},{ %f,	%f,	%f,	%f}}",\
 		layer, global_id_u, u,v, lid, \
 		param_k2k[lid].s0, param_k2k[lid].s1, param_k2k[lid].s2, param_k2k[lid].s3,\
 		param_k2k[lid].s4, param_k2k[lid].s5, param_k2k[lid].s6, param_k2k[lid].s7,\
 		param_k2k[lid].s8, param_k2k[lid].s9, param_k2k[lid].sa, param_k2k[lid].sb,\
 		param_k2k[lid].sc, param_k2k[lid].sd, param_k2k[lid].se, param_k2k[lid].sf);
 	}
-
+*/
 	float u2, v2, u_ref, v_ref;
 	uint read_index 	= read_offset_  +  v  * mm_cols  + u ;
 	bool print			= false;	//if( (u==10)&&(v==10) ){ print=true; }
@@ -167,7 +167,7 @@ __kernel void  patch_cam_and_lens_Hessian(			// To be launched with 1 thread per
 			param_grad_map[read_index + i* mm_pixels]	= Jacobian[i];
 		}
 		for (uint i=0; i<num_cam_matx_DoF; i++) {
-			Jacobian_pvt_arr[row_in_block][i]			= Jacobian[i];
+			Jacobian_pvt_arr[row_in_block][i]			= Jacobian[i] * Jacobian[i];																			// Sum of element-wise square of jacobian - to be used as weighting of params, to account for pose and image sensitivity.
 
 			for (uint j=0; j<num_cam_matx_DoF; j++) {
 				Hessian_pvt_arr[row_in_block][i][j]		= Jacobian[i] * Jacobian[j];																			// Gauss-Newton approx H = J.transpose * J  // TO DO compute and sum lower triangle only.

@@ -149,7 +149,7 @@ class Dynamic_slam
 //    void precompute_cam_matrix_buffers(  uint layer,		uint frame_idx );
     void generate_camera_matrix_k2k_vec( cv::Matx44f K,		cv::Matx44f pose,				cl_float16 _camera_matrix_k2k[ num_camera_matrix_DoF+1 ] );
     void generate_cam_param_weights(	 cv::Matx44f pose,	cl_float16 &cam_param_weights );
-    void estimate_camera_matrix(		 uint layer);
+    void estimate_camera_matrix(		 uint layer, 		uint frame_idx);
 
     void focal_length_grad_descent();
 

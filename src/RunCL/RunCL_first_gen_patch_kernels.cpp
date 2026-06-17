@@ -172,7 +172,7 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 																																			}
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq_to_0( ..)_chk_6 ."<<flush;
 																																				stringstream ss;
-																																				ss << "_ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_iter"<<iter<<"_out_bock_size"<<out_block_size<<"_rho_sq()"<<calling_fn;
+																																				ss << "_ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_iter"<<iter<<"_out_bock_size"<<out_block_size<<"_rho_sq_to_0()"<<calling_fn;
 																																				stringstream ss_path;
 																																				bool show				= false;
 																																				float max_range			= -1;
@@ -324,7 +324,7 @@ void RunCL::rho_sq_from_0( uint out_block_size, uint iter, uint frame_idx, uint 
 																																			}
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq_from_0( ..)_chk_6 ."<<flush;
 																																				stringstream ss;
-																																				ss << "_ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_iter"<<iter<<"_out_bock_size"<<out_block_size<<"_rho_sq()"<<calling_fn;
+																																				ss << "_ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_iter"<<iter<<"_out_bock_size"<<out_block_size<<"_rho_sq_from_0()"<<calling_fn;
 																																				stringstream ss_path;
 																																				bool show				= false;
 																																				float max_range			= -1;

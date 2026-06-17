@@ -23,18 +23,18 @@ void Dynamic_slam::estimate_calibration(){
 																																	}
 																																}
 	uint			layer						= 0;
-	uint			frame_idx					= 1;
+	uint			frame_idx					= 4;
 	RunCL::frame	*this_frame					= &runcl.current_frames[runcl.current_frames_idx[frame_idx]	];
 
 	cl_float16		camera_matrix_k2k[			num_camera_matrix_DoF +1 ];
 	generate_camera_matrix_k2k_vec(				this_frame->K, this_frame->pose_from_0, camera_matrix_k2k );
-	runcl.precomp_cam_and_lens_maps(			layer, camera_matrix_k2k,	runcl.camera_matrix_map_mem,	num_camera_matrix_DoF, fname );
+	runcl.precomp_cam_calib_maps (				layer, camera_matrix_k2k,	runcl.camera_matrix_map_mem,	num_camera_matrix_DoF, fname );
 /*
 	cl_float16		cam_param_weights			= {{0}};
 	generate_cam_param_weights(					this_frame->pose_from_0,  cam_param_weights );
 */
-	runcl.patch_cam_and_lens_Hessian(			layer );
-	runcl.patch_cam_and_lens__Hessian_reduce (	layer,	this_frame->inv_camera_matrix_Hessian[layer] );
+	runcl.patch_cam_calib_Hessian (				layer );
+	runcl.patch_cam_calib__Hessian_reduce (		layer,	this_frame->inv_camera_matrix_Hessian[layer],  this_frame->sum_elemwise_sq_J[layer] );
 																																if(verbosity>local_verbosity_threshold) {
 																																	cout	<<"\nDynamic_slam::estimate_calibration() chk_1"
 																																			<<"\nframe_ixd = "								<<frame_idx
@@ -44,7 +44,7 @@ void Dynamic_slam::estimate_calibration(){
 																																	PRINT_MATX55D( this_frame->inv_camera_matrix_Hessian[layer], );
 																																}
 	//////////
-	estimate_camera_matrix( layer);
+	estimate_camera_matrix( layer, frame_idx);
 
 	// update SE_param_maps.... after K update.
 }
@@ -139,7 +139,7 @@ void Dynamic_slam::generate_cam_param_weights( cv::Matx44f pose,  cl_float16 &ca
 																																			<< cam_param_weights.s9 <<endl<<flush;
 }
 
-void Dynamic_slam::estimate_camera_matrix( uint	layer){
+void Dynamic_slam::estimate_camera_matrix( uint	layer, uint	frame_idx){
 	string fname = "Dynamic_slam::_camera_matrix()";
 	string fname_short = "est_cam";
 	int 	local_verbosity_threshold 		= V_DYNAMIC_SLAM_ESTIMATE_CAMERA_MATRIX;//verbosity_mp["Dynamic_slam::estimateSE3"];
@@ -148,7 +148,7 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer){
 																																			<<"  ##############################################################"<< flush;
 																																			}
 	//int		layer				= 4;//4;//SE3_start_layer;
-	int		frame_idx			= 1;
+	//int		frame_idx			= 1;
 	uint	out_block_size		= 2;//4;
 	bool	stop_loop			= false;
 	float	old_sum_rho_sq		= FLT_MAX-1;
@@ -169,8 +169,8 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer){
 																																			cout << "\n\nDynamic_slam::estimate_camera_matrix() chk_0.5"
 																																			<<"  ##############################################################"<< flush;
 																																		}
-	for (uint iter = 0; iter<3; iter++){
-		auto step_0 								= high_resolution_clock::now();
+	for (uint iter = 0; iter<6; iter++){
+		auto step_0									= high_resolution_clock::now();
 
 		Matx15d param_update[num_current_frames]	= { Matx15d::zeros() };
 		float	sum_rho[num_current_frames]			= {0.0f};
@@ -221,13 +221,14 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer){
 																																			PRINT_MATX15D( camera_matrix_incr, );
 																																			PRINT_MATX55D( invH, );
 																																			PRINT_MATX15D( param_update[ frame_idx], );
+																																			PRINT_MATX15D( this_frame->sum_elemwise_sq_J[layer], );
 																																		}
 			sum_sum_rho_sq				+= sum_rho_sq[ frame_idx];
-			sum_param_update			+= param_update[ frame_idx];
+			sum_param_update			+= param_update[ frame_idx].mul(	this_frame->sum_elemwise_sq_J[layer]	);
 		//}
 
 		float len						= sqrt( powf(sum_param_update(0) ,2) + powf(sum_param_update(1) ,2) + powf(sum_param_update(2) ,2) + powf(sum_param_update(3) ,2) + powf(sum_param_update(4) ,2)  );
-		if(len>1.0f) sum_param_update	/= len;
+		//if(len>1.0f) sum_param_update	/= len;
 																																		if( verbosity>local_verbosity_threshold ){
 																																			cout << "\n\nDynamic_slam::estimate_camera_matrix() chk_5: ,  ###########################"<<
 																																			"\niter="				<< iter				<<
@@ -267,8 +268,8 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer){
 
 		new_inv_k						= generate_invK_( new_k );
 		}
-		for (int frame_idx = 0; frame_idx < max_frames; frame_idx++){
-			RunCL::frame *this_frame	= &runcl.current_frames[ runcl.current_frames_idx[frame_idx] ];
+		for (int frame_idx_ = 0; frame_idx_ < max_frames; frame_idx_++){
+			RunCL::frame *this_frame	= &runcl.current_frames[ runcl.current_frames_idx[frame_idx_] ];
 
 			Matx44f	pose				= this_frame->pose_from_0;
 			Matx44f	old_k2k				= this_frame->k2k_from_0;
@@ -277,10 +278,10 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer){
 			runcl.update_44f_buf(		newK2K,		this_frame->k2k_buf_from_0,  fname );
 			this_frame->K				= new_k;
 			this_frame->inv_K			= new_inv_k;
-																																		if( verbosity>local_verbosity_threshold ){
+																																		if( verbosity>local_verbosity_threshold && frame_idx_==frame_idx){
 																																			cout 	<< "\nDynamic_slam::estimate_camera_matrix() chk_6: ,  layer = "<<layer
-																																					<<",  frame_idx = "<<frame_idx
-																																					<<",  runcl.current_frames_idx["<<frame_idx<<"] = "<<runcl.current_frames_idx[frame_idx]
+																																					<<",  frame_idx = "<<frame_idx_
+																																					<<",  runcl.current_frames_idx["<<frame_idx_<<"] = "<<runcl.current_frames_idx[frame_idx_]
 																																					<<",  ##########"<<flush;
 																																			PRINT_MATX15D( sum_param_update, );
 																																			PRINT_MATX44F( old_k,		 );

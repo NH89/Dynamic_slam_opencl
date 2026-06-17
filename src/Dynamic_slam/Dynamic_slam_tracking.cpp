@@ -274,7 +274,9 @@ void Dynamic_slam::estimate_tracking(){
 
 																																			old_sum_rho_sq_l0	=	runcl.se3_rho_result.Rho.y;		cout << "\nold_sum_rho_sq_l0	= "<< old_sum_rho_sq_l0 <<flush;
 																																		}
-			string fname_ = fname_short + to_string(frame_idx) +"_"+ to_string(this_frame->dataset_frame_num)+"_"+to_string(old_sum_rho_sq);
+			string fname_ = fname_short + to_string(frame_idx) +"_"+ to_string(this_frame->dataset_frame_num)+"_";
+			if(old_sum_rho_sq==FLT_MAX-1 ){		fname_		= fname_ + "flt_max";					}
+			else{								fname_		= fname_ + to_string(old_sum_rho_sq);	}
 
 			runcl.rho_sq_to_0(			out_block_size, iter,	frame_idx,	(uint)layer,  this_frame->k2k_buf_to_0,	num_SE3_DoF, fname_);
 			runcl.reduce_patch_Rho(		out_block_size, iter,				(uint)layer,							num_SE3_DoF);

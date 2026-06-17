@@ -153,6 +153,7 @@ public:
 		Matx44f			k2k_from_0							= Matx44f::eye();
 		Matx44f			k2k_to_0							= Matx44f::eye();
 		////////////////////////////////////////////////////////////////////
+		Matx15d			sum_elemwise_sq_J[			max_mipmap_layers]	= { Matx15d::ones()};
 		Matx66f			inv_SE3_Hessian[			max_mipmap_layers]	= { Matx66f::eye() };
 		Matx55d			inv_camera_matrix_Hessian[	max_mipmap_layers]	= { Matx55d::eye() };
 		Matx55d			inv_lens_distortion_Hessian[max_mipmap_layers]	= { Matx55d::eye() };
@@ -247,9 +248,9 @@ public:
 
 
 	///////////////////////////////////// RunCL_autocalibration.cpp
-	void precomp_cam_and_lens_maps(			 uint layer,	cl_float16 SE3_k2k[ num_camera_matrix_DoF +1 ],		cl_mem map_mem, uint num_vars, string calling_fn);
-	void patch_cam_and_lens_Hessian(		 uint layer);																														//,	cl_float16 cam_param_weights
-	void patch_cam_and_lens__Hessian_reduce ( uint layer,	Matx55d &inv_Hessian		);
+	void precomp_cam_calib_maps (			 uint layer,	cl_float16 SE3_k2k[ num_camera_matrix_DoF +1 ],		cl_mem map_mem, uint num_vars, string calling_fn);
+	void patch_cam_calib_Hessian (		 uint layer);																														//,	cl_float16 cam_param_weights
+	void patch_cam_calib__Hessian_reduce ( uint layer,	Matx55d &inv_Hessian,	Matx15d &sum_elemwise_sq_J	);
 
 
 	///////////////////////////////////// RunCL_current_frames.cpp
