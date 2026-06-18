@@ -1,66 +1,64 @@
 {
-	"verbosity": 			0,				// -1= none, 0=errors only, 1=basic, 2=lots.
+	"verbosity": 				0,				// -1= none, 0=errors only, 1=basic, 2=lots.
 
 	// Debug options ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	"tiff":					true,
-	"png":					true,
-	"vtp":					false,			// NB depends on saving keyframe.   NB very slow. To examine depth maps for debugging only.
+	"tiff":						true,
+	"png":						true,
+	"vtp":						false,			// NB depends on saving keyframe.   NB very slow. To examine depth maps for debugging only.
 
 	// Setup openCL /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	"kernel_files":[		"kernels.h", 					"kernels__macros.h",			"kernels_convertTransforms.cl", 		"kernels_load_image.cl",
-							"kernels_patch_slam.cl",		"kernels_photometric_cost.cl",	"kernels_first_gen_patch_kernels.cl",
-							"kernels_patch_tracking.cl",	"kernels_depth.cl",				"kernels_autocalibration.cl"],
+	"kernel_files":[			"kernels.h", 					"kernels__macros.h",			"kernels_convertTransforms.cl", 		"kernels_load_image.cl",
+								"kernels_patch_slam.cl",		"kernels_photometric_cost.cl",	"kernels_first_gen_patch_kernels.cl",
+								"kernels_patch_tracking.cl",	"kernels_depth.cl",				"kernels_autocalibration.cl"],
 
 
 	// Input data ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	"data_file_offset":		0,				//475;//10;//46;//462;//380;//0;
-	"GT_available":			false,
-	"use_conf_camera_matx":	false,
-	"use_GT_camera_matx":	false,
+	"data_file_offset":			0,				//475;//10;//46;//462;//380;//0;
+	"GT_available":				true,
+	"use_conf_camera_matx":		false,
+	"use_GT_camera_matx":		true,
 
-	"cameraMatrix":[		481.20,		  0.0,		320.0,		0.0,
-							  0.0,		480.0,		200.0,		0.0,
-							  0.0,		  0.0,		  0.0,		1.0,
-							  0.0,		  0.0,		  1.0,		0.0 ], // NB 3x3 matrix  [481.20,   0.0,  319.5, 		0.0,  480.0,  239.5, 	  0.0,	1.0,	0.0]
+	"cameraMatrix":[			481.20,		  0.0,		320.0,		0.0,
+								  0.0,		480.0,		200.0,		0.0,
+								  0.0,		  0.0,		  0.0,		1.0,
+								  0.0,		  0.0,		  1.0,		0.0 ],
+								  				// NB 3x3 matrix  [481.20,   0.0,  319.5, 		0.0,  480.0,  239.5, 	  0.0,	1.0,	0.0]
 
 	// Load images //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	"MipMap_margin":		1,				//4
+	"MipMap_margin":			1,				//4
 
-	//"imagesPerCV":		2,				//5, //########## //10,//20,//4,//30//4//7	###################################################################
-	"max_frame_count":		16,				//8,//16,//5,//27,//30,	//4,//30,//4,//140,//30,		  // how many frames to run for. NB -1 -> run indefinitely.
+	//"imagesPerCV":			2,				//5, //########## //10,//20,//4,//30//4//7	###################################################################
+	"max_frame_count":			16,				//8,//16,//5,//27,//30,	//4,//30,//4,//140,//30,		  // how many frames to run for. NB -1 -> run indefinitely.
 
 
 	// Mapping parameters - DTAM ////////////////////////////////////////////////////////////////////////////////////////////////////
-	"layers":				64,				//7;//32;//64;//128;//256//255;		 // Layers of CostVol. Coarse to fine warping may allow few layers to be selected. Need to store the range.
-											// Also keep layers for for depths across edge boundaries.
-	"invert_GT_depth":		true,			// 'true' if ground truth depth needs to be inverted.
-	"max_depth_infinity":	true,
-	"max_depth":			450.0,			// only if max_depth_infinity==false	// NB units depend on the scene.  // See values in DTAM_mapping/input/*.json file for each dataset.
-	"min_depth":			 70.0,			//70.0;//3289.0;
+	"layers":					64,				//7;//32;//64;//128;//256//255;		 // Layers of CostVol. Coarse to fine warping may allow few layers to be selected. Need to store the range.
+												// Also keep layers for for depths across edge boundaries.
+	"invert_GT_depth":			true,			// 'true' if ground truth depth needs to be inverted.
+	"max_depth_infinity":		true,
+	"max_depth":				450.0,			// only if max_depth_infinity==false	// NB units depend on the scene.  // See values in DTAM_mapping/input/*.json file for each dataset.
+	"min_depth":				 70.0,			//70.0;//3289.0;
 
-	"depthmap_margin":			1,			// margin around depth map layers, (in densely packed buffer), to allow efficient kernels.
+	"depthmap_margin":			1,				// margin around depth map layers, (in densely packed buffer), to allow efficient kernels.
 
 
 	// Tracking parameters //////////////////////////////////////////////////////////////////////////////////////////////////////////
-	"SE3_start_layer":			4,			//4 NB seems to track faster starting at layer 4 on Office dataset.
+	"SE3_start_layer":			4,				//4 NB seems to track faster starting at layer 4 on Office dataset.
 	"SE3_stop_layer":			1,
-	//"SE_iter_per_layer":		1,			//10 //5
-	"SE_iter":					2,			//15,//3,//30,//12, //25,//10//50//25,			   //1 //10// 1,//
+	"SE_iter":					2,				//15,//3,//30,//12, //25,//10//50//25,			   //1 //10// 1,//
 
-	"SO3_delta_theta":			1.0,		// radians 0.01 = 0.57 degrees
-	"ST3_delta":				1.0,		// NB depends on depth scale, see max & min depth in mapping params.
+	"SO3_delta_theta":			1.0,			// radians 0.01 = 0.57 degrees
+	"ST3_delta":				1.0,			// NB depends on depth scale, see max & min depth in mapping params.
 
 	"use_GT_pose":				false,
 	"Artif_pose_err_bool":		false,
 	"Artif_pose_err_algebra":[ 	0.0,	 0.0,	 0.0,		0.0,	 0.0,	 10.0 ],
-																		// SO3 in Radians, ST3 in world units ? Pseudo exp / Log
-																		// See A tutorial on SE(3) transformation parameterizations and on-manifold optimization
-																		// José Luis Blanco-Claraco	 doi.org/10.48550/arXiv.2103.15980
+												// SO3 in Radians, ST3 in world units ? Pseudo exp / Log
+												// See A tutorial on SE(3) transformation parameterizations and on-manifold optimization
+												// José Luis Blanco-Claraco	 doi.org/10.48550/arXiv.2103.15980
 
-	"Artif_pose_err_axis":		0,			// [0-5] rot xyz, trans xyz , in world coords, where x=   , y= up,  z= forward ?
+	"Artif_pose_err_axis":		0,				// [0-5] rot xyz, trans xyz , in world coords, where x=   , y= up,  z= forward ?
 	"Artif_pose_err_factor":	2,
 
-	// Keframe initialization ///////////////////////////////////////////////////////////////////////////////////////////////////////
-	"initialize_keyframe_from_GT":			true,
-	"initialize_tracking_from_GT_depth":	true
+	"initialize_tracking_from_GT_depth":		false
 }

@@ -268,7 +268,7 @@ void Dynamic_slam::estimate_camera_matrix( uint	layer, uint	frame_idx){
 
 		new_inv_k						= generate_invK_( new_k );
 		}
-		for (int frame_idx_ = 0; frame_idx_ < max_frames; frame_idx_++){
+		for (int frame_idx_ = 0; frame_idx_ < num_current_frames; frame_idx_++){
 			RunCL::frame *this_frame	= &runcl.current_frames[ runcl.current_frames_idx[frame_idx_] ];
 
 			Matx44f	pose				= this_frame->pose_from_0;

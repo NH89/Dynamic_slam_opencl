@@ -511,7 +511,7 @@ void RunCL::Save_csv_mat(cv::Mat mat, std::filesystem::path folder, uint layer )
 																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::Save_scv chk0"<<flush;
 																																				PRINT_MATX44F(	current_frames[ current_frames_idx[0] ].inv_K, );
 																																			}
-	std::string  	date_time_str = date_time_string();
+	std::string  	date_time_str = time_in_HH_MM_SS_MMM();
 	stringstream 	ss;
 	ss 				<< date_time_str << "ds-framenum"<<dataset_frame_num<<"_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_DepthUpdate_.csv";
 	folder 			+= "/csv/";
@@ -540,7 +540,7 @@ void RunCL::SavePoints_asciiPLY ( cv::Mat mat, cv::Mat mat_depth, std::filesyste
 																																			if(verbosity>local_verbosity_threshold) { cout<<"\nRunCL::Save_ply chk0"<<flush;
 																																				PRINT_MATX44F(	current_frames[ current_frames_idx[0] ].inv_K, );
 																																			}
-	std::string  	date_time_str = date_time_string();
+	std::string  	date_time_str = time_in_HH_MM_SS_MMM();
 	stringstream 	ss;
 	ss 				<< date_time_str << "ds-framenum"<<dataset_frame_num<<"_layer"<<layer<<"_out_bock_size"<<out_block_size<<"_DepthUpdate_.ply";
 	folder 			+= "/ply/";
@@ -703,7 +703,7 @@ void RunCL::DownloadAndSave_2Channel(cl_mem buffer, std::string count, std::file
 		stringstream 	ss;
 		stringstream 	png_ss;
 		string 			type_string 	= checkCVtype(type_mat);
-		string  		date_time_str 	= date_time_string();
+		string  		date_time_str 	= time_in_HH_MM_SS_MMM();
 
 		ss 		<< "/" << folder_tiff.filename().string() << date_time_str <<"_UV_" << count <<"_sum_u_"<<sum_u<<"_sum_v_"<<sum_v<<"_type_"<<type_string<<"min"<<minVal_u<<"_max"<<maxVal_u<<"_maxRange"<<max_range;
 		png_ss 	<< "/" << folder_tiff.filename().string() << date_time_str <<"_UV_" << count;
@@ -790,7 +790,7 @@ void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, st
 		stringstream 	ss;
 		stringstream 	png_ss;
 		string 			type_string 	= checkCVtype(type_mat);
-		string  		date_time_str 	= date_time_string();
+		string  		date_time_str 	= time_in_HH_MM_SS_MMM();
 
 		ss 		<< "/" << folder_tiff.filename().string() << date_time_str << "_vol_layer_"<<layer<<"_UV_" << count <<"_sum_u_"<<sum_u<<"_sum_v_"<<sum_v<<"_type_"<<type_string<<"min"<<minVal_u<<"_max"<<maxVal_u<<"_maxRange"<<max_range;
 		png_ss 	<< "/" << folder_tiff.filename().string() << date_time_str << "_vol_layer_"<<layer<<"_UV_" << count;
@@ -859,7 +859,7 @@ void RunCL::DownloadAndSave_3Channel(cl_mem buffer, std::string count, std::file
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_3Channel_Chk_2, "<<flush;
 		stringstream ss;
 		stringstream png_ss;
-		std::string  date_time_str = date_time_string();
+		std::string  date_time_str = time_in_HH_MM_SS_MMM();
 
 		ss<<"/" << date_time_str<<folder_tiff.filename().string()<<"_"<<count<<"_sum"<<sum<<"type_"<<type_string<<"min("<<minVal[0]<<","<<minVal[1]<<","<<minVal[2]<<")_max("<<maxVal[0]<<","<<maxVal[1]<<","<<maxVal[2]<<")";
 		png_ss<< "/"<< date_time_str << folder_tiff.filename().string() << "_" << count;
@@ -1083,7 +1083,7 @@ void RunCL::SaveMat(cv::Mat temp_mat, int type_mat, std::filesystem::path folder
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nSaveMat_Chk_2, "<<flush;
 		stringstream ss;
 		stringstream png_ss;
-		std::string  date_time_str = date_time_string();
+		std::string  date_time_str = time_in_HH_MM_SS_MMM();
 
 		ss		<<"/"<<folder_tiff.filename().string()<<"_"<<mat_name<<"_"<<count<<date_time_str<<"__sum"<<sum<<"type_"<<type_string<<"min("<<minVal[0]<<","<<minVal[1]<<","<<minVal[2]<<")_max("<<maxVal[0]<<","<<maxVal[1]<<","<<maxVal[2]<<")";
 		png_ss	<<"/"<<folder_tiff.filename().string()<<"_"<<mat_name<<"_"<<count<<date_time_str;
@@ -1141,7 +1141,7 @@ void RunCL::SaveMat_1chan(cv::Mat temp_mat, int type_mat, std::filesystem::path 
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nSaveMat_1chan_Chk_2, "<<flush;
 		stringstream ss;
 		stringstream png_ss;
-		std::string  date_time_str = date_time_string();
+		std::string  date_time_str = time_in_HH_MM_SS_MMM();
 
 		ss		<<"/" << mat_name<<"__sum"<<sum<<"type_"<<type_string<<"min("<<minVal<<")_max("<<maxVal<<")";
 		png_ss	<<"/" << mat_name<<date_time_str;

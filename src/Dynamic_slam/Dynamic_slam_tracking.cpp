@@ -236,7 +236,7 @@ void Dynamic_slam::estimate_tracking(){
 																																			PRINT_MATX16F( PToLie (frame1->pose_to_0), "before initial estimate" );
 																																			PRINT_MATX16F( PToLie (frame2->pose_to_0), "before initial estimate" );
 																																		}
-		int			layer 				= SE3_start_layer;
+		int			layer				= SE3_start_layer;
 		float		old_sum_rho_sq		= FLT_MAX-1;
 		float		old_sum_rho_sq_l0	= FLT_MAX-1;
 		float		factor				= -1.0f;
@@ -265,7 +265,10 @@ void Dynamic_slam::estimate_tracking(){
 
 																																			uint	out_block_size		= 2;
 																																			uint	layer				= 0;
-																																			string fname_ = fname_short + to_string(frame_idx) +"_"+ to_string(this_frame->dataset_frame_num)+"_"+to_string(old_sum_rho_sq_l0)+"_#";
+																																			string fname_ = fname_short + to_string(frame_idx) +"_"+ to_string(this_frame->dataset_frame_num)+"_";
+																																			if(old_sum_rho_sq_l0 > 1000.0f ){	fname_		= fname_ + "large_num_#";						}
+																																			else{								fname_		= fname_ + to_string(old_sum_rho_sq_l0)+"_#";	}
+
 																																			runcl.rho_sq_to_0( out_block_size, iter, frame_idx, layer, this_frame->k2k_buf_to_0, num_SE3_DoF, fname_	);
 
 																																			// For debugging, get a larger, finer Rho map
@@ -275,8 +278,8 @@ void Dynamic_slam::estimate_tracking(){
 																																			old_sum_rho_sq_l0	=	runcl.se3_rho_result.Rho.y;		cout << "\nold_sum_rho_sq_l0	= "<< old_sum_rho_sq_l0 <<flush;
 																																		}
 			string fname_ = fname_short + to_string(frame_idx) +"_"+ to_string(this_frame->dataset_frame_num)+"_";
-			if(old_sum_rho_sq==FLT_MAX-1 ){		fname_		= fname_ + "flt_max";					}
-			else{								fname_		= fname_ + to_string(old_sum_rho_sq);	}
+			if(old_sum_rho_sq > 1000.0f ){	fname_		= fname_ + "_large_num_";					}
+			else{							fname_		= fname_ + to_string(old_sum_rho_sq);	}
 
 			runcl.rho_sq_to_0(			out_block_size, iter,	frame_idx,	(uint)layer,  this_frame->k2k_buf_to_0,	num_SE3_DoF, fname_);
 			runcl.reduce_patch_Rho(		out_block_size, iter,				(uint)layer,							num_SE3_DoF);

@@ -24,12 +24,12 @@ void RunCL::precomp_cam_calib_maps ( uint layer, cl_float16 SE3_k2k[  num_camera
 	_clEnqueueWriteBuffer( uload_queue, SE3_k2kbuf,		CL_FALSE, 0, (num_camera_matrix_DoF +1)*sizeof(cl_float16), 	SE3_k2k,		fname);
 
 	//      __private	 uint layer, set in mipmap_call_kernel( ..) below                                                                      __private	 uint	 layer,		//0
-//	_clSetKernelArg( kernel, 1, sizeof( float),		&inv_depth,	 		fname);												//__private	float 	inv_depth,		//1
-	_clSetKernelArg( kernel, 1, sizeof( uint),		&num_vars,	 		fname);												//__private	uint,	num_vars		//1
+//	_clSetKernelArg( kernel, 1, sizeof( float),		&inv_depth,			fname);												//__private	float 	inv_depth,		//1
+	_clSetKernelArg( kernel, 1, sizeof( uint),		&num_vars,			fname);												//__private	uint,	num_vars		//1
 
-	_clSetKernelArg( kernel, 2, sizeof( cl_mem),	&mipmap_buf, 		fname);												//__constant uint*	mipmap_params,	//2
+	_clSetKernelArg( kernel, 2, sizeof( cl_mem),	&mipmap_buf,		fname);												//__constant uint*	mipmap_params,	//2
 	_clSetKernelArg( kernel, 3, sizeof( cl_mem), 	&uint_param_buf,	fname);												//__global 	uint*	uint_params		//3
-	_clSetKernelArg( kernel, 4, sizeof( cl_mem), 	&SE3_k2kbuf, 		fname);												//__global 	float*	k2k,			//4
+	_clSetKernelArg( kernel, 4, sizeof( cl_mem), 	&SE3_k2kbuf,		fname);												//__global 	float*	k2k,			//4
 
 	_clSetKernelArg( kernel, 5, sizeof( cl_mem), 	&frame0->depth_buf,	fname);												// __global	float2*	depth_map,		//5	// current frame depth, now stored as inv_depth
 

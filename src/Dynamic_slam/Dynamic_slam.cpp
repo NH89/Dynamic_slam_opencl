@@ -24,7 +24,6 @@ Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {
 	use_GT_pose							= obj["use_GT_pose"].asBool();
 
 	invert_GT_depth						= obj["invert_GT_depth"].asBool();
-	initialize_keyframe_from_GT  		= obj["initialize_keyframe_from_GT"].asBool();
 	initialize_tracking_from_GT_depth	= obj["initialize_tracking_from_GT_depth"].asBool();
 
 	SE3_start_layer 					= obj["SE3_start_layer"].asUInt();
