@@ -42,12 +42,12 @@ void Dynamic_slam::getFrameData_vec( frame_datum &datum ){  // Dynamic_slam::ini
 
 																																			// 4x4 perspective matrix is not invertable for points at infinity. We correct ortho->perspective in the kernel by dividing by Z.
 	//pose_datum datum 						= {};																							// default initialization.
-	datum.frame_data_GT.K									= K_GT;
-	datum.frame_data_GT.inv_K								= generate_invK_( K_GT );
-	datum.frame_data_GT.pose								= getPose( R, T );
-	datum.frame_data_GT.inv_pose							= getInvPose( datum.frame_data_GT.pose );
+	datum.frame_data_GT.K					= K_GT;
+	datum.frame_data_GT.inv_K				= generate_invK_( K_GT );
+	datum.frame_data_GT.pose				= getPose( R, T );
+	datum.frame_data_GT.inv_pose			= getInvPose( datum.frame_data_GT.pose );
 	if( frame_data.size() > 1 ){
-		datum.frame_data_GT.prev_pose2pose					= frame_data[ frame_data.size() -2].frame_data_GT.inv_pose	*	datum.frame_data_GT.pose;
+		datum.frame_data_GT.prev_pose2pose	= frame_data[ frame_data.size() -2].frame_data_GT.inv_pose	*	datum.frame_data_GT.pose;
 	}
 
 	frame_data.back().frame_data_GT			= datum.frame_data_GT; // TO DO entirely remove Dynamic_slam::frame_data.
@@ -67,6 +67,7 @@ void Dynamic_slam::getFrameData_vec( frame_datum &datum ){  // Dynamic_slam::ini
 																																			}
 	int r 									= runcl.baseImage.rows;
 	int c 									= runcl.baseImage.cols;
+
 	depth_GT 								= loadDepthAhanda(/*obj,*/ depth[runcl.dataset_frame_num].string(), r,c,cameraMatrix);
 
 	runcl.load_GT_depth(depth_GT, invert_GT_depth);

@@ -28,6 +28,7 @@ class Dynamic_slam
     int                     verbosity;
     RunCL                   runcl;
     bool					GT_available						= false;
+    bool					use_image_dataset					= false;
     bool					use_artif_pose_error				= false;
     bool					use_GT_pose							= false;
     bool					use_conf_camera_matx				= false;
@@ -40,11 +41,13 @@ class Dynamic_slam
     uint                    SE_iter;
 
     // data files
-    std::string             rootpath;
-    fs::path                root;
+    std::string             rootpath_string;
+    fs::path                root_fs_path;
     std::vector<fs::path>   txt;
-    std::vector<fs::path>   png;
+    std::vector<fs::path>   dataset_img_file_vec;
     std::vector<fs::path>   depth;
+
+	VideoCapture			capture;
 
     // camera & pose params
     cv::Matx44f initial_K, inv_initial_K;
@@ -88,30 +91,12 @@ class Dynamic_slam
 
 
     // functions ////////////////////////////////////////
+	/////////////////////////////////////// utils/video_input.cpp
+    void get_all(const fs::path& root , const string& ext, vector<fs::path>& ret );
+    //void capture_( cv::Mat &image );
+    cv::Mat capture_();
+    void start_data_capture();
 
-    // return the filenames of all files that have the specified extension
-    // in the specified directory and all subdirectories
-    void get_all(const fs::path& root , const string& ext, vector<fs::path>& ret ) {
-      if (!fs::exists(root))        return;
-      if (fs::is_directory(root))   {
-        typedef std::set<std::filesystem::path> Files;
-        Files files;
-        fs::recursive_directory_iterator it0(root);
-        fs::recursive_directory_iterator endit0;
-        std::copy(it0, endit0, std::inserter(files, files.begin()));
-        Files::iterator it= files.begin();
-        Files::iterator endit= files.end();
-
-        while(it != endit)
-        {
-          if (fs::is_regular_file(*it) && (*it).extension() == ext)
-          {
-            ret.push_back(*it);
-          }
-          ++it;
-        }
-      }
-    }
 
     /////////////////////////////////////// Dynamic_slam_class.cpp
     void initialize_resultsMat();

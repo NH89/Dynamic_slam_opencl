@@ -13,22 +13,43 @@
 
 
 	// Input data ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	"data_file_offset":			0,				//475;//10;//46;//462;//380;//0;
-	"GT_available":				true,
-	"use_conf_camera_matx":		false,
-	"use_GT_camera_matx":		true,
+	"use_image_dataset":		true,			// The first 'true' option will be used.
+	"use_video_file":			false,
+	"use_camera":				false,
+	"use_ROS_topic":			false,
 
+	"data_file_offset":			0,				//475;//10;//46;//462;//380;//0;
+
+	// Which data to use ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	"GT_available":				true,							// iff( use_image_dataset==true )
+	// camera matrix
+	"use_conf_camera_matx":		false,
+	"use_GT_camera_matx":		true,							// iff( use_image_dataset==true )
+	// pose
+	"use_GT_pose":				true,							// iff( use_image_dataset==true )
+	"Artif_pose_err_bool":		false,							// iff( use_image_dataset==true )
+	// depth
+	"initialize_tracking_from_GT_depth":		true,			// iff( use_image_dataset==true )
+	// Load images
+	"MipMap_margin":			1,				//4
+	"max_frame_count":			2,				//8,//16,//5,//27,//30,	//4,//30,//4,//140,//30,	// how many frames to run for. NB -1 -> run indefinitely.
+
+
+	// Camera matrix ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	"cameraMatrix":[			481.20,		  0.0,		320.0,		0.0,
 								  0.0,		480.0,		200.0,		0.0,
 								  0.0,		  0.0,		  0.0,		1.0,
 								  0.0,		  0.0,		  1.0,		0.0 ],
 								  				// NB 3x3 matrix  [481.20,   0.0,  319.5, 		0.0,  480.0,  239.5, 	  0.0,	1.0,	0.0]
 
-	// Load images //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	"MipMap_margin":			1,				//4
+	// Artificial Pose Error ////////////////////////////////////////////////////////////////////////////////////////////////////////
+	"Artif_pose_err_algebra":[ 	0.0,	 0.0,	 0.0,		0.0,	 0.0,	 10.0 ],
+												// SO3 in Radians, ST3 in world units ? Pseudo exp / Log
+												// See A tutorial on SE(3) transformation parameterizations and on-manifold optimization
+												// José Luis Blanco-Claraco	 doi.org/10.48550/arXiv.2103.15980
 
-	//"imagesPerCV":			2,				//5, //########## //10,//20,//4,//30//4//7	###################################################################
-	"max_frame_count":			16,				//8,//16,//5,//27,//30,	//4,//30,//4,//140,//30,		  // how many frames to run for. NB -1 -> run indefinitely.
+	"Artif_pose_err_axis":		0,				// [0-5] rot xyz, trans xyz , in world coords, where x=   , y= up,  z= forward ?
+	"Artif_pose_err_factor":	2,
 
 
 	// Mapping parameters - DTAM ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -41,24 +62,11 @@
 
 	"depthmap_margin":			1,				// margin around depth map layers, (in densely packed buffer), to allow efficient kernels.
 
-
 	// Tracking parameters //////////////////////////////////////////////////////////////////////////////////////////////////////////
 	"SE3_start_layer":			4,				//4 NB seems to track faster starting at layer 4 on Office dataset.
 	"SE3_stop_layer":			1,
 	"SE_iter":					2,				//15,//3,//30,//12, //25,//10//50//25,			   //1 //10// 1,//
 
 	"SO3_delta_theta":			1.0,			// radians 0.01 = 0.57 degrees
-	"ST3_delta":				1.0,			// NB depends on depth scale, see max & min depth in mapping params.
-
-	"use_GT_pose":				false,
-	"Artif_pose_err_bool":		false,
-	"Artif_pose_err_algebra":[ 	0.0,	 0.0,	 0.0,		0.0,	 0.0,	 10.0 ],
-												// SO3 in Radians, ST3 in world units ? Pseudo exp / Log
-												// See A tutorial on SE(3) transformation parameterizations and on-manifold optimization
-												// José Luis Blanco-Claraco	 doi.org/10.48550/arXiv.2103.15980
-
-	"Artif_pose_err_axis":		0,				// [0-5] rot xyz, trans xyz , in world coords, where x=   , y= up,  z= forward ?
-	"Artif_pose_err_factor":	2,
-
-	"initialize_tracking_from_GT_depth":		false
+	"ST3_delta":				1.0				// NB depends on depth scale, see max & min depth in mapping params.
 }

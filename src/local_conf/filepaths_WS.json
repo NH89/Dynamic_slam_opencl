@@ -30,7 +30,12 @@
 																				// "ahanda-icl/Trajectory_for_Variable_Frame-Rate/200fps/stationary_video",
 																				// ahanda-icl/LivingRoom'lt kt0'/living_room_traj3_loop
 	"data_file_increment":	1,
-	"data_file_offset":		0	   //475;//10;//46;//462;//380;//0;
+	"data_file_offset":		0,	   //475;//10;//46;//462;//380;//0;
+
+	"image_file_suffix":	".png",												// ".png" // ".jpg" // ".jpeg" // ".tiff" // or other depending on opencv build.
+	"video_file":			"/home/nick/programming/ComputerVision/DataSets/Video_samples/JGH_884x480_sample_VID-20251218-WA0000.mp4",
+	"camera_index":			"",
+	"ros_topic":			""
 }
 // ws datasets
 // /home/nick/programming/ComputerVision/DataSets/ahanda-icl/Trajectory_for_Variable_Frame-Rate/200fps/200fps_GT_archieve

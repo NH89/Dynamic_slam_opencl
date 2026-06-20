@@ -106,6 +106,7 @@ add_executable(Dynamic_slam
          src/utils/convertTransforms.cpp
          src/utils/convertAhandaPovRayToStandard.hpp
          src/utils/convertAhandaPovRayToStandard.cpp
+         src/utils/video_input.cpp
 
          )
 

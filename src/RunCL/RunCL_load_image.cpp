@@ -1,9 +1,19 @@
 #include "RunCL.hpp"
 
-void RunCL::loadFrame(cv::Mat image){ //getFrame();																							// WriteBuffer basemem #########
+void RunCL::loadFrame(cv::Mat image ){ //getFrame();																							// WriteBuffer basemem #########
 	string fname = "RunCL::loadFrame(..)";
 	int local_verbosity_threshold = V_RUNCL_LOADFRAME;
 																																			if(verbosity>local_verbosity_threshold) {cout << "\n RunCL::loadFrame_chk 0\n" << flush;}
+																												if (image.type()!= baseImage.type() || image.size()!= baseImage.size() ) {
+																													cerr<< "\n\nError: Dynamic_slam::getFrame()  : missmatched."
+																														<< "\nruncl.dataset_frame_num = " 						<<dataset_frame_num
+																														<< "\nruncl.baseImage.size()= "							<<baseImage.size()
+																														<< "\nimage.size()= "									<<image.size()
+																														<< "\nruncl.baseImage.type()= "							<<baseImage.type()
+																														<< "\nimage.type()= "									<<image.type()
+																														<< "\n\n"												<<flush;
+																													exit_(0);
+																												}
 	_clEnqueueWriteBuffer(uload_queue, basemem, CL_FALSE, 0, image_size_bytes, image.data, fname);
 
 	current_frames[	current_frames_idx[0] ].dataset_frame_num	=	dataset_frame_num;

@@ -10,50 +10,35 @@ Dynamic_slam::~Dynamic_slam(){ runcl.~RunCL(); };
 
 Dynamic_slam::Dynamic_slam( Json::Value obj_  ):   runcl( obj_  ) {
 	obj = obj_;																																// NB save obj_ to class member obj, so that it persists within this Dynamic_slam object.
-	verbosity 							= obj["verbosity"].asInt();
-	int local_verbosity_threshold 		= V_DYNAMIC_SLAM_DYNAMIC_SLAM;																		if(verbosity>local_verbosity_threshold) cout << "\f Dynamic_slam::Dynamic_slam_chk 0\n" << flush;
+	verbosity 								= obj["verbosity"].asInt();
+	int local_verbosity_threshold			= V_DYNAMIC_SLAM_DYNAMIC_SLAM;																	if(verbosity>local_verbosity_threshold) cout << "\f Dynamic_slam::Dynamic_slam_chk 0\n" << flush;
 
-	runcl.dataset_frame_num 			= obj["data_file_offset"].asUInt();
-	runcl.frame_count		 			= 0;
+	runcl.dataset_frame_num					= obj["data_file_offset"].asUInt();
+	runcl.frame_count						= 0;
 
-	use_conf_camera_matx				= obj["use_conf_camera_matx"].asBool();
-	use_GT_camera_matx					= obj["use_GT_camera_matx"].asBool();
+	use_conf_camera_matx					= obj["use_conf_camera_matx"].asBool();
+	use_image_dataset						= obj["use_image_dataset"].asBool();
 
-	GT_available						= obj["GT_available"].asBool();
-	use_artif_pose_error				= obj["Artif_pose_err_bool"].asBool();
-	use_GT_pose							= obj["use_GT_pose"].asBool();
+	if( use_image_dataset	== true ){																						// NB default values are 'false'
+		use_GT_camera_matx					= obj["use_GT_camera_matx"].asBool();
 
-	invert_GT_depth						= obj["invert_GT_depth"].asBool();
-	initialize_tracking_from_GT_depth	= obj["initialize_tracking_from_GT_depth"].asBool();
+		GT_available						= obj["GT_available"].asBool();
+		use_artif_pose_error				= obj["Artif_pose_err_bool"].asBool();
+		use_GT_pose							= obj["use_GT_pose"].asBool();
 
-	SE3_start_layer 					= obj["SE3_start_layer"].asUInt();
-	SE3_stop_layer 						= obj["SE3_stop_layer"].asUInt();
-	SE_iter 							= obj["SE_iter"].asUInt();
+		invert_GT_depth						= obj["invert_GT_depth"].asBool();
+		initialize_tracking_from_GT_depth	= obj["initialize_tracking_from_GT_depth"].asBool();
+	}
 
-	stringstream  ss0;
-	ss0 << obj["data_path"].asString()  <<  obj["data_file"].asString();																	// Collect the filenames of all the input images, plus ground truth files for camera data and depth maps- #####################
-	rootpath 	= ss0.str();
-	root 		= rootpath;
+	SE3_start_layer							= obj["SE3_start_layer"].asUInt();
+	SE3_stop_layer							= obj["SE3_stop_layer"].asUInt();
+	SE_iter									= obj["SE_iter"].asUInt();
 
-	if ( exists(root)==false )		{ cout << "Data folder "<< ss0.str()  <<" does not exist.\n" <<flush; runcl.exit_(0); }
-	if ( is_directory(root)==false ){ cout << "Data folder "<< ss0.str()  <<" is not a folder.\n"<<flush; runcl.exit_(0); }
-	if ( empty(root)==true )		{ cout << "Data folder "<< ss0.str()  <<" is empty.\n"		 <<flush; runcl.exit_(0); }
-																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::Dynamic_slam_chk 2\n" << flush;
-	get_all(root, ".txt",   txt);																											// Get lists of files. Gathers all filepaths with each suffix, into c++ vectors.
-	get_all(root, ".png",   png);
-	get_all(root, ".depth", depth);
-	if (txt.size()<=0){	GT_available = false;		cout<<",  WARNING no gound truth .txt file."<<flush;}
-	if (png.size()<=0){	GT_available = false;		cout<<",  WARNING no gound truth .depth file."<<flush;}
+	start_data_capture();
 
-																																			if(verbosity>local_verbosity_threshold){cout << "\n Dynamic_slam::Dynamic_slam_chk 3\n" << flush;
-																																				cout<<"\n txt.size() = "<<txt.size() <<flush;
+	runcl.initialize_RunCL( capture_() );		// imread( png[ runcl.dataset_frame_num ].string() )									// Set image params, ref for dimensions and data type. ########################################################################
 
-																																				cout << "\nDynamic_slam::Dynamic_slam(): "<< png.size()  <<" .png images found in data folder.\t"
-																																				<<"png[runcl.dataset_frame_num].string()="<< png[runcl.dataset_frame_num].string()  <<flush;
-																																			}
-	runcl.initialize_RunCL( imread( png[ runcl.dataset_frame_num ].string() ) );															// Set image params, ref for dimensions and data type. ########################################################################
-
-	initialize_camera_vec();	// NB initalized solely from 1 sample image, without GT data.
+	initialize_camera_vec();																												// NB initalized solely from 1 sample image, without GT data.
 	precompute_SE3_buffers();
 	getFrame();
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::Dynamic_slam_ finished "
@@ -179,7 +164,7 @@ int Dynamic_slam::nextFrame() {
 																																			}
 	uint depth_layer = 0;																													// i.e. layer of depth map used for tracking. Currently has to be 0.
 
-	if(			 GT_available		 ==true){				getFrameData_vec( frame_data.back()); 		cout <<"\n GT_available\n"			<<flush;		// Sets frame_data.back().frame_data_GT
+	if(			 GT_available		 ==true){				getFrameData_vec( frame_data.back());		cout <<"\n GT_available\n"			<<flush;		// Sets frame_data.back().frame_data_GT
 		if(		 use_artif_pose_error==true){				set_artif_pose_error();						cout <<"\n use_artif_pose_error\n"	<<flush;	}
 		else if( use_GT_pose		 ==true){				use_GT_pose_vec();							cout <<"\n use_GT_pose\n"			<<flush;	}
 
@@ -228,16 +213,26 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 																																				cout << "\nruncl.mm_Image_size =" 		<< runcl.mm_Image_size ;
 																																				cout << "\n" << flush ;
 																																			}
-	image = imread( png[runcl.dataset_frame_num].string() );																				if(verbosity>local_verbosity_threshold){
-																																				cout << "\n Dynamic_slam::getFrame_chk 0.5, Image file = " << png[runcl.dataset_frame_num].string() << "\t" << flush;
+/*
+	//image = imread( png[runcl.dataset_frame_num].string() );
+
+	capture_( image );
+																																			if(verbosity>local_verbosity_threshold){
+																																				cout << "\n Dynamic_slam::getFrame_chk 0.5, Image file = " << dataset_img_file_vec[runcl.dataset_frame_num].string() << "\t" << flush;
 																																			}
 																												if (image.type()!= runcl.baseImage.type() || image.size()!=runcl.baseImage.size() ) {
-																													cerr<< "\n\nError: Dynamic_slam::getFrame(), runcl.dataset_frame_num = " << runcl.dataset_frame_num << " : missmatched. runcl.baseImage.size()="<<runcl.baseImage.size()<<\
-																															", image.size()="<<image.size()<<", runcl.baseImage.type()="<<runcl.baseImage.type()<<", image.type()="<<image.type()<<"\n\n"<<flush;
+																													cerr<< "\n\nError: Dynamic_slam::getFrame()  : missmatched."
+																														<< "\nruncl.dataset_frame_num = " 						<<runcl.dataset_frame_num
+																														<< "\nruncl.baseImage.size()= "							<<runcl.baseImage.size()
+																														<< "\nimage.size()= "									<<image.size()
+																														<< "\nruncl.baseImage.type()= "							<<runcl.baseImage.type()
+																														<< "\nimage.type()= "									<<image.type()
+																														<< "\n\n"												<<flush;
 																													runcl.exit_(0);
 																												}
+*/
 																																			//image.convertTo(image, CV_16FC3, 1.0/256, 0.0); // NB cv_16FC3 is preferable, for faster half precision processing on AMD, Intel & ARM GPUs.
-	runcl.loadFrame( image );																												// NB Nvidia GeForce have 'Tensor Compute" FP16, accessible by PTX. AMD have RDNA and CDNA. These need PTX/assembly code and may use BF16 instead of FP16.
+	runcl.loadFrame( capture_() );																											// NB Nvidia GeForce have 'Tensor Compute" FP16, accessible by PTX. AMD have RDNA and CDNA. These need PTX/assembly code and may use BF16 instead of FP16.
 																																			// load a basic image in CV_8UC3, then convert on GPU to 'half'
 	runcl.cvt_image();	//runcl.cvt_color_space( ); suspect step in hue values caused tracking errors.
 

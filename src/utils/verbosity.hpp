@@ -30,12 +30,12 @@
 
     // DYNAIC_SLAM/ ##############################################
     /////////////////////////////////////// DYNAMIC_SLAM_CLASS.CPP
-	#define	V_DYNAMIC_SLAM_DYNAMIC_SLAM					1
+	#define	V_DYNAMIC_SLAM_DYNAMIC_SLAM					-1
 	#define	V_DYNAMIC_SLAM_INITIALIZE_CAMERA			-2
 	#define V_DYNAMIC_SLAM_PRECOMPUTE_BUFFERS			-2
 
 	#define	V_DYNAMIC_SLAM_NEXTFRAME					-2
-	#define	V_DYNAMIC_SLAM_GETFRAME						2
+	#define	V_DYNAMIC_SLAM_GETFRAME						-2
 
 
 
