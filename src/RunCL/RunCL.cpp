@@ -638,15 +638,24 @@ void RunCL::set_mimpmap_offsets(){
 
 }
 
-void RunCL::set_all_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k ){
+void RunCL::set_all_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f k2k ){
 	int local_verbosity_threshold = V_RUNCL_SET_CAM_BUFS;
 	string fname = "RunCL::set_all_cam_bufs( )";																							if(verbosity>local_verbosity_threshold) { cout<<"\n"<<fname<<"(  )_chk0"<<flush;}
-	for (uint frame_idx = 0; frame_idx<num_current_frames; frame_idx++){
-		set_cam_bufs( k, inv_k, pose, k2k, frame_idx );
+
+	for (uint frame_idx = 0;	frame_idx<num_current_frames; frame_idx++){
+
+		frame	*this_frame		=	&current_frames[ current_frames_idx[0 ] ];			cout<<", chk1 "<<flush;		cout<<"\nthis_frame.pose_buf="<<this_frame->pose_buf<<flush;
+		this_frame->K			=	k;													cout<<"\nthis_frame.K = \n"	<<this_frame->K
+																							<<"\ncurrent_frames[ current_frames_idx[frame_idx] ].K=\n"<<current_frames[ current_frames_idx[frame_idx] ].K<<flush;
+		this_frame->inv_K		=	inv_k;
+		this_frame->pose_to_0	=	cv::Matx44f::eye();
+
+		update_44f_buf(			cv::Matx44f::eye(),		this_frame->pose_buf,		fname);		cout<<", chk2 "<<flush;
+		update_44f_buf(			cv::Matx44f::eye(),		this_frame->k2k_buf_to_0,	fname);		cout<<", chk3 "<<flush;
 	}
 }
 
-void RunCL::set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k,	uint frame_idx ){
+void RunCL::set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f k2k,	cv::Matx44f pose_to_0,  uint frame_idx ){
 	int local_verbosity_threshold = V_RUNCL_SET_CAM_BUFS;
 	string fname = "RunCL::set_cam_bufs( )";
 																																			if(verbosity>local_verbosity_threshold) { cout<<"\n"<<fname<<"(  )_chk0"
@@ -656,14 +665,25 @@ void RunCL::set_cam_bufs( cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose, 
 																																			// NB Orthographic camera, See notes in convertTransforms.cpp , cv::Matx44f generate_invK_(cv::Matx44f K_, int verbosity){..}
 																																			// 4x4 perspective matrix is not invertable for points at infinity. We correct ortho->perspective in the kernel by dividing by Z.
 
-	frame	*this_frame		= &current_frames[ current_frames_idx[frame_idx] ];	cout<<", chk1 "<<flush;		cout<<"\nthis_frame.pose_buf="<<this_frame->pose_buf<<flush;
-	this_frame->K			=	k;												cout<<"\n this_frame.K = \n"<<this_frame->K
-																					<<"\ncurrent_frames[ current_frames_idx[frame_idx] ].K=\n"<<current_frames[ current_frames_idx[frame_idx] ].K<<flush;
-	this_frame->inv_K		=	inv_k;
-	this_frame->pose_to_0	=	pose;
-	update_44f_buf(			pose,	this_frame->pose_buf,		fname);			cout<<", chk2 "<<flush;
-	update_44f_buf(			k2k,	this_frame->k2k_buf_to_0,	fname);			cout<<", chk3 "<<flush;
-																																			if(verbosity>local_verbosity_threshold) {cout<<"\nRunCL::"<<fname<<"_finished"<<flush;}
+	frame	*frame_0	=	&current_frames[ current_frames_idx[0 ] ];				cout<<", chk1 "<<flush;		cout<<"\nthis_frame.pose_buf="<<frame_0->pose_buf<<flush;
+	frame_0->K			=	k;														cout<<"\nthis_frame.K = \n"	<<frame_0->K<<"\ncurrent_frames[ current_frames_idx[frame_idx] ].K=\n"<<current_frames[ current_frames_idx[frame_idx] ].K<<flush;
+	frame_0->inv_K		=	inv_k;
+
+	frame	*frame_1	=	&current_frames[ current_frames_idx[1] ];
+	frame_1->pose_to_0	=	pose_to_0;
+
+	update_44f_buf(			pose_to_0,	frame_1->pose_buf,		fname);				cout<<", chk2 "<<flush;
+	update_44f_buf(			k2k,		frame_0->k2k_buf_to_0,	fname);				cout<<", chk3 "<<flush;
+																																			if(verbosity>local_verbosity_threshold) {cout<<"\nRunCL::"<<fname<<"_finished"<<flush;
+																																				PRINT_MATX44F( pose_to_0, );
+																																				for (uint i=0; i<5 ;i++){
+																																					cout<<"\ncurrent_frames_idx["<<i<<"] = "							<<current_frames_idx[i]
+																																						<<"\n## current_frames[ current_frames_idx[i] ].frame_num = "	<< current_frames[ current_frames_idx[i] ].dataset_frame_num << flush;
+																																					PRINT_MATX44F(	current_frames[ current_frames_idx[i] ].pose_to_0,	);
+																																					//PRINT_MATX44F(	current_frames[ current_frames_idx[i] ].pose_gt,	);
+																																					//PRINT_FLOAT_16( current_frames[ current_frames_idx[i] ].k2k_0to1_est,	);
+																																				}
+																																			}
 }
 
 

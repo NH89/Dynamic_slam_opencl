@@ -37,11 +37,14 @@
 	#define	V_DYNAMIC_SLAM_NEXTFRAME					-2
 	#define	V_DYNAMIC_SLAM_GETFRAME						-2
 
+	/////////////////////////////////////// VIDEO_INPUT.CPP
+	#define V_DYNAMIC_SLAM_CAPTURE						-2
+	#define V_DYNAMIC_SLAM_START_DATA_CAPTURE			-2
+
+
 
 
 	#define V_DYNAMIC_GENERATE_DELTAS					-1
-
-
 
 
 	#define	V_DYNAMIC_SLAM_GETPOSE						1

@@ -98,8 +98,11 @@ void Dynamic_slam::initialize_camera_vec(){
 																																				PRINT_MATX44F(frame_data.back().frame_data.prev_pose2pose,);
 																																			}
 		if(		 use_GT_camera_matx	 ==true){				initial_K	= datum.frame_data_GT.K; }
-		if(		 use_artif_pose_error==true){				set_artif_pose_error();	}
-		else if( use_GT_pose		 ==true){				use_GT_pose_vec();		}		// i.e. comp frame2frame pose transform from abs GT pose of each frame.
+		//if(		 use_artif_pose_error==true){				set_artif_pose_error();	}
+		//else if( use_GT_pose		 ==true){				use_GT_pose_vec();		}		// i.e. comp frame2frame pose transform from abs GT pose of each frame.
+
+		uint depth_layer = 0;
+		if(	initialize_tracking_from_GT_depth == true)	{	runcl.use_GT_depthmap( depth_layer );		cout <<"\n initialize_tracking_from_GT_depth\n"	<<flush;	}
 	}
 	inv_initial_K											= generate_invK_( initial_K );
 	frame_data.back().frame_data.K							= initial_K;
@@ -108,7 +111,7 @@ void Dynamic_slam::initialize_camera_vec(){
 																																				cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"
 																																					<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
 																																			}
-	runcl.set_all_cam_bufs(  frame_data.back().frame_data.K ,  frame_data.back().frame_data.inv_K,  frame_data.back().frame_data.pose,  frame_data.back().frame_data.K2K  );
+	runcl.set_all_cam_bufs(  frame_data.back().frame_data.K ,  frame_data.back().frame_data.inv_K,  /*frame_data.back().frame_data.pose,*/  frame_data.back().frame_data.K2K  );
 																																			if(verbosity>local_verbosity_threshold){
 																																				cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"
 																																					<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
@@ -162,15 +165,16 @@ int Dynamic_slam::nextFrame() {
 																																				cout<<"\nruncl.current_frames[ current_frames_idx[0] ].K = \n"
 																																					<< runcl.current_frames[ runcl.current_frames_idx[0] ].K <<endl<<flush;
 																																			}
-	uint depth_layer = 0;																													// i.e. layer of depth map used for tracking. Currently has to be 0.
 
 	if(			 GT_available		 ==true){				getFrameData_vec( frame_data.back());		cout <<"\n GT_available\n"			<<flush;		// Sets frame_data.back().frame_data_GT
 		if(		 use_artif_pose_error==true){				set_artif_pose_error();						cout <<"\n use_artif_pose_error\n"	<<flush;	}
 		else if( use_GT_pose		 ==true){				use_GT_pose_vec();							cout <<"\n use_GT_pose\n"			<<flush;	}
 
+		uint depth_layer = 0;																													// i.e. layer of depth map used for tracking. Currently has to be 0.
 		if(	initialize_tracking_from_GT_depth == true)	{	runcl.use_GT_depthmap( depth_layer );		cout <<"\n initialize_tracking_from_GT_depth\n"	<<flush;	}
-		uint frame_idx	= 0;
-		runcl.set_cam_bufs(  frame_data.back().frame_data.K ,  frame_data.back().frame_data.inv_K,  frame_data.back().frame_data.pose,  frame_data.back().frame_data.K2K,  frame_idx );
+
+		uint frame_idx	= 0;																												PRINT_MATX44F( frame_data.back().frame_data.prev_pose2pose, );
+		runcl.set_cam_bufs(  frame_data.back().frame_data.K ,  frame_data.back().frame_data.inv_K,  frame_data.back().frame_data.K2K,  frame_data.back().frame_data.prev_pose2pose,  frame_idx );
 	}																																		// else implies ( GT_available==false || (use_artif_pose_erro==false && use_GT_pose== flase) )
 																																			// NB new frame_data element was a copy of the previous one, so identity for first step, and constant vel thereafter.
 																						auto step_1 = high_resolution_clock::now();

@@ -45,7 +45,7 @@ void Dynamic_slam::getFrameData_vec( frame_datum &datum ){  // Dynamic_slam::ini
 	datum.frame_data_GT.pose				= getPose( R, T );
 	datum.frame_data_GT.inv_pose			= getInvPose( datum.frame_data_GT.pose );
 	if( frame_data.size() > 1 ){
-		datum.frame_data_GT.prev_pose2pose	= frame_data[ frame_data.size() -2].frame_data_GT.pose	*	datum.frame_data_GT.inv_pose;
+		datum.frame_data_GT.prev_pose2pose	= frame_data[ frame_data.size() -2].frame_data_GT.inv_pose	*  datum.frame_data_GT.pose;	// cv::Matx44f::eye();		//
 	}
 
 	frame_data.back().frame_data_GT			= datum.frame_data_GT; // TO DO entirely remove Dynamic_slam::frame_data.
@@ -149,22 +149,26 @@ void Dynamic_slam::set_artif_pose_error(){
 void Dynamic_slam::use_GT_pose_vec(){
 	int local_verbosity_threshold = V_DYNAMIC_SLAM_USE_GT_POSE;//verbosity_mp["Dynamic_slam::use_GT_pose"];// -1;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::use_GT_pose_chk_0,"<<flush;
-	pose_datum		GT_datum 			= frame_data.back().frame_data_GT;
+	frame_data.back().frame_data.prev_pose2pose			= frame_data.back().frame_data_GT.prev_pose2pose;
+
+	frame_data[ frame_data.size() -2].frame_data.K2K	= frame_data.back().frame_data.K	* frame_data.back().frame_data.prev_pose2pose	* frame_data.back().frame_data.inv_K;
+	/*
+	pose_datum		GT_datum			= frame_data.back().frame_data_GT;
 
 	Matx44f			pose_frame0to1_gt	= GT_datum.prev_pose2pose;		//runcl.current_frames[ runcl.current_frames_idx[1] ].pose_gt	*	GT_datum.inv_pose;
 
 	Matx44f			k2k_0to1			= GT_datum.K	* pose_frame0to1_gt		* GT_datum.K.inv();
 
-	frame_data.back().frame_data.pose	= pose_frame0to1_gt;
-	frame_data.back().frame_data.K2K	= k2k_0to1;
-
+	frame_data[ frame_data.size() -2].frame_data.pose	= pose_frame0to1_gt;	//.back()
+	frame_data[ frame_data.size() -2].frame_data.K2K	= k2k_0to1;				//.back()
 
 	//frame_data.back().frame_data 		= frame_data.back().frame_data_GT;
 	//float pose_arry[16];
 	//Matx44f_To_float16arry(	runcl.current_frames[  runcl.current_frames_idx[0]  ].pose_gt,			pose_arry );
 	//runcl.update_k2k_buf(		runcl.current_frames[  runcl.current_frames_idx[0]  ].k2k_0to1_est,		pose_arry );
+	*/
 																																			if(verbosity>local_verbosity_threshold){
-																																				PRINT_MATX44F(frame_data.back().frame_data.pose,);
+																																				PRINT_MATX44F(frame_data.back().frame_data.prev_pose2pose,);
 																																				//PRINT_FLOAT_16(runcl.fp32_k2keyframe,);
 																																				cout << "\nDynamic_slam::use_GT_pose()_finish ##############################################\n\n" << flush;
 																																			}

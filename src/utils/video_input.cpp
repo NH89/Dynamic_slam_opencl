@@ -27,21 +27,30 @@ void Dynamic_slam::get_all(const fs::path& root , const string& ext, vector<fs::
     }
 
 cv::Mat Dynamic_slam::capture_(){
+	int local_verbosity_threshold 		= V_DYNAMIC_SLAM_CAPTURE;
 	cv::Mat image;
 
 	if( use_image_dataset==true){
 		image = imread( dataset_img_file_vec[ runcl.dataset_frame_num ].string() );
-																				cerr 	<<"\nDynamic_slam::capture_() : use_image_dataset==true\n"
-																						<<"\nruncl.dataset_frame_num = "									<<runcl.dataset_frame_num
-																						<<"\ndataset_img_file_vec[ runcl.dataset_frame_num ].string() = "	<<dataset_img_file_vec[ runcl.dataset_frame_num ].string()
-																						<<"\ndataset_img_file_vec.len()	= "									<<dataset_img_file_vec.size()
-																						<<flush;
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::capture_()_chk 1" << flush;
+																																				cout 	<<"\nDynamic_slam::capture_() : use_image_dataset==true"
+																																						<<"\nruncl.dataset_frame_num = "									<<runcl.dataset_frame_num
+																																						<<"\ndataset_img_file_vec[ runcl.dataset_frame_num ].string() = "	<<dataset_img_file_vec[ runcl.dataset_frame_num ].string()
+																																						<<"\ndataset_img_file_vec.len()	= "									<<dataset_img_file_vec.size()
+																																						<<flush;
+																																			}
 	}else{
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::capture_()_chk 1" << flush;
+																																				cout 	<<"\nDynamic_slam::capture_() : use_image_dataset==false"
+																																						<<flush;
+																																			}
 		capture >> image;
 	}
-					cerr 	<< "\nDynamic_slam::capture_() image.size()= "	<<image.size()
-							<< "\nimage.type()= "							<<image.type()
-							<< "\n\n"										<<flush;
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n Dynamic_slam::capture_()_finished" << flush;
+																																				cout 	<< "\nimage.size()= "	<<image.size()
+																																						<< "\nimage.type()= "	<<image.type()
+																																						<< "\n\n"				<<flush;
+																																			}
 	return image;
 }
 /*
@@ -54,7 +63,7 @@ void Dynamic_slam::capture_( cv::Mat &image ){
 }
 */
 void Dynamic_slam::start_data_capture(){
-	int local_verbosity_threshold 		= V_DYNAMIC_SLAM_DYNAMIC_SLAM;
+	int local_verbosity_threshold 		= V_DYNAMIC_SLAM_START_DATA_CAPTURE;
 																																			if(verbosity>local_verbosity_threshold) cout << "\n Dynamic_slam::start_data_capture_chk 1\n" << flush;
 	string arg;
 

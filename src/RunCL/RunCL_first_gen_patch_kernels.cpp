@@ -73,7 +73,7 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 																																					<<",  layer="				<<layer
 																																					<<",  frame_idx="			<<frame_idx
 																																					<< flush;
-																																				float pose_ary[16];
+																																				//float pose_ary[16];
 																																				//ReadOutput( (uchar*)pose_ary, pose_buf, sizeof(float)*16, 0);		// ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset/*=0*/)
 																																				//PRINT_FLOAT_16(pose_ary, gpu buf);
 
@@ -126,6 +126,11 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 																																				cout<<"\ntracking_num_samples*2*mm_size_bytes_C4="	<<tracking_num_samples*2*mm_size_bytes_C4
 																																					<<"     24 * mm_size_bytes_C1="					<<24 * mm_size_bytes_C1
 																																					<< endl<<flush;
+																																				cout<<"\ncurrent_frames[current_frames_idx[idx]	].k2k_buf_to_0 :"<<flush;
+																																				for(uint idx=0; idx<num_current_frames; idx++){
+																																					cout<<"\nidx="<<idx<<flush;
+																																					PRINT_MATX44F( ReadOutput_44f( current_frames[current_frames_idx[idx]	].k2k_buf_to_0 ), );
+																																				}
 																	 																		}
 	//input integers
 	_clSetKernelArg( kernel, 0, sizeof( uint),									&frame_idx,	 													fname);		//__private		uint 		layer,					//0
@@ -184,6 +189,12 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 																																				uint offset_depth_bytes	= 0;
 																																				DownloadAndSave_2Channel( current_frames[current_frames_idx[frame_idx]	].depth_buf, ss.str(),  paths.at("depth_mem"),  2*mm_size_bytes_C1, mm_Image_size, CV_32FC2, 	show , max_range_, offset_depth_bytes);
 																																				cout << "\nDownloadAndSave_2Channel(.. depth_mem ..)\n"<<flush;
+
+																																				for(uint idx=0; idx<num_current_frames; idx++){
+																																					stringstream ss_;
+																																					ss_ << ss.str() <<  "_idx=" << idx << "_";
+																																					DownloadAndSave_2Channel( current_frames[current_frames_idx[idx]	].depth_buf, ss_.str(),  paths.at("depth_mem"),  2*mm_size_bytes_C1, mm_Image_size, CV_32FC2, 	show , max_range_, offset_depth_bytes);
+																																				}
 
 																																				stringstream ss_;
 																																				ss_<< ss.str()<<"_current_frames_idx"<<0;

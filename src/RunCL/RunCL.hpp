@@ -229,9 +229,8 @@ public:
 	void createAndBulidProgramFromSource(	cl_device_id *devices);
 	void createKernels();
 
-	void set_cam_bufs( 						cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k );
-	void set_all_cam_bufs(					cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k );
-	void set_cam_bufs( 						cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f pose,  cv::Matx44f k2k,	uint frame_idx );
+	void set_all_cam_bufs(					cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f k2k );
+	void set_cam_bufs( 						cv::Matx44f k,  cv::Matx44f inv_k,  cv::Matx44f k2k,  cv::Matx44f pose_to_0,  uint frame_idx );
 
 	void mipmap_call_kernel(				cl_kernel kernel_to_call, cl_command_queue queue_to_call, uint start, uint stop, bool layers_sequential, const size_t local_work_size);						// Call kernels on mipmap: start,stop allow running specific layers.
 	void mipmap_call_kernel(				cl_kernel kernel_to_call, cl_command_queue queue_to_call, bool layers_sequential=false){ mipmap_call_kernel( kernel_to_call,  queue_to_call, mm_start, mm_stop, layers_sequential, local_work_size); }
