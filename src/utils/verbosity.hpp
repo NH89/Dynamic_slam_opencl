@@ -8,7 +8,7 @@
 
     // UTILS/ ###############################################################
     /////////////////////////////////////// CONVERTAHANDAPOVRAYTOSTANDARD.CPP
-	#define	V_CONVERTAHANDAPOVRAYTOSTANDARD				2
+	#define	V_CONVERTAHANDAPOVRAYTOSTANDARD				-2
 	#define	V_LOADDEPTHAHANDA							2
 
 	/////////////////////////////////////// CONVERT_TRANSFORMS.CPP

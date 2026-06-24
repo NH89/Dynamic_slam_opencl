@@ -363,10 +363,11 @@ void Dynamic_slam::estimate_tracking(){
 		this_frame->k2k_from_0			= new_k2k_from_0;
 
 		runcl.update_44f_buf(	new_k2k_from_0,		this_frame->k2k_buf_from_0,	fname);
-
+																																			PRINT_MATX44F(pose, );
 	}
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\fDynamic_slam::tracking() finished"<< flush;
+
 																																			PRINT_MATX44F(frame_data.back().frame_data.pose,);
 																																			PRINT_MATX44F(frame_data.back().frame_data.K2K, );
 																																		}
