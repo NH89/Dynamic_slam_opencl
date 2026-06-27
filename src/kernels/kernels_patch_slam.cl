@@ -7,12 +7,12 @@
 	__private	uint		lookup_table_offset,	//1
 	__private	uint		cols_per_row,			//2
 
-	__constant 	uint8*		mipmap_params,			//3
-	__constant 	uint*		uint_params,			//4
-	__constant  float*  	fp32_params,			//5
+	__constant	uint8*		mipmap_params,			//3
+	__constant	uint*		uint_params,			//4
+	__constant	float*		fp32_params,			//5
 
 	// output
-	__global 	uint4*		lookup_table			//6
+	__global	uint4*		lookup_table			//6
 )
 {
 	uint  global_id_u 								= get_global_id(0);

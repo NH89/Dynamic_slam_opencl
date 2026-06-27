@@ -213,7 +213,7 @@ void RunCL::propagate_depth_next_layer(uint write_layer ){	// layer = write laye
 																																",   write_layer = "<<write_layer<<flush; }
 	cl_kernel		kernel				= enlarge_layer_float_kernel;
 	const frame		*frame_0			= &current_frames[						current_frames_idx[0] ];
-	const cl_mem 	depth_mem_			= frame_0->depth_buf;
+	const cl_mem	depth_mem_			= frame_0->depth_buf;
 
 	uint	lookup_table_read_offset	= patch_lookup_table_offset[write_layer+1];
 	uint	write_offset				= MipMap[write_layer*8 + MiM_READ_OFFSET];

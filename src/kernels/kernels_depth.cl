@@ -205,7 +205,7 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 // 						J_inv_d[		row_in_block].y			+= J_inv_d_pvt				* J_inv_d_pvt;
 */
 						rho_sq_pvt_flt2.x						=  rho_pvt_flt4.w;																			// pixel count
-						rho_sq_pvt_flt2.y						=  pown(rho_pvt_flt4.x, 2) +  pown(rho_pvt_flt4.y, 2) +  pown(rho_pvt_flt4.z, 2) ;	//	* rho_pvt_flt4.x;												// Sum hsv Rho_squared
+						rho_sq_pvt_flt2.y						=  pown(rho_pvt_flt4.x, 2) +  pown(rho_pvt_flt4.y, 2) +  pown(rho_pvt_flt4.z, 2) ;	//	* rho_pvt_flt4.x;												// Sum rgb Rho_squared
 
 						rho_pvt_arr[ row_in_block*NUM_DEPTH_STEPS  + inv_depth_layer]		+= rho_sq_pvt_flt2;												// save to pvt mem for this column & depth layer
 					}
@@ -484,8 +484,8 @@ __kernel void regularize_depth(
 */
 		float regularized_depth			= sum_depth / sum_weights;
 		float2 out;
-		//if (global_id_uint==0){	out		= (float2){ u, patch_row }; }
-		//else				  {	out		= (float2){ regularized_depth, sum_weights }; }
+		//if (global_id_uint==0){out	= (float2){ u, patch_row }; }
+		//else					{out	= (float2){ regularized_depth, sum_weights }; }
 		depth[write_idx]				= (float2){ regularized_depth, sum_weights };		// pvt_depth[ arr_idx[1] ][1];    //  out;  //  (float2){ u, patch_row };						//depth[read_idx_depth];	//
 		barrier( CLK_GLOBAL_MEM_FENCE );
 

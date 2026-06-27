@@ -271,8 +271,8 @@ void Dynamic_slam::estimate_tracking(){
 
 																																			// For debugging, get a larger, finer Rho map
 																																			runcl.rho_sq_to_0(			out_block_size, iter, frame_idx, layer, this_frame->k2k_buf_to_0, num_SE3_DoF, fname_);
-																																			runcl.reduce_patch_Rho(		out_block_size, iter,	layer,									num_SE3_DoF);
-																																			runcl.get_rho_result(		runcl.se3_rho_result,	layer,									num_SE3_DoF);
+																																			runcl.reduce_patch_Rho(		out_block_size, iter,			layer,								num_SE3_DoF);
+																																			runcl.get_rho_result(		runcl.se3_rho_result,			layer,								num_SE3_DoF);
 
 																																			old_sum_rho_sq_l0	=	runcl.se3_rho_result.Rho.y;		cout << "\nold_sum_rho_sq_l0	= "<< old_sum_rho_sq_l0 <<flush;
 																																		}
