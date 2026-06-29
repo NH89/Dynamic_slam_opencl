@@ -68,6 +68,7 @@ class Dynamic_slam
       cv::Matx44f           inv_K                   = Matx44f::eye() ;
       cv::Matx44f           pose                    = Matx44f::eye() ;             // pose in global coords. (not pose2pose from prev_frame, nor from keyframe) ?
       cv::Matx44f           inv_pose                = Matx44f::eye() ;
+      cv::Matx44f           pose2prev_pose          = Matx44f::eye() ;
       cv::Matx44f           prev_pose2pose          = Matx44f::eye() ;
       cv::Matx44f           K2K                     = Matx44f::eye() ;             // Kamera to Kamera reprojection.
                                                                                    //cv::Matx44f           pose_from_start         = MATX44F_EYE ;             // pose2pose_accumulated
