@@ -1,5 +1,5 @@
 {
-                                                                                                    // Can add either relative or absolute path. NB Uses BoostFileSystem for OS portablitity.
+    // Can add either relative or absolute path. NB Uses C++ <fiesystem> for OS portablitity.
     "source_filepath":"/home/nick/Programming/ComputerVision/MySLAM/duplicate_dynamic_slam_opencl/Dynamic_slam_opencl/src/",
 
     // other .json files
@@ -20,7 +20,13 @@
 
     "data_file":"ahanda-icl/Trajectory_for_Variable_Frame-Rate/200fps/200fps_GT_archieve",
     "data_file_increment":1,
-    "data_file_offset":0       //475;//10;//46;//462;//380;//0;
+    "data_file_offset":0,       //475;//10;//46;//462;//380;//0;
+
+
+	"image_file_suffix":	".png",												// ".png" // ".jpg" // ".jpeg" // ".tiff" // or other depending on opencv build.
+	"video_file":			"/home/nick/Programming/ComputerVision/DataSets/Video_samples/VID-20251218-WA0000.mp4",
+	"camera_index":			"",
+	"ros_topic":			""
 }
 // Datasets
 //

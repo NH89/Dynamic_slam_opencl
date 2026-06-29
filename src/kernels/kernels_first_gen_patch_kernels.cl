@@ -42,13 +42,13 @@ __kernel void Rho_sq_to_0(								// To be launched with 1 thread per col for 32
 	uint  group_id										= get_group_id(0);
 	const uint local_size 								= get_local_size(0);
 
-	if (global_id_u < 1 ){printf("\n__kernel void Rho_sq_to_0()  past_frame_num= %u,  invk2k buf = \n(%f,	%f,	%f,	%f),	\n(%f,	%f,	%f,	%f),	\n(%f,	%f,	%f,	%f),	\n(%f,	%f,	%f,	%f),	",\
-		lid,\
-		inv_k2k[lid][0],	inv_k2k[lid][1],	inv_k2k[lid][2],	inv_k2k[lid][3],\
-		inv_k2k[lid][4],	inv_k2k[lid][5],	inv_k2k[lid][6],	inv_k2k[lid][7],\
-		inv_k2k[lid][8],	inv_k2k[lid][9],	inv_k2k[lid][10],	inv_k2k[lid][11],\
-		inv_k2k[lid][12],	inv_k2k[lid][13],	inv_k2k[lid][14],	inv_k2k[lid][15] );
-	}
+	//if (global_id_u < 1 ){printf("\n__kernel void Rho_sq_to_0()  past_frame_num= %u,  invk2k buf = \n(%f,	%f,	%f,	%f),	\n(%f,	%f,	%f,	%f),	\n(%f,	%f,	%f,	%f),	\n(%f,	%f,	%f,	%f),	",\
+	//	lid,\
+	//	inv_k2k[lid][0],	inv_k2k[lid][1],	inv_k2k[lid][2],	inv_k2k[lid][3],\
+	//	inv_k2k[lid][4],	inv_k2k[lid][5],	inv_k2k[lid][6],	inv_k2k[lid][7],\
+	//	inv_k2k[lid][8],	inv_k2k[lid][9],	inv_k2k[lid][10],	inv_k2k[lid][11],\
+	//	inv_k2k[lid][12],	inv_k2k[lid][13],	inv_k2k[lid][14],	inv_k2k[lid][15] );
+	//}
 	const uint8 mipmap_params_							= mipmap_params[layer];
 	uint read_offset_ 									= mipmap_params_[MiM_READ_OFFSET];
 	uint read_cols_ 									= mipmap_params_[MiM_READ_COLS];

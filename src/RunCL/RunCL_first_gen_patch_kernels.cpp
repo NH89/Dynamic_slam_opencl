@@ -190,11 +190,11 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 																																				DownloadAndSave_2Channel( current_frames[current_frames_idx[frame_idx]	].depth_buf, ss.str(),  paths.at("depth_mem"),  2*mm_size_bytes_C1, mm_Image_size, CV_32FC2, 	show , max_range_, offset_depth_bytes);
 																																				cout << "\nDownloadAndSave_2Channel(.. depth_mem ..)\n"<<flush;
 
-																																				for(uint idx=0; idx<num_current_frames; idx++){
+																																				/*for(uint idx=0; idx<num_current_frames; idx++){
 																																					stringstream ss_;
 																																					ss_ << ss.str() <<  "_idx=" << idx << "_";
 																																					DownloadAndSave_2Channel( current_frames[current_frames_idx[idx]	].depth_buf, ss_.str(),  paths.at("depth_mem"),  2*mm_size_bytes_C1, mm_Image_size, CV_32FC2, 	show , max_range_, offset_depth_bytes);
-																																				}
+																																				}*/
 
 																																				stringstream ss_;
 																																				ss_<< ss.str()<<"_current_frames_idx"<<0;

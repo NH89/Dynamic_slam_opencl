@@ -3,7 +3,6 @@
 	"source_filepath":		"/home/nick/programming/ComputerVision/MyCode/Dynamic_slam_opencl/src/",
 	// other .json files
 	"params_conf":			"local_conf/conf.json",
-	"verbosity_conf":		"local_conf/verbosity.json",
 
 	// filepaths for a particular host machine ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	"out_path":				"/home/nick/programming/ComputerVision/MyCode",		// /home/nick/Programming/OpenCV/MySLAM  // /media/hockingsn/Backup/output/Dynamic_slam_opencl

@@ -367,7 +367,6 @@ void Dynamic_slam::estimate_tracking(){
 	}
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\fDynamic_slam::tracking() finished"<< flush;
-
 																																			PRINT_MATX44F(frame_data.back().frame_data.pose,);
 																																			PRINT_MATX44F(frame_data.back().frame_data.K2K, );
 																																		}

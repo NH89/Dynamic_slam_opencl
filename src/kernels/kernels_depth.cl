@@ -484,8 +484,8 @@ __kernel void regularize_depth(
 */
 		float regularized_depth			= sum_depth / sum_weights;
 		float2 out;
-		//if (global_id_uint==0){out	= (float2){ u, patch_row }; }
-		//else					{out	= (float2){ regularized_depth, sum_weights }; }
+		//if (global_id_uint==0){	out		= (float2){ u, patch_row }; }
+		//else				  {	out		= (float2){ regularized_depth, sum_weights }; }
 		depth[write_idx]				= (float2){ regularized_depth, sum_weights };		// pvt_depth[ arr_idx[1] ][1];    //  out;  //  (float2){ u, patch_row };						//depth[read_idx_depth];	//
 		barrier( CLK_GLOBAL_MEM_FENCE );
 
