@@ -105,6 +105,8 @@ public:
 	cl_kernel			pad_image_top_bottom2_kernel, vertcal_blur5_kernel, pad_image_left_right2_kernel, horiz_blur5_kernel, reduce_img_kernel;
 	// RunCL_depth.cpp
 	cl_kernel			update_depth_2_kernel, regularize_depth_kernel, enlarge_layer_float_kernel, use_inferred_depthmap_kernel, use_GT_depthmap_kernel;
+	// RunCL_superpixells.cpp
+	cl_kernel			initiate_cluster_centres_kernel, associate_pixels_kernel, check_superpixel_continuity_kernel, update_cluster_centres_pvt_kernel;
 
 	// GPU Buffers																	// static = same for all instances of class Dynamic_slam.
 	cl_mem				fp32_param_buf=nullptr,					uint_param_buf=nullptr,								mipmap_buf=nullptr;
@@ -122,6 +124,8 @@ public:
 
 	cl_mem				SE3_k2kbuf=nullptr;
 	cl_mem				old_results_buf=nullptr,				K_buf=nullptr, 										inv_K_buf=nullptr;
+
+	cl_mem				cluster_centers_mem=nullptr,			cluster_map_memm=nullptr;
 
 	cl_mem				basemem=nullptr, 						imgmem_blurred=nullptr;
 	cl_mem 				imgmem[num_current_frames]={nullptr},	depth_mem[num_current_frames]={nullptr}, 			velmap[num_current_frames]={nullptr},				SE3_grad_map_mem[num_current_frames]={nullptr};
@@ -383,6 +387,13 @@ public:
 
 	void update_k2k_cpu( 				uint layer );
 	void update_k2k( 					uint layer, float delta_theta, float delta, Matx44f GT_pose );
+
+
+	///////////////////////////////////// RunCL_superpixels.cpp
+	void initiate_cluster_centres();
+	void associate_pixels();
+	void check_superpixel_continuity();
+	void update_cluster_centres_pvt();
 
 
 	/////////////////////////////////////// RunCL_tracking.cpp

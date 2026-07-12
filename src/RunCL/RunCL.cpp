@@ -302,6 +302,13 @@ void RunCL::createKernels(){
 
 	use_inferred_depthmap_kernel		= clCreateKernel(m_program, "use_inferred_depthmap",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'use_inferred_depthmap'  kernel not built.\n"		<<flush; exit_(0);   }
 	use_GT_depthmap_kernel				= clCreateKernel(m_program, "use_GT_depthmap",				&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'use_GT_depthmap_kernel'  kernel not built.\n"		<<flush; exit_(0);   }
+
+	// RunCL_superpixels.cpp
+	initiate_cluster_centres_kernel		= clCreateKernel(m_program, "initiate_cluster_centres",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'initiate_cluster_centres'  kernel not built.\n"		<<flush; exit_(0);   }
+	associate_pixels_kernel				= clCreateKernel(m_program, "associate_pixels",				&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'associate_pixels'  kernel not built.\n"				<<flush; exit_(0);   }
+	check_superpixel_continuity_kernel	= clCreateKernel(m_program, "check_superpixel_continuity",	&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'check_superpixel_continuity'  kernel not built.\n"	<<flush; exit_(0);   }
+	update_cluster_centres_pvt_kernel	= clCreateKernel(m_program, "update_cluster_centres_pvt",	&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'update_cluster_centres_pvt'  kernel not built.\n"	<<flush; exit_(0);   }
+
 }
 
 void RunCL::initialize_fp32_params(){
@@ -768,6 +775,8 @@ void RunCL::allocatemem(){
 	SE3_hessian_map_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,						2 * mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	camera_matrix_hessian_map_mem	= clCreateBuffer(m_context, CL_MEM_READ_WRITE,					2 * mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
+	cluster_centers_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							mm_size_bytes_C1,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	cluster_map_memm			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nRunCL::allocatemem_chk3\n\n" << flush;
@@ -803,7 +812,11 @@ void RunCL::allocatemem(){
 	status = clEnqueueFillBuffer(uload_queue, depth_mem_GT, 			&default_depth, sizeof(float),   0, mm_size_bytes_C1,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueFillBuffer(uload_queue, HSV_grad_mem, 			&zero_flt,		sizeof(float),   0, mm_size_bytes_C8,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueFillBuffer(uload_queue, ST3_img_grad_mem,			&zero_flt,		sizeof(float),   0, 3*mm_size_bytes_C4,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
-	status = clEnqueueFillBuffer(uload_queue, patch_lookup_table_buf,	&zero_uint,		sizeof(uint),   0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	status = clEnqueueFillBuffer(uload_queue, patch_lookup_table_buf,	&zero_uint,		sizeof(uint),    0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+
+	status = clEnqueueFillBuffer(uload_queue, cluster_centers_mem,		&zero_uint,		sizeof(uint),    0, mm_size_bytes_C1, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	status = clEnqueueFillBuffer(uload_queue, cluster_map_memm,			&zero_flt,		sizeof(uint),    0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+
 
 	clFlush(uload_queue); status = clFinish(uload_queue); 																				if (status != CL_SUCCESS)	{ cout << "\nclFinish(uload_queue)=" << status << checkerror(status) <<"\n"  << flush; exit_(status);}
 
@@ -884,6 +897,10 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 	status = clReleaseMemObject(SE3_hessian_map_mem);			if (status != CL_SUCCESS)	{ cout << "\nSE3_hessian_map_mem            status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(camera_matrix_hessian_map_mem);	if (status != CL_SUCCESS)	{ cout << "\ncamera_matrix_hessian_map_mem  status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 
+	// buffers for superpixels
+	status = clReleaseMemObject(cluster_centers_mem);			if (status != CL_SUCCESS)	{ cout << "\ncamera_matrix_hessian_map_mem  status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+	status = clReleaseMemObject(cluster_map_memm);				if (status != CL_SUCCESS)	{ cout << "\ncamera_matrix_hessian_map_mem  status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+
 
 	// release kernels
 	status = clReleaseKernel(convert_depth_kernel);					if (status != CL_SUCCESS)	{ cout << "\nconvert_depth_kernel				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_59"<<flush;
@@ -916,6 +933,11 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 
 	status = clReleaseKernel(use_inferred_depthmap_kernel);			if (status != CL_SUCCESS)	{ cout << "\nuse_inferred_depthmap_kernel		status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(use_GT_depthmap_kernel);				if (status != CL_SUCCESS)	{ cout << "\nuse_GT_depthmap_kernel				status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	// RunCL_superpixels.cpp
+	status = clReleaseKernel(initiate_cluster_centres_kernel);		if (status != CL_SUCCESS)	{ cout << "\ninitiate_cluster_centres_kernel	status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(associate_pixels_kernel);				if (status != CL_SUCCESS)	{ cout << "\nassociate_pixels_kernel			status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(check_superpixel_continuity_kernel);	if (status != CL_SUCCESS)	{ cout << "\ncheck_superpixel_continuity_kernel	status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+	status = clReleaseKernel(update_cluster_centres_pvt_kernel);	if (status != CL_SUCCESS)	{ cout << "\nupdate_cluster_centres_pvt_kernel	status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 
 
 	// release command queues

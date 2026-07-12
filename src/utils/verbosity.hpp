@@ -28,7 +28,7 @@
 	#define	V_PRINT_JSON_FLOAT_9						2
 	#define	V_PRINT_MATF								2
 
-    // DYNAIC_SLAM/ ##############################################
+    // DYNAMIC_SLAM/ ##############################################
     /////////////////////////////////////// DYNAMIC_SLAM_CLASS.CPP
 	#define	V_DYNAMIC_SLAM_DYNAMIC_SLAM					-1
 	#define	V_DYNAMIC_SLAM_INITIALIZE_CAMERA			-2
@@ -191,10 +191,14 @@
 	#define V_RUNCL_REDUCE_IMG							2
 	#define V_RUNCL_BLUR_IMG							2
 
-
 	/////////////////////////////////////// RUNCL_SETUP_KEYFRAME.CPP
 	#define	V_RUNCL_ESTIMATECALIBRATION					-1
 
+	/////////////////////////////////////// RUNCL_SUPERPIXELS.CPP
+	#define	V_RUNCL_INITIATE_CLUSTER_CETRES				-2
+	#define	V_RUNCL_ASSOCIATE_PIXELS					-2
+	#define	V_RUNCL_CHECK_SUPERPIXEL_CONTINUITY			-2
+	#define	V_RUNCL_UPDATE_CLUSTER_CENTRES				-2
 
 	/////////////////////////////////////// RUNCL_TRACKING.CPP
 	#define	V_RUNCL_UPDATE_K2K_BUF						-2
