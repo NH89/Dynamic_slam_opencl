@@ -91,6 +91,7 @@ add_executable(Dynamic_slam
          src/RunCL/RunCL_load_image.cpp
          src/RunCL/RunCL_patch_slam.cpp
          src/RunCL/RunCL_patch_tracking.cpp
+         src/RunCL/RunCL_superpixels.cpp
 
          src/RunCL/RunCL_utils.cpp
 

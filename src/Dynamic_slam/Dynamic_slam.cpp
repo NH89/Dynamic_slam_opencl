@@ -260,6 +260,10 @@ void Dynamic_slam::getFrame() { // can load use separate CPU thread(s) ?  // NB 
 		runcl.patch_img_gradients(		layer);
 		runcl.patch_SE3_hessian_reduce(	layer);
 	}
+
+	uint layer = 0;
+	runcl.initiate_cluster_centres(layer);
+	runcl.associate_pixels(layer);
 	// Will need to decide which layers and ST3 patch sizes to compute Hessians for, then store them in a buffer on the GPU.
 																																			// # Get 1st & 2nd order image gradients of MipMap
 																																			// see CostVol::cacheGValues(), RunCL::cacheGValue2 & __kernel void CacheG3

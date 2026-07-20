@@ -9,7 +9,8 @@
 	// Setup openCL /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	"kernel_files":[			"kernels.h", 					"kernels__macros.h",			"kernels_convertTransforms.cl", 		"kernels_load_image.cl",
 								"kernels_patch_slam.cl",		"kernels_photometric_cost.cl",	"kernels_first_gen_patch_kernels.cl",
-								"kernels_patch_tracking.cl",	"kernels_depth.cl",				"kernels_autocalibration.cl"],
+								"kernels_patch_tracking.cl",	"kernels_depth.cl",				"kernels_autocalibration.cl",
+								"kernels_superpixels.cl"],
 
 
 	// Input data ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -33,7 +34,7 @@
 	// Load images
 	"MipMap_margin":			1,				//4
 	"max_frame_count":			2,				//8,//16,//5,//27,//30,	//4,//30,//4,//140,//30,	// how many frames to run for. NB -1 -> run indefinitely.
-
+	//## max_frame_count #########//
 
 	// Camera matrix ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	"cameraMatrix":[			481.20,		  0.0,		320.0,		0.0,
@@ -68,5 +69,9 @@
 	"SE_iter":					2,				//15,//3,//30,//12, //25,//10//50//25,			   //1 //10// 1,//
 
 	"SO3_delta_theta":			1.0,			// radians 0.01 = 0.57 degrees
-	"ST3_delta":				1.0				// NB depends on depth scale, see max & min depth in mapping params.
+	"ST3_delta":				1.0,			// NB depends on depth scale, see max & min depth in mapping params.
+
+
+	// Superpixel parameters ////////////////////////////////////////////////////////////////////////////////////////////////////////
+	"cluster_dim":				16
 }

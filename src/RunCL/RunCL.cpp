@@ -523,6 +523,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																				cout << ",mm_vol_size_bytes = " << mm_vol_size_bytes << endl;
 																																				cout << "\n" << flush;
 																																			}
+	compute_superpx_params();
 																																			// Summation buffer sizes
 	se3_sum_size 			= 1 + ceil( (float)(MipMap[(mm_num_reductions+1)*8 + MiM_READ_OFFSET]) / (float)local_work_size ) ;				// i.e. num workgroups used = MiM_READ_OFFSET for 1 layer more than used / local_work_size,   will give one row of vector per group.
 	se3_sum_size 			*= 2;  																											// *2 incr num grps for reduced groupsize

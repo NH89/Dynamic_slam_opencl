@@ -55,7 +55,7 @@ float Cook_Torrance( float alpha, float3 surface_normal,		float omega_o, float o
 
 //  Light Transport Equation (LTE)
 
-
+/*
 float3 L_o( float3 omega_o, p){		// where p = point implies a set of light sources
 
 	// NB need Fresnel_reflectance(..) for each light to compute Kd_i
@@ -70,7 +70,7 @@ float3 L_o( float3 omega_o, p){		// where p = point implies a set of light sourc
 
 	return	(sum_Lambertian + sum_Specular);
 }
-
+*/
 
 
 // Spherical harmonic illuminaton, for diffuse reflection. For specular reflection, need to integrate the illumination fn with the speularity fn.... esp roughness.

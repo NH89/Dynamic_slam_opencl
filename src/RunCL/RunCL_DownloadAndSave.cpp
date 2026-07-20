@@ -91,7 +91,8 @@ void RunCL::createFolders(){
 										"HSV_grad_mem", "dmem_disparity", \
 										\
 										"jacobian","hessian","depth_mem",\
-										"lookup_table_buf"\
+										"lookup_table_buf",\
+										"cluster_centers_mem", "cluster_map_memm"\
 	};
 	std::pair<std::string, std::filesystem::path> tempPair;
 	tempPair = {"folder", out_path};																										// Top level output folder, used to std::out file.
@@ -896,7 +897,7 @@ void RunCL::DownloadAndSave_3Channel(cl_mem buffer, std::string count, std::file
 		}
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_3Channel_Chk_3, "<<flush;
 		cv::Mat outMat;
-		if ((type_mat == CV_32FC3) || (type_mat == CV_32FC4)){
+		if ((type_mat == CV_32FC3) || (type_mat == CV_32FC4) || (type_mat == CV_32SC4)){
 																																			if(verbosity>local_verbosity_threshold){ cout<<"\nDownloadAndSave_3Channel_Chk_4,  folder_tiff.string()="<< folder_tiff.string()<<", tiff="<<tiff <<flush;
 																																				if(tiff==true) {cout<<"\nWriting tiff"<< flush;    cv::imwrite(folder_tiff.string(), temp_mat );   cout<<"\nWrote tiff"<< flush; }
 																																				else cout<<"\ntiff=false="<<tiff<<flush;

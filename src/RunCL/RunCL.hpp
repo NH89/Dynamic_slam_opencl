@@ -390,8 +390,16 @@ public:
 
 
 	///////////////////////////////////// RunCL_superpixels.cpp
-	void initiate_cluster_centres();
-	void associate_pixels();
+	struct Superpixel_params{
+		uint		cluster_layer_offset;
+		uint		num_clusters;
+		uint		cluster_dim;
+		uint		cols_of_clusters;
+	} superpx_params[max_mipmap_layers];
+
+	void compute_superpx_params();
+	void initiate_cluster_centres(uint layer);
+	void associate_pixels(uint layer);
 	void check_superpixel_continuity();
 	void update_cluster_centres_pvt();
 

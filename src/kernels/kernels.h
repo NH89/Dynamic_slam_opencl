@@ -16,9 +16,11 @@ __constant float8 zero_f8				= {0.0f,0.0f,0.0f,0.0f, 0.0f,0.0f,0.0f,0.0f};
 
 __constant float4 ones_f4				= {1.0f,1.0f,1.0f,1.0f};
 
+__constant float2 max_f2				= { MAXFLOAT, MAXFLOAT };
 __constant float4 max_0_f4				= { MAXFLOAT, MAXFLOAT, MAXFLOAT, 0.0f };
 
 __constant float  const_sqrt_flt_min	= 0x1.0p-63f;										// 2^(-63) is sqrt of FLT_MIN = 2^(-126)
+__constant float  sqrt_3				= 1.732050808;
 
 __constant uint block_size				= BLOCK_SIZE;										// or send as __private arg ? BUT as hardcoded "const uint" it can be used to size arrays etc.
 __constant uint max_num_DoF				= MAX_NUM_DOF;
