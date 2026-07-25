@@ -421,6 +421,7 @@ public:
 
 
 	//////////////////////////////////////
+	uint lowest_multiple(				float param, float constraint);
 	void _cl_flush_finish(				cl_command_queue	_queue,  string fname);
 	int  waitForEventAndRelease(		cl_event *event);
 	void cl_mem_swap_ptr(				cl_mem buf1, cl_mem buf2);

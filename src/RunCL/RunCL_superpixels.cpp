@@ -30,12 +30,16 @@ void RunCL::initiate_cluster_centres(uint layer){
 																													if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initiate_cluster_centres( ..)_chk0 #############################################################"<<flush;
 																													}
 	const int	cluster_dim					= 16;
-	size_t		threads_to_launch			= (((patch_num_threads[ layer] / cluster_dim) / local_work_size) + 1) * local_work_size  ;
-
+	size_t		threads_to_launch			= lowest_multiple( MipMap[layer*8 + ROWS], cluster_dim ) * lowest_multiple( MipMap[layer*8 + COLS], cluster_dim );
+	threads_to_launch						= lowest_multiple( threads_to_launch, local_work_size );
 																													if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initiate_cluster_centres( ..)_chk1 "<<flush;
 																														cout<<"\nthreads_to_launch="				<<threads_to_launch\
 																															<<"\npatch_num_threads["<< layer<<"]="	<<patch_num_threads[ layer]\
-																															<<"\nlocal_work_size="					<<local_work_size;
+																															<<"\nlocal_work_size="					<<local_work_size\
+																															<<"\nlowest_multiple( MipMap[layer*8 + ROWS], cluster_dim )="	<<lowest_multiple( MipMap[layer*8 + ROWS], cluster_dim )\
+																															<<"\nlowest_multiple( MipMap[layer*8 + COLS], cluster_dim )="	<<lowest_multiple( MipMap[layer*8 + COLS], cluster_dim )\
+																															<<"\nlowest_multiple( threads_to_launch, local_work_size )="	<<lowest_multiple( threads_to_launch, local_work_size )\
+																															<<flush;
 																													}
 	//Inputs:
 	_clSetKernelArg( kernel,  0, sizeof( uint),		&layer,					fname);									//  __private	uint	layer,					//0

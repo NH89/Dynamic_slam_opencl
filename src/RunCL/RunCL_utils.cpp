@@ -1,5 +1,12 @@
 #include "RunCL.hpp"
 
+uint RunCL::lowest_multiple(float param, float constraint){
+
+	uint result = ceil(param/constraint) * constraint;
+
+	return	result;
+}
+
 void RunCL::_clEnqueueNDRangeKernel(	// TODO will become obsolete when all kernels use newest patch system.
 	cl_command_queue _queue,
 	cl_kernel        kernel,
