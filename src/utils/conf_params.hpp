@@ -25,7 +25,7 @@ using namespace std;
 void copy_conf(Json::String source_filepath,  Json::String infile,  string outfile   );
 
 class conf_params {
-    public:
+	public:
 
 	conf_params(char * arg, Json::Value &val);
 

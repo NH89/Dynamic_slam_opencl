@@ -13,13 +13,15 @@ void RunCL::update_depth_2( uint out_block_size, uint layer){
 	uint		read_cols_					= MipMap[layer*8 + MiM_READ_COLS];
 	uint		read_rows_					= MipMap[layer*8 + MiM_READ_ROWS];
 	uint		mm_cols						= uint_params[MM_COLS];
+	uint		mm_pixels					= uint_params[MM_PIXELS];
 
 	uint		write_offset				= depthmap_params[layer].DM_DATA_OFFSET; 						//patch_depthmap_offset[ layer];
 	uint		dm_win_cols					= depthmap_params[layer].DM_WIN_COLS;
 	uint		dm_data_rows				= depthmap_params[layer].DM_DATA_ROWS;
 	uint		dm_data_stop				= write_offset + dm_win_cols * dm_data_rows;
 
-	float		inv_depth_step				= fp32_params[MAX_INV_DEPTH] / ((float)NUM_DEPTH_STEPS);
+	float		inv_depth_step				= fp32_params[MAX_INV_DEPTH] / ((float)uint_params[COSTVOL_LAYERS]  );	// NUM_DEPTH_STEPS
+	uint		cluster_reductions			= 4;	// superpx_params[layer].cluster_dim;
 
 	uint		layer_offset				= MipMap[layer*8 + MiM_READ_OFFSET];
 	uint		stop_offset					= layer_offset + (read_rows_ -1) * mm_cols + read_cols_;	cout<<"\nstop_offset("<<stop_offset<<")= layer_offset("<<layer_offset<<") + (read_rows_("<<read_rows_<<")_ -1) * mm_cols("<<mm_cols<<") + read_cols_("<<read_cols_<<")_"<<flush;
@@ -42,38 +44,45 @@ void RunCL::update_depth_2( uint out_block_size, uint layer){
 	_clSetKernelArg( kernel, 7, sizeof(uint),						&read_cols_,											fname);		// __private	const uint	read_cols_,				//7		= mipmap_params_[MiM_READ_COLS];
 	_clSetKernelArg( kernel, 8, sizeof(uint),						&read_rows_,											fname);		// __private	const uint	read_rows_,				//8		= mipmap_params_[MiM_READ_ROWS];
 	_clSetKernelArg( kernel, 9, sizeof(uint),						&mm_cols,												fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
+	_clSetKernelArg( kernel, 10,sizeof(uint),						&mm_pixels,												fname);		// __private	const uint	mm_pixels,				//9		= uint_params[MM_COLS];
 
-	_clSetKernelArg( kernel, 10, sizeof(uint),						&write_offset,											fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
-	_clSetKernelArg( kernel, 11, sizeof(uint),						&dm_win_cols,											fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
-	_clSetKernelArg( kernel, 12, sizeof(uint),						&dm_data_rows,											fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
-	_clSetKernelArg( kernel, 13, sizeof(uint),						&dm_data_stop,											fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
+	_clSetKernelArg( kernel, 11, sizeof(uint),						&write_offset,											fname);		// __private	const uint	write_offset,			//9		= uint_params[MM_COLS];
+	_clSetKernelArg( kernel, 12, sizeof(uint),						&dm_win_cols,											fname);		// __private	const uint	dm_win_cols,			//9		= uint_params[MM_COLS];
+	_clSetKernelArg( kernel, 13, sizeof(uint),						&dm_data_rows,											fname);		// __private	const uint	dm_data_rows,			//9		= uint_params[MM_COLS];
+	_clSetKernelArg( kernel, 14, sizeof(uint),						&dm_data_stop,											fname);		// __private	const uint	dm_data_stop,			//9		= uint_params[MM_COLS];
 
-	_clSetKernelArg( kernel, 14, sizeof(float),						&inv_depth_step,										fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
+	_clSetKernelArg( kernel, 15, sizeof(float),						&inv_depth_step,										fname);		// __private	const uint	mm_cols,				//9		= uint_params[MM_COLS];
+	_clSetKernelArg( kernel, 16, sizeof(float),						&costVolLayers,											fname);		// __private	const uint	num_depth_steps,		//9		= uint_params[MM_COLS];
+	_clSetKernelArg( kernel, 17, sizeof( uint),						&cluster_reductions,									fname);		// __private	const uint	cluster_reductions,		//17
 
-	_clSetKernelArg( kernel, 15, sizeof( cl_mem),					&current_frames[current_frames_idx[1]].k2k_buf_from_0,	fname);		//__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames
-	_clSetKernelArg( kernel, 16, sizeof( cl_mem),					&current_frames[current_frames_idx[2]].k2k_buf_from_0,	fname);		//__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames
-	_clSetKernelArg( kernel, 17, sizeof( cl_mem),					&current_frames[current_frames_idx[3]].k2k_buf_from_0,	fname);		//__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames
-	_clSetKernelArg( kernel, 18, sizeof( cl_mem),					&current_frames[current_frames_idx[4]].k2k_buf_from_0,	fname);		//__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames
+	_clSetKernelArg( kernel, 18, sizeof( cl_mem),					&current_frames[current_frames_idx[1]].k2k_buf_from_0,	fname);		//__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames
+	_clSetKernelArg( kernel, 19, sizeof( cl_mem),					&current_frames[current_frames_idx[2]].k2k_buf_from_0,	fname);		//__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames
+	_clSetKernelArg( kernel, 20, sizeof( cl_mem),					&current_frames[current_frames_idx[3]].k2k_buf_from_0,	fname);		//__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames
+	_clSetKernelArg( kernel, 21, sizeof( cl_mem),					&current_frames[current_frames_idx[4]].k2k_buf_from_0,	fname);		//__constant	float16*	inv_k2k,				//6		// transforms for 4 past frames
 
-	_clSetKernelArg( kernel, 19, sizeof(cl_mem),					&patch_lookup_table_buf,								fname);		// __constant 	uint4*		lookup_table,			//17		// should ideally be a constant.
+	_clSetKernelArg( kernel, 22, sizeof(cl_mem),					&patch_lookup_table_buf,								fname);		// __constant 	uint4*		lookup_table,			//17		// should ideally be a constant.
 
-	_clSetKernelArg( kernel, 20, sizeof(cl_mem),					&current_frames[current_frames_idx[0]].img_buf,			fname);		// __global		float4*		img_cur,				//19		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
-	_clSetKernelArg( kernel, 21, sizeof(cl_mem),					&current_frames[current_frames_idx[1]].img_buf,			fname);		// __global		float4*		img_past_0,				//20
-	_clSetKernelArg( kernel, 22, sizeof(cl_mem),					&current_frames[current_frames_idx[2]].img_buf,			fname);		// __global		float4*		img_past_1,				//21
-	_clSetKernelArg( kernel, 23, sizeof(cl_mem),					&current_frames[current_frames_idx[3]].img_buf,			fname);		// __global		float4*		img_past_2,				//22
-	_clSetKernelArg( kernel, 24, sizeof(cl_mem),					&current_frames[current_frames_idx[4]].img_buf,			fname);		// __global		float4*		img_past_3,				//23
+	_clSetKernelArg( kernel, 23, sizeof(cl_mem),					&current_frames[current_frames_idx[0]].img_buf,			fname);		// __global		float4*		img_cur,				//19		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
+	_clSetKernelArg( kernel, 24, sizeof(cl_mem),					&current_frames[current_frames_idx[1]].img_buf,			fname);		// __global		float4*		img_past_0,				//20
+	_clSetKernelArg( kernel, 25, sizeof(cl_mem),					&current_frames[current_frames_idx[2]].img_buf,			fname);		// __global		float4*		img_past_1,				//21
+	_clSetKernelArg( kernel, 26, sizeof(cl_mem),					&current_frames[current_frames_idx[3]].img_buf,			fname);		// __global		float4*		img_past_2,				//22
+	_clSetKernelArg( kernel, 27, sizeof(cl_mem),					&current_frames[current_frames_idx[4]].img_buf,			fname);		// __global		float4*		img_past_3,				//23
 
-	_clSetKernelArg( kernel, 25, sizeof(cl_mem),					&current_frames[current_frames_idx[0]].r_vel_buf,		fname);		// __global		float4*		vel_cur,				//25	// multiple past frames.
-	_clSetKernelArg( kernel, 26, sizeof(cl_mem),					&current_frames[current_frames_idx[1]].r_vel_buf,		fname);		// __global		float4*		vel_past_0,				//26	// TO DO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
-	_clSetKernelArg( kernel, 27, sizeof(cl_mem),					&current_frames[current_frames_idx[2]].r_vel_buf,		fname);		// __global		float4*		vel_past_1,				//27
-	_clSetKernelArg( kernel, 28, sizeof(cl_mem),					&current_frames[current_frames_idx[3]].r_vel_buf,		fname);		// __global		float4*		vel_past_2,				//28
-	_clSetKernelArg( kernel, 29, sizeof(cl_mem),					&current_frames[current_frames_idx[4]].r_vel_buf,		fname);		// __global		float4*		vel_past_3,				//29
+	_clSetKernelArg( kernel, 28, sizeof(cl_mem),					&current_frames[current_frames_idx[0]].r_vel_buf,		fname);		// __global		float4*		vel_cur,				//25	// multiple past frames.
+	_clSetKernelArg( kernel, 29, sizeof(cl_mem),					&current_frames[current_frames_idx[1]].r_vel_buf,		fname);		// __global		float4*		vel_past_0,				//26	// TO DO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
+	_clSetKernelArg( kernel, 30, sizeof(cl_mem),					&current_frames[current_frames_idx[2]].r_vel_buf,		fname);		// __global		float4*		vel_past_1,				//27
+	_clSetKernelArg( kernel, 31, sizeof(cl_mem),					&current_frames[current_frames_idx[3]].r_vel_buf,		fname);		// __global		float4*		vel_past_2,				//28
+	_clSetKernelArg( kernel, 32, sizeof(cl_mem),					&current_frames[current_frames_idx[4]].r_vel_buf,		fname);		// __global		float4*		vel_past_3,				//29
+
+	_clSetKernelArg( kernel, 33, sizeof(cl_mem),					&cluster_map_mem,										fname);		//	__global	float4*		cluster_map				//32		img_size * sizeof(float4)   densely packed for one layer.  Need a layer offset.
 
 	// //outputs
-	_clSetKernelArg( kernel, 30, sizeof(cl_mem), 					&SE3_rho_map_mem,										fname);		// __global		float2*		Rho_,					//30	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
-	_clSetKernelArg( kernel, 31, sizeof(cl_float2)*local_mem_size,	NULL,													fname);		// __local		float2*		local_rho,				//31	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
+	_clSetKernelArg( kernel, 34, sizeof(cl_mem), 					&SE3_rho_map_mem,										fname);		// __global		float2*		Rho_,					//30	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
+	_clSetKernelArg( kernel, 35, sizeof(cl_float2)*local_mem_size,	NULL,													fname);		// __local		float2*		local_rho,				//31	// float2 local_rho[ local_work_size/2 ]  hence sizeof( float)*local_work_size.
 
-	_clSetKernelArg( kernel, 32, sizeof(cl_mem), 					&depth_mem_temp,										fname);		// __global		float2*		inv_depth_incr,			//32
+	_clSetKernelArg( kernel, 36, sizeof(cl_mem), 					&depth_mem_temp,										fname);		// __global		float2*		inv_depth_incr,			//32
+	_clSetKernelArg( kernel, 37, sizeof(cl_mem), 					&costvol_mem,											fname);		// __global		float2*		inv_depth_incr,			//32
+	_clSetKernelArg( kernel, 38, sizeof(cl_mem), 					&cluster_costvol_mem,									fname);		// __global		float2*		inv_depth_incr,			//32
 
 																																if( verbosity>local_verbosity_threshold) {
 																																	cout<<"\n\nRunCL::update_depth_2()_chk1"<<

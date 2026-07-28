@@ -53,8 +53,8 @@
 #define IMG_VAR 			1	//
 
 //Fixed value parameters
-#define TRACKING_NUM_COLOR_CHANNELS  4
-#define TRACKING_NUM_SAMPLES         2                          // Just 2 _additional_ Rho samples
+#define TRACKING_NUM_COLOR_CHANNELS	4
+#define TRACKING_NUM_SAMPLES		2								// Just 2 _additional_ Rho samples
 
 #define TRACKING_TOT_SAMPLES		4
 #define MAX_MIPMAP_LAYERS			10//8							// Determines max image size, for img pyr apex < 10x10. 10k=>10, 8k=>9, 4k=>8, 2k=>7, SD(640x480)=>6 (2^6=64)
@@ -69,7 +69,7 @@
 #define OUT_BLOCK_SIZE				4
 #define NUM_CURR_FRAMES				5
 
-#define NUM_DEPTH_STEPS				16//8
+#define NUM_DEPTH_STEPS				16//8							// NB reset from conf.json via kernel compiler options.  = costVolLayers = ( 1 + obj["layers"].asUInt() );
 
 // LOCAL VERBOSITY FOR EACH KERNEL FILE ##############################################
 // These remove the "txt" code before compilation, so it will not take time in execution.

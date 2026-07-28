@@ -125,7 +125,7 @@ public:
 	cl_mem				SE3_k2kbuf=nullptr;
 	cl_mem				old_results_buf=nullptr,				K_buf=nullptr, 										inv_K_buf=nullptr;
 
-	cl_mem				cluster_centers_mem=nullptr,			cluster_map_memm=nullptr;
+	cl_mem				cluster_centers_mem=nullptr,			cluster_map_mem=nullptr,							costvol_mem,										cluster_costvol_mem;
 
 	cl_mem				basemem=nullptr, 						imgmem_blurred=nullptr;
 	cl_mem 				imgmem[num_current_frames]={nullptr},	depth_mem[num_current_frames]={nullptr}, 			velmap[num_current_frames]={nullptr},				SE3_grad_map_mem[num_current_frames]={nullptr};
@@ -177,7 +177,7 @@ public:
 
 	size_t  			global_work_size, mm_global_work_size, local_work_size, image_size_bytes, image_size_bytes_C1, mm_size_bytes_C1;
 	size_t				kernel_work_size_multiple, device_work_size_multiple;
-	size_t 				mm_size_bytes_C3, mm_size_bytes_C4, mm_size_bytes_C8, mm_size_bytes_half4, mm_vol_size_bytes;
+	size_t 				mm_size_bytes_C3, mm_size_bytes_C4, mm_size_bytes_C8, mm_size_bytes_half4, mm_vol_size_bytes, superpix_vol_bytes;
 	size_t 				so3_sum_size, so3_sum_size_bytes, mm_se3_sum_size, se3_sum_size_bytes, se3_sum2_size_bytes, pix_sum_size, pix_sum_size_bytes;
 	uint				se3_sum_size;
 
@@ -242,7 +242,7 @@ public:
 
 	void initialize_fp32_params();
 	void initialize_patch_depthmap_offset();
-	void initialize_RunCL( 					cv::Mat baseImage_ );													// Setting up buffers & mipmap parameters
+	void initialize_RunCL(					cv::Mat baseImage_ );													// Setting up buffers & mipmap parameters
 	void set_mimpmap_offsets();
 	void allocatemem();
 
@@ -395,6 +395,7 @@ public:
 		uint		num_clusters;
 		uint		cluster_dim;
 		uint		cols_of_clusters;
+		uint		rows_of_clusters;
 	} superpx_params[max_mipmap_layers];
 
 	void compute_superpx_params();
@@ -402,6 +403,7 @@ public:
 	void associate_pixels(uint layer);
 	void check_superpixel_continuity();
 	void update_cluster_centres_pvt();
+	void superpixel_depth_est();
 
 
 	/////////////////////////////////////// RunCL_tracking.cpp

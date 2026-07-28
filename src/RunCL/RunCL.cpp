@@ -18,6 +18,7 @@ RunCL::RunCL( Json::Value obj_  ){ //, int_map verbosity_mp_
 	png 							= obj["png"].asBool();
 	vtp 							= obj["vtp"].asBool();
 	max_depth						= obj["max_depth"].asFloat();
+	costVolLayers 					=( 1 + obj["layers"].asUInt() );
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\nRunCL_chk 0\n" << flush;
 																																				cout << "\nverbosity = "<<verbosity<< flush;
@@ -236,7 +237,10 @@ void RunCL::createAndBulidProgramFromSource(cl_device_id *devices){
 	}
 	m_program 	= clCreateProgramWithSource( m_context, num_files, (const char**)strings, lengths, &status );								// Create program object /////////////
 																								if(status!=CL_SUCCESS)	{cout<<"\n11 status="<<checkerror(status)<<"\n"<<flush;exit_(status);}
-	const char * include_dir = obj["kernel_build_options"].asCString();																		if(verbosity>local_verbosity_threshold) cout << "\n" << include_dir << "\n" << flush;
+																																			// Prepare kernel compiler options.
+	stringstream ss;	ss << obj["kernel_build_options"].asCString() << " -D NUM_DEPTH_STEPS=" << costVolLayers <<" ";						// Kernel macros updated here. NB not CPU macros.
+	std::string			ss_string		= ss.str();																							// Necessary to create a lhs string that lasts,for char* to point to.
+	const char*			include_dir		= ss_string.c_str();
 
 	status = clBuildProgram(m_program, 1, devices, include_dir , NULL, NULL);																// Build program. /////////////////////
 	/*
@@ -383,7 +387,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																			//if(verbosity>1) { imshow("runcl.baseImage",baseImage); cv::waitKey(-1); }
 	image_size_bytes	= baseImage.total() * baseImage.elemSize();																			// Constant parameters of the base image
 	image_size_bytes_C1	= baseImage.total() * sizeof(float);
-	costVolLayers 		=( 1 + obj["layers"].asUInt() ); // TO DO  2;
+
 	baseImage_size 		= baseImage.size();
 	baseImage_type 		= baseImage.type();
 	baseImage_width		= baseImage.cols;
@@ -437,7 +441,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	mm_size_bytes_C8	= temp.total() * 8 * sizeof(float);
 	cv::Mat temp2(mm_height, mm_width, CV_32FC1);
 	mm_size_bytes_C1	= temp.total()	   * sizeof(float);			//temp2.total() * temp2.elemSize(); // NB elemSize() -> size bytes _per_ channel.
-	mm_vol_size_bytes	= mm_size_bytes_C1 * costVolLayers;
+	mm_vol_size_bytes	= mm_size_bytes_C1 * costVolLayers *2;		// float2 ( pixel count, rho_sq )
 																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nRunCL::initialize_RunCL_chk1  "
 																																				<<"\nmm_gaussian_size="<<mm_gaussian_size
 																																				<<"\nmm_Image_size="<<mm_Image_size
@@ -523,7 +527,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																				cout << ",mm_vol_size_bytes = " << mm_vol_size_bytes << endl;
 																																				cout << "\n" << flush;
 																																			}
-	compute_superpx_params();
+	compute_superpx_params();																												// must be run _before_ allocatemem()
 																																			// Summation buffer sizes
 	se3_sum_size 			= 1 + ceil( (float)(MipMap[(mm_num_reductions+1)*8 + MiM_READ_OFFSET]) / (float)local_work_size ) ;				// i.e. num workgroups used = MiM_READ_OFFSET for 1 layer more than used / local_work_size,   will give one row of vector per group.
 	se3_sum_size 			*= 2;  																											// *2 incr num grps for reduced groupsize
@@ -538,7 +542,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	pix_sum_size			= se3_sum_size;
 	pix_sum_size_bytes		= pix_sum_size * sizeof(float) * 4;																				// NB the data returned is one float4 per group, for the base image, holding hsv channels plus entry[3]=pixel count.
 																																			if(verbosity>local_verbosity_threshold) cout <<"\nRunCL::initialize_RunCL_chk finished -1 ############################################################\n"<<flush;
-	allocatemem();																													// Allocate buffers on the GPU ######
+	allocatemem();																															// Allocate buffers on the GPU ###### NB depends on params set by fns above.
 	initialize_patch_depthmap_offset();
 	initialize_patch_params();
 	compute_patch_lookup_table();
@@ -777,7 +781,10 @@ void RunCL::allocatemem(){
 	camera_matrix_hessian_map_mem	= clCreateBuffer(m_context, CL_MEM_READ_WRITE,					2 * mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 	cluster_centers_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							mm_size_bytes_C1,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	cluster_map_memm			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							mm_size_bytes_C4,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	cluster_map_mem				= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							mm_size_bytes_C1,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+
+	costvol_mem					= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							mm_vol_size_bytes, 		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 42= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	cluster_costvol_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							superpix_vol_bytes, 	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 42= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nRunCL::allocatemem_chk3\n\n" << flush;
@@ -816,7 +823,7 @@ void RunCL::allocatemem(){
 	status = clEnqueueFillBuffer(uload_queue, patch_lookup_table_buf,	&zero_uint,		sizeof(uint),    0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 
 	status = clEnqueueFillBuffer(uload_queue, cluster_centers_mem,		&zero_uint,		sizeof(uint),    0, mm_size_bytes_C1, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
-	status = clEnqueueFillBuffer(uload_queue, cluster_map_memm,			&zero_flt,		sizeof(uint),    0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	status = clEnqueueFillBuffer(uload_queue, cluster_map_mem,			&zero_flt,		sizeof(uint),    0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 
 
 	clFlush(uload_queue); status = clFinish(uload_queue); 																				if (status != CL_SUCCESS)	{ cout << "\nclFinish(uload_queue)=" << status << checkerror(status) <<"\n"  << flush; exit_(status);}
@@ -899,9 +906,11 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 	status = clReleaseMemObject(camera_matrix_hessian_map_mem);	if (status != CL_SUCCESS)	{ cout << "\ncamera_matrix_hessian_map_mem  status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 
 	// buffers for superpixels
-	status = clReleaseMemObject(cluster_centers_mem);			if (status != CL_SUCCESS)	{ cout << "\ncamera_matrix_hessian_map_mem  status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
-	status = clReleaseMemObject(cluster_map_memm);				if (status != CL_SUCCESS)	{ cout << "\ncamera_matrix_hessian_map_mem  status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+	status = clReleaseMemObject(cluster_centers_mem);			if (status != CL_SUCCESS)	{ cout << "\ncluster_centers_mem            status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+	status = clReleaseMemObject(cluster_map_mem);				if (status != CL_SUCCESS)	{ cout << "\ncluster_map_mem                status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 
+	status = clReleaseMemObject(costvol_mem);					if (status != CL_SUCCESS)	{ cout << "\ncostvol_mem                    status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+	status = clReleaseMemObject(cluster_costvol_mem);			if (status != CL_SUCCESS)	{ cout << "\ncluster_costvol_mem            status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 
 	// release kernels
 	status = clReleaseKernel(convert_depth_kernel);					if (status != CL_SUCCESS)	{ cout << "\nconvert_depth_kernel				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_59"<<flush;

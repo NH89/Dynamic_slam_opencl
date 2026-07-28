@@ -19,10 +19,12 @@ __kernel void initiate_cluster_centres(
 	int 	global_id_u				= get_global_id(0);
 	float	global_id_flt			= global_id_u;
 	uint8	mipmap_params_			= mipmap_params[layer];
-																												if( global_id_u<50 ){
-																													printf("\n__kernel void initiate_cluster_centres()_1, global_id_u=%u",
-																																											global_id_u );
-																												}
+/*
+// 																												if( global_id_u<50 ){
+// 																													printf("\n__kernel void initiate_cluster_centres()_1, global_id_u=%u",
+// 																																											global_id_u );
+// 																												}
+*/
 	if (global_id_u	* cluster_dim * cluster_dim	>= mipmap_params_[MiM_PIXELS]) return;
 
 	int	mm_cols						= uint_params[MM_COLS];
@@ -34,10 +36,12 @@ __kernel void initiate_cluster_centres(
 	int	u							= cluster_dim * (global_id_u % sample_cols)		+ (cluster_dim/2)	-1;		// read_column
 	int	v							= cluster_dim * (global_id_u / sample_cols )	+ (cluster_dim/2)	-1;		// read_row
 	int	idx							= read_offset_ + u + v * mm_cols;
-																												if( global_id_u<50 ){
-																													printf("\n__kernel void initiate_cluster_centres()_2, global_id_u=%d, u=%d, v=%d,  cluster_dim=%d,  (global_id_u / sample_cols )=%d,  (cluster_dim/2)=%d,		idx=%d",
-																																											global_id_u,	u,	v,		cluster_dim,	(global_id_u / sample_cols ),		(cluster_dim/2),		idx );
-																												}
+/*
+// 																												if( global_id_u<50 ){
+// 																													printf("\n__kernel void initiate_cluster_centres()_2, global_id_u=%d, u=%d, v=%d,  cluster_dim=%d,  (global_id_u / sample_cols )=%d,  (cluster_dim/2)=%d,		idx=%d",
+// 																																											global_id_u,	u,	v,		cluster_dim,	(global_id_u / sample_cols ),		(cluster_dim/2),		idx );
+// 																												}
+*/
 	if (u>read_cols_ ||v>read_rows_ ) return;
 
 	float	min_pix_grad			= FLT_MAX/4;
@@ -45,9 +49,11 @@ __kernel void initiate_cluster_centres(
 
 	for(int i=0; i<3; i++){
 		for(int j=0; j<3; j++){
-																												if( global_id_u==0 ){
-																													printf("idx=%d, ",idx);
-																												}
+/*
+// 																												if( global_id_u==0 ){
+// 																													printf("idx=%d, ",idx);
+// 																												}
+*/
 			float	px_grad			= fast_length( gradient_map[idx] );
 			if( px_grad < min_pix_grad){
 				min_pix_grad		= px_grad;
@@ -64,25 +70,25 @@ __kernel void initiate_cluster_centres(
 	cluster_centre.w				= global_id_u;												// index of cluster
 
 	cluster_centers[global_id_u]	= cluster_centre;
-
-// 	if( global_id_u<1000){
-// 		printf(" %u,", global_id_u);
-// 	}
-																												if( global_id_u<50 ){
-																													printf("\n__kernel void initiate_cluster_centres()_3,  global_id_u=%d, cluster_centre=%d, %d,	%d, %d,		idx=%d,	read_offset_=%d,	u=%d, v=%d, mm_cols=%u, cluster_dim=%d,		centre_idx=%d",\
-																														global_id_u, cluster_centre.x,cluster_centre.y,cluster_centre.z,cluster_centre.w,\
-																														idx, read_offset_, u, v, mm_cols, cluster_dim, centre_idx	\
-																													);
-																												}
+/*
+// 																												if( global_id_u<50 ){
+// 																													printf("\n__kernel void initiate_cluster_centres()_3,  global_id_u=%d, cluster_centre=%d, %d,	%d, %d,		idx=%d,	read_offset_=%d,	u=%d, v=%d, mm_cols=%u, cluster_dim=%d,		centre_idx=%d",\
+// 																														global_id_u, cluster_centre.x,cluster_centre.y,cluster_centre.z,cluster_centre.w,\
+// 																														idx, read_offset_, u, v, mm_cols, cluster_dim, centre_idx	\
+// 																													);
+// 																												}
+*/
 }
 
 
 float pixel_distance( float2 centre, float2 px_uv, float4 cluster_colour, float4 px_colour, float geometric_normalizer, float colour_normalizer, bool debug ){
 	float	geometric_dist			= fast_length( px_uv				- centre				);
 	float	colour_dist				= fast_length( px_colour.xyz		- cluster_colour.xyz	);
-																												if( debug ){
-																													printf("\ngeometric_dist=%f,  colour_dist=%f", geometric_dist, colour_dist);
-																												}
+/*
+// 																												if( debug ){
+// 																													printf("\ngeometric_dist=%f,  colour_dist=%f", geometric_dist, colour_dist);
+// 																												}
+*/
 	return							(geometric_dist*geometric_normalizer + colour_dist*colour_normalizer) ;
 }
 
@@ -101,7 +107,9 @@ __kernel void associate_pixels(																	// Do one patch. preload centre 
 	__global	int4*	cluster_centers,		//8		(img size / cluster_dim^2) * sizeof(uint4)
 
 	//Output
-	__global	float*	cluster_map				//9	 /float* //	img_size * sizeof(float4)   densely packed for one layer.  Need a layer offset.
+	__global	float*	cluster_map				//9		holds relative  "closest_centre_id".  Allows cluster_sum_reduce in other kernels, and to read superpix maps of other params.
+												//		Could be held in uchar* .
+												//		float* //	img_size * sizeof(float4)   densely packed for one layer.  Need a layer offset.
 ){
 	uint 	global_id_u							=	get_global_id(0);
 	float	global_id_flt						=	global_id_u;
@@ -109,15 +117,15 @@ __kernel void associate_pixels(																	// Do one patch. preload centre 
 	uint 	gid 								=	get_group_id(0);
 
 	uint4	lookup_ref							=	lookup_table[global_id_u + lookup_table_offset];
-																												if(global_id_u==640){
-																													printf("\nglobal_id_u=640, lookup_ref.w=%u  ",lookup_ref.w );
-																												}
-
+/*
+// 																												if(global_id_u==640){
+// 																													printf("\nglobal_id_u=640, lookup_ref.w=%u  ",lookup_ref.w );
+// 																												}
+*/
 	if(lookup_ref.w != global_id_u){
-																												if(lid==0){printf("_%d, ",global_id_u);}
+//																												if(lid==0){printf("_%d, ",global_id_u);}
 		return;
 	}
-
 	uint	read_index							=	lookup_ref.z;
 	uint	u									=	lookup_ref.x;												// read_column
 	uint	v									=	lookup_ref.y;												// read_row
@@ -139,17 +147,20 @@ __kernel void associate_pixels(																	// Do one patch. preload centre 
 	int		right_edge							=	cols_of_clusters	-left_edge;
 
 	uint	debug_idx							=	639;
-	bool 	debug 								=	(global_id_u==640) ;//lid==0  && global_id_u<2000;		//gid==0; global_id_u=0	|| global_id_u==640	|| 1280
+	bool 	debug 								=	(global_id_u==640);		//lid==0  && global_id_u<2000;		//gid==0; global_id_u=0	|| global_id_u==640	|| 1280
+/*
 																												if( debug ){
 																													printf("\n__kernel void associate_pixels()_0, global_id_u=%u,  u,v=%u,%u,  read_index=%u,  cluster_layer_offset=%u, num_clusters=%u,	lookup_table_offset=%u, cluster_dim=%u,  cluster_offset=%d,	cols_of_clusters=%u,	 ", \
 																																									global_id_u,     u,v,        read_index,     cluster_layer_offset, 	  num_clusters, 	lookup_table_offset,	cluster_dim,	 cluster_offset,	cols_of_clusters		 ); \
 																												}	// mm_cols=%u, left_edge=%d, right_edge=%d // mm_cols,	left_edge,	  right_edge
 																												// NB order of integer arrithmetic.
+*/
 	cluster_offset								-=	cols_of_clusters;
 	for(int i=-1; i<2; i++, cluster_offset+=cols_of_clusters){																					// initialize centre pixels
 		for(int j=-1; j<2; j++){
 			int		i_j							=	i*3 + j + 4;												// i_j is the offset within the pvt arrays [9].
 			int		offset						=	cluster_offset +   j;										// Where to sample clusters within this image layer
+/*
 // 																												if( debug ){
 // 																														printf("\n__kernel void associate_pixels()_1	global_id_u=%u,	i= %d, j= %d, i_j= %d,	offset= %d, (int)num_clusters=%d,	left_edge=%d,	right_edge=%d )",\
 // 																																										global_id_u,	i,	   j,	  i_j,		offset,		(int)num_clusters,		left_edge,		right_edge  );
@@ -157,37 +168,44 @@ __kernel void associate_pixels(																	// Do one patch. preload centre 
 																												//	cluster_offset= %d,		i*cols_of_clusters= %d 	cluster_offset,		 	i*cols_of_clusters,
 																												//	(offset>=0)= %d,	(offset<num_clusters)= %d,	( (offset>=0) && (offset<num_clusters) )= %d
 																												//	(offset>=0),		(offset<num_clusters),		( (offset>=0) && (offset<num_clusters) )
+*/
 			if( (offset>=0) && (offset<(int)num_clusters) && left_edge+j>-1  &&  (j-right_edge)<0 ) {
 				int4	centre					=	cluster_centers[ offset + cluster_layer_offset ];
 				float2	centre_uv				=	{ (float)centre.x, (float)centre.y};
+/*
 // 																												if( debug ){
 // 																													printf("\n global_id_u=%u,  offset= %d, centre= %d, %d, %d, %d,	centre_uv= %f, %f,	i_j= %d,	offset+cluster_layer_offset= %d", \
 // 																														global_id_u,  offset,	centre.x,centre.y,centre.z,centre.w,	centre_uv.x,centre_uv.y, i_j,	offset+cluster_layer_offset);
 // 																												}
+*/
 				cluster_centres_pvt[	i_j]	=	centre_uv;													// float2	cluster_centres_pvt[9]
 				cluster_colour[			i_j]	=	img[centre.z];												// float4	cluster_colour[9]
 				cluster_idx[			i_j]	=	centre.w;													// uint		cluster_idx[9]
 			}
+/*
 // 																												if( debug ){
 // 																													printf("\n global_id_u=%u,  cluster_centres_pvt[%d]= %f, %f",
 // 																															global_id_u,  	i_j,	cluster_centres_pvt[i_j].x, cluster_centres_pvt[i_j].y );
 // 																												}
+*/
 		}
 	}
 	float 	geometric_normalizer				=	1/cluster_dim;
 	uint	row_of_clusters						=	0;															// Within pvt arrays [9]
 
 	for(int row=0; row<block_size; row+=cluster_dim, row_of_clusters++, cluster_offset+=cols_of_clusters){		// for cluster rows in img patch
-																												if( debug ){
-																													printf("\n\nglobal_id_u=%d,   row=%d,   block_size=%d,   cluster_dim=%d,   row_of_clusters=%d,    cluster_offset=%d,   num_clusters=%d",
-																																global_id_u,      row, 	    block_size,	     cluster_dim,	   row_of_clusters,		  cluster_offset,	   num_clusters);
-																													for(uint iter=0; iter<9; iter++){
-																														printf("\n cluster_centres_pvt[%u]= %f, %f,	cluster_colour[]= %f, %f, %f, %f,	cluster_idx[]= %u ",\
-																														iter, cluster_centres_pvt[iter].x, cluster_centres_pvt[iter].y, \
-																														cluster_colour[iter].x,cluster_colour[iter].y,cluster_colour[iter].z,cluster_colour[iter].w,\
-																														cluster_idx[iter] );
-																													}
-																												}
+/*
+// 																												if( debug ){
+// 																													printf("\n\nglobal_id_u=%d,   row=%d,   block_size=%d,   cluster_dim=%d,   row_of_clusters=%d,    cluster_offset=%d,   num_clusters=%d",
+// 																																global_id_u,      row, 	    block_size,	     cluster_dim,	   row_of_clusters,		  cluster_offset,	   num_clusters);
+// 																													for(uint iter=0; iter<9; iter++){
+// 																														printf("\n cluster_centres_pvt[%u]= %f, %f,	cluster_colour[]= %f, %f, %f, %f,	cluster_idx[]= %u ",\
+// 																														iter, cluster_centres_pvt[iter].x, cluster_centres_pvt[iter].y, \
+// 																														cluster_colour[iter].x,cluster_colour[iter].y,cluster_colour[iter].z,cluster_colour[iter].w,\
+// 																														cluster_idx[iter] );
+// 																													}
+// 																												}
+*/
 		float 	colour_normalizer				=	0.0f;
 		float	counter							=	0.0f;
 		for(uint i=0; i<9; i+=3){																				// compute colour normalizer wrt adjacent clusters.
@@ -197,59 +215,73 @@ __kernel void associate_pixels(																	// Do one patch. preload centre 
 					colour_normalizer			+=	length;
 					counter						++;
 				}
+/*
 // 																												if( debug ){
 // 																													printf("\n__kernel void associate_pixels()_2 row= %u,	i= %u,	j= %u,	colour_normalizer= %f",\
 // 																																									row,	i,		j,		colour_normalizer);
 // 																												}
+*/
 			}
 		} colour_normalizer						=	counter/colour_normalizer;
-																												if( debug ){
-																															printf("\n__kernel void associate_pixels()_3	row= %u,	final colour_normalizer= %f,	geometric_normalizer= %f \n\n",\
-																																											row,			colour_normalizer,			geometric_normalizer);
-																												}
+/*
+// 																												if( debug ){
+// 																															printf("\n__kernel void associate_pixels()_3	row= %u,	final colour_normalizer= %f,	geometric_normalizer= %f \n\n",\
+// 																																											row,			colour_normalizer,			geometric_normalizer);
+// 																												}
+*/
 		for(int cluster_row=0; cluster_row<cluster_dim; cluster_row++, read_index+=mm_cols, v++){				// for pixel rows in cluster
 			float	closest_centre_dist			=	FLT_MAX/4;
 			uint	closest_centre_id			=	0;
 			float2	px_uv						=	{ (float)u, (float)(v + row + cluster_row) };
 			float4	px_colour					=	img[read_index] ;
+/*
 // 																												if( debug ){
 // 																															printf("\n__kernel void associate_pixels()_4	row= %u,	cluster_row= %u,	read_index= %u, 	px_uv= %f, %f,		px_colour= %f, %f, %f, %f \n",\
 // 																																											row,		cluster_row,		read_index,			px_uv.x,px_uv.y,	px_colour.x,px_colour.y,px_colour.z,px_colour.w );
 // 																												}
+*/
 			for(int i=0; i<9; i+=3){																			// for offset i_j in pvt array [9] of adjacent clusters.
 				for(int j=0; j<3; j++){
 					int	i_j						=	i+j;
 					float dist					=	pixel_distance(	cluster_centres_pvt[i_j],	px_uv,	cluster_colour[i_j], px_colour, geometric_normalizer, colour_normalizer, debug );
-																												if( debug ){
-																													printf("\n__kernel void associate_pixels()_5	row= %u, cluster_row= %u, read_index= %u,	i= %u, j= %u, cluster_centres_pvt[%d]= %f, %f,	cluster_colour[i_j]= %f, %f, %f, %f,	dist= %f,  closest_centre_dist= %f  ",\
-																															row, cluster_row, read_index,	i,	j,  i_j, cluster_centres_pvt[i_j].x,cluster_centres_pvt[i_j].y,		cluster_colour[i_j].x,cluster_colour[i_j].y,cluster_colour[i_j].z,cluster_colour[i_j].w, 	dist, closest_centre_dist );
-																												}
+/*
+// 																												if( debug ){
+// 																													printf("\n__kernel void associate_pixels()_5	row= %u, cluster_row= %u, read_index= %u,	i= %u, j= %u, cluster_centres_pvt[%d]= %f, %f,	cluster_colour[i_j]= %f, %f, %f, %f,	dist= %f,  closest_centre_dist= %f  ",\
+// 																															row, cluster_row, read_index,	i,	j,  i_j, cluster_centres_pvt[i_j].x,cluster_centres_pvt[i_j].y,		cluster_colour[i_j].x,cluster_colour[i_j].y,cluster_colour[i_j].z,cluster_colour[i_j].w, 	dist, closest_centre_dist );
+// 																												}
+*/
 					if( dist < closest_centre_dist){
 						closest_centre_id		=	i_j;
 						closest_centre_dist		=	dist;
 					}
 				}
 			}
-			cluster_map[ read_index	 ]			=	cluster_colour[ closest_centre_id ].y ;	//(float)cluster_idx[ closest_centre_id ];//global_id_u;	//
-																												if( debug ){
-																													printf("\n__kernel void associate_pixels()_6,  global_id_u=%u,	row= %u,	cluster_row= %u,	read_index= %u,	cluster_idx[%u] = %u,	closest_centre_dist= %f ",\
-																																									global_id_u, row,		cluster_row,		read_index,		closest_centre_id, cluster_idx[ closest_centre_id ],  closest_centre_dist );
-																												}
+			cluster_map[ read_index	 ]			=	closest_centre_id; //cluster_colour[ closest_centre_id ].y ;	//(float)cluster_idx[ closest_centre_id ];//global_id_u;	//
+/*
+// 																												if( debug ){
+// 																													printf("\n__kernel void associate_pixels()_6,  global_id_u=%u,	row= %u,	cluster_row= %u,	read_index= %u,	cluster_idx[%u] = %u,	closest_centre_dist= %f ",\
+// 																																									global_id_u, row,		cluster_row,		read_index,		closest_centre_id, cluster_idx[ closest_centre_id ],  closest_centre_dist );
+// 																												}
+*/
 																									// Could atomic write u,v pix coords + counter to a centres_buffer, to move centres.
 		}
 		// prepare pvt arrays with next row of clusters	/////////////////////////////////////////////////////////////
 		int i									=	row_of_clusters % 3;										// Within pvt arrays [9]
-																												if( debug ){
-																													printf("\n global_id_u=%d, row_of_clusters=%d, i=%d, row=%d",\
-																													global_id_u, row_of_clusters, i, row);
-																												}
+/*
+// 																												if( debug ){
+// 																													printf("\n global_id_u=%d, row_of_clusters=%d, i=%d, row=%d",\
+// 																													global_id_u, row_of_clusters, i, row);
+// 																												}
+*/
 		for(int j=-1; j<2; j++){
 			int		i_j							=	i*3 +j+1;
 			int		offset						=	cluster_offset +  j;										// Where to sample clusters within this image layer
-																												if( debug ){
-																													printf("\n__kernel void associate_pixels()_7,  global_id_u=%u,	 idx %d,	cluster_layer_offset %d,	offset %d	=	cluster_offset %d  +j %d +	cols_of_clusters %d, j-right_edge=%d,  ((j-right_edge)<1 )=%d ",\
-																																			global_id_u, (offset + cluster_layer_offset),	cluster_layer_offset,		offset,			cluster_offset,		j,		cols_of_clusters,	 (j-right_edge),   ((j-right_edge)<1 )	);
-																												}
+/*
+// 																												if( debug ){
+// 																													printf("\n__kernel void associate_pixels()_7,  global_id_u=%u,	 idx %d,	cluster_layer_offset %d,	offset %d	=	cluster_offset %d  +j %d +	cols_of_clusters %d, j-right_edge=%d,  ((j-right_edge)<1 )=%d ",\
+// 																																			global_id_u, (offset + cluster_layer_offset),	cluster_layer_offset,		offset,			cluster_offset,		j,		cols_of_clusters,	 (j-right_edge),   ((j-right_edge)<1 )	);
+// 																												}
+*/
 			//if( offset<0 || offset>num_clusters ){	continue;}
 			if( (offset>=0) && (offset<(int)num_clusters) && left_edge+j>-1  &&  (j-right_edge)<0 ) {
 
@@ -264,11 +296,8 @@ __kernel void associate_pixels(																	// Do one patch. preload centre 
 	}
 }
 
-
-
+/*
 __kernel void check_superpixel_continuity(
-
-
 
 ){
 
@@ -280,6 +309,16 @@ __kernel void check_superpixel_continuity(
 
 __kernel void update_cluster_centres_pvt(
 
+){
+
+
+
+
+
+}
+*/
+
+__kernel void superpixel_depth_est(
 
 
 ){
@@ -291,3 +330,13 @@ __kernel void update_cluster_centres_pvt(
 }
 
 
+__kernel void superpixel_depth_est_sum_reduce(
+
+
+){
+
+
+
+
+
+}

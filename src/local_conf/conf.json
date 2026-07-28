@@ -73,5 +73,7 @@
 
 
 	// Superpixel parameters ////////////////////////////////////////////////////////////////////////////////////////////////////////
-	"cluster_dim":				16
+	"cluster_dim":				16				// Must be an integer fraction of the patch size, which in turn must be an integer multiple of the minimum workgroup size.
+												// Generally this will be a power of 2, so  suitable values may be 4, 8, 16, 32.
+	//"kernel_build_options": " -D NUM_DEPTH_STEPS=16 "
 }
