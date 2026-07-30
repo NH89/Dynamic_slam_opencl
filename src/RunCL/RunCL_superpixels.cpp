@@ -126,7 +126,7 @@ void RunCL::associate_pixels(uint layer){
 																													}
 }
 
-
+/*
 void RunCL::check_superpixel_continuity(){ // May not be desired. Discontinuous superpixels represent partially occluded background, or other repeated areas.
 	string		fname						= "RunCL::check_superpixel_continuity( )";
 	int			local_verbosity_threshold	= V_RUNCL_CHECK_SUPERPIXEL_CONTINUITY;
@@ -160,3 +160,4 @@ void RunCL::superpixel_depth_est(){
 
 
 }
+*/

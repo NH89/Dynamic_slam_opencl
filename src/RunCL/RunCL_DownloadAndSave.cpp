@@ -92,7 +92,8 @@ void RunCL::createFolders(){
 										\
 										"jacobian","hessian","depth_mem",\
 										"lookup_table_buf",\
-										"cluster_centers_mem", "cluster_map_memm"\
+										"cluster_centers_mem", "cluster_map_memm",
+										"costvol_mem", "cluster_costvol_mem"\
 	};
 	std::pair<std::string, std::filesystem::path> tempPair;
 	tempPair = {"folder", out_path};																										// Top level output folder, used to std::out file.

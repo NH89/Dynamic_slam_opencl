@@ -310,8 +310,8 @@ void RunCL::createKernels(){
 	// RunCL_superpixels.cpp
 	initiate_cluster_centres_kernel		= clCreateKernel(m_program, "initiate_cluster_centres",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'initiate_cluster_centres'  kernel not built.\n"		<<flush; exit_(0);   }
 	associate_pixels_kernel				= clCreateKernel(m_program, "associate_pixels",				&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'associate_pixels'  kernel not built.\n"				<<flush; exit_(0);   }
-	check_superpixel_continuity_kernel	= clCreateKernel(m_program, "check_superpixel_continuity",	&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'check_superpixel_continuity'  kernel not built.\n"	<<flush; exit_(0);   }
-	update_cluster_centres_pvt_kernel	= clCreateKernel(m_program, "update_cluster_centres_pvt",	&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'update_cluster_centres_pvt'  kernel not built.\n"	<<flush; exit_(0);   }
+	//check_superpixel_continuity_kernel	= clCreateKernel(m_program, "check_superpixel_continuity",	&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'check_superpixel_continuity'  kernel not built.\n"	<<flush; exit_(0);   }
+	//update_cluster_centres_pvt_kernel	= clCreateKernel(m_program, "update_cluster_centres_pvt",	&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'update_cluster_centres_pvt'  kernel not built.\n"	<<flush; exit_(0);   }
 
 }
 
@@ -818,12 +818,12 @@ void RunCL::allocatemem(){
 	}
 	status = clEnqueueFillBuffer(uload_queue, depth_mem_temp, 			&default_depth, sizeof(float),   0, mm_size_bytes_C1,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 	status = clEnqueueFillBuffer(uload_queue, depth_mem_GT, 			&default_depth, sizeof(float),   0, mm_size_bytes_C1,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.8\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
-	status = clEnqueueFillBuffer(uload_queue, HSV_grad_mem, 			&zero_flt,		sizeof(float),   0, mm_size_bytes_C8,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
-	status = clEnqueueFillBuffer(uload_queue, ST3_img_grad_mem,			&zero_flt,		sizeof(float),   0, 3*mm_size_bytes_C4,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
-	status = clEnqueueFillBuffer(uload_queue, patch_lookup_table_buf,	&zero_uint,		sizeof(uint),    0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	status = clEnqueueFillBuffer(uload_queue, HSV_grad_mem, 			&zero_flt,		sizeof(float),   0, mm_size_bytes_C8,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.30\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	status = clEnqueueFillBuffer(uload_queue, ST3_img_grad_mem,			&zero_flt,		sizeof(float),   0, 3*mm_size_bytes_C4,		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.31\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	status = clEnqueueFillBuffer(uload_queue, patch_lookup_table_buf,	&zero_uint,		sizeof(uint),    0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.32\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 
-	status = clEnqueueFillBuffer(uload_queue, cluster_centers_mem,		&zero_uint,		sizeof(uint),    0, mm_size_bytes_C1, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
-	status = clEnqueueFillBuffer(uload_queue, cluster_map_mem,			&zero_flt,		sizeof(uint),    0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	status = clEnqueueFillBuffer(uload_queue, cluster_centers_mem,		&zero_uint,		sizeof(uint),    0, mm_size_bytes_C1, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.33\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	status = clEnqueueFillBuffer(uload_queue, cluster_map_mem,			&zero_flt,		sizeof(uint),    0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.34\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 
 
 	clFlush(uload_queue); status = clFinish(uload_queue); 																				if (status != CL_SUCCESS)	{ cout << "\nclFinish(uload_queue)=" << status << checkerror(status) <<"\n"  << flush; exit_(status);}

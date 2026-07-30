@@ -13,51 +13,53 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 	__private	const uint	lookup_table_offset,	//2															//  Likewise could list the order of img_ and vel_ buffers with a __constant uint* buffer				 //
 	__private	const uint	out_block_size,			//3
 
-	__private	const uint	read_offset_,			//4					= mipmap_params_[MiM_READ_OFFSET];
-	__private	const uint	stop_offset,			//5					= layer_offset + (read_rows_ -1) * mm_cols + read_cols_	;	// bottom right corner of source image layer
-	__private	const uint	layer_pixels,			//6					= mipmap_params_[MiM_PIXELS];
-	__private	const uint	read_cols_,				//7					= mipmap_params_[MiM_READ_COLS];
-	__private	const uint	read_rows_,				//8					= mipmap_params_[MiM_READ_ROWS];
-	__private	const uint	mm_cols,				//9					= uint_params[MM_COLS];
-	__private	const uint	mm_pixels,				//10				= uint_params[MM_PIXELS];
+	__private	const uint	read_offset_,			//4			= mipmap_params_[MiM_READ_OFFSET];
+	__private	const uint	stop_offset,			//5			= layer_offset + (read_rows_ -1) * mm_cols + read_cols_	;	// bottom right corner of source image layer
+	__private	const uint	layer_pixels,			//6			= mipmap_params_[MiM_PIXELS];
+	__private	const uint	read_cols_,				//7			= mipmap_params_[MiM_READ_COLS];
+	__private	const uint	read_rows_,				//8			= mipmap_params_[MiM_READ_ROWS];
+	__private	const uint	mm_cols,				//9			= uint_params[MM_COLS];
+	__private	const uint	mm_pixels,				//10		= uint_params[MM_PIXELS];
 
 	__private	const uint	write_offset,			//11				= patch_depthmap_offset_[layer];
-	__private	const uint	dm_win_cols,			//12
+	__private	const uint	dm_win_cols,			//12		// depth_map_window_columns
 	__private	const uint	dm_data_rows,			//13
 	__private	const uint	dm_data_stop,			//14
 
 	__private	const float inv_depth_step,			//15
 	__private	const uint	num_depth_steps,		//16
-	__private	const uint	cluster_reductions,		//17
+	__private	const uint	cluster_dim,			//17
+	__private	const uint	cluster_cols,			//18
+	__private	const uint	num_clusters,			//19
 
-	__global	float16*	inv_k2k_1,				//18		// transforms for 4 past frames,  k2k_buf
-	__global	float16*	inv_k2k_2,				//19		// transforms for 4 past frames,  k2k_buf
-	__global	float16*	inv_k2k_3,				//20		// transforms for 4 past frames,  k2k_buf
-	__global	float16*	inv_k2k_4,				//21		// transforms for 4 past frames,  k2k_buf
+	__global	float16*	inv_k2k_1,				//20		// transforms for 4 past frames,  k2k_buf
+	__global	float16*	inv_k2k_2,				//21		// transforms for 4 past frames,  k2k_buf
+	__global	float16*	inv_k2k_3,				//22		// transforms for 4 past frames,  k2k_buf
+	__global	float16*	inv_k2k_4,				//23		// transforms for 4 past frames,  k2k_buf
 
-	__constant	uint4*		lookup_table,			//22		// should ideally be a constant.
+	__constant	uint4*		lookup_table,			//24		// should ideally be a constant.
 
-	__global	float4*		img_cur,				//23		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
-	__global	float4*		img_past_1,				//24
-	__global	float4*		img_past_2,				//25
-	__global	float4*		img_past_3,				//26
-	__global	float4*		img_past_4,				//27
+	__global	float4*		img_cur,				//25		// multiple past frames. NB retain frames at powers of 2, and vary starting power plus num franes.
+	__global	float4*		img_past_1,				//26
+	__global	float4*		img_past_2,				//27
+	__global	float4*		img_past_3,				//28
+	__global	float4*		img_past_4,				//29
 
-	__global	float4*		vel_cur,				//28	// multiple past frames.
-	__global	float4*		vel_past_1,				//29	// TO DO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
-	__global	float4*		vel_past_2,				//30
-	__global	float4*		vel_past_3,				//31
-	__global	float4*		vel_past_4,				//32
+	__global	float4*		vel_cur,				//30	// multiple past frames.
+	__global	float4*		vel_past_1,				//31	// TO DO, relative velocity not used yet. Will use it to modify depth map with timestep for past frames.
+	__global	float4*		vel_past_2,				//32
+	__global	float4*		vel_past_3,				//33
+	__global	float4*		vel_past_4,				//34
 
-	__global	float*		cluster_map,			//33	//
+	__global	float*		cluster_map,			//35	//
 
 	//outputs
-	__global	float2*		Rho_,					//34	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
-	__local		float2*		local_rho,				//35	// float2 local_rho[ num_depth_steps * local_work_size/2 ]  hence sizeof(cl_float2)*local_mem_size*num_depth_steps,
+	__global	float2*		Rho_,					//36	// { sum rho^2 ,  count of valid pixels used } Writen to dense patches.
+	__local		float2*		local_rho,				//37	// float2 local_rho[ num_depth_steps * local_work_size/2 ]  hence sizeof(cl_float2)*local_mem_size*num_depth_steps,
 
-	__global	float2*		inv_depth_incr,			//36
-	__global	float2*		costvol,				//37	// (pixel_count, rho_sq)
-	__global	float2*		superpix_costvol		//38
+	__global	float2*		inv_depth_incr,			//38
+	__global	float2*		costvol,				//39	// (pixel_count, rho_sq)
+	__global	float2*		superpix_costvol		//40
 	)
 {
 	const		float16		inv_k2k[num_current_frames]		= { inv_k2k_1[0],	inv_k2k_1[0],	inv_k2k_2[0],	inv_k2k_3[0],	inv_k2k_4[0] };
@@ -233,7 +235,8 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 				costvol[ read_index  +  inv_depth_layer * mm_pixels ]		=	rho_pvt_arr[ row_in_block*NUM_DEPTH_STEPS  + inv_depth_layer ];
 			}
 		}
-																																						// sum reduce rho to cluster costvol[9*NUM_DEPTH_STEPS] //////////////
+
+		// sum reduce rho to cluster costvol[9*NUM_DEPTH_STEPS] //////////////////////////////////////
 		float2	pvt_superpx[9*NUM_DEPTH_STEPS]			= {zero_f2};
 
 		uint local_idx									= 9*lid;
@@ -249,7 +252,7 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 		uint past_frame_idx								= 0; // not used ?
 		uint step;
 
-		for ( step=1; step<cluster_reductions; step *=2){																																					// for each step size, (multiples of 2)
+		for ( step=1; step<cluster_dim; step *=2){																																					// for each step size, (multiples of 2)
 			for (uint block_row=0; block_row<block_size ; block_row += step){																																// step through rows in column
 				float	inv_depth		= 0.0f;
 				for (int inv_depth_layer = 0;  inv_depth_layer<NUM_DEPTH_STEPS;  inv_depth += inv_depth_step, inv_depth_layer++ ){																			// step through depth layers
@@ -264,19 +267,47 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 					barrier(CLK_LOCAL_MEM_FENCE );																																							// Using barrier as a semaphore, for local mem messages between threads.
 																																																			// This minimizes local_mem req, while allowing 2 patch sizes in output, full & ST3 map at out_block_size.
 					if( (fmod((float)lid,(step*2))==0)	){																																					// selects 1st column, adds data. Sum of patch now held in top left element of patch.
-						for( uint rel_cluster_idx=0; rel_cluster_idx<9; rel_cluster_idx++){	pvt_superpx[		idx + rel_cluster_idx]			+= local_superpx[		local_idx ]; }
+						for( uint rel_cluster_idx=0; rel_cluster_idx<9; rel_cluster_idx++){	pvt_superpx[		idx + rel_cluster_idx]			+= local_superpx[	local_idx ]; }
 					}
 					barrier(CLK_LOCAL_MEM_FENCE );
 				}
 			}
 		}
+		/// write to superpix_costvol //////////////////////////////////////////////////////////////
+		if( fmod((float)lid, cluster_dim)==0) {																													// selects 2nd column, sends data
+																							uint	sp_cv_idx									= (u/cluster_dim) + (v/cluster_dim)*cluster_cols  ;
+																							const uint vol_size									= num_clusters *   NUM_DEPTH_STEPS ;
+			for (uint block_row=0; block_row<block_size ; block_row += cluster_dim	){																														// step through rows in column
+																									sp_cv_idx 									+=	cluster_cols;
+																							float	inv_depth									=	0.0f;
+																							uint 	idx											=	9*block_row*NUM_DEPTH_STEPS;
+				for (int inv_depth_layer = 0;  inv_depth_layer<NUM_DEPTH_STEPS;  inv_depth += inv_depth_step ){																								// step through depth layers
+																									idx											+=	9;
+																							uint	spcv_layer_idx								= 	sp_cv_idx	+	inv_depth_layer  *  num_clusters;		// ;   NUM_DEPTH_STEPS   ?
+					for( uint rel_cluster_idx=0; rel_cluster_idx<9; rel_cluster_idx++ ){
+																				superpix_costvol[ sp_cv_idx + rel_cluster_idx*vol_size  ]		= pvt_superpx[		idx + rel_cluster_idx]; }
+				}
+			}
+		}
+/*
+																							//uint idx											= 9*(block_row*NUM_DEPTH_STEPS	+ inv_depth_layer);
+																							//ui nt sp_cv_idx									= (u/cluster_dim) + (v/cluster_dim)*cluster_cols  ;
 
 
+		// problem : should save as if a _struct_of_arrays_. Q: what size are hte arrays ?
+		// pvt_superpx[        num_rows    * 9 ]
+		// local_superpx[      num_threads * 9 ]
+		// superpix_costvol[   (cols_of_clusters +2)*(rows_of_clusters +2) * costVolLayers * 10 ]      num_clusters * costVolLayers * 10
 
-//if( group_id==1/*lid==0*/ ){printf("\n__kernel void update_depth(..) chk 5,  step=%d, block_row=%d,  global_id_uint=%d", step, block_row, global_id_uint );}
 
-
-
+// 			sp_cv_idx			=  (u/cluster_dim) + (v/cluster_dim)*cluster_cols  ;
+//
+// 			block_row * cluster_cols + sp_cv_idx
+//
+// 			inv_depth_layer * num_clusters
+//
+// 			rel_cluster_idx * num_clusters *   NUM_DEPTH_STEPS
+*/
 
 
 
