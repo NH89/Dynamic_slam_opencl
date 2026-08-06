@@ -18,7 +18,7 @@ RunCL::RunCL( Json::Value obj_  ){ //, int_map verbosity_mp_
 	png 							= obj["png"].asBool();
 	vtp 							= obj["vtp"].asBool();
 	max_depth						= obj["max_depth"].asFloat();
-	costVolLayers 					=( 1 + obj["layers"].asUInt() );
+	costVolLayers 					= NUM_DEPTH_STEPS;
 																																			if(verbosity>local_verbosity_threshold) {
 																																				cout << "\nRunCL_chk 0\n" << flush;
 																																				cout << "\nverbosity = "<<verbosity<< flush;
@@ -45,13 +45,13 @@ RunCL::RunCL( Json::Value obj_  ){ //, int_map verbosity_mp_
 
 	cl_uint			numDevices		= 0;																									/*Step 2:Query the platform.*//////////////////////////////////################################
 	cl_device_id    *devices;
-	status = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 0, NULL, &numDevices);			if (status != CL_SUCCESS) {cout << "\n3 status = " << checkerror(status) <<"\n"<<flush; exit_(status);}
+	status 		= clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 0, NULL, &numDevices);		if (status != CL_SUCCESS) {cout << "\n3 status = " << checkerror(status) <<"\n"<<flush; exit_(status);}
 	uint conf_device = obj["opencl_device"].asUInt();
 
 
 	if (numDevices <= conf_device){                                                         cout << "\n\nRunCL::RunCL(..), (numDevices <= conf_device)\n" << flush; exit_(status); }
-	devices = (cl_device_id*)malloc(numDevices * sizeof(cl_device_id));																		/*Choose the device*/
-	status  = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, numDevices, devices, NULL);  if (status != CL_SUCCESS) {cout << "\n4 status = " << checkerror(status) <<"\n"<<flush; exit_(status);}
+	devices 	= (cl_device_id*)malloc(numDevices * sizeof(cl_device_id));																		/*Choose the device*/
+	status  	= clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, numDevices, devices, NULL);  if (status != CL_SUCCESS) {cout << "\n4 status = " << checkerror(status) <<"\n"<<flush; exit_(status);}
 
 
 	cl_context_properties cps[3]={CL_CONTEXT_PLATFORM,(cl_context_properties)platform,0};													/*Step 3: Create context.*////////////////////////////////////##################################
@@ -238,9 +238,17 @@ void RunCL::createAndBulidProgramFromSource(cl_device_id *devices){
 	m_program 	= clCreateProgramWithSource( m_context, num_files, (const char**)strings, lengths, &status );								// Create program object /////////////
 																								if(status!=CL_SUCCESS)	{cout<<"\n11 status="<<checkerror(status)<<"\n"<<flush;exit_(status);}
 																																			// Prepare kernel compiler options.
-	stringstream ss;	ss << obj["kernel_build_options"].asCString() << " -D NUM_DEPTH_STEPS=" << costVolLayers <<" ";						// Kernel macros updated here. NB not CPU macros.
+	stringstream ss;	ss << obj["kernel_build_options"].asCString() ;						// Kernel macros updated here. NB not CPU macros.
 	std::string			ss_string		= ss.str();																							// Necessary to create a lhs string that lasts,for char* to point to.
+
 	const char*			include_dir		= ss_string.c_str();
+																																			if(verbosity>local_verbosity_threshold){ cout << "\nRunCL::createAndBulidProgramFromSource(..) chk 1\n"
+																																				<< ss.str() << "\n "
+																																				<< *include_dir
+																																				<< flush;
+
+																																				printf("\n%s\n",include_dir);
+																																			}
 
 	status = clBuildProgram(m_program, 1, devices, include_dir , NULL, NULL);																// Build program. /////////////////////
 	/*
@@ -263,7 +271,7 @@ void RunCL::createAndBulidProgramFromSource(cl_device_id *devices){
 	for(int i=0; i<num_files; i++) { free(strings[i]); }
 	free(strings);
 	free(lengths);
-																																			if(verbosity>local_verbosity_threshold) cout << "RunCL::createAndBulidProgramFromSource finished ##########################\n" << flush;
+																																			if(verbosity>local_verbosity_threshold) cout << "\nRunCL::createAndBulidProgramFromSource finished ##########################\n" << flush;
 }
 
 void RunCL::createKernels(){
@@ -396,7 +404,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 
 	uint num_reductions_width		= log2(baseImage_width/5);
 	uint num_reductions_height		= log2(baseImage_height/5);
-	mm_num_reductions				= min(num_reductions_width, num_reductions_height);														if(verbosity>local_verbosity_threshold){ cout << "\nRunCL::initialize_RunCL_chk0.4"
+	mm_num_reductions				= min(num_reductions_width, num_reductions_height);														if(verbosity>local_verbosity_threshold){ cout << "\nRunCL::initialize_RunCL_chk_1"
 																																				<< "\nnum_reductions_width="<<num_reductions_width
 																																				<<",  num_reductions_height="<<num_reductions_height
 																																				<<", mm_num_reductions="<<mm_num_reductions	<<flush;
@@ -409,7 +417,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	}
 	uint apexImage_width	= baseImage_width	/ pow(2, mm_num_reductions);
 	uint apexImage_height	= baseImage_height	/ pow(2, mm_num_reductions);
-																																			if(verbosity>local_verbosity_threshold){ cout << "\nRunCL::initialize_RunCL_chk0.4"
+																																			if(verbosity>local_verbosity_threshold){ cout << "\nRunCL::initialize_RunCL_chk_2"
 																																				<< "\nmm_num_reductions = "<<mm_num_reductions
 																																				<<",  apexImage_width = "<<apexImage_width
 																																				<<",  apexImage_height = "<<apexImage_height<<flush;
@@ -420,7 +428,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 //	if( (short_side/pow(2,num_reductions)) < 6) num_reductions--;																			// i.e. at least 6 pixels remain on short side of img at apex of img pyramid.
 //	mm_stop				= num_reductions; /*mm_num_reductions;// + mm_num_blur_layers;*/
 	mm_stop				= min(num_reductions, max_mipmap_layers-2);
-																																			if(verbosity>local_verbosity_threshold){ cout << "\nRunCL::initialize_RunCL_chk0.5"
+																																			if(verbosity>local_verbosity_threshold){ cout << "\nRunCL::initialize_RunCL_chk_3"
 																																						<<",  mm_start="<<mm_start
 																																						<<",  mm_stop="<<mm_stop
 																																						<<",  short_side="<<short_side
@@ -442,7 +450,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	cv::Mat temp2(mm_height, mm_width, CV_32FC1);
 	mm_size_bytes_C1	= temp.total()	   * sizeof(float);			//temp2.total() * temp2.elemSize(); // NB elemSize() -> size bytes _per_ channel.
 	mm_vol_size_bytes	= mm_size_bytes_C1 * costVolLayers *2;		// float2 ( pixel count, rho_sq )
-																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nRunCL::initialize_RunCL_chk1  "
+																																			if(verbosity>local_verbosity_threshold){ cout << "\n\nRunCL::initialize_RunCL_chk_4"
 																																				<<"\nmm_gaussian_size="<<mm_gaussian_size
 																																				<<"\nmm_Image_size="<<mm_Image_size
 																																				<<"\ntemp.total()="<<temp.total()
@@ -473,7 +481,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	global_work_size 	= ceil( (float)layerstep/(float)local_work_size ) * local_work_size;
 	mm_global_work_size = ceil( (float)mm_layerstep/(float)local_work_size ) * local_work_size;
 																																			if(verbosity>local_verbosity_threshold){
-																																				cout << "\n\nRunCL::initialize_chk1.2,\t global_work_size="<<global_work_size<<",\t mm_global_work_size="<<mm_global_work_size <<"\n" << flush;
+																																				cout << "\n\nRunCL::initialize_chk_5,\t global_work_size="<<global_work_size<<",\t mm_global_work_size="<<mm_global_work_size <<"\n" << flush;
 																																				cout << "layerstep="<<layerstep <<",\t mm_layerstep"<< mm_layerstep<<"\n\n" << flush;
 																																				cout<<"\nglobal_work_size="<<global_work_size<<", local_work_size="<<local_work_size<<", deviceId="<<deviceId<<"\n"<<flush;
 																																				cout<<"\nlayerstep=mm_width*mm_height="<<mm_width<<"*"<<mm_height<<"="<<layerstep<<",\tsizeof(layerstep)="<< sizeof(layerstep) <<",\tsizeof(int)="<< sizeof(int) <<flush;
@@ -493,7 +501,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 																																				cout<<"\n"<<", temp.total() ="<< temp.total()         <<", temp2.total()="   << temp2.total()    <<flush;
 
 																																			}
-																																			if(verbosity>local_verbosity_threshold) cout <<"\n\nRunCL::initialize_RunCL_chk3.8\n\n" << flush;
+																																			if(verbosity>local_verbosity_threshold) cout <<"\n\nRunCL::initialize_RunCL_chk_6\n\n" << flush;
 	uint_params[PIXELS]			= 	baseImage_height * baseImage_width ;
 	uint_params[ROWS]			= 	baseImage_height ;
 	uint_params[COLS]			= 	baseImage_width ;
@@ -504,7 +512,7 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 	uint_params[MM_COLS]		= 	mm_width ;
 
 	initialize_fp32_params();																												// Requires uint_params[COSTVOL_LAYERS]	;
-																																			if(verbosity>local_verbosity_threshold) cout <<"\n\nRunCL::initialize_RunCL_chk3.9\n\n" << flush;
+																																			if(verbosity>local_verbosity_threshold) cout <<"\n\nRunCL::initialize_RunCL_chk_7\n\n" << flush;
 																																			if(verbosity>local_verbosity_threshold){
 																																				cout << "\n\nRunCL::initialize  Checking fp32_params[]" << flush;
 																																				cout << "\nfp32_params[0 MAX_INV_DEPTH]="	<<fp32_params[MAX_INV_DEPTH]		<<"\t\t1/obj[\"min_depth\"].asFloat()="	<<1/obj["min_depth"].asFloat();
@@ -541,13 +549,13 @@ void RunCL::initialize_RunCL(cv::Mat baseImage_){
 
 	pix_sum_size			= se3_sum_size;
 	pix_sum_size_bytes		= pix_sum_size * sizeof(float) * 4;																				// NB the data returned is one float4 per group, for the base image, holding hsv channels plus entry[3]=pixel count.
-																																			if(verbosity>local_verbosity_threshold) cout <<"\nRunCL::initialize_RunCL_chk finished -1 ############################################################\n"<<flush;
+																																			if(verbosity>local_verbosity_threshold) cout <<"\nRunCL::initialize_RunCL_chk_8 ############################################################\n"<<flush;
 	allocatemem();																															// Allocate buffers on the GPU ###### NB depends on params set by fns above.
 	initialize_patch_depthmap_offset();
 	initialize_patch_params();
 	compute_patch_lookup_table();
 	rho_sq_set_params(		out_block_size);
-																																			if(verbosity>local_verbosity_threshold){ cout <<"\nRunCL::initialize_RunCL_chk finished -0.5 ############################################################\n"<<flush;
+																																			if(verbosity>local_verbosity_threshold){ cout <<"\nRunCL::initialize_RunCL_chk finished_9 ############################################################\n"<<flush;
 																																				for(uint layer = 0; layer <= mm_stop; layer++) {
 																																					cout <<"\npatch_local_work_size["<<layer<<"] = "<<patch_local_work_size[layer]<< flush;
 																																				}
@@ -784,7 +792,7 @@ void RunCL::allocatemem(){
 	cluster_map_mem				= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							mm_size_bytes_C1,		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 41= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 	costvol_mem					= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							mm_vol_size_bytes, 		0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 42= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	cluster_costvol_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							superpix_vol_bytes, 	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 42= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	cluster_costvol_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							superpix_vol_bytes, 	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 43= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nRunCL::allocatemem_chk3\n\n" << flush;
@@ -823,7 +831,8 @@ void RunCL::allocatemem(){
 	status = clEnqueueFillBuffer(uload_queue, patch_lookup_table_buf,	&zero_uint,		sizeof(uint),    0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.32\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
 
 	status = clEnqueueFillBuffer(uload_queue, cluster_centers_mem,		&zero_uint,		sizeof(uint),    0, mm_size_bytes_C1, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.33\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
-	status = clEnqueueFillBuffer(uload_queue, cluster_map_mem,			&zero_flt,		sizeof(uint),    0, mm_size_bytes_C4, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.34\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+	status = clEnqueueFillBuffer(uload_queue, cluster_map_mem,			&zero_flt,		sizeof(uint),    0, mm_size_bytes_C1, 		0, NULL, &writeEvt);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.34\n" << endl;exit_(status);}	clFlush(uload_queue); status = clFinish(uload_queue);
+
 
 
 	clFlush(uload_queue); status = clFinish(uload_queue); 																				if (status != CL_SUCCESS)	{ cout << "\nclFinish(uload_queue)=" << status << checkerror(status) <<"\n"  << flush; exit_(status);}

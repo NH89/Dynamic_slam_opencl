@@ -5,6 +5,12 @@ void RunCL::update_depth_2( uint out_block_size, uint layer){
 	int 		local_verbosity_threshold 	= V_RUNCL_UPDATE_DEPTH;																if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_depth_2(..)_chk0"<<flush;}
 	cl_kernel	kernel						= update_depth_2_kernel;
 
+	cl_event	writeEvt;
+	cl_int		status = clEnqueueFillBuffer(uload_queue, cluster_costvol_mem,		&zero_flt,		sizeof(uint),    0, superpix_vol_bytes,		0, NULL, &writeEvt);
+	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: RunCL::update_depth_2\n" << endl;exit_(status);}
+	clFlush(	uload_queue);
+	status 		= clFinish(uload_queue);
+
 	float		reduction					= pow(2,layer);
 	uint		lookup_table_offset			= patch_lookup_table_offset[layer];
 
@@ -20,7 +26,7 @@ void RunCL::update_depth_2( uint out_block_size, uint layer){
 	uint		dm_data_rows				= depthmap_params[layer].DM_DATA_ROWS;
 	uint		dm_data_stop				= write_offset + dm_win_cols * dm_data_rows;
 
-	float		inv_depth_step				= fp32_params[MAX_INV_DEPTH] / ((float)uint_params[COSTVOL_LAYERS]  );	// NUM_DEPTH_STEPS
+	float		inv_depth_step				= fp32_params[MAX_INV_DEPTH] / ((float)uint_params[COSTVOL_LAYERS]  );	cout<<"\ninv_depth_step="<<inv_depth_step<<" =  fp32_params[MAX_INV_DEPTH] "<<fp32_params[MAX_INV_DEPTH]<<" / ((float)uint_params[COSTVOL_LAYERS] "<<uint_params[COSTVOL_LAYERS]<<flush;  // NUM_DEPTH_STEPS
 	//uint		cluster_reductions			= 4;	// superpx_params[layer].cluster_dim;
 
 	uint		layer_offset				= MipMap[layer*8 + MiM_READ_OFFSET];
@@ -111,7 +117,7 @@ void RunCL::update_depth_2( uint out_block_size, uint layer){
 		fname					//string           fname
 	);
 																																if( verbosity>local_verbosity_threshold) {
-																																	cout<<"\nRunCL::update_depth_2() chk_1   write_offset = "<< write_offset<<",   mm_size_bytes_C1="<< mm_size_bytes_C1<<flush;
+																																	cout<<"\n\nRunCL::update_depth_2() chk_2   write_offset = "<< write_offset<<",   mm_size_bytes_C1="<< mm_size_bytes_C1<<flush;
 																																	uint win_offset 	= depthmap_params[layer].DM_WIN_OFFSET;
 																																	DownloadAndSaveDepthUpdate( layer, win_offset, win_offset, fname );		//  write_offset, depthmap_params[layer].DM_WIN_OFFSET
 																																																			//  depth_save_offset[layer]
@@ -132,8 +138,19 @@ void RunCL::update_depth_2( uint out_block_size, uint layer){
 		DownloadAndSave_2Channel_volume( costvol_mem,	ss.str( ), paths.at( "costvol_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, 1,	costVolLayers);
 
 		cv::Size  superpix_img_size	=  cv::Size( superpx_params[layer].cols_of_clusters , superpx_params[layer].rows_of_clusters ) ;
-		DownloadAndSave_2Channel_volume( cluster_costvol_mem,	ss.str( ), paths.at( "cluster_costvol_mem"),	superpix_vol_bytes,  superpix_img_size,	CV_32FC2, show, 1,	costVolLayers);
+		DownloadAndSave_2Channel_volume( cluster_costvol_mem,	ss.str( ), paths.at( "cluster_costvol_mem"), superpx_params[layer].num_clusters*2*sizeof(float),  superpix_img_size,	CV_32FC2, show, 0,	costVolLayers);
 
+		//(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint offset )
+		//uint 		superpix_vol_bytes	= superpx_params[layer].num_clusters*2*sizeof(float) * costVolLayers;
+
+		cv::Size	superpix_vol_size	= cv::Size( (superpx_params[layer].cols_of_clusters * superpx_params[layer].rows_of_clusters) ,  10 * costVolLayers );
+
+
+		//for (uint rel_cluster_idx=0; rel_cluster_idx<9; rel_cluster_idx++   ){
+			//uint offset = superpix_vol_bytes * rel_cluster_idx;
+			//ss << "_" << rel_cluster_idx;
+			DownloadAndSave_2Channel( cluster_costvol_mem,	ss.str( ), paths.at( "cluster_costvol_mem"), superpix_vol_bytes,  superpix_vol_size,	CV_32FC2, show, 1,	0 );
+		//}
 
 																																}
 }

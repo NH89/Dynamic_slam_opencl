@@ -11,8 +11,9 @@ void RunCL::compute_superpx_params(){
 		superpx_params[layer].num_clusters				= superpx_params[layer].cols_of_clusters		* superpx_params[layer].rows_of_clusters;
 		superpx_params[layer+1].cluster_layer_offset	= superpx_params[layer].cluster_layer_offset	+ superpx_params[layer].num_clusters;
 
-		superpix_vol_bytes								= (superpx_params[0].cols_of_clusters +2)	*	(superpx_params[0].rows_of_clusters	+2) *	costVolLayers * 10 * sizeof(cl_float2); // 9 neighbours + final sum.
 
+		// 9 neighbours + final sum.
+// (superpx_params[0].cols_of_clusters +2)	*	(superpx_params[0].rows_of_clusters	+2)
 																													if( verbosity>local_verbosity_threshold ){
 																														Superpixel_params p = superpx_params[layer];
 																														cout<<"\n RunCL::compute_superpx_params()"
@@ -20,10 +21,21 @@ void RunCL::compute_superpx_params(){
 																															<<",	cluster_dim="			<<p.cluster_dim
 																															<<",	cols_of_clusters="		<<p.cols_of_clusters
 																															<<",	num_clusters="			<<p.num_clusters
-																															<<",	cluster_layer_offset="	<<p.cluster_layer_offset
 																															<<flush;
 																													}
 	}
+	uint layer=1;
+	superpix_vol_bytes									= sizeof(float) * lowest_multiple( ( superpx_params[layer].num_clusters *	costVolLayers * 10 * sizeof(cl_float2) ) , local_work_size );
+
+																													if( verbosity>local_verbosity_threshold ){
+																														Superpixel_params p = superpx_params[layer];
+																														cout<<"\n RunCL::compute_superpx_params()"
+																															<<",	layer="					<<layer
+																															<<",	num_clusters="			<<p.num_clusters
+																															<<",	superpix_vol_bytes="	<<superpix_vol_bytes
+																															<<",	local_work_size="		<<local_work_size
+																															<<flush;
+																													}
 }
 
 

@@ -54,7 +54,8 @@
 
 
 	// Mapping parameters - DTAM ////////////////////////////////////////////////////////////////////////////////////////////////////
-	"layers":					64,				//7;//32;//64;//128;//256//255;		 // Layers of CostVol. Coarse to fine warping may allow few layers to be selected. Need to store the range.
+	// must use kernels__macros.h #define  NUM_DEPTH_STEPS  to set number of layer in the cost vol.
+	 "layers":					16,				//7;//32;//64;//128;//256//255;		 // Layers of CostVol. Coarse to fine warping may allow few layers to be selected. Need to store the range.
 												// Also keep layers for for depths across edge boundaries.
 	"invert_GT_depth":			true,			// 'true' if ground truth depth needs to be inverted.
 	"max_depth_infinity":		true,

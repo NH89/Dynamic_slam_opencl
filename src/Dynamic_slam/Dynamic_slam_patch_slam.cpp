@@ -17,7 +17,7 @@ void Dynamic_slam::estimate_depth(){
 	runcl._clEnqueueFillBuffer( runcl.uload_queue, runcl.depth_mem_temp,	&zero_flt, sizeof(float), 0, runcl.mm_size_bytes_C1, fname );
 
 
-	for (int layer=3; layer>=0; layer--){	// NB must start at least 2 layers below apex of image pyramid. Uses img grad fom 2 layers higher.
+	for (int layer=0/*3*/; layer>=0; layer--){	// NB must start at least 2 layers below apex of image pyramid. Uses img grad fom 2 layers higher.
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\nDynamic_slam::estimate_depth()  layer= "<<
 																																			layer << endl <<flush;
