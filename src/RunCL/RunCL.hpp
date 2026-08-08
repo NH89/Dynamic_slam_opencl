@@ -104,7 +104,7 @@ public:
 	// RunCL_patch_tracking.cpp
 	cl_kernel			pad_image_top_bottom2_kernel, vertcal_blur5_kernel, pad_image_left_right2_kernel, horiz_blur5_kernel, reduce_img_kernel;
 	// RunCL_depth.cpp
-	cl_kernel			update_depth_2_kernel, regularize_depth_kernel, enlarge_layer_float_kernel, use_inferred_depthmap_kernel, use_GT_depthmap_kernel;
+	cl_kernel			update_depth_2_kernel, superpixel_depth_kernel, regularize_depth_kernel, enlarge_layer_float_kernel, use_inferred_depthmap_kernel, use_GT_depthmap_kernel;
 	// RunCL_superpixells.cpp
 	cl_kernel			initiate_cluster_centres_kernel, associate_pixels_kernel, check_superpixel_continuity_kernel, update_cluster_centres_pvt_kernel;
 
@@ -291,7 +291,7 @@ public:
 
 	void DownloadAndSave(					cl_mem buffer, std::string count, std::filesystem::path folder, 		size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range=1 );
 	void DownloadAndSave_2Channel(			cl_mem buffer, std::string count, std::filesystem::path folder_tiff, 	size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint offset );
-	void DownloadAndSave_2Channel_volume(	cl_mem buffer, std::string count, std::filesystem::path folder_tiff, 	size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers );
+	void DownloadAndSave_2Channel_volume(	cl_mem buffer, std::string count, std::filesystem::path folder_tiff, 	size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers, uint offset=0 );
 	
 	void DownloadAndSave_3Channel(			cl_mem buffer, std::string count, std::filesystem::path folder_tiff, 	size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range=1, uint offset=0, bool exception_tiff=false ){
 		cv::Mat bufImg;
@@ -416,6 +416,8 @@ public:
 	////////////////////////////////////// RunCL_depth.cpp
 	void update_depth( 					uint out_block_size, uint layer);
 	void update_depth_2( 				uint out_block_size, uint layer);
+	void superpixel_depth(				uint write_layer );
+
 	void regularize_depth(				uint write_layer );
 	void propagate_depth_next_layer(	uint layer);
 	void use_inferred_depthmap(			uint write_layer );
@@ -423,7 +425,8 @@ public:
 
 
 	//////////////////////////////////////
-	uint lowest_multiple(				float param, float constraint);
+	size_t ceil_(		 				float numerator, float denomiator );
+	size_t lowest_multiple(				float param, float constraint);
 	void _cl_flush_finish(				cl_command_queue	_queue,  string fname);
 	int  waitForEventAndRelease(		cl_event *event);
 	void cl_mem_swap_ptr(				cl_mem buf1, cl_mem buf2);

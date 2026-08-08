@@ -46,7 +46,8 @@ void RunCL::initiate_cluster_centres(uint layer){
 																													if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initiate_cluster_centres( ..)_chk0 #############################################################"<<flush;
 																													}
 	const int	cluster_dim					= superpx_params[layer].cluster_dim;
-	size_t		threads_to_launch			= lowest_multiple( MipMap[layer*8 + ROWS], cluster_dim ) * lowest_multiple( MipMap[layer*8 + COLS], cluster_dim );
+
+	size_t		threads_to_launch			= ceil_( MipMap[layer*8 + ROWS], cluster_dim ) * ceil_( MipMap[layer*8 + COLS], cluster_dim );//lowest_multiple( MipMap[layer*8 + ROWS], cluster_dim ) * lowest_multiple( MipMap[layer*8 + COLS], cluster_dim );
 	threads_to_launch						= lowest_multiple( threads_to_launch, local_work_size );
 																													if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initiate_cluster_centres( ..)_chk1 "<<flush;
 																														cout<<"\nthreads_to_launch="				<<threads_to_launch\
@@ -120,7 +121,7 @@ void RunCL::associate_pixels(uint layer){
 	_clSetKernelArg( kernel,  8, sizeof( cl_mem),	&cluster_centers_mem,						fname);				//	__global	uint4*	cluster_centers,		//8		(img size / cluster_dim^2) * sizeof(uint4)
 
 	//Output
-	_clSetKernelArg( kernel,  9, sizeof( cl_mem),	&cluster_map_mem,							fname);				//	__global	float4*	cluster_map				//9		img_size * sizeof(float4)   densely packed for one layer.  Need a layer offset.
+	_clSetKernelArg( kernel,  9, sizeof( cl_mem),	&cluster_map_mem,							fname);				//	__global	float*	cluster_map				//9		img_size * sizeof(float)   densely packed for one layer.  Need a layer offset.
 
 	_clEnqueueNDRangeKernel(m_queue, kernel, 1, 0, &threads_to_launch, &local_work_size, fname);
 																													if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::associate_pixels( )_chk2 ."<<flush;	// Save buffers to file ###########
@@ -137,6 +138,53 @@ void RunCL::associate_pixels(uint layer){
 																														tiff 			= old_tiff;
 																													}
 }
+
+
+void RunCL::superpixel_depth(uint layer ){
+	string		fname						= "RunCL::superpixel_depth(..)";
+	int			local_verbosity_threshold	= V_RUNCL_SUPERPIXEL_DEPTH;												if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::superpixel_depth(..)_chk0"<<
+																																",   layer = "<<layer<<flush; }
+	cl_kernel	kernel						= superpixel_depth_kernel;
+
+	const uint	num_clusters				= superpx_params[layer].num_clusters;
+	const uint	vol_size					= num_clusters * NUM_DEPTH_STEPS;
+	const uint 	cluster_cols				= superpx_params[layer].cols_of_clusters;
+
+	size_t		local_work_size_			= block_size;									// Could be changed to an integer multiple, i.e. use "RunCL::local_work_size", beware numbers not multiples of out_block_size.
+	size_t		threads_to_launch			= num_clusters;
+	threads_to_launch						= lowest_multiple( threads_to_launch, local_work_size );
+
+	// private
+	_clSetKernelArg( kernel, 0, sizeof(uint), 						&num_clusters,											fname);		// __private	uint num_clusters	//0
+	_clSetKernelArg( kernel, 1, sizeof(uint), 						&vol_size,												fname);		// __private	uint vol_size,		//1
+	_clSetKernelArg( kernel, 2, sizeof(uint), 						&cluster_cols,											fname);		// __private	uint cluster_cols
+	// global
+	_clSetKernelArg( kernel, 3, sizeof(cl_mem), 					&cluster_costvol_mem,									fname);		// __global	float* cluster_costvol	//2
+
+	_clEnqueueNDRangeKernel(										// NB depth iteration is internal to the kernel within the layer.  Regularization and propagation to next layer requires further kernels.
+		m_queue,				//cl_command_queue _queue,
+		kernel,					//cl_kernel        kernel,
+		1,						//cl_uint          work_dim,
+		0,						//const size_t *   global_work_offset,
+		&threads_to_launch,		//const size_t *   global_work_size,
+		&local_work_size_,		//const size_t *   local_work_size,
+		fname					//string           fname
+	);
+																													if( verbosity>local_verbosity_threshold) {
+																																	cout<<"\n\nRunCL::superpixel_depth() chk_1   "<<flush;
+																																	bool show = false;
+																																	stringstream ss;
+																																	ss << "superpixel_depth" ;
+		uint 		offset				=	9 * (superpix_vol_bytes/10);
+		cv::Size	superpix_img_size	=	cv::Size( superpx_params[layer].cols_of_clusters , superpx_params[layer].rows_of_clusters ) ;
+		DownloadAndSave_2Channel_volume( cluster_costvol_mem,	ss.str( ), paths.at( "cluster_costvol_mem"), superpx_params[layer].num_clusters*2*sizeof(float),  superpix_img_size,	CV_32FC2, show, 0,	costVolLayers, offset);
+																													}
+}
+
+
+
+
+
 
 /*
 void RunCL::check_superpixel_continuity(){ // May not be desired. Discontinuous superpixels represent partially occluded background, or other repeated areas.

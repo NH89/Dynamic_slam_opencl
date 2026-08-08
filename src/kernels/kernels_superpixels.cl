@@ -318,10 +318,129 @@ __kernel void update_cluster_centres_pvt(
 }
 */
 
-__kernel void superpixel_depth_est(
+__kernel void superpixel_depth_1st_est(  // run on super_pix costvol
+	//Inputs
+	__private	uint num_clusters,
+	__private	uint vol_size,
+	__private	uint cluster_cols,
+	//Input-output
+	__global	float2* cluster_costvol
+	//
+){
+	uint 	global_id_u							=	get_global_id(0);
+	if(global_id_u>num_clusters) return;
+
+	uint u = fmod( (float)global_id_u, cluster_cols);
+	uint v = global_id_u/cluster_cols;
+
+	int shift[9];
+	shift[8] =  -1	- cluster_cols;
+	shift[7] =  	- cluster_cols;
+	shift[6] =  +1	- cluster_cols;
+	shift[5] =  -1;
+	shift[4] =  0;
+	shift[3] =  +1;
+	shift[2] =  -1	 + cluster_cols;
+	shift[1] =  	 + cluster_cols;
+	shift[0] =  +1	 + cluster_cols;
+
+	// consolidate to a single superpixel cost vol
+	for (int inv_depth_layer = 0;  inv_depth_layer<NUM_DEPTH_STEPS;  inv_depth_layer++ ){
+		for( uint rel_cluster_idx=0; rel_cluster_idx<9; rel_cluster_idx++){								// wrong indexing. Need to read where this super pix has been written. NB relative indexing.
+
+				cluster_costvol[ global_id_u + inv_depth_layer*num_clusters + 9 *vol_size  ]	+= cluster_costvol[ global_id_u + shift[rel_cluster_idx]	+ inv_depth_layer*num_clusters 		+ rel_cluster_idx * vol_size    ];
+		}
+	}
+
+	for (int inv_depth_layer = 0;  inv_depth_layer<NUM_DEPTH_STEPS;  inv_depth_layer++ ){
+		float y = cluster_costvol[ global_id_u + inv_depth_layer*num_clusters + 9 *vol_size  ].y;
+		if (y<1.0f) y=1.0f;
+		float x = cluster_costvol[ global_id_u + inv_depth_layer*num_clusters + 9 *vol_size  ].x	/ y;
+		float2 superpix_rho	= {x, y};
+
+		cluster_costvol[ global_id_u + inv_depth_layer*num_clusters + 9 *vol_size  ]	=	superpix_rho;
+	}
+
+/*
+																							uint	sp_cv_idx									= (u/cluster_dim) + (v_start/cluster_dim)*cluster_cols  ;  // => global_id_u
+																							const uint vol_size									= num_clusters *   NUM_DEPTH_STEPS ;
+			for (uint block_row=0; block_row<block_size ; block_row += cluster_dim	){																														// step through rows in column
+																							//uint 	idx											=	9*block_row;
+																							uint	spcv_layer_idx								= 	global_id_u / *+ (block_row/cluster_dim)*cluster_cols* / 	+	inv_depth_layer*num_clusters;
+				for( uint rel_cluster_idx=0; rel_cluster_idx<9; rel_cluster_idx++ ){
+																							float2  test_f2										//= pvt_superpx[ idx + rel_cluster_idx ];
+					if( fmod((float)lid, cluster_dim)==0) {																																					// selects 2nd column, sends data
+																				superpix_costvol[  spcv_layer_idx + rel_cluster_idx*vol_size  ]	= test_f2;													// pvt_superpx[	idx + rel_cluster_idx ];	//
+*/
+
+
+	// find initial depth estimate
+
+
+
+
+
+	// refine deth estimate
+
+
+
+
+	// write superpix depth map
+
+
+}
+
+
+__kernel void superpixel_orientation_1st_est(	// run on full costvol
+
 
 
 ){
+
+	// for each super pixel compute orientation from neighbours, weighted by colour difference
+
+
+
+}
+
+
+// depth & orientation iterators ///////////////////////////////////////////////////////////
+
+__kernel void superpixel_depth_orientation_step1(  // run on full image,
+
+
+){
+
+	// for each pixel compute depth based on superpixel depth & orientation // and save to image map.
+
+
+
+
+
+
+	// from cost vol, compute grad wrt (i) depth, (ii) orientation  // NB could resample image. Either way need to interpolate.
+
+
+
+	// sum-reduce for patch, to each adj superpixel
+
+
+
+
+}
+
+
+__kernel void superpixel_depth_orientation_step2(  // run on superpixels
+
+
+){
+
+	// consolidate depth & orientation grad for each super pixel
+
+
+
+
+	// LM up date depth & orientation of super pixel
 
 
 
@@ -330,13 +449,3 @@ __kernel void superpixel_depth_est(
 }
 
 
-__kernel void superpixel_depth_est_sum_reduce(
-
-
-){
-
-
-
-
-
-}

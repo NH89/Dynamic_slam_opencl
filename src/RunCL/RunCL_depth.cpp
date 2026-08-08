@@ -156,6 +156,11 @@ void RunCL::update_depth_2( uint out_block_size, uint layer){
 }
 
 
+
+
+
+
+
 void RunCL::regularize_depth(uint write_layer ){
 	string		fname						= "RunCL::regularize_depth(..)";
 	int			local_verbosity_threshold	= V_RUNCL_REGULARIZE_DEPTH;												if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::regularize_depth(..)_chk0"<<

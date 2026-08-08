@@ -221,12 +221,19 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 		for (int inv_depth_layer = 0;  inv_depth_layer<NUM_DEPTH_STEPS;  inv_depth_layer++ ){																			// step through depth layers
 			float2	pvt_superpx[9* block_size]			= {zero_f2};		//*NUM_DEPTH_STEPS
 			uint	local_idx							= 9*lid;
+			read_index									= read_index_start;
 			for( uint rel_cluster_idx=0; rel_cluster_idx<9; rel_cluster_idx++){ 	 local_superpx[ local_idx/**9*/ + rel_cluster_idx ]	= zero_f2; }
 			barrier(CLK_LOCAL_MEM_FENCE );
 
 			for (uint block_row=0; block_row<block_size ; block_row++,  read_index +=mm_cols ){
 																							uint rel_cluster_idx								= cluster_map[ read_index ];								//	read_index+=mm_cols; for each row.
 																							pvt_superpx[		block_row*9 + rel_cluster_idx ]	= rho_pvt_arr[ block_row*NUM_DEPTH_STEPS + inv_depth_layer];		//
+
+					if( global_id_uint==0){
+						printf("\nrel_cluster_idx=%u,	block_row=%u,	read_index=%u,	inv_depth_layer=%u",\
+									rel_cluster_idx,	block_row,		read_index,		inv_depth_layer
+						);
+					}
 			}
 
 
@@ -266,12 +273,13 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 // 																									group_id,	lid,	u,v_start,		spcv_layer_idx,			sp_cv_idx,			block_row,		cluster_dim,		cluster_cols,		inv_depth_layer,		num_clusters );
 */
 				for( uint rel_cluster_idx=0; rel_cluster_idx<9; rel_cluster_idx++ ){
-//																							float2  test_f2										= {group_id, inv_depth_layer /*global_id_uint*/};			//{  (u/cluster_dim) , (v/cluster_dim) };
-
-																							float	x											= pvt_superpx[ idx + rel_cluster_idx ].x;
-																							float	y											= pvt_superpx[ idx + rel_cluster_idx ].y;
-																							if( x>0.0f ){	y 									= y/x; }
-																							float2  test_f2										= { x, y  };//	{inv_depth_layer,   rel_cluster_idx};						//
+/*
+//																							float2  test_f2										= {group_id, inv_depth_layer / * global_id_uint * /};			//{  (u/cluster_dim) , (v/cluster_dim) };
+// 																							float	x											= pvt_superpx[ idx + rel_cluster_idx ].x;
+// 																							float	y											= pvt_superpx[ idx + rel_cluster_idx ].y;
+// 																							if( x>0.0f ){	y 									= y/x; }
+*/
+																							float2  test_f2										= pvt_superpx[ idx + rel_cluster_idx ];//{ x, y  };//	{inv_depth_layer,   rel_cluster_idx};						//
 					if( fmod((float)lid, cluster_dim)==0) {																																					// selects 2nd column, sends data
 																				superpix_costvol[  spcv_layer_idx + rel_cluster_idx*vol_size  ]	= test_f2;													// pvt_superpx[	idx + rel_cluster_idx ];	//
 					}
@@ -299,10 +307,6 @@ __kernel void update_depth_2(							// To be launched with 1 thread per col for 
 //
 // 			rel_cluster_idx * num_clusters *   NUM_DEPTH_STEPS
 */
-
-
-
-
 
 
 		/// old direct depth on img pyramid //////////////////////////////////////////

@@ -734,16 +734,15 @@ void RunCL::DownloadAndSave_2Channel(cl_mem buffer, std::string count, std::file
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_2Channel_volume()_finished\n"<<flush;
 }
 
-void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers ){
+void RunCL::DownloadAndSave_2Channel_volume(cl_mem buffer, std::string count, std::filesystem::path folder_tiff, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show, float max_range, uint vol_layers, uint offset ){
 	int local_verbosity_threshold = V_RUNCL_DOWNLOADANDSAVE_2CHANNEL_VOLUME;
 																																			if(verbosity>local_verbosity_threshold) cout<<"\nDownloadAndSave_2Channel_volume() vol_layers="<<vol_layers\
 																																				<<", max_range="<<max_range<<", folder = ["<<folder_tiff.filename().string()<<"],   tiff="<<tiff<<flush;
 	if (type_mat != CV_32FC2){cout <<"Error (type_mat != CV_32FC2)"<<flush; return;}
 
+	for (uint layer=0; layer<vol_layers; layer++, offset += image_size_bytes  ) {
 
-	for (uint layer=0; layer<vol_layers; layer++  ) {
-
-		uint 	offset 		= layer * image_size_bytes; // 0;	//
+		//offset 				+= image_size_bytes; // 0;	//
 		cv::Mat temp_mat 	= cv::Mat::zeros (size_mat, type_mat);																			// (int rows, int cols, int type)
 
 		ReadOutput(temp_mat.data, buffer,  image_size_bytes, offset); 																		// NB contains elements of type_mat, (CV_32FC1 for most buffers)

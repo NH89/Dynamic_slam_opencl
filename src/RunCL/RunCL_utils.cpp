@@ -1,8 +1,16 @@
 #include "RunCL.hpp"
 
-uint RunCL::lowest_multiple(float param, float constraint){
+size_t RunCL::ceil_( float numerator, float denomiator ){
 
-	uint result = ceil(param/constraint) * constraint;
+	size_t result = ceil( numerator / denomiator );
+
+	return result;
+}
+
+
+size_t RunCL::lowest_multiple(float param, float constraint){
+
+	size_t result = ceil(param/constraint) * constraint;
 
 	return	result;
 }
