@@ -194,8 +194,6 @@ void Dynamic_slam::estimate_tracking(){
 																																			<<"  ##############################################################"<< flush;
 																																		}
 	uint			out_block_size		= 2;
-
-
 	Matx44f			old_pose			= Matx44f::eye();
 	Matx44f			old_k2k				= Matx44f::eye();
 	RunCL::frame	*frame1				= &runcl.current_frames[ runcl.current_frames_idx[1] ];

@@ -320,15 +320,19 @@ __kernel void update_cluster_centres_pvt(
 
 __kernel void superpixel_depth_1st_est(  // run on super_pix costvol
 	//Inputs
-	__private	uint num_clusters,
-	__private	uint vol_size,
-	__private	uint cluster_cols,
+	__private	uint	num_clusters,
+	__private	uint	vol_size,
+	__private	uint	cluster_cols,
+	__private	float	inv_depth_step,
 	//Input-output
-	__global	float2* cluster_costvol
+	__global	float2*	cluster_costvol,
+	//output
+	__global	float2*	superpixel_depth
 	//
 ){
 	uint 	global_id_u							=	get_global_id(0);
 	if(global_id_u>num_clusters) return;
+	uint 	lid 								=	get_local_id(0);
 
 	uint u = fmod( (float)global_id_u, cluster_cols);
 	uint v = global_id_u/cluster_cols;
@@ -351,43 +355,62 @@ __kernel void superpixel_depth_1st_est(  // run on super_pix costvol
 				cluster_costvol[ global_id_u + inv_depth_layer*num_clusters + 9 *vol_size  ]	+= cluster_costvol[ global_id_u + shift[rel_cluster_idx]	+ inv_depth_layer*num_clusters 		+ rel_cluster_idx * vol_size    ];
 		}
 	}
+	// find initial depth estimate
+	float min_rho			= FLT_MAX;
+	uint min_rho_idx		= NUM_DEPTH_STEPS;
+
+																							float	inv_depth								= 0.0f;
+																							float	min_rho_sq								= FLT_MAX;
+																							int		opt_depth_layer[3]						= {-1};
+																							float	depth_layer_rho_sq[ NUM_DEPTH_STEPS]	= {FLT_MAX};
+
+																							float	d2ydx2									= 0.0f;
+																							float	confidence								= 0.0f;
+																							float	pixels_sampled							= 0.0f;
+																							float	brightness								= 0.0f;
 
 	for (int inv_depth_layer = 0;  inv_depth_layer<NUM_DEPTH_STEPS;  inv_depth_layer++ ){
-		float y = cluster_costvol[ global_id_u + inv_depth_layer*num_clusters + 9 *vol_size  ].y;
-		if (y<1.0f) y=1.0f;
-		float x = cluster_costvol[ global_id_u + inv_depth_layer*num_clusters + 9 *vol_size  ].x	/ y;
-		float2 superpix_rho	= {x, y};
-
+		float	x				= cluster_costvol[ global_id_u + inv_depth_layer*num_clusters + 9 *vol_size  ].x;					// pixels in this superpixel
+		float	y				= cluster_costvol[ global_id_u + inv_depth_layer*num_clusters + 9 *vol_size  ].y	/ x+1;
+		float2	superpix_rho	= {x, y};
 		cluster_costvol[ global_id_u + inv_depth_layer*num_clusters + 9 *vol_size  ]	=	superpix_rho;
+		if( x>1.0f && y<min_rho_sq){
+																							min_rho_sq 								= y;
+																							opt_depth_layer[1]						= inv_depth_layer;
+		}
 	}
 
-/*
-																							uint	sp_cv_idx									= (u/cluster_dim) + (v_start/cluster_dim)*cluster_cols  ;  // => global_id_u
-																							const uint vol_size									= num_clusters *   NUM_DEPTH_STEPS ;
-			for (uint block_row=0; block_row<block_size ; block_row += cluster_dim	){																														// step through rows in column
-																							//uint 	idx											=	9*block_row;
-																							uint	spcv_layer_idx								= 	global_id_u / *+ (block_row/cluster_dim)*cluster_cols* / 	+	inv_depth_layer*num_clusters;
-				for( uint rel_cluster_idx=0; rel_cluster_idx<9; rel_cluster_idx++ ){
-																							float2  test_f2										//= pvt_superpx[ idx + rel_cluster_idx ];
-					if( fmod((float)lid, cluster_dim)==0) {																																					// selects 2nd column, sends data
-																				superpix_costvol[  spcv_layer_idx + rel_cluster_idx*vol_size  ]	= test_f2;													// pvt_superpx[	idx + rel_cluster_idx ];	//
-*/
+	if (opt_depth_layer[1] == 0) {
+																							opt_depth_layer[0]	= 0;
+																							opt_depth_layer[1]	= 1;
+																							opt_depth_layer[2]	= 2;
+	}else if (opt_depth_layer[1] == NUM_DEPTH_STEPS -1 ){
+																							opt_depth_layer[0]	= NUM_DEPTH_STEPS -3;
+																							opt_depth_layer[1]	= NUM_DEPTH_STEPS -2;
+																							opt_depth_layer[2]	= NUM_DEPTH_STEPS -1;
+	} else {
+																							opt_depth_layer[0]	= opt_depth_layer[1] -1;
+																							opt_depth_layer[2]	= opt_depth_layer[1] +1;
+	}
+	// Compute optimum depth for this patch
+	float prediction=FLT_MAX, optimum=FLT_MAX;
+	compute_minimum(	depth_layer_rho_sq[ opt_depth_layer[0] ],
+						depth_layer_rho_sq[ opt_depth_layer[1] ],
+						depth_layer_rho_sq[ opt_depth_layer[2] ],
+						opt_depth_layer[0]*inv_depth_step,
+						opt_depth_layer[1]*inv_depth_step,
+						opt_depth_layer[2]*inv_depth_step,
+						&prediction,
+						&optimum,
+						&d2ydx2,
+						global_id_u,
+						0 );
 
+	float2 result					= { optimum, prediction };//{ global_id_u, lid};//
+	superpixel_depth[ global_id_u ]	= result;
 
-	// find initial depth estimate
-
-
-
-
-
-	// refine deth estimate
-
-
-
-
-	// write superpix depth map
-
-
+	if(lid==0)printf("\n__kernel void superpixel_depth_1st_est(), global_id_u=%u	optimum=%f	prediction=%f ", \
+		global_id_u, optimum, prediction );
 }
 
 

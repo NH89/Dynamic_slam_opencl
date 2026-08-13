@@ -58,9 +58,9 @@
 	 "layers":					16,				//7;//32;//64;//128;//256//255;		 // Layers of CostVol. Coarse to fine warping may allow few layers to be selected. Need to store the range.
 												// Also keep layers for for depths across edge boundaries.
 	"invert_GT_depth":			true,			// 'true' if ground truth depth needs to be inverted.
-	"max_depth_infinity":		true,
+	"max_depth_infinity":		false,
 	"max_depth":				450.0,			// only if max_depth_infinity==false	// NB units depend on the scene.  // See values in DTAM_mapping/input/*.json file for each dataset.
-	"min_depth":				 70.0,			//70.0;//3289.0;
+	"min_depth":				100.0,			//70.0;//3289.0;
 
 	"depthmap_margin":			1,				// margin around depth map layers, (in densely packed buffer), to allow efficient kernels.
 

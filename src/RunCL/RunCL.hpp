@@ -125,7 +125,8 @@ public:
 	cl_mem				SE3_k2kbuf=nullptr;
 	cl_mem				old_results_buf=nullptr,				K_buf=nullptr, 										inv_K_buf=nullptr;
 
-	cl_mem				cluster_centers_mem=nullptr,			cluster_map_mem=nullptr,							costvol_mem,										cluster_costvol_mem;
+	cl_mem				cluster_centers_mem=nullptr,			cluster_map_mem=nullptr,							costvol_mem=nullptr,								cluster_costvol_mem=nullptr;
+	cl_mem				cluster_depth_mem=nullptr,				cluster_orientation_mem=nullptr,					cluster_curvature_mem=nullptr;
 
 	cl_mem				basemem=nullptr, 						imgmem_blurred=nullptr;
 	cl_mem 				imgmem[num_current_frames]={nullptr},	depth_mem[num_current_frames]={nullptr}, 			velmap[num_current_frames]={nullptr},				SE3_grad_map_mem[num_current_frames]={nullptr};
@@ -177,7 +178,7 @@ public:
 
 	size_t  			global_work_size, mm_global_work_size, local_work_size, image_size_bytes, image_size_bytes_C1, mm_size_bytes_C1;
 	size_t				kernel_work_size_multiple, device_work_size_multiple;
-	size_t 				mm_size_bytes_C3, mm_size_bytes_C4, mm_size_bytes_C8, mm_size_bytes_half4, mm_vol_size_bytes, superpix_vol_bytes;
+	size_t 				mm_size_bytes_C3, mm_size_bytes_C4, mm_size_bytes_C8, mm_size_bytes_half4, mm_vol_size_bytes, superpix_vol_bytes, superpix_img_bytes;
 	size_t 				so3_sum_size, so3_sum_size_bytes, mm_se3_sum_size, se3_sum_size_bytes, se3_sum2_size_bytes, pix_sum_size, pix_sum_size_bytes;
 	uint				se3_sum_size;
 
@@ -195,9 +196,9 @@ public:
 	uint				patch_depthmap_offset[	max_mipmap_layers ]		= {0};//													//  ### ? unused ?
 	uint 				depth_save_offset[		max_mipmap_layers ]		= {0};//													//  ### ? unused ?
 
-	uint				MipMap[					max_mipmap_layers	*8]	= {0};
-	uint				uint_params[			8]						= {0};
-	float				fp32_params[			16]						= {0};
+	uint				MipMap[					max_mipmap_layers	*8]	= {0};// ### TODO should make the constant parameter buffers __global constants at the top of the device code.
+	uint				uint_params[			8]						= {0};// This will avoid needing to set them as kernel args.
+	float				fp32_params[			16]						= {0};// NB this can only be done IFF they are set only once at the begining of the program.
 	
 	uint	 			mm_num_reductions;				//	
 	uint				mm_num_blur_layers;				//

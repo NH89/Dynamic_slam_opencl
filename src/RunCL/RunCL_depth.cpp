@@ -1,7 +1,7 @@
 #include "RunCL.hpp"
 
 void RunCL::update_depth_2( uint out_block_size, uint layer){
-	string		fname 						= "RunCL::update_depth(..)";
+	string		fname 						= "RunCL::update_depth_2(..)";
 	int 		local_verbosity_threshold 	= V_RUNCL_UPDATE_DEPTH;																if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::update_depth_2(..)_chk0"<<flush;}
 	cl_kernel	kernel						= update_depth_2_kernel;
 
@@ -26,7 +26,8 @@ void RunCL::update_depth_2( uint out_block_size, uint layer){
 	uint		dm_data_rows				= depthmap_params[layer].DM_DATA_ROWS;
 	uint		dm_data_stop				= write_offset + dm_win_cols * dm_data_rows;
 
-	float		inv_depth_step				= fp32_params[MAX_INV_DEPTH] / ((float)uint_params[COSTVOL_LAYERS]  );	cout<<"\ninv_depth_step="<<inv_depth_step<<" =  fp32_params[MAX_INV_DEPTH] "<<fp32_params[MAX_INV_DEPTH]<<" / ((float)uint_params[COSTVOL_LAYERS] "<<uint_params[COSTVOL_LAYERS]<<flush;  // NUM_DEPTH_STEPS
+	float		inv_depth_step				= fp32_params[INV_DEPTH_STEP];//fp32_params[MAX_INV_DEPTH] / ((float)uint_params[COSTVOL_LAYERS]  );	cout<<"\ninv_depth_step="<<inv_depth_step<<" =  fp32_params[MAX_INV_DEPTH] "<<fp32_params[MAX_INV_DEPTH]<<" / ((float)uint_params[COSTVOL_LAYERS] "<<uint_params[COSTVOL_LAYERS]<<flush;  // NUM_DEPTH_STEPS
+
 	//uint		cluster_reductions			= 4;	// superpx_params[layer].cluster_dim;
 
 	uint		layer_offset				= MipMap[layer*8 + MiM_READ_OFFSET];

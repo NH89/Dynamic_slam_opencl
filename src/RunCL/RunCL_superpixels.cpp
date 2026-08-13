@@ -24,16 +24,20 @@ void RunCL::compute_superpx_params(){
 																															<<flush;
 																													}
 	}
-	uint layer=1;
-	superpix_vol_bytes									= sizeof(float) * lowest_multiple( ( superpx_params[layer].num_clusters *	costVolLayers * 10 * sizeof(cl_float2) ) , local_work_size );
+	uint layer=0;
+	superpix_img_bytes									= sizeof(cl_float2)	* superpx_params[layer].num_clusters;						//lowest_multiple(   superpx_params[layer].num_clusters 						, local_work_size );
+	superpix_vol_bytes									= sizeof(cl_float2) * superpx_params[layer].num_clusters * costVolLayers * 10;	//lowest_multiple( ( superpx_params[layer].num_clusters * costVolLayers * 10 )	, local_work_size ); //* sizeof(float) *
 
 																													if( verbosity>local_verbosity_threshold ){
 																														Superpixel_params p = superpx_params[layer];
 																														cout<<"\n RunCL::compute_superpx_params()"
 																															<<",	layer="					<<layer
 																															<<",	num_clusters="			<<p.num_clusters
-																															<<",	superpix_vol_bytes="	<<superpix_vol_bytes
 																															<<",	local_work_size="		<<local_work_size
+																															<<",	sizeof(cl_float2)="		<<sizeof(cl_float2)
+																														//	<<",	lowest_multiple(   superpx_params[layer].num_clusters, local_work_size )="	<<lowest_multiple(   superpx_params[layer].num_clusters, local_work_size )
+																															<<",	superpix_img_bytes="	<<superpix_img_bytes
+																															<<",	superpix_vol_bytes="	<<superpix_vol_bytes
 																															<<flush;
 																													}
 }
@@ -150,6 +154,8 @@ void RunCL::superpixel_depth(uint layer ){
 	const uint	vol_size					= num_clusters * NUM_DEPTH_STEPS;
 	const uint 	cluster_cols				= superpx_params[layer].cols_of_clusters;
 
+	float		inv_depth_step				= fp32_params[INV_DEPTH_STEP];//fp32_params[MAX_INV_DEPTH] / ((float)uint_params[COSTVOL_LAYERS]  );	cout<<"\ninv_depth_step="<<inv_depth_step<<" =  fp32_params[MAX_INV_DEPTH] "<<fp32_params[MAX_INV_DEPTH]<<" / ((float)uint_params[COSTVOL_LAYERS] "<<uint_params[COSTVOL_LAYERS]<<flush;  // NUM_DEPTH_STEPS
+
 	size_t		local_work_size_			= block_size;									// Could be changed to an integer multiple, i.e. use "RunCL::local_work_size", beware numbers not multiples of out_block_size.
 	size_t		threads_to_launch			= num_clusters;
 	threads_to_launch						= lowest_multiple( threads_to_launch, local_work_size );
@@ -158,8 +164,11 @@ void RunCL::superpixel_depth(uint layer ){
 	_clSetKernelArg( kernel, 0, sizeof(uint), 						&num_clusters,											fname);		// __private	uint num_clusters	//0
 	_clSetKernelArg( kernel, 1, sizeof(uint), 						&vol_size,												fname);		// __private	uint vol_size,		//1
 	_clSetKernelArg( kernel, 2, sizeof(uint), 						&cluster_cols,											fname);		// __private	uint cluster_cols
+	_clSetKernelArg( kernel, 3, sizeof(float), 						&inv_depth_step,										fname);		// __private	uint inv_depth_step
+
 	// global
-	_clSetKernelArg( kernel, 3, sizeof(cl_mem), 					&cluster_costvol_mem,									fname);		// __global	float* cluster_costvol	//2
+	_clSetKernelArg( kernel, 4, sizeof(cl_mem), 					&cluster_costvol_mem,									fname);		// __global	float* cluster_costvol	//2
+	_clSetKernelArg( kernel, 5, sizeof(cl_mem), 					&cluster_depth_mem,										fname);		// __global	float* superpixel_depth	//2
 
 	_clEnqueueNDRangeKernel(										// NB depth iteration is internal to the kernel within the layer.  Regularization and propagation to next layer requires further kernels.
 		m_queue,				//cl_command_queue _queue,
@@ -176,14 +185,17 @@ void RunCL::superpixel_depth(uint layer ){
 																																	stringstream ss;
 																																	ss << "superpixel_depth" ;
 		uint 		offset				=	9 * (superpix_vol_bytes/10);
-		cv::Size	superpix_img_size	=	cv::Size( superpx_params[layer].cols_of_clusters , superpx_params[layer].rows_of_clusters ) ;
-		DownloadAndSave_2Channel_volume( cluster_costvol_mem,	ss.str( ), paths.at( "cluster_costvol_mem"), superpx_params[layer].num_clusters*2*sizeof(float),  superpix_img_size,	CV_32FC2, show, 0,	costVolLayers, offset);
+		float		max_range			=	1.0f;
+		cv::Size	superpix_img_size	=	cv::Size( superpx_params[layer].cols_of_clusters , superpx_params[layer].rows_of_clusters );
+
+																													cout<<"\nRunCL::superpixel_depth() chk_2,  superpix_img_bytes="<<superpix_img_bytes<<",  superpix_img_size="<<superpix_img_size<<flush;
+
+//		DownloadAndSave_2Channel_volume( cluster_costvol_mem,	ss.str( ), paths.at( "cluster_costvol_mem"), superpix_vol_bytes,  superpix_img_size,	CV_32FC2, show, max_range,	costVolLayers, offset);		// superpx_params[layer].num_clusters*2*sizeof(float)
+		DownloadAndSave_2Channel(			cluster_depth_mem,	ss.str( ), paths.at( "cluster_depth_mem"),   superpix_img_bytes,  superpix_img_size,	CV_32FC2, show, max_range,	0 );
+
+// void RunCL::DownloadAndSave_2Channel(cl_mem buffer, 	std::string count, 	std::filesystem::path folder_tiff, 	size_t image_size_bytes, 	cv::Size size_mat, 	int type_mat, bool show, float max_range, uint offset )
 																													}
 }
-
-
-
-
 
 
 /*

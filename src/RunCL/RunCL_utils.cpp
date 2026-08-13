@@ -45,6 +45,7 @@ void RunCL::_clEnqueueNDRangeKernel(	// TODO will become obsolete when all kerne
 																		if(verbosity>local_verbosity_threshold) cout <<"\nRunCL::_clEnqueueNDRangeKernel  chk 2 "<<fname<<flush;
 	_cl_flush_finish(_queue,  fname);
 
+	//waitForEventAndRelease( &ev );
 																		if(verbosity>local_verbosity_threshold) cout <<"\nRunCL::_clEnqueueNDRangeKernel  finished "<<fname<<flush;
 }
 
