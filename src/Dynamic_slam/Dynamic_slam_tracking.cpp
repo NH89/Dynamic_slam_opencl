@@ -253,7 +253,7 @@ void Dynamic_slam::estimate_tracking(){
 																																			PRINT_MATX16F( PToLie(this_frame->pose_to_0), "initial estimate" );
 																																		}
 		for (uint iter = 0; iter<SE_iter; iter++){
-			auto step_0 = high_resolution_clock::now();
+			auto step_0 				=	high_resolution_clock::now();
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\nDynamic_slam::estimate_tracking() chk_3: frame_idx="<<frame_idx<<",  layer="<<layer
 																																			<<", out_block_size="<<out_block_size<<",  iter="<<iter
@@ -274,7 +274,7 @@ void Dynamic_slam::estimate_tracking(){
 
 																																			old_sum_rho_sq_l0	=	runcl.se3_rho_result.Rho.y;		cout << "\nold_sum_rho_sq_l0	= "<< old_sum_rho_sq_l0 <<flush;
 																																		}
-			string fname_ = fname_short + to_string(frame_idx) +"_"+ to_string(this_frame->dataset_frame_num)+"_";
+			string fname_ 				=	fname_short + to_string(frame_idx) +"_"+ to_string(this_frame->dataset_frame_num)+"_";
 			if(old_sum_rho_sq > 1000.0f ){	fname_		= fname_ + "_large_num_";					}
 			else{							fname_		= fname_ + to_string(old_sum_rho_sq);	}
 

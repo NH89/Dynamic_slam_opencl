@@ -183,7 +183,7 @@ int Dynamic_slam::nextFrame() {
 	getFrame();																			auto step_2 = high_resolution_clock::now();			if(verbosity>local_verbosity_threshold){ cout << "\n  Dynamic_slam::nextFrame_chk 3, Pose error after Artif_pose_err:" << flush;
 																																				report_GT_pose_error();
 																																			}
-	estimate_tracking();																auto step_3 = high_resolution_clock::now();
+	estimate_tracking();																auto step_3 = high_resolution_clock::now();			// NB will alter pose, even if starting from GP pose.
 
 	estimate_depth();																	auto step_4 = high_resolution_clock::now();			// own thread ? num iter ?
 
