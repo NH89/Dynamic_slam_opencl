@@ -102,7 +102,11 @@ void Dynamic_slam::initialize_camera_vec(){
 		else if( use_GT_pose		 ==true){				use_GT_pose_vec();		}		// i.e. comp frame2frame pose transform from abs GT pose of each frame.
 
 		uint depth_layer = 0;																													// i.e. layer of depth map used for tracking. Currently has to be 0.
-		if(	initialize_tracking_from_GT_depth == true)	{	runcl.use_GT_depthmap( depth_layer );		cout <<"\n initialize_tracking_from_GT_depth\n"	<<flush;	}
+		if(	initialize_tracking_from_GT_depth == true)	{
+			for( uint depth_layer = 0; depth_layer<SE3_start_layer  ; depth_layer++){
+				runcl.use_GT_depthmap( depth_layer );		cout <<"\n initialize_tracking_from_GT_depth\n"	<<flush;
+			}
+		}
 	}
 
 	inv_initial_K											= generate_invK_( initial_K );
@@ -171,8 +175,12 @@ int Dynamic_slam::nextFrame() {
 		if(		 use_artif_pose_error==true){				set_artif_pose_error();						cout <<"\n use_artif_pose_error\n"	<<flush;	}
 		else if( use_GT_pose		 ==true){				use_GT_pose_vec();							cout <<"\n use_GT_pose\n"			<<flush;	}
 
-		uint depth_layer = 0;																												// i.e. layer of depth map used for tracking. Currently has to be 0.
-		if(	initialize_tracking_from_GT_depth == true)	{	runcl.use_GT_depthmap( depth_layer );		cout <<"\n initialize_tracking_from_GT_depth\n"	<<flush;	}
+		//uint depth_layer = 0;																												// i.e. layer of depth map used for tracking. Currently has to be 0.
+		if(	initialize_tracking_from_GT_depth == true)	{
+			for( uint depth_layer = 0; depth_layer<SE3_start_layer  ; depth_layer++){
+				runcl.use_GT_depthmap( depth_layer );		cout <<"\n initialize_tracking_from_GT_depth\n"	<<flush;
+			}
+		}
 
 		uint frame_idx	= 0;
 		runcl.set_cam_bufs(  frame_data.back().frame_data.K ,  frame_data.back().frame_data.inv_K,  frame_data.back().frame_data.pose2prev_pose,  frame_data.back().frame_data.K2K,  frame_idx );
@@ -189,7 +197,8 @@ int Dynamic_slam::nextFrame() {
 
 	const uint frame_count = runcl.current_frames[ runcl.current_frames_idx[0]].frame_count;
 	if ( ( frame_count<16 && (frame_count % 4)==0 ) || (frame_count % 16)==0 ){ 															// estimate calibration every 4 frames, then every 16 frames.
-	estimate_calibration();	}															auto step_5 = high_resolution_clock::now();
+	estimate_calibration();	}
+																						auto step_5 = high_resolution_clock::now();
 
 																						if(verbosity>local_verbosity_threshold-1) {
 																							getNextFrameProfile(step_0, step_1, step_2, step_3, step_4, step_5 );

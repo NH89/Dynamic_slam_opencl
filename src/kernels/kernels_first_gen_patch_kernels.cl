@@ -41,7 +41,7 @@ __kernel void Rho_sq_to_0(								// To be launched with 1 thread per col for 32
 	uint  lid 											= get_local_id(0);
 	uint  group_id										= get_group_id(0);
 	const uint local_size 								= get_local_size(0);
-
+/*
 	//if (global_id_u < 1 ){printf("\n__kernel void Rho_sq_to_0()  past_frame_num= %u,  invk2k buf = \n(%f,	%f,	%f,	%f),	\n(%f,	%f,	%f,	%f),	\n(%f,	%f,	%f,	%f),	\n(%f,	%f,	%f,	%f),	",\
 	//	lid,\
 	//	inv_k2k[lid][0],	inv_k2k[lid][1],	inv_k2k[lid][2],	inv_k2k[lid][3],\
@@ -49,6 +49,7 @@ __kernel void Rho_sq_to_0(								// To be launched with 1 thread per col for 32
 	//	inv_k2k[lid][8],	inv_k2k[lid][9],	inv_k2k[lid][10],	inv_k2k[lid][11],\
 	//	inv_k2k[lid][12],	inv_k2k[lid][13],	inv_k2k[lid][14],	inv_k2k[lid][15] );
 	//}
+*/
 	const uint8 mipmap_params_							= mipmap_params[layer];
 	uint read_offset_ 									= mipmap_params_[MiM_READ_OFFSET];
 	uint read_cols_ 									= mipmap_params_[MiM_READ_COLS];
@@ -93,11 +94,9 @@ __kernel void Rho_sq_to_0(								// To be launched with 1 thread per col for 32
 	bool   intersection									= false;
 	bool   print_ 										= false;
 	//if(global_id_u==10) print_							= true;
-/*
-// 	if (global_id_u < 1 / *num_past_frames* /){printf("\n__kernel void Rho_sq()  layer = %d,  read_index=%d,  read_index/mm_cols=%f ",
-// 																				layer,		read_index,  	(float)read_index/(float)mm_cols	);	}
-*/
-/*
+
+	if (global_id_u < 1 /*num_past_frames*/){printf("\n__kernel void Rho_sq()  layer = %d,  read_index=%d,  read_index/mm_cols=%f ",
+																				layer,		read_index,  	(float)read_index/(float)mm_cols	);	}
  	if(global_id_u==0){
  		float16 k2k = inv_k2k[0];
  		printf("\n\n__kernel void Rho_sq(..)1 frame_idx=%u, layer=%u, img_cur=%p,  img_past=%p  reduction=%f,  inv_k2k[0]= \n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f,\n %f,	%f,	%f,	%f, ", \
@@ -106,7 +105,7 @@ __kernel void Rho_sq_to_0(								// To be launched with 1 thread per col for 32
 
 		printf("\n__kernel void Rho_sq(..)2 write_index=%u, write_index_2=%u, block_size=%u ", write_index, write_index_2, block_size);
  	}
-*/
+
 	local_rho[lid]										= zero_f2;
 	for (uint param_dim=0; param_dim<num_DoF; param_dim++) {
 		local_param_incr[lid + param_dim*local_size]	= zero_f2;
@@ -125,20 +124,24 @@ __kernel void Rho_sq_to_0(								// To be launched with 1 thread per col for 32
 		uint v 						= index / mm_cols;
 		uint u 						= fmod((float)index, mm_cols);
 		px_k2k( inv_k2k[0],  reduction,  v,  u,  inv_depth.x, &u2_flt_1,  &v2_flt_1, print_ );
-/*
+
 		if(global_id_u==10){ printf("\n__kernel void Rho_sq(..)3 frame_idx=%u, layer=%u, reduction=%f,  v,u=(%u,%u)  inv_depth.x=%f, u2_flt_1,v2_flt_1=(%f,%f),  index=%u = read_index_row(%u) - read_offset_(%u)", \
 																 frame_idx,    layer, 	 reduction,  v,  u,  inv_depth.x, u2_flt_1,   v2_flt_1 ,  index, read_index_row, read_offset_ ); }
-*/
+
 		uint margin					= 4;// * reduction;
 		intersection 				= 	(u>margin)			&& (u<=read_cols_-margin)			&& (v>margin)			&& (v<=read_rows_-margin)			&& \
 										(u2_flt_1>margin)	&& (u2_flt_1<=read_cols_-margin)	&& (v2_flt_1>margin)	&& (v2_flt_1<=read_rows_-margin)	&& \
-										(global_id_u<=layer_pixels)		&&	(inv_depth.x>=min_inv_depth)	&& (inv_depth.x<=max_inv_depth);												// if images overlap
+										(global_id_u<=layer_pixels)		/*&&	(inv_depth.x>=min_inv_depth)	&& (inv_depth.x<=max_inv_depth)*/;												// if images overlap
 		rho_pvt_flt4				= zero_f4;
 		//////////////////////////////////////////////////
 		if (intersection){
 			// Photometric error rho ///////
 			old_px					= bilinear_flt4( img_cur,  u2_flt_1,  v2_flt_1,  mm_cols,  read_offset_ )	;
 			rho_pvt_flt4			= (img_past_pvt[row_in_block] - old_px);
+			//if(layer==0){
+				float4 data			= { u2_flt_1,  v2_flt_1, old_px.y, 1.0f };
+				vel_past[ read_index_row ]		= data;	//old_px;
+			//}
 			rho_pvt_flt4.w			= 1.0f;																																					// rho.w holds pixel count. Not used...
 			// Gradient of pixel value wrt SE3 rotation & translation, taking account of current depth map //////
 			param_incr_pvt_flt2.y											=  1;

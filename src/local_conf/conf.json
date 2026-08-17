@@ -27,13 +27,13 @@
 	"use_conf_camera_matx":		false,
 	"use_GT_camera_matx":		true,							// iff( use_image_dataset==true )
 	// pose
-	"use_GT_pose":				true,							// iff( use_image_dataset==true )
+	"use_GT_pose":				false,							// iff( use_image_dataset==true )
 	"Artif_pose_err_bool":		false,							// iff( use_image_dataset==true )
 	// depth
 	"initialize_tracking_from_GT_depth":		true,			// iff( use_image_dataset==true )
 	// Load images
 	"MipMap_margin":			1,				//4
-	"max_frame_count":			8,				//8,//16,//5,//27,//30,	//4,//30,//4,//140,//30,	// how many frames to run for. NB -1 -> run indefinitely.
+	"max_frame_count":			5,				//8,//16,//5,//27,//30,	//4,//30,//4,//140,//30,	// how many frames to run for. NB -1 -> run indefinitely.
 	//## max_frame_count #########//
 
 	// Camera matrix ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -67,7 +67,7 @@
 	// Tracking parameters //////////////////////////////////////////////////////////////////////////////////////////////////////////
 	"SE3_start_layer":			4,				//4 NB seems to track faster starting at layer 4 on Office dataset.
 	"SE3_stop_layer":			1,
-	"SE_iter":					30,				//15,//3,//30,//12, //25,//10//50//25,			   //1 //10// 1,//
+	"SE_iter":					18,				//15,//3,//30,//12, //25,//10//50//25,			   //1 //10// 1,//
 
 	"SO3_delta_theta":			1.0,			// radians 0.01 = 0.57 degrees
 	"ST3_delta":				1.0,			// NB depends on depth scale, see max & min depth in mapping params.

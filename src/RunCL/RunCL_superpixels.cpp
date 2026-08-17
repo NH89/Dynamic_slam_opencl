@@ -102,7 +102,7 @@ void RunCL::associate_pixels(uint layer){
 	const cl_mem 	imgmem_						= frame_0->img_buf;
 	uint			mm_cols						= uint_params[MM_COLS];
 	uint			lookup_table_offset			= patch_lookup_table_offset[	layer];
-	size_t			threads_to_launch			= patch_num_threads[			layer];
+	size_t			threads_to_launch			= lowest_multiple(patch_num_threads[			layer],  local_work_size  );
 																													if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::associate_pixels( ..)_chk1"<<flush;
 																														cout<<"\nlayer					="	<<	layer\
 																															<<"\nmm_cols				="	<<	mm_cols	\

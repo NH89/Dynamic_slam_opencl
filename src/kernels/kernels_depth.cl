@@ -762,9 +762,14 @@ __kernel void use_GT_depthmap(
 	if( lookup_ref.w != global_id_uint){	printf("\n__kernel void use_inferred_depthmap(..) lookup_ref.w %u != global_id_uint %u", lookup_ref.w, global_id_uint);	// NB return cols tha are outside img_cur, BUT only after initializing local mem.
 											return;
 	}
+
 	uint	u								= lookup_ref.x;														// read_column
 	uint	v								= lookup_ref.y;														// read_row
 	int		write_index 					= write_offset + u + (v * depth_width_out);
+
+	if( global_id_uint == 0){	printf("\n__kernel void use_inferred_depthmap(..),  write_offset=%u,    u,v=(%u,%u),    write_index=%d,     GT_depth[write_index]=%f",\
+																					write_offset, 		u,v, 			write_index,		GT_depth[write_index]		);
+	}
 
 	for (int i=0; i<patch_height; i++){
 		if (write_index >= stop_offset) 	return;

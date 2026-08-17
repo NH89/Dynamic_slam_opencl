@@ -83,7 +83,7 @@ void RunCL::createFolders(){
 										"SE3_grad_map_mem",		"ST3_img_grad_mem", \
 										"SE3_map_mem", \
 										"SE3_weight_map_mem",\
-										"SE3_incr_map_mem",		"SE3_rho_map_mem", \
+										"SE3_incr_map_mem",		"SE3_rho_map_mem",			"velmap",\
 										\
 										"basemem",				"depth_mem_temp",\
 										"depth_GT", \

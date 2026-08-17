@@ -91,6 +91,8 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 	_clEnqueueFillBuffer( uload_queue, SE3_rho_map_mem, 	&zero_flt, sizeof( float), 0, 			  2*mm_size_bytes_C1, 	fname);				//_clEnqueueWriteBuffer( uload_queue, k2kbuf, CL_FALSE, 0, local_num_samples*16*sizeof( float), k2k_3_16_[start_sample_idx], fname);
 	_clEnqueueFillBuffer( uload_queue, SE3_incr_map_mem, 	&zero_flt, sizeof( float), 0, 			  2*mm_size_bytes_C1, 	fname);
 
+	_clEnqueueFillBuffer( uload_queue, current_frames[current_frames_idx[frame_idx]	].r_vel_buf,	&zero_flt, sizeof( float), 0,	4*mm_size_bytes_C1, 	fname);
+																																			cout<<"\nchk_0.1"<<flush;
 	uint				read_rows					= MipMap[layer * 8 + MiM_READ_ROWS] ;
 	uint				read_cols					= MipMap[layer * 8 + MiM_READ_COLS] ;
 	uint				rows_blocks					= ceil( (float)  read_rows / patch_size );
@@ -98,13 +100,16 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 	uint				cols_per_row				= cols_blocks  * patch_size;
 	uint				patches_required			= cols_blocks  * rows_blocks;
 
+																																			cout<<"\nchk_0.2"<<flush;
 	uint				patches_per_compute_uint	= ceil( (float)patches_required / device_max_compute_units );
 	uint				blocks_per_k_wg_size		= rho_sq_params.max_workgroup_size			/ device_work_size_multiple;
 						patches_per_compute_uint	= min( patches_per_compute_uint,  blocks_per_k_wg_size );
 
+																																			cout<<"\nchk_0.3"<<flush;
 	uint				blocks_required				= ceil( (float)patches_required / patches_per_compute_uint );
 	size_t				local_work_size_[1]			= { patches_per_compute_uint	* patch_size };
 	size_t				threads_to_launch			= blocks_required 				* local_work_size_[0];									// TO DO precompute an array for this function. ? where to store
+																																			cout<<"\nchk_0.4"<<flush;
 																																			// ? Have a subclass and object for each kernel ?
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq_to_0( ..)_chk_3 "<<flush;
 																																				cout <<"\n"
@@ -177,7 +182,9 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 																																			}
 																																			if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::rho_sq_to_0( ..)_chk_6 ."<<flush;
 																																				stringstream ss;
-																																				ss << "_ds-framenum"<<dataset_frame_num<<"_img_layer"<<layer<<"_iter"<<iter<<"_out_bock_size"<<out_block_size<<"_rho_sq_to_0()"<<calling_fn;
+																																				ss << "_ds-framenum"<<current_frames[current_frames_idx[0]].dataset_frame_num
+																																					<<","			<<current_frames[current_frames_idx[frame_idx]].dataset_frame_num
+																																					<<"_img_layer"<<layer<<"_iter"<<iter<<"_out_bock_size"<<out_block_size<<"_rho_sq_to_0()"<<calling_fn;
 																																				stringstream ss_path;
 																																				bool show				= false;
 																																				float max_range			= -1;
@@ -203,6 +210,9 @@ void RunCL::rho_sq_to_0( uint out_block_size, uint iter, uint frame_idx, uint la
 																																				DownloadAndSave_3Channel( current_frames[current_frames_idx[frame_idx]].img_buf,	ss_.str(),   paths.at("imgmem"),   	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , max_range_);
 
 																																				DownloadAndSave_2Channel_volume(  SE3_incr_map_mem,		ss.str( ), paths.at( "SE3_incr_map_mem"),	2*mm_size_bytes_C1,   mm_Image_size,	CV_32FC2, show, max_range,	vol_layers);
+
+																																				DownloadAndSave_3Channel( current_frames[current_frames_idx[frame_idx]].r_vel_buf,	ss_.str(),   paths.at("velmap"),   	mm_size_bytes_C4,   mm_Image_size,   CV_32FC4, 	show , max_range_);
+
 																																				tiff = old_tiff;
 
 																																				cout<<"\n\nRunCL::rho_sq_to_0( ..) finished ########################################################################"<<endl<< flush;
@@ -487,7 +497,7 @@ void RunCL::update_k2k_cpu( uint layer ){
 }
 
 void RunCL::get_rho_result ( Rho_result &rho_result, uint layer, uint num_DoF){	// NB must pass struct by reference to send data to the calling fn.
-	constexpr int		local_verbosity_threshold	= V_RUNCL_UPDATE_K2K;
+	constexpr int		local_verbosity_threshold	= V_RUNCL_GET_RHO_RESULT;
 																																	if( verbosity>local_verbosity_threshold/*-3*/) { cout<<"\n\nRunCL::get_rho_result( ..)_chk_0 . ################################"<< flush;
 																																		cout << "\nlayer = "	<< layer 	<<endl<<flush;
 																																		Matx44f	current_frame_pose_gt	=	current_frames[ current_frames_idx[0] ].pose_gt;			//PRINT_MATX44F( current_frame_pose_gt, );

@@ -253,6 +253,7 @@ void Dynamic_slam::estimate_tracking(){
 																																			PRINT_MATX16F( PToLie(this_frame->pose_to_0), "initial estimate" );
 																																		}
 		for (uint iter = 0; iter<SE_iter; iter++){
+			if(layer<0) {break;}																										// Reached bottom of image pyramid.
 			auto step_0 				=	high_resolution_clock::now();
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\nDynamic_slam::estimate_tracking() chk_3: frame_idx="<<frame_idx<<",  layer="<<layer
@@ -262,15 +263,15 @@ void Dynamic_slam::estimate_tracking(){
 																																			//PRINT_MATX44F( old_k2k, ); PRINT_MATX16F( PToLie(old_pose), );
 
 																																			uint	out_block_size		= 2;
-																																			uint	layer				= 0;
+																																			uint	layer_				= 0;
 																																			string fname_ = fname_short + to_string(frame_idx) +"_"+ to_string(this_frame->dataset_frame_num)+"_";
 																																			if(old_sum_rho_sq_l0 > 1000.0f ){	fname_		= fname_ + "large_num_#";						}
 																																			else{								fname_		= fname_ + to_string(old_sum_rho_sq_l0)+"_#";	}
 
 																																			// For debugging, get a larger, finer Rho map
-																																			runcl.rho_sq_to_0(			out_block_size, iter, frame_idx, layer, this_frame->k2k_buf_to_0, num_SE3_DoF, fname_);
-																																			runcl.reduce_patch_Rho(		out_block_size, iter,			layer,								num_SE3_DoF);
-																																			runcl.get_rho_result(		runcl.se3_rho_result,			layer,								num_SE3_DoF);
+																																			runcl.rho_sq_to_0(			out_block_size, iter, frame_idx, layer_, this_frame->k2k_buf_to_0, num_SE3_DoF, fname_);
+																																			runcl.reduce_patch_Rho(		out_block_size, iter,			layer_,								num_SE3_DoF);
+																																			runcl.get_rho_result(		runcl.se3_rho_result,			layer_,								num_SE3_DoF);
 
 																																			old_sum_rho_sq_l0	=	runcl.se3_rho_result.Rho.y;		cout << "\nold_sum_rho_sq_l0	= "<< old_sum_rho_sq_l0 <<flush;
 																																		}
@@ -288,22 +289,20 @@ void Dynamic_slam::estimate_tracking(){
 																		//	cout << "\nisnan(sum_rho_sq)" <<flush;
 				break;
 			}else if(sum_rho_sq > old_sum_rho_sq     ){																						// Rho, photometric error, got worse not better
-				if(layer<=0) {break;}																										// Reached bottom of image pyramid.
-				else {
 																		//	cout << "\nsum_rho_sq > old_sum_rho_sq = "<< old_sum_rho_sq;
-					if(factor<-0.1f){																										// End amplified steps
-						factor *= 0.5f;
+				if(factor<-0.1f){																										// End amplified steps
+					factor 				*= 0.5f;
 																			cout << ",  factor -2.0f -> -1.0f";
-					}else {
-						layer --;																											// Step down to lower layer of image pyramid
-																			cout << "\nlayer = "	<<	layer;
-						old_sum_rho_sq	=	FLT_MAX-1;																						// Re-set old_sum_rho_sq for new layer
-					}
-																																		//	PRINT_MATX44F( old_k2k, ); PRINT_MATX16F( PToLie(old_pose), );
-					runcl.update_44f_buf(	old_k2k,	this_frame->k2k_buf_to_0,	fname);
-					pose				= old_pose;
-																			cout << endl << flush;
+				}else {
+					layer --;												cout << "\nlayer = "	<<	layer;							// Step down to lower layer of image pyramid
+					factor				= -1.0f;
+					old_sum_rho_sq		=	FLT_MAX-1;																						// Re-set old_sum_rho_sq for new layer
 				}
+																																		//	PRINT_MATX44F( old_k2k, ); PRINT_MATX16F( PToLie(old_pose), );
+				runcl.update_44f_buf(	old_k2k,	this_frame->k2k_buf_to_0,	fname);
+				pose					= old_pose;
+																			cout << endl << flush;
+
 			}else{
 				old_sum_rho_sq			=	sum_rho_sq;
 				old_pose				=	pose;
@@ -342,6 +341,7 @@ void Dynamic_slam::estimate_tracking(){
 																																		}
 				if( SE_iter-(iter/10) < layer) {
 					layer --;																											// Step down to lower layer of image pyramid
+					factor				= -1.0f;
 					cout << "\n( SE_iter-(iter/10) < layer),  layer = "	<<	layer <<endl<<flush;
 					old_sum_rho_sq		=	FLT_MAX-1;
 				}

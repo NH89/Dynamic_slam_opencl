@@ -108,7 +108,7 @@
 	#define V_RUNCL_LAYER_CALL_KERNEL					1
 
 	#define V_RUNCL__CL_ENQUEUE_ND_RANGE_KERNEL			1
-	#define V_RUNCL_FLUSH_FINISH						1
+	#define V_RUNCL_FLUSH_FINISH						-1
 	#define	V_RUNCL_WAITFOREVENTANDRELEASE				0
 	#define	V_RUNCL_SET_CAM_BUFS						1
 	#define	V_RUNCL_ALLOCATEMEM							1
@@ -126,8 +126,9 @@
 	#define V_RUNCL_UPDATE_DEPTH						-2
 	#define V_RUNCL_SUPERPIXEL_DEPTH					-2
 	#define V_RUNCL_REGULARIZE_DEPTH					2
-	#define	V_RUNCL_PROPAGATE_DEPTH_NEXT_LAYER			2
+	#define	V_RUNCL_PROPAGATE_DEPTH_NEXT_LAYER			-2
 	#define V_RUNCL_USE_INFERRED_DEPTH					2
+	#define V_RUNCL_USE_GT_DEPTHMAP						-2
 
 
 	/////////////////////////////////////// RUNCL_DOWNLOADANDSAVE.CPP
@@ -172,9 +173,9 @@
 	#define	V_RUNCL_MIPMAP_LINEAR						1
 	#define	V_RUNCL_IMG_GRADIENTS						1
 
-	#define	V_RUNCL_LOAD_GT_DEPTH						1
+	#define	V_RUNCL_LOAD_GT_DEPTH						-1
 	#define	V_RUNCL_CONVERT_DEPTH						1
-	#define	V_RUNCL_MIPMAP_DEPTHMAP						2
+	#define	V_RUNCL_MIPMAP_DEPTHMAP						-2
 
 	/////////////////////////////////////// RUNCL_MAPPING.CPP
 
@@ -208,7 +209,8 @@
 	#define	V_RUNCL_RHO_SQ_TO_0							-2 //
 	#define	V_RUNCL_RHO_SQ_FROM_0						-2 //
 	#define	V_RUNCL_REDUCE_PATCH_RHO					2
-	#define	V_RUNCL_UPDATE_K2K							2
+	#define	V_RUNCL_UPDATE_K2K							-2
+	#define	V_RUNCL_GET_RHO_RESULT						-2
 
 	#define	V_RELATIVEVEL_MAP							1
 

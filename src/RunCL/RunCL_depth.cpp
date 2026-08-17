@@ -421,7 +421,7 @@ void RunCL::use_inferred_depthmap(uint write_layer ){
 
 void RunCL::use_GT_depthmap(uint write_layer ){
 	string 	fname							= "RunCL::use_GT_depthmap(..)";
-	int 	local_verbosity_threshold		= V_RUNCL_PROPAGATE_DEPTH_NEXT_LAYER;											if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::use_GT_depthmap(..)_chk0"<<
+	int 	local_verbosity_threshold		= V_RUNCL_USE_GT_DEPTHMAP;											if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::use_GT_depthmap(..)_chk0"<<
 																																",   write_layer = "<<write_layer<<flush; }
 	cl_kernel 	kernel					= use_GT_depthmap_kernel;
 
