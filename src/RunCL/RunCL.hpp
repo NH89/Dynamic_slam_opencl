@@ -106,7 +106,7 @@ public:
 	// RunCL_depth.cpp
 	cl_kernel			update_depth_2_kernel, superpixel_depth_kernel, regularize_depth_kernel, enlarge_layer_float_kernel, use_inferred_depthmap_kernel, use_GT_depthmap_kernel;
 	// RunCL_superpixells.cpp
-	cl_kernel			initiate_cluster_centres_kernel, associate_pixels_kernel, check_superpixel_continuity_kernel, update_cluster_centres_pvt_kernel;
+	cl_kernel			initiate_cluster_centres_kernel, associate_pixels_kernel, check_superpixel_continuity_kernel, update_cluster_centres_pvt_kernel, superpixel_orientation_1st_est_kernel;
 
 	// GPU Buffers																	// static = same for all instances of class Dynamic_slam.
 	cl_mem				fp32_param_buf=nullptr,					uint_param_buf=nullptr,								mipmap_buf=nullptr;
@@ -405,6 +405,8 @@ public:
 	void check_superpixel_continuity();
 	void update_cluster_centres_pvt();
 	void superpixel_depth_est();
+	void superpixel_orientation_1st_est ( uint layer );
+	void depth_orientation_step1(uint layer );
 
 
 	/////////////////////////////////////// RunCL_tracking.cpp

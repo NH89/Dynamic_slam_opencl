@@ -180,22 +180,89 @@ void RunCL::superpixel_depth(uint layer ){
 		fname					//string           fname
 	);
 																													if( verbosity>local_verbosity_threshold) {
-																																	cout<<"\n\nRunCL::superpixel_depth() chk_1   "<<flush;
-																																	bool show = false;
-																																	stringstream ss;
-																																	ss << "superpixel_depth" ;
-		uint 		offset				=	9 * (superpix_vol_bytes/10);
-		float		max_range			=	1.0f;
-		cv::Size	superpix_img_size	=	cv::Size( superpx_params[layer].cols_of_clusters , superpx_params[layer].rows_of_clusters );
+																														cout<<"\n\nRunCL::superpixel_depth() chk_1   "<<flush;
+																														bool show = false;
+																														stringstream ss;
+																														ss << "superpixel_depth" ;
+																														uint 		offset				=	9 * (superpix_vol_bytes/10);
+																														float		max_range			=	1.0f;
+																														cv::Size	superpix_img_size	=	cv::Size( superpx_params[layer].cols_of_clusters , superpx_params[layer].rows_of_clusters );
 
-																													cout<<"\nRunCL::superpixel_depth() chk_2,  superpix_img_bytes="<<superpix_img_bytes<<",  superpix_img_size="<<superpix_img_size<<flush;
+																														cout<<"\nRunCL::superpixel_depth() chk_2,  superpix_img_bytes="<<superpix_img_bytes<<",  superpix_img_size="<<superpix_img_size<<flush;
 
-//		DownloadAndSave_2Channel_volume( cluster_costvol_mem,	ss.str( ), paths.at( "cluster_costvol_mem"), superpix_vol_bytes,  superpix_img_size,	CV_32FC2, show, max_range,	costVolLayers, offset);		// superpx_params[layer].num_clusters*2*sizeof(float)
-		DownloadAndSave_2Channel(			cluster_depth_mem,	ss.str( ), paths.at( "cluster_depth_mem"),   superpix_img_bytes,  superpix_img_size,	CV_32FC2, show, max_range,	0 );
+																													//	DownloadAndSave_2Channel_volume( cluster_costvol_mem,	ss.str( ), paths.at( "cluster_costvol_mem"), superpix_vol_bytes,  superpix_img_size,	CV_32FC2, show, max_range,	costVolLayers, offset);		// superpx_params[layer].num_clusters*2*sizeof(float)
+																														DownloadAndSave_2Channel(			cluster_depth_mem,	ss.str( ), paths.at( "cluster_depth_mem"),   superpix_img_bytes,  superpix_img_size,	CV_32FC2, show, max_range,	0 );
 
-// void RunCL::DownloadAndSave_2Channel(cl_mem buffer, 	std::string count, 	std::filesystem::path folder_tiff, 	size_t image_size_bytes, 	cv::Size size_mat, 	int type_mat, bool show, float max_range, uint offset )
+																													// void RunCL::DownloadAndSave_2Channel(cl_mem buffer, 	std::string count, 	std::filesystem::path folder_tiff, 	size_t image_size_bytes, 	cv::Size size_mat, 	int type_mat, bool show, float max_range, uint offset )
 																													}
 }
+
+
+void RunCL::superpixel_orientation_1st_est(uint layer ){
+	string		fname						= "RunCL::superpixel_orientation_1st_est(..)";
+	int			local_verbosity_threshold	= V_RUNCL_SUPERPIXEL_ORIENTATION_1ST_EST;								if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::superpixel_orientation_1st_est(..)_chk0"<<
+																																									",   layer = "<<layer<<flush; }
+	cl_kernel	kernel						= superpixel_orientation_1st_est_kernel;
+
+	size_t		local_work_size_			= block_size;									// Could be changed to an integer multiple, i.e. use "RunCL::local_work_size", beware numbers not multiples of out_block_size.
+	size_t		threads_to_launch			= superpx_params[layer].num_clusters;;
+	threads_to_launch						= lowest_multiple( threads_to_launch, local_work_size );
+
+	// Inputs
+	// private
+	_clSetKernelArg( kernel, 0, sizeof(uint), 		&superpx_params[layer].num_clusters,			fname);		// __private	uint	num_clusters,			//0
+	_clSetKernelArg( kernel, 1, sizeof(uint), 		&superpx_params[layer].cluster_dim,				fname);		// __private	uint	cluster_dim,			//1
+	_clSetKernelArg( kernel, 2, sizeof(uint), 		&superpx_params[layer].cols_of_clusters,		fname);		// __private	uint	cluster_cols,			//2		// TODO would be much faster if specified in kernels__macros.
+	// global
+	_clSetKernelArg( kernel, 3, sizeof(cl_mem), 	&cluster_depth_mem,								fname);		// __global		float2*	superpixel_depth,		//3
+	// Output
+	_clSetKernelArg( kernel, 4, sizeof(cl_mem), 	&cluster_orientation_mem,						fname);		// __global		float*	cluster_map,			//4
+
+	_clEnqueueNDRangeKernel(										// NB depth iteration is internal to the kernel within the layer.  Regularization and propagation to next layer requires further kernels.
+		m_queue,				//cl_command_queue _queue,
+		kernel,					//cl_kernel        kernel,
+		1,						//cl_uint          work_dim,
+		0,						//const size_t *   global_work_offset,
+		&threads_to_launch,		//const size_t *   global_work_size,
+		&local_work_size_,		//const size_t *   local_work_size,
+		fname					//string           fname
+	);
+																													if( verbosity>local_verbosity_threshold) {
+																														cout<<"\n\nRunCL::superpixel_orientation_1st_est() chk_1   "<<flush;
+																														bool show = false;
+																														stringstream ss;
+																														ss << "superpixel_depth" ;
+																														float		max_range			=	1.0f;
+																														cv::Size	superpix_img_size	=	cv::Size( superpx_params[layer].cols_of_clusters , superpx_params[layer].rows_of_clusters );
+
+																														cout<<"\nRunCL::superpixel_depth() chk_2,  superpix_img_bytes="<<superpix_img_bytes<<",  superpix_img_size="<<superpix_img_size<<flush;
+
+																														DownloadAndSave_2Channel(	cluster_orientation_mem,	ss.str( ), paths.at( "cluster_orientation_mem"),   superpix_img_bytes,  superpix_img_size,	CV_32FC2, show, max_range,	0 );
+																													}
+}
+
+
+void RunCL::depth_orientation_step1(uint layer ){
+	string		fname						= "RunCL::depth_orientation_step1(..)";
+	int			local_verbosity_threshold	= V_RUNCL_SUPERPIXEL_ORIENTATION_1ST_EST;								if(verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::depth_orientation_step1(..)_chk0"<<
+																																									",   layer = "<<layer<<flush; }
+	cl_kernel	kernel						= superpixel_orientation_1st_est_kernel;
+
+	// Input
+	// private
+
+	// global
+	_clSetKernelArg( kernel, 3, sizeof(cl_mem), 	&cluster_depth_mem,								fname);		// __global		float2*	superpixel_depth,		//3
+	_clSetKernelArg( kernel, 4, sizeof(cl_mem), 	&cluster_orientation_mem,						fname);		// __global		float*	cluster_map,			//4
+
+	// Output
+	_clSetKernelArg( kernel, 4, sizeof(cl_mem), 	&cluster_costvol_mem,							fname);		// __global		float2*	pixel_depth,			//8
+	_clSetKernelArg( kernel, 4, sizeof(cl_mem), 	&cluster_costvol_mem,							fname);		// __global		float2*	superpixel_orientation	//9
+
+
+
+}
+
 
 
 /*

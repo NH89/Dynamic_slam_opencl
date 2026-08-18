@@ -321,6 +321,9 @@ void RunCL::createKernels(){
 	initiate_cluster_centres_kernel		= clCreateKernel(m_program, "initiate_cluster_centres",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'initiate_cluster_centres'  kernel not built.\n"		<<flush; exit_(0);   }
 	associate_pixels_kernel				= clCreateKernel(m_program, "associate_pixels",				&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'associate_pixels'  kernel not built.\n"				<<flush; exit_(0);   }
 	superpixel_depth_kernel				= clCreateKernel(m_program, "superpixel_depth_1st_est",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'superpixel_depth'  kernel not built.\n"				<<flush; exit_(0);   }
+
+	superpixel_orientation_1st_est_kernel	= clCreateKernel(m_program, "superpixel_orientation_1st_est",		&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'superpixel_orientation_1st_est'  kernel not built.\n"				<<flush; exit_(0);   }
+
 	//check_superpixel_continuity_kernel	= clCreateKernel(m_program, "check_superpixel_continuity",	&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'check_superpixel_continuity'  kernel not built.\n"	<<flush; exit_(0);   }
 	//update_cluster_centres_pvt_kernel	= clCreateKernel(m_program, "update_cluster_centres_pvt",	&err_code);		if (err_code != CL_SUCCESS)  {cout << "\nError 'update_cluster_centres_pvt'  kernel not built.\n"	<<flush; exit_(0);   }
 
@@ -968,6 +971,9 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 	// RunCL_superpixels.cpp
 	status = clReleaseKernel(initiate_cluster_centres_kernel);		if (status != CL_SUCCESS)	{ cout << "\ninitiate_cluster_centres_kernel	status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(associate_pixels_kernel);				if (status != CL_SUCCESS)	{ cout << "\nassociate_pixels_kernel			status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+
+	status = clReleaseKernel(superpixel_orientation_1st_est_kernel);if (status != CL_SUCCESS)	{ cout << "\nsuperpixel_orientation_1st_est_kernel		status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
+
 	status = clReleaseKernel(check_superpixel_continuity_kernel);	if (status != CL_SUCCESS)	{ cout << "\ncheck_superpixel_continuity_kernel	status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 	status = clReleaseKernel(update_cluster_centres_pvt_kernel);	if (status != CL_SUCCESS)	{ cout << "\nupdate_cluster_centres_pvt_kernel	status = " << checkerror(status) <<"\n"<<flush; }	if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_66"<<flush;
 

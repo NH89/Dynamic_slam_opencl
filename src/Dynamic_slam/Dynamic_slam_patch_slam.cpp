@@ -51,13 +51,15 @@ void Dynamic_slam::estimate_depth(){
 		runcl.update_depth_2( out_block_size, layer);		// cost_vol & Glasgow type optimization, on depth from ST3 given transpose.
 
 		runcl.superpixel_depth( layer );
+		runcl.superpixel_orientation_1st_est( layer );
+
+
 		// anisotropic smoothing
 		runcl.regularize_depth( layer );
 		// parsimony of orientation, plane, curvature ?
 		// if( layer>0){
 		// 	runcl.propagate_depth_next_layer(layer-1);
 		// }
-
 
 		// NB this kernel would be faster if it used 1 thread per depth patch, ie 16 pixels. ... Maybe not. The existing method uses half as many threads, BUT benefits from contiguious reads of data.
 	}
