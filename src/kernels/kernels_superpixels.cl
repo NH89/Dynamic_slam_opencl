@@ -2,7 +2,7 @@
 #include "kernels.h"
 
 
-// find lowst gradient in 3x3 region for initial cluster centre
+// find lowest gradient in 3x3 region for initial cluster centre
 __kernel void initiate_cluster_centres(
 	//Inputs:
 	__private	uint	layer,					//0
@@ -63,11 +63,11 @@ __kernel void initiate_cluster_centres(
 		}idx 						+= (mm_cols - 3);
 	}
 	int4	cluster_centre;
-	cluster_centre.z				= centre_idx;												// pixel index of cluster centre
+	cluster_centre.z				= centre_idx;																// pixel index of cluster centre
 	centre_idx						-= read_offset_;
-	cluster_centre.x				= centre_idx % mm_cols;										// u coord of centre
-	cluster_centre.y				= centre_idx / mm_cols;										// v coord of centre
-	cluster_centre.w				= global_id_u;												// index of cluster
+	cluster_centre.x				= centre_idx % mm_cols;														// u coord of centre
+	cluster_centre.y				= centre_idx / mm_cols;														// v coord of centre
+	cluster_centre.w				= global_id_u;																// index of cluster
 
 	cluster_centers[global_id_u]	= cluster_centre;
 /*
@@ -93,7 +93,7 @@ float pixel_distance( float2 centre, float2 px_uv, float4 cluster_colour, float4
 }
 
 
-__kernel void associate_pixels(																	// Do one patch. preload centre pixels.
+__kernel void associate_pixels(																					// Do one patch. preload centre pixels.
 	//Inputs:
 	__private	uint	cluster_layer_offset,	//0
 	__private	uint	num_clusters,			//1
@@ -107,7 +107,8 @@ __kernel void associate_pixels(																	// Do one patch. preload centre 
 	__global	int4*	cluster_centers,		//8		(img size / cluster_dim^2) * sizeof(uint4)
 
 	//Output
-	__global	float*	cluster_map				//9		holds relative  "closest_centre_id".  Allows cluster_sum_reduce in other kernels, and to read superpix maps of other params.
+	//__global	float4*	cluster_colour_,		//9		// colour diff wrt adjacent super pixels.  num superpixels * 9
+	__global	float*	cluster_map				//10	holds relative  "closest_centre_id".  Allows cluster_sum_reduce in other kernels, and to read superpix maps of other params.
 												//		Could be held in uchar* .
 												//		float* //	img_size * sizeof(float4)   densely packed for one layer.  Need a layer offset.
 ){
@@ -206,6 +207,7 @@ __kernel void associate_pixels(																	// Do one patch. preload centre 
 // 																													}
 // 																												}
 */
+
 		float 	colour_normalizer				=	0.0f;
 		float	counter							=	0.0f;
 		for(uint i=0; i<9; i+=3){																				// compute colour normalizer wrt adjacent clusters.
@@ -256,6 +258,7 @@ __kernel void associate_pixels(																	// Do one patch. preload centre 
 					}
 				}
 			}
+			//cluster_colour_[  ]					=	cluster_colour[	4];
 			cluster_map[ read_index	 ]			=	closest_centre_id; //cluster_colour[ closest_centre_id ].y ;	//(float)cluster_idx[ closest_centre_id ];//global_id_u;	//
 /*
 // 																												if( debug ){
@@ -423,7 +426,8 @@ __kernel void superpixel_orientation_1st_est(	// run on super pixel depth
 	__global	float2*	superpixel_depth,		//3
 
 	//Output
-	__global	float2*	superpixel_orientation	//4
+	__global	float*	superpixel_diff,		//4		// colour diff wrt adjacent super pixels.  num superpixels * 9
+	__global	float2*	superpixel_orientation	//5
 
 ){
 	uint 	global_id_u			=	get_global_id(0);
@@ -449,11 +453,15 @@ __kernel void superpixel_orientation_1st_est(	// run on super pixel depth
 		pvt_superpixel_depth[ rel_cluster_idx ]		=	superpixel_depth[ global_id_u + shift[rel_cluster_idx]  ].x;		// haandle edges of depth map. Not the same as edges of frame.
 	}
 
-	// super_pixel orientation
-	float2 orientation			= 	zero_f2;
-	orientation.x				=	pvt_superpixel_depth[3] - pvt_superpixel_depth[5] / (2.0f* cluster_dim);
-	orientation.y				=	pvt_superpixel_depth[1] - pvt_superpixel_depth[7] / (2.0f* cluster_dim);
+	// super_pixel orientation																								// NB Edges, superpix similarity, inv_depth vs world coords.
+	float orientation_x1				=	(pvt_superpixel_depth[3] - pvt_superpixel_depth[4]) * superpixel_diff[ 3 ] / ( cluster_dim);
+	float orientation_x2				=	(pvt_superpixel_depth[4] - pvt_superpixel_depth[5]) * superpixel_diff[ 5 ] / ( cluster_dim);
 
+	float orientation_y1				=	(pvt_superpixel_depth[1] - pvt_superpixel_depth[4]) * superpixel_diff[ 1 ] / ( cluster_dim);
+	float orientation_y2				=	(pvt_superpixel_depth[4] - pvt_superpixel_depth[7]) * superpixel_diff[ 7 ] / ( cluster_dim);
+
+
+	float2 orientation			= 	{                 ,       };
 	superpixel_orientation[ global_id_u ]	= orientation;
 }
 
@@ -468,7 +476,7 @@ __kernel void superpixel_depth_orientation_step1(  // run on full image,
 	__private	uint	num_clusters,			//1
 	__private	uint	lookup_table_offset,	//2
 	__private	uint	cluster_dim,			//3
-	__private	uint	cols_of_clusters,			//4
+	__private	uint	cols_of_clusters,		//4
 	__private	uint	mm_cols,				//5
 
 	__global	uint4*	lookup_table,			//6
@@ -477,8 +485,9 @@ __kernel void superpixel_depth_orientation_step1(  // run on full image,
 	__global	float*	cluster_map,			//8
 	__global	float2*	superpixel_depth,		//9
 	__global	float2*	superpixel_orientation,	//10
+	__global	float2*	costvol,				//11
 	// Outputs
-	__global	float2*	pixel_depth				//11
+	__global	float2*	pixel_depth				//12
 
 ){
 	const	uint	max_frames						= min(frame_count/*-1*/, num_current_frames);
@@ -492,7 +501,9 @@ __kernel void superpixel_depth_orientation_step1(  // run on full image,
 	const	uint	u								= lookup_ref.x;																	// read_column
 	const	uint	v_start							= lookup_ref.y;																	// read_row, NB _not_ constant
 			uint	v								= v_start;
-			uint	cluster_offset					= u/cluster_dim	+ cols_of_clusters*(v/cluster_dim);								// cluster offset withn this image layer
+			uint	cluster_idx						= u/cluster_dim	+ cols_of_clusters*(v/cluster_dim);								// cluster offset withn this image layer
+
+	const	uint	rel_u							= (u % cluster_dim) - (cluster_dim/2);											// u position relative to cluster centre.
 
 	int shift[9];
 	shift[8] =  -1	- cols_of_clusters;
@@ -509,23 +520,70 @@ __kernel void superpixel_depth_orientation_step1(  // run on full image,
 	float 		pvt_superpixel_depth[9];
 	float		pvt_superpixel_orientation[9];
 	float2		pvt_px_depth[9* block_size]					= {zero_f2};
+
+	float		rho[9* block_size]							=	{0.0f};
+	float 		grad_rho_depth[9* block_size]				=	{0.0f};
+	float		grad_rho_orientation_u						=	{0.0f};
+	float		grad_rho_orientation_v						=	{0.0f};
+
+
 	uint		local_idx									= 9*lid;
 	uint		read_index									= read_index_start;
 	uint		row_of_clusters								= 0;																	// Within pvt arrays [9]
-	for(int row=0; row<block_size; row+=cluster_dim, row_of_clusters++, cluster_offset+=cols_of_clusters){							// for cluster rows in img patch
+	for(int row=0; row<block_size; row+=cluster_dim, row_of_clusters++, cluster_idx+=cols_of_clusters){								// for cluster rows in img patch
 		for( uint rel_cluster_idx=0; rel_cluster_idx<9; rel_cluster_idx++){
-			pvt_superpixel_depth[ rel_cluster_idx ]			= superpixel_depth[ cluster_offset + shift[rel_cluster_idx]  ].x;		// haandle edges of depth map. Not the same as edges of frame.
-			pvt_superpixel_orientation[ rel_cluster_idx ]	= superpixel_orientation[ cluster_offset + shift[rel_cluster_idx]  ].x;
+			pvt_superpixel_depth[ rel_cluster_idx ]			= superpixel_depth[ cluster_idx + shift[rel_cluster_idx]  ].x;			// haandle edges of depth map. Not the same as edges of frame.
+			pvt_superpixel_orientation[ rel_cluster_idx ]	= superpixel_orientation[ cluster_idx + shift[rel_cluster_idx]  ].x;
 		}
-		for(uint  block_row=0; block_row<block_size; block_row++ ){
-			uint rel_cluster_idx							= (uint)cluster_map[ read_index  ];
-			uint pvt_idx									= row+block_row + (rel_cluster_idx*block_size);
-			pvt_px_depth[ pvt_idx ].x						= pvt_superpixel_depth[ rel_cluster_idx ] ;		// pixel depth
-			pvt_px_depth[ pvt_idx ].y++;
+
+		v													= v_start;
+		for(uint  block_row=0; block_row<block_size; block_row++, v++ ){
+			uint	rel_cluster_idx							= (uint)cluster_map[ read_index  ];
+			uint	pvt_idx									= row+block_row + (rel_cluster_idx*block_size);
+
+			pvt_px_depth[ pvt_idx ].x						= pvt_superpixel_depth[ rel_cluster_idx ] ;								// pixel depth
+			pvt_px_depth[ pvt_idx ].y						= 1.0f;
+
 			// compute (u,v) vector to superpixel center
+			float	u_rel_cluster_dist						= 0;
+			float	v_rel_cluster_dist						= 0;
+
+			float	mod_cluster								= (rel_cluster_idx %3);
+			if( mod_cluster == 1 ) u_rel_cluster_dist		+= cluster_dim;
+			if( mod_cluster == 0 ) u_rel_cluster_dist		-= cluster_dim;
+
+			if( rel_cluster_idx <3 ) v_rel_cluster_dist		-= cluster_dim;
+			if( rel_cluster_idx >5 ) v_rel_cluster_dist		+= cluster_dim;
+
+			uint	rel_u									= (u % cluster_dim) - (cluster_dim/2);									// v position relative to cluster centre.
+			uint	rel_v									= (v % cluster_dim) - (cluster_dim/2);									// v position relative to cluster centre.
+
+			float	u_depth_adjustment						= ( u_rel_cluster_dist + rel_u) * superpixel_orientation[ cluster_idx ].x;
+			float	v_depth_adjustment						= ( v_rel_cluster_dist + rel_v) * superpixel_orientation[ cluster_idx ].y;
+
+			pvt_px_depth[ pvt_idx ].x						+= u_depth_adjustment + v_depth_adjustment;
+
+			// find rho at this depth by linear interpolation of the cost vol
+			float rho1										=  costvol[     ];
+			float rho2										=  costvol[     ];
+			//float rho3									=  costvol[     ];
+			rho 											=  rho1 *     + rho2   *   ;
+			grad_rho_depth									=  (rho1 - rho2)/          ;
+
+			// compute effect of orientation: rho, d_rho/d_orientation  = img_grad *  d_uv/d_orientation,
 
 
-			// compute effect of orientation
+
+			grad_rho_orientation_u							= 		;
+			grad_rho_orientation_v							= 		;
+
+
+
+
+
+			// NB Need to smooth wrt (1) neighbours of similar colour, (2) similar patches elsewhere.
+			// NB curvature should depend on shasding - i.e. rho & illum dir
+
 
 			// Save full depth map
 			pixel_depth[ read_index  ]						= pvt_px_depth[ pvt_idx ].x;

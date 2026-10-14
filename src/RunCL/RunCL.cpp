@@ -804,6 +804,9 @@ void RunCL::allocatemem(){
 	cluster_orientation_mem		= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							superpix_img_bytes, 	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 43= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	cluster_curvature_mem		= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							superpix_img_bytes, 	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 43= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
+	cluster_colour_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,						2*	superpix_img_bytes, 	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 43= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	cluster_diff_mem			= clCreateBuffer(m_context, CL_MEM_READ_WRITE,							superpix_img_bytes, 	0, &res);			if(res!=CL_SUCCESS){cout<<"\nres 43= "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+
 																																		if(verbosity>local_verbosity_threshold) {
 																																			cout << "\n\nRunCL::allocatemem_chk3\n\n" << flush;
 
@@ -934,6 +937,10 @@ RunCL::~RunCL(){  // TO DO  ? Replace individual buffer clearance with the large
 	status = clReleaseMemObject(cluster_depth_mem);				if (status != CL_SUCCESS)	{ cout << "\ncluster_depth_mem              status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(cluster_orientation_mem);		if (status != CL_SUCCESS)	{ cout << "\ncluster_orientation_mem        status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
 	status = clReleaseMemObject(cluster_curvature_mem);			if (status != CL_SUCCESS)	{ cout << "\ncluster_curvature_mem          status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+
+	status = clReleaseMemObject(cluster_colour_mem);			if (status != CL_SUCCESS)	{ cout << "\ncluster_colour_mem             status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+	status = clReleaseMemObject(cluster_diff_mem);				if (status != CL_SUCCESS)	{ cout << "\ncluster_diff_mem               status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_48"<<flush;
+
 
 	// release kernels
 	status = clReleaseKernel(convert_depth_kernel);					if (status != CL_SUCCESS)	{ cout << "\nconvert_depth_kernel				status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>local_verbosity_threshold) cout<<"\nRunCL::~RunCL_chk_59"<<flush;

@@ -127,6 +127,7 @@ public:
 
 	cl_mem				cluster_centers_mem=nullptr,			cluster_map_mem=nullptr,							costvol_mem=nullptr,								cluster_costvol_mem=nullptr;
 	cl_mem				cluster_depth_mem=nullptr,				cluster_orientation_mem=nullptr,					cluster_curvature_mem=nullptr;
+	cl_mem				cluster_colour_mem=nullptr,				cluster_diff_mem=nullptr;
 
 	cl_mem				basemem=nullptr, 						imgmem_blurred=nullptr;
 	cl_mem 				imgmem[num_current_frames]={nullptr},	depth_mem[num_current_frames]={nullptr}, 			velmap[num_current_frames]={nullptr},				SE3_grad_map_mem[num_current_frames]={nullptr};

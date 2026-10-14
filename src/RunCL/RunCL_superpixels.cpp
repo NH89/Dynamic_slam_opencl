@@ -72,7 +72,7 @@ void RunCL::initiate_cluster_centres(uint layer){
 	_clSetKernelArg( kernel,  4, sizeof( cl_mem),	&img_grad_mem,			fname);									//  __global	float2*	gradient_map,			//4		img_size * sizeof(float2)
 
 	//Output
-	_clSetKernelArg( kernel,  5, sizeof( cl_mem),	&cluster_centers_mem,	fname);									//  __global	uint4*	cluster_centers			//5		(img size / cluster_dim^2) * sizeof(uint4)
+	_clSetKernelArg( kernel,  5, sizeof( cl_mem),	&cluster_centers_mem,	fname);									//  __global	uint4*	cluster_centers			//6		(img size / cluster_dim^2) * sizeof(uint4)
 
 	_clEnqueueNDRangeKernel(m_queue, kernel, 1, 0, &threads_to_launch, &local_work_size, fname);
 																													if( verbosity>local_verbosity_threshold) {cout<<"\n\nRunCL::initiate_cluster_centres( )_chk2 ."<<flush;	// Save buffers to file ###########
@@ -125,6 +125,7 @@ void RunCL::associate_pixels(uint layer){
 	_clSetKernelArg( kernel,  8, sizeof( cl_mem),	&cluster_centers_mem,						fname);				//	__global	uint4*	cluster_centers,		//8		(img size / cluster_dim^2) * sizeof(uint4)
 
 	//Output
+//	_clSetKernelArg( kernel,  9, sizeof( cl_mem), 	&cluster_colour_mem,						fname);									//  __global	float4*	superpixel_colour,		//5
 	_clSetKernelArg( kernel,  9, sizeof( cl_mem),	&cluster_map_mem,							fname);				//	__global	float*	cluster_map				//9		img_size * sizeof(float)   densely packed for one layer.  Need a layer offset.
 
 	_clEnqueueNDRangeKernel(m_queue, kernel, 1, 0, &threads_to_launch, &local_work_size, fname);
@@ -216,7 +217,8 @@ void RunCL::superpixel_orientation_1st_est(uint layer ){
 	// global
 	_clSetKernelArg( kernel, 3, sizeof(cl_mem), 	&cluster_depth_mem,								fname);		// __global		float2*	superpixel_depth,		//3
 	// Output
-	_clSetKernelArg( kernel, 4, sizeof(cl_mem), 	&cluster_orientation_mem,						fname);		// __global		float*	cluster_map,			//4
+	_clSetKernelArg( kernel, 4, sizeof(cl_mem), 	&cluster_diff_mem,								fname);		// __global		float*	cluster_map,			//4
+	_clSetKernelArg( kernel, 5, sizeof(cl_mem), 	&cluster_orientation_mem,						fname);		// __global		float*	cluster_map,			//4
 
 	_clEnqueueNDRangeKernel(										// NB depth iteration is internal to the kernel within the layer.  Regularization and propagation to next layer requires further kernels.
 		m_queue,				//cl_command_queue _queue,
